@@ -116,7 +116,7 @@ function showPage(pg,el){
   document.querySelectorAll('.ni').forEach(function(n){n.classList.remove('on');});
   if(el)el.classList.add('on');
   if(el)_navOpenFor(el);
-  var meta={vstats:['تفعيل البريد','مين فعّل وبأي طريقة — ومين علق وتحتاج تتابعه'],appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],deals:['متابعة الصفقات','مين اختار · مين ألغى · مين خلّص · مين سدّد'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
+  var meta={vstats:['التسجيل والتفعيل','كيف سجّلوا (البريد · Google · Apple) — مين فعّل ومين علق'],appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],deals:['متابعة الصفقات','مين اختار · مين ألغى · مين خلّص · مين سدّد'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
   _gtSync(pg);
   document.getElementById('pageSub').textContent=meta[pg][1];
@@ -126,7 +126,7 @@ function showPage(pg,el){
   // مؤجّلة: لو فتحت الصفحة مباشرة من الرابط (#ctstats) تنفّذ قبل تعريف إعدادات الفترة
   if(pg==='appstats')setTimeout(function(){_perMini('per-app');_loadAppStats();},0);
   if(pg==='ctstats')setTimeout(function(){_perMini('per-ct');_loadCtStats();},0);
-  if(pg==='vstats')setTimeout(function(){_perMini('per-vs');_loadVStats();},0);
+  if(pg==='vstats')setTimeout(_loadVStats,0);
   if(pg==='inbox')loadInbox();
   if(pg==='saai')loadSaaiAdmin();
   if(pg==='settings')loadSettings();
@@ -5879,7 +5879,7 @@ function _perRange(){
   if(k==='custom'&&_PER.from&&_PER.to)return {from:_PER.from,to:_PER.to,lbl:_PER.from+' ← '+_PER.to,cmp:'عن نفس المدة قبلها'};
   return {from:t,to:t,lbl:'اليوم',cmp:'عن أمس'};
 }
-function _perSet(k){ _PER={k:k}; if(k==='custom'){var f=(document.getElementById('per-from')||{}).value,t=(document.getElementById('per-to')||{}).value; if(!f||!t){_perRender(true);return;} _PER={k:'custom',from:f,to:t};} try{localStorage.setItem('adm_period',JSON.stringify(_PER));}catch(e){} _perRender(); _perMini('per-app'); _perMini('per-ct'); _perMini('per-vs'); _loadVisits(); _loadAppStats(); _loadCtStats(); try{if(document.getElementById('page-vstats').classList.contains('on'))_loadVStats();}catch(e){} }
+function _perSet(k){ _PER={k:k}; if(k==='custom'){var f=(document.getElementById('per-from')||{}).value,t=(document.getElementById('per-to')||{}).value; if(!f||!t){_perRender(true);return;} _PER={k:'custom',from:f,to:t};} try{localStorage.setItem('adm_period',JSON.stringify(_PER));}catch(e){} _perRender(); _perMini('per-app'); _perMini('per-ct'); _loadVisits(); _loadAppStats(); _loadCtStats(); }
 function _perRender(showCustom){
   var old=document.getElementById('dash-period'); if(old)old.innerHTML='';
   var box=document.getElementById('vs-seg'); if(!box)return; var R=_perRange();
@@ -6033,57 +6033,23 @@ function _loadAppStats(){
 }
 
 
-// ═══ تفعيل البريد: إحصائيات + قائمة اللي ما فعّلوا للمتابعة ═══
-var _VS=null,_vsF='all';
-function _loadVStats(){
-  var box=document.getElementById('dash-vstats'); if(!box)return; var R=_perRange();
-  if(!_VS)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
-  var LR=_vsLRange(); fetch(API+'/api/admin/verify-stats?from='+R.from+'&to='+R.to+(LR?'&lfrom='+LR.from+'&lto='+LR.to:''),hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
-    if(!d){box.innerHTML=emptyState('تعذر التحميل');return;} _VS=d; _vsPaint(); _adSeen('unver3');
-    try{var u=(d.all_unverified||[]).reduce(function(a,x){return a+x.n;},0);_miniSet('vs','✉️ تفعيل البريد','<b>'+fmtNum(u)+'</b> ما فعّلوا للحين','vstats');}catch(e){}
-  }).catch(function(){box.innerHTML=emptyState('تعذر التحميل');});
-}
-function _vsPaint(){
-  _vsSave(); var box=document.getElementById('dash-vstats'), d=_VS; if(!box||!d)return; var R=_perRange();
-  var sum=function(arr,f,role){return (arr||[]).filter(function(x){return !role||x.role===role;}).reduce(function(a,x){return a+(x[f]||0);},0);};
-  var reg=sum(d.reg,'n'), ver=sum(d.reg,'ver'), un=sum(d.reg,'unver');
-  var V={link:0,code:0,google:0,apple:0,admin:0,other:0}, mins=[], cnt=0; (d.via||[]).forEach(function(x){V[x.via]=(V[x.via]||0)+x.n; if(x.avg_min!=null){mins.push(x.avg_min*x.n);cnt+=x.n;}});
-  var vt=V.link+V.code+V.google+V.apple+V.admin+V.other, avg=cnt?Math.round(mins.reduce(function(a,b){return a+b;},0)/cnt):null;
-  var avgT=avg==null?'—':(avg<60?avg+' دقيقة':(avg<1440?Math.round(avg/60)+' ساعة':Math.round(avg/1440)+' يوم'));
-  var pc=function(a,b){return b?Math.round(a/b*100):0;};
-  var M={}; (d.mail||[]).forEach(function(x){M[x.status]=x.n;});
-  var kp=function(l,v,s,c){return '<div class="ct2-k"><small>'+l+'</small><b'+(c?' style="color:'+c+'"':'')+'>'+v+'</b><span>'+s+'</span></div>';};
-  var bar=function(lbl,n,tot,col){var p=pc(n,tot);return '<div class="ct2-r"><span class="ct2-n" style="width:38%">'+lbl+'</span><span class="ct2-bar"><i style="width:'+Math.max(n?4:0,p)+'%;background:'+col+'"></i></span><b style="width:74px">'+fmtNum(n)+' <small style="color:var(--muted)">('+p+'%)</small></b></div>';};
-  var role=function(r,lbl){var n=sum(d.reg,'n',r),v=sum(d.reg,'ver',r);return '<div class="ct2-r"><span class="ct2-n" style="width:38%">'+lbl+'</span><span class="ct2-bar"><i style="width:'+pc(v,n)+'%;background:'+(r==='client'?'#1d4ed8':'#0f766e')+'"></i></span><b style="width:74px">'+fmtNum(v)+' من '+fmtNum(n)+'</b></div>';};
-  var mtot=(M.delivered||0)+(M.opened||0)+(M.clicked||0)+(M.bounced||0)+(M.suppressed||0)+(M.complained||0)+(M.failed||0)+(M.sent||0)+(M.delayed||0)+(M.sending||0);
-  var allU=sum(d.all_unverified,'n');
-  var h='<div class="vs-h"><h3>✉️ تفعيل البريد</h3></div>'
-    +'<div class="ct2-kp">'+kp('سجّلوا · '+esc(R.lbl),fmtNum(reg),'عملاء ومزوّدين')+kp('فعّلوا منهم',pc(ver,reg)+'%',fmtNum(ver)+' من '+fmtNum(reg),'#15803d')+kp('ما فعّلوا منهم',fmtNum(un),'تحتاج متابعة',un?'#b91c1c':'')+kp('متوسط وقت التفعيل',avgT,'من التسجيل إلى التفعيل')+'</div>'
-    +'<div class="vs-s" style="margin:-6px 0 12px">ℹ️ طريقة التفعيل (رابط / رمز / إدارة) تنحسب من تاريخ هالتحديث وطالع. والحسابات القديمة اللي سجّلت قبل نظام التفعيل تنحسب مفعّلة.</div>'
-    +'<div class="ct2-g">'
-      +'<div class="ct2-c"><div class="ct2-h">كيف فعّلوا؟ <span style="color:var(--muted);font-weight:700">('+esc(R.lbl)+' · '+fmtNum(vt)+')</span></div>'
-        +(vt?bar('🔗 ضغطوا رابط الإيميل',V.link,vt,'#1d4ed8')+bar('🔢 كتبوا الرمز',V.code,vt,'#7c3aed')+(V.google?bar('G سجّلوا بحساب Google',V.google,vt,'#16a34a'):'')+(V.apple?bar(' سجّلوا بحساب Apple',V.apple,vt,'#0f172a'):'')+bar('🛠️ فعّلتهم الإدارة',V.admin,vt,'#f59e0b')+(V.other?bar('قبل بدء التتبّع',V.other,vt,'#94a3b8'):''):'<div class="vs-s">ما فيه تفعيل في هالفترة</div>')
-        +'<div class="ct2-h" style="margin-top:14px">حسب النوع <span style="color:var(--muted);font-weight:700">(فعّلوا من اللي سجّلوا)</span></div>'+role('client','👤 عملاء')+role('provider','🧰 مزوّدين')
-      +'</div>'
-      +'<div class="ct2-c"><div class="ct2-h">وش صار لإيميلات التفعيل؟ <span style="color:var(--muted);font-weight:700">('+fmtNum(mtot)+' شخص)</span></div>'
-        +(mtot?bar('✓ وصل',(M.delivered||0)+(M.opened||0)+(M.clicked||0),mtot,'#16a34a')+bar('⏳ انرسل — لسا ما تأكد',(M.sent||0)+(M.delayed||0)+(M.sending||0),mtot,'#94a3b8')+bar('✗ رجع / محظور',(M.bounced||0)+(M.suppressed||0)+(M.failed||0),mtot,'#dc2626')+bar('🚫 سبام',M.complained||0,mtot,'#b91c1c'):'<div class="vs-s">ما انرسلت إيميلات تفعيل في هالفترة</div>')
-        +'<div class="vs-s" style="margin-top:8px">«رجع / محظور» = البريد غالباً مكتوب غلط — كلّمهم واتساب يصحّحونه أو فعّلهم يدوي.</div>'
-      +'</div>'
-    +'</div>';
-  h+=_vsList(d);
-  box.innerHTML=h;
-}
-// ═══ قائمة اللي ما فعّلوا: فترة خاصة + تشخيص «ليش ما فعّل» + إرسال جماعي ═══
-var _vsLP={k:'all'}, _vsMode='pend', _vsVia='', _vsW='', _vsSel={}, _vsCh={email:true,notify:true};
-// تذكّر اختياراتك (الفترة والقائمة والفلاتر) بعد تحديث الصفحة
-try{ var _vsS=JSON.parse(localStorage.getItem('adm_vsl')||'null'); if(_vsS){ if(_vsS.lp&&_vsS.lp.k)_vsLP=_vsS.lp; if(_vsS.m)_vsMode=_vsS.m; if(_vsS.f)_vsF=_vsS.f; if(_vsS.w)_vsW=_vsS.w; if(_vsS.v)_vsVia=_vsS.v; } }catch(e){}
-function _vsSave(){ try{ localStorage.setItem('adm_vsl',JSON.stringify({lp:_vsLP,m:_vsMode,f:_vsF,w:_vsW,v:_vsVia})); }catch(e){} }
+// ═══ التسجيل والتفعيل: كيف سجّلوا (البريد / Google / Apple) + مين فعّل + رحلة كل مستخدم ═══
+var _SG=null, _sgSel={}, _sgCh={email:true,notify:true}, _sgOpenId=null, _sgN=50;
+var _sgS={p:{k:'7d'},m:'',st:'',r:'',w:'',q:''};
+try{ var _sgL=JSON.parse(localStorage.getItem('adm_sg')||'null'); if(_sgL&&_sgL.p&&_sgL.p.k){ _sgS.p=_sgL.p; _sgS.m=_sgL.m||''; _sgS.st=_sgL.st||''; _sgS.r=_sgL.r||''; } }catch(e){}
+function _sgSave(){ try{ localStorage.setItem('adm_sg',JSON.stringify({p:_sgS.p,m:_sgS.m,st:_sgS.st,r:_sgS.r})); }catch(e){} }
+var _SG_M={email:{n:'البريد',c:'#1d4ed8',bg:'#dbeafe',i:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>'},
+  google:{n:'Google',c:'#16a34a',bg:'#fff',i:'<span class="sg-G"></span>'},
+  apple:{n:'Apple',c:'#0f172a',bg:'#000',i:'<svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.02-1.5-2.62-1.7-3.19-1.72-1.36-.14-2.65.8-3.34.8-.69 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.19-1.54 2.67-.39 6.62 1.11 8.79.73 1.06 1.6 2.25 2.75 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.71.71 2.88.69 1.19-.02 1.94-1.08 2.66-2.14.84-1.23 1.19-2.42 1.21-2.48-.03-.01-2.32-.89-2.34-3.55zM14.18 6.13c.61-.74 1.02-1.76.91-2.78-.88.04-1.94.59-2.57 1.32-.56.65-1.06 1.69-.93 2.69.98.08 1.98-.5 2.59-1.23z"/></svg>'}};
+var _SG_ORD=['email','google','apple'];
+var _SG_DEV={app_ios:'تطبيق آيفون',app_android:'تطبيق أندرويد',app:'التطبيق',mobile:'جوال (متصفح)',desktop:'كمبيوتر'};
+var _SG_VIA={link:'ضغط رابط الإيميل',code:'كتب الرمز',google:'من Google',apple:'من Apple',admin:'فعّلته الإدارة'};
 var _VSWHY={
   invalid:['✗ البريد غير صالح','#b91c1c','مكتوب بشكل خاطئ — كلّمه واتساب ياخذ بريده الصحيح أو فعّله يدوي'],
-  typo:['✍️ غلطة إملائية في البريد','#b91c1c','مثل gmial بدل gmail — الإيميل ما راح يوصله. كلّمه واتساب يصحّحه'],
+  typo:['✍️ غلطة إملائية في البريد','#b91c1c','الإيميل ما راح يوصله — كلّمه واتساب يصحّحه'],
   bad:['✗ البريد رجع / غير موجود','#b91c1c','Resend رفضه — البريد غلط أو مقفل. واتساب يصحّحه أو فعّله يدوي'],
   spam:['🚫 حط إيميلنا سبام','#b91c1c','ما نقدر نرسل له إيميل — كلّمه واتساب'],
-  nosend:['📭 ما انرسل له إيميل تفعيل','#64748b','غالباً سجّل قبل تتبّع الإيميلات — أرسل له الحين'],
+  nosend:['📭 ما انرسل له إيميل تفعيل','#64748b','أرسل له الحين'],
   code_wrong:['🔢 حاول يكتب الرمز وغلط','#92400e','يبي يفعّل بس الرمز ما ضبط — أرسل له رمز جديد'],
   opened:['👀 فتح الإيميل وما كمّل','#92400e','شاف الإيميل وما ضغط — ذكّره بإشعار أو واتساب'],
   waiting:['⏳ انرسل له قريب','#1d4ed8','الإيميل انرسل خلال آخر 6 ساعات — انتظر شوي'],
@@ -6091,106 +6057,196 @@ var _VSWHY={
   gone:['💤 سجّل وما رجع','#64748b','ما رجع للمنصة بعد التسجيل — إيميل تذكير + واتساب']
 };
 var _VSORD=['typo','invalid','bad','spam','nosend','code_wrong','opened','ignored','gone','waiting'];
-function _vsLRange(){ var now=new Date(),t=_ymd(now),dd=function(n){return _ymd(new Date(now.getTime()-n*86400000));},k=_vsLP.k;
+function _sgMi(m){ var x=_SG_M[m]||_SG_M.email; return '<span class="sg-mi sg-mi-'+(m||'email')+'">'+x.i+'</span>'; }
+function _sgRange(){ var now=new Date(),t=_ymd(now),dd=function(n){return _ymd(new Date(now.getTime()-n*86400000));},P=_sgS.p,k=P.k;
   if(k==='today')return {from:t,to:t,lbl:'اليوم'}; if(k==='yesterday')return {from:dd(1),to:dd(1),lbl:'أمس'};
-  if(k==='7d')return {from:dd(6),to:t,lbl:'آخر 7 أيام'}; if(k==='month')return {from:t.slice(0,8)+'01',to:t,lbl:'هالشهر'};
-  if(k==='custom'&&_vsLP.from&&_vsLP.to)return {from:_vsLP.from,to:_vsLP.to,lbl:_vsLP.from+' ← '+_vsLP.to};
-  return null; }
-function _vsLSet(k){ if(k==='custom'){ var f=(document.getElementById('vsl-f')||{}).value,t=(document.getElementById('vsl-t')||{}).value; if(!f||!t){_vsLP={k:'custom'};_vsPaint();return;} _vsLP={k:'custom',from:f,to:t}; } else _vsLP={k:k}; _vsSel={}; window._vsAll=false; _loadVStats(); }
-function _vsWhyTxt(u){ var w=_VSWHY[u.why]||['—','#64748b',''], t=w[0];
-  if(u.why==='typo'){ var p=String(u.email||'').split('@'); t+=' <span dir="ltr" style="font-weight:700">('+esc(p[1]||'')+')</span>'; }
-  if(u.why==='code_wrong')t+=' ('+u.tries+' مرات)';
-  if(u.why==='gone'&&/delivered|opened/.test(u.mail_status||''))t='💤 وصله الإيميل وما رجع';
-  return '<b style="color:'+w[1]+'">'+t+'</b>'; }
-function _vsMins(a,b){ var m=Math.round((new Date(b)-new Date(a))/60000); if(!(m>=0))return ''; return m<1?'أقل من دقيقة':(m<60?m+' دقيقة':(m<1440?Math.round(m/60)+' ساعة':Math.round(m/1440)+' يوم')); }
-function _vsTabs(d,LR){ var seg=[['all','الكل'],['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['month','هالشهر'],['custom','تخصيص']];
-  var np=(d.pending||[]).length, nv=(d.verified||[]).length;
-  return '<div class="vsm"><button type="button" class="'+(_vsMode==='pend'?'on':'')+'" onclick="_vsMode=\'pend\';_vsF=\'all\';_vsPaint()">⏳ ما فعّلوا <b>'+fmtNum(np)+'</b></button><button type="button" class="'+(_vsMode==='done'?'on ok':'')+'" onclick="_vsMode=\'done\';_vsF=\'all\';window._vsAll=false;_vsPaint()">✓ سجّلوا وفعّلوا <b>'+fmtNum(nv)+'</b></button></div>'
-    +'<div class="vs-s" style="margin:2px 0 8px">ℹ️ التفعيل إلزامي للحسابات من 19 سبتمبر · تتبّع «كيف فعّل ومتى» بدأ 6 أكتوبر · '+(LR?'اللي سجّلوا '+esc(LR.lbl):'من كل الفترات')+(np+nv?' · نسبة التفعيل: <b style="color:#15803d">'+Math.round(nv/(np+nv)*100)+'%</b>':'')+'</div>'
-    +'<div class="vs-seg" style="margin-bottom:8px;align-self:flex-start">'+seg.map(function(x){return '<button type="button" class="'+(_vsLP.k===x[0]?'on':'')+'" onclick="_vsLSet(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div>'
-    +(_vsLP.k==='custom'?'<div class="vsl-cus"><label>من <input type="date" id="vsl-f" value="'+(_vsLP.from||'')+'"></label><label>إلى <input type="date" id="vsl-t" value="'+(_vsLP.to||'')+'"></label><button class="ct2-b pri" onclick="_vsLSet(\'custom\')">عرض</button></div>':''); }
-function _vsDone(d){
-  var V=d.verified||[], LR=_vsLRange();
-  var VIA={link:['🔗 رابط الإيميل','#1d4ed8','#dbeafe'],code:['🔢 الرمز','#7c3aed','#ede9fe'],admin:['🛠️ الإدارة','#b45309','#fef3c7'],google:['G حساب Google','#15803d','#dcfce7'],apple:[' حساب Apple','#0f172a','#e2e8f0'],other:['فعّل قبل 6 أكتوبر','#64748b','#f1f5f9']};
-  var base=V.filter(function(u){return _vsF==='all'||u.role===_vsF;}), L=base.filter(function(u){return !_vsVia||u.via===_vsVia;});
-  var C={}; base.forEach(function(u){C[u.via]=(C[u.via]||0)+1;});
-  var h='<div class="ct2-c" id="vs-list" style="margin-top:14px"><div class="ct2-h">متابعة التفعيل</div>'+_vsTabs(d,LR);
-  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 6px">'+[['all','الكل',V.length],['client','عملاء',V.filter(function(u){return u.role==='client';}).length],['provider','مزوّدين',V.filter(function(u){return u.role==='provider';}).length]].map(function(c){return '<button type="button" class="ct2-b'+(c[0]===_vsF?' pri':'')+'" onclick="_vsF=\''+c[0]+'\';window._vsAll=false;_vsPaint()">'+c[1]+' '+c[2]+'</button>';}).join('')+'</div>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"><span class="vs-s" style="align-self:center">فعّل عن طريق:</span>'+['','link','code','google','apple','admin','other'].filter(function(k){return !k||C[k];}).map(function(k){var v=VIA[k];return '<button type="button" class="ct2-b'+(_vsVia===k?' pri':'')+'" onclick="_vsVia=\''+k+'\';window._vsAll=false;_vsPaint()">'+(k?v[0]+' '+C[k]:'الكل '+base.length)+'</button>';}).join('')+'</div>';
-  h+=(L.length?L.slice(0,window._vsAll?1000:15).map(function(u){var prov=u.role==='provider',v=VIA[u.via]||VIA.other,t=u.email_verified_at?_vsMins(u.created_at,u.email_verified_at):'';
-      return '<div class="ct2-u"><span class="ct2-av" style="background:'+(prov?'#0f766e':'#1d4ed8')+'">'+esc(String(u.name||'؟').trim().charAt(0))+'</span>'
-        +'<div class="ct2-ui"><div><a href="#" onclick="event.preventDefault();_vsOpen('+u.id+')">'+esc(u.name||'—')+'</a> <span class="ct2-pl '+(prov?'p':'c')+'">'+(prov?'مزوّد':'عميل')+'</span> <span class="ct2-pl" style="background:'+v[2]+';color:'+v[1]+'">'+v[0]+'</span>'+((u.projects||u.bids)?' <span class="ct2-pl" style="background:#dcfce7;color:#15803d">'+(prov?u.bids+' عرض':u.projects+' مشروع')+'</span>':'')+'</div>'
-        +'<small class="vs-why"><b style="color:#15803d">✓ فعّل'+(u.email_verified_at?' '+_adAgo(u.email_verified_at):'')+'</b>'+(t?' · بعد '+t+' من التسجيل':'')+(u.sends>1?' · احتاج '+u.sends+' إيميلات':'')+'</small>'
-        +'<small><span dir="ltr">'+esc(u.email||'')+'</span> · سجّل '+_adAgo(u.created_at)+'</small></div></div>';}).join('')
-      +(L.length>15?'<a href="#" class="ct2-more" onclick="event.preventDefault();window._vsAll=!window._vsAll;_vsPaint()">'+(window._vsAll?'عرض أقل':'عرض الكل ('+L.length+')')+'</a>':'')
-      :'<div class="vs-s" style="padding:10px 0">ما فيه أحد فعّل في هالفترة</div>')+'</div>';
-  return h;
+  if(k==='month')return {from:t.slice(0,8)+'01',to:t,lbl:'هالشهر'}; if(k==='90d')return {from:dd(89),to:t,lbl:'آخر 3 شهور'};
+  if(k==='all')return {from:'2025-01-01',to:t,lbl:'من البداية'};
+  if(k==='custom'&&P.from&&P.to)return {from:P.from,to:P.to,lbl:P.from+' ← '+P.to};
+  return {from:dd(6),to:t,lbl:'آخر 7 أيام'}; }
+function _sgPer(k){ if(k==='custom'){ var f=(document.getElementById('sg-f')||{}).value,t=(document.getElementById('sg-t')||{}).value; if(!f||!t){ _sgS.p={k:'custom',from:_sgS.p.from,to:_sgS.p.to}; _sgPaint(); return; } _sgS.p={k:'custom',from:f,to:t}; } else _sgS.p={k:k}; _sgSel={}; _sgN=50; _sgSave(); _loadVStats(); }
+function _loadVStats(){
+  var box=document.getElementById('dash-vstats'); if(!box)return; var R=_sgRange();
+  if(!_SG)box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>'; else box.classList.add('sg-busy');
+  fetch(API+'/api/admin/signups?from='+R.from+'&to='+R.to,hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    box.classList.remove('sg-busy');
+    if(!d){ box.innerHTML=emptyState('تعذر التحميل'); return; } _SG=d; _sgPaint(); _adSeen('unver3');
+    try{ _miniSet('vs','✉️ التسجيل والتفعيل','<b>'+fmtNum(d.unver_all||0)+'</b> ما فعّلوا للحين','vstats'); }catch(e){}
+  }).catch(function(){ box.classList.remove('sg-busy'); box.innerHTML=emptyState('تعذر التحميل'); });
 }
-function _vsList(d){
-  if(_vsMode==='done')return _vsDone(d);
-  var P=d.pending||[], LR=_vsLRange(), work=function(u){return u.projects||u.bids;};
-  var old3=function(u){return Date.now()-new Date(u.created_at)>3*86400000;};
-  var base=P.filter(function(u){return _vsF==='all'||(_vsF==='work'?work(u):(_vsF==='old3'?old3(u):u.role===_vsF));});
-  var L=base.filter(function(u){return !_vsW||u.why===_vsW;});
-  var W={}; base.forEach(function(u){W[u.why]=(W[u.why]||0)+1;});
-  var h='<div class="ct2-c" id="vs-list" style="margin-top:14px"><div class="ct2-h">متابعة التفعيل</div>'+_vsTabs(d,LR);
-  // وين المشكلة؟
-  var wt=base.length;
-  h+='<div class="vsw"><div class="vsw-h">🔍 وين المشكلة؟ <small>اضغط أي سبب يطلع لك أصحابه</small></div>'
-    +(wt?_VSORD.filter(function(k){return W[k];}).map(function(k){var w=_VSWHY[k],n=W[k],pc=Math.round(n/wt*100);
-      return '<button type="button" class="vsw-r'+(_vsW===k?' on':'')+'" onclick="_vsW=_vsW===\''+k+'\'?\'\':\''+k+'\';_vsSel={};window._vsAll=false;_vsPaint()"><span class="vsw-n"><b style="color:'+w[1]+'">'+w[0]+'</b><small>'+w[2]+'</small></span><span class="ct2-bar"><i style="width:'+Math.max(4,pc)+'%;background:'+w[1]+'"></i></span><b class="vsw-c">'+fmtNum(n)+' <small>('+pc+'%)</small></b></button>';}).join('')
-      :'<div class="vs-s">ما فيه أحد 👌</div>')+'</div>';
-  var chips=[['all','الكل',P.length],['client','عملاء',P.filter(function(u){return u.role==='client';}).length],['provider','مزوّدين',P.filter(function(u){return u.role==='provider';}).length],['work','عندهم مشروع/عرض معلّق',P.filter(work).length],['old3','تجاوزوا 3 أيام',P.filter(old3).length]];
-  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 6px">'+chips.map(function(c){return '<button type="button" class="ct2-b'+(c[0]===_vsF?' pri':'')+'" onclick="_vsF=\''+c[0]+'\';_vsSel={};window._vsAll=false;_vsPaint()">'+c[1]+' '+c[2]+'</button>';}).join('')
-    +(_vsW?'<button type="button" class="ct2-b" style="border-color:#fca5a5;color:#b91c1c" onclick="_vsW=\'\';_vsSel={};_vsPaint()">'+_VSWHY[_vsW][0]+' ✕</button>':'')+'</div>';
-  // شريط الإرسال الجماعي
-  var selN=L.filter(function(u){return _vsSel[u.id];}).length, allOn=L.length&&selN===L.length;
-  var appN=L.filter(function(u){return _vsSel[u.id]&&u.has_app;}).length;
-  h+='<div class="vsb'+(selN?' on':'')+'"><label class="vsb-all"><input type="checkbox" '+(allOn?'checked':'')+' onchange="_vsSelAll(this.checked)"> تحديد الكل ('+fmtNum(L.length)+')</label>'
-    +(selN?'<span class="vsb-n">محدد <b>'+fmtNum(selN)+'</b></span>'
-      +'<label class="vsb-c"><input type="checkbox" '+(_vsCh.email?'checked':'')+' onchange="_vsCh.email=this.checked"> ✉️ إيميل تفعيل</label>'
-      +'<label class="vsb-c" title="يوصل كإشعار داخل المنصة، وإشعار جوال للي عندهم التطبيق"><input type="checkbox" '+(_vsCh.notify?'checked':'')+' onchange="_vsCh.notify=this.checked"> 🔔 إشعار <small>('+fmtNum(appN)+' عندهم التطبيق)</small></label>'
-      +'<button class="ct2-b pri" onclick="_vsBulk(this)">إرسال للمحددين</button>':'<span class="vs-s">حدد أشخاص عشان ترسل لهم إيميل أو إشعار دفعة وحدة</span>')+'</div>';
-  var wa=function(u){var ph=_waNorm(u.phone); if(!ph)return ''; var why=u.role==='provider'?'عشان تقدر تقدّم عروضك على المشاريع':'عشان يُنشر مشروعك ويوصلك عروض';
-    var fix=/typo|invalid|bad|spam/.test(u.why)?'\nيبدو إن بريدك مكتوب غلط والإيميل ما يوصلك — أرسل لنا بريدك الصحيح هنا ونصحّحه ونفعّله لك.':'\nلو ما وصلك إيميل التفعيل (شيّك على البريد المزعج)، رد علينا هنا ونفعّله لك.';
-    var m='السلام عليكم '+(u.name||'')+'، معك منصة مناقصة 👋\nلاحظنا إن بريدك '+(u.email||'')+' ما تفعّل للحين — فعّله '+why+'.'+fix;
-    return '<a class="ct2-b wa" target="_blank" rel="noopener" href="https://wa.me/'+ph+'?text='+encodeURIComponent(m)+'">واتساب</a>';};
-  h+=(L.length?L.slice(0,window._vsAll?1000:15).map(function(u){var prov=u.role==='provider';
-      return '<div class="ct2-u'+(_vsSel[u.id]?' sel':'')+'"><input type="checkbox" aria-label="تحديد" '+(_vsSel[u.id]?'checked':'')+' onchange="_vsSelOne('+u.id+',this.checked)"><span class="ct2-av" style="background:'+(prov?'#0f766e':'#1d4ed8')+'">'+esc(String(u.name||'؟').trim().charAt(0))+'</span>'
-        +'<div class="ct2-ui"><div><a href="#" onclick="event.preventDefault();_vsOpen('+u.id+')">'+esc(u.name||'—')+'</a> <span class="ct2-pl '+(prov?'p':'c')+'">'+(prov?'مزوّد':'عميل')+'</span>'+(work(u)?' <span class="ct2-pl" style="background:#fef3c7;color:#92400e">'+(prov?u.bids+' عرض':u.projects+' مشروع')+' معلّق</span>':'')+(u.has_app?' <span class="ct2-pl" style="background:#ede9fe;color:#6d28d9">📱 التطبيق</span>':'')+'</div>'
-        +'<small class="vs-why">'+_vsWhyTxt(u)+'</small>'
-        +'<small><span dir="ltr">'+esc(u.email||'')+'</span> · سجّل '+_adAgo(u.created_at)+(u.last_seen?' · آخر دخول '+_adAgo(u.last_seen):'')+(u.sends?' · أرسلنا '+u.sends+(u.sends>1?' مرات':' مرة'):'')+(u.reminded_at?' · 🔔 وصله تذكير '+_adAgo(u.reminded_at):'')+'</small></div>'
-        +'<div class="ct2-acts">'+wa(u)+'<button class="ct2-b" onclick="_vsResend('+u.id+',this)">إعادة الإرسال</button><button class="ct2-b pri" onclick="_vsVerify('+u.id+',this)">تفعيل يدوي</button></div></div>';}).join('')
-      +(L.length>15?'<a href="#" class="ct2-more" onclick="event.preventDefault();window._vsAll=!window._vsAll;_vsPaint()">'+(window._vsAll?'عرض أقل':'عرض الكل ('+L.length+')')+'</a>':'')
-      :'<div class="vs-s" style="padding:10px 0">ما فيه أحد في هالقائمة 👌</div>')
-    +'</div>';
-  return h;
+function _sgOld3(u){ return Date.now()-new Date(u.created_at)>3*86400000; }
+function _sgBase(){ var d=_SG||{}, q=_sgS.q.trim().toLowerCase();
+  return (d.users||[]).filter(function(u){ return (!_sgS.r||u.role===_sgS.r)&&(!q||[u.name,u.email,u.phone].join(' ').toLowerCase().indexOf(q)>=0); }); }
+function _sgList(){ return _sgBase().filter(function(u){ return (!_sgS.m||u.method===_sgS.m)
+  &&(!_sgS.st||(_sgS.st==='done'?u.verified:(!u.verified&&(_sgS.st!=='old3'||_sgOld3(u)))))
+  &&(!_sgS.w||(!u.verified&&u.why===_sgS.w)); }); }
+function _sgSet(k,v){ if(k==='w')_sgS.w=(_sgS.w===v?'':v); else { _sgS[k]=v; if(k==='st'&&(v===''||v==='done'))_sgS.w=''; } _sgSel={}; _sgN=50; _sgSave(); if(k==='m')_sgPaint(); else _sgPaintList(); }
+function _sgQ(v){ _sgS.q=v; clearTimeout(window._sgQT); window._sgQT=setTimeout(function(){ _sgN=50; _sgPaint(true); },250); }
+function _sgDelta(c,p,pts){ if(p==null||(!c&&!p))return ''; var d=pts?Math.round(c-p):(p?Math.round((c-p)/p*100):null); if(d===null)return '<span class="sg-dl up">جديد</span>'; if(d===0)return '<span class="sg-dl eq">= نفس الفترة اللي قبل</span>'; return '<span class="sg-dl '+(d>0?'up':'dn')+'">'+(d>0?'▲ ':'▼ ')+Math.abs(d)+(pts?' نقطة':'%')+' عن الفترة اللي قبل</span>'; }
+function _sgMinT(m){ return m==null?'—':(m<1?'أقل من دقيقة':(m<60?m+' دقيقة':(m<1440?Math.round(m/60)+' ساعة':Math.round(m/1440)+' يوم'))); }
+// الرسم: أعمدة مكدّسة حسب الطريقة لكل يوم (أو شهر)
+function _sgChart(d,R){
+  var keys=[], i, S={};
+  if(d.monthly){ var a=new Date(R.from+'T00:00:00Z'), b=new Date(R.to+'T00:00:00Z'); a.setUTCDate(1); while(a<=b){ keys.push(a.toISOString().slice(0,7)); a.setUTCMonth(a.getUTCMonth()+1); } }
+  else { var x=new Date(R.from+'T00:00:00Z'), y=new Date(R.to+'T00:00:00Z'); while(x<=y){ keys.push(x.toISOString().slice(0,10)); x.setUTCDate(x.getUTCDate()+1); } }
+  (d.series||[]).forEach(function(r){ S[r.k]=S[r.k]||{}; S[r.k][r.m]=(S[r.k][r.m]||0)+r.n; });
+  var tot=keys.map(function(k){ var o=S[k]||{}; return _SG_ORD.reduce(function(a,m){return a+(o[m]||0);},0); });
+  var mx=Math.max.apply(null,tot.concat([1])), step=[1,2,5,10,20,25,50,100,200,250,500,1000].find(function(s){return mx/s<=4;})||Math.ceil(mx/4), top=Math.ceil(mx/step)*step;
+  var grid=''; for(i=0;i<=top;i+=step) grid+='<div class="sg-gl" style="bottom:'+(i/top*100)+'%"><span>'+fmtNum(i)+'</span></div>';
+  var lblEvery=Math.max(1,Math.ceil(keys.length/10));
+  window._sgCK=keys; window._sgCS=S;
+  var cols=keys.map(function(k,ix){ var o=S[k]||{}, segs=_SG_ORD.filter(function(m){return o[m];}).map(function(m){ return '<i style="height:'+(o[m]/top*100)+'%;background:'+_SG_M[m].c+'"></i>'; }).join('');
+    var p=k.split('-'), lb=d.monthly?(+p[1])+'/'+p[0].slice(2):(+p[2])+'/'+(+p[1]);
+    return '<div class="sg-col" onmouseenter="_sgTip(event,'+ix+')" onmouseleave="_sgTip(null)" onclick="_sgTip(event,'+ix+')"><div class="sg-stk">'+segs+'</div><span class="sg-xl">'+((ix%lblEvery===0||ix===keys.length-1)?lb:'')+'</span></div>'; }).join('');
+  return '<div class="sg-ch"><div class="sg-plot">'+grid+'<div class="sg-cols">'+cols+'</div><div class="sg-tip" id="sg-tip"></div></div></div>';
 }
-function _vsCur(){ var P=(_VS&&_VS.pending)||[]; return P.filter(function(u){return (_vsF==='all'||(_vsF==='work'?(u.projects||u.bids):(_vsF==='old3'?Date.now()-new Date(u.created_at)>3*86400000:u.role===_vsF)))&&(!_vsW||u.why===_vsW);}); }
-function _vsSelAll(on){ _vsSel={}; if(on)_vsCur().forEach(function(u){_vsSel[u.id]=1;}); _vsPaint(); }
-function _vsSelOne(id,on){ if(on)_vsSel[id]=1; else delete _vsSel[id]; _vsPaint(); }
-function _vsBulk(btn){
-  var ids=_vsCur().filter(function(u){return _vsSel[u.id];}).map(function(u){return u.id;});
+function _sgTip(e,ix){ var t=document.getElementById('sg-tip'); if(!t)return; if(!e){ t.style.display='none'; return; }
+  var k=window._sgCK[ix], o=window._sgCS[k]||{}, p=k.split('-'), tot=_SG_ORD.reduce(function(a,m){return a+(o[m]||0);},0);
+  var dt=p.length===2?new Date(+p[0],+p[1]-1,1).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{month:'long',year:'numeric'}):new Date(+p[0],+p[1]-1,+p[2]).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'long',day:'numeric',month:'long'});
+  t.innerHTML='<b>'+dt+'</b><span class="sg-tt">'+fmtNum(tot)+' سجّلوا</span>'+_SG_ORD.map(function(m){ return '<span class="sg-tr"><i style="background:'+_SG_M[m].c+'"></i>'+_SG_M[m].n+'<b>'+fmtNum(o[m]||0)+'</b></span>'; }).join('');
+  t.style.display='block'; var col=e.currentTarget, pl=col.parentNode.parentNode, r=pl.getBoundingClientRect(), c=col.getBoundingClientRect();
+  var left=c.left-r.left+c.width/2-t.offsetWidth/2; t.style.left=Math.max(0,Math.min(r.width-t.offsetWidth,left))+'px'; }
+function _sgStatus(u){
+  if(u.verified) return '<span class="sg-st ok">✓ مفعّل</span>'+(u.via&&_SG_VIA[u.via]&&u.method==='email'?'<small class="sg-sub">'+_SG_VIA[u.via]+(u.email_verified_at?' · بعد '+_sgMinT(Math.round((new Date(u.email_verified_at)-new Date(u.created_at))/60000)):'')+'</small>':'');
+  var w=_VSWHY[u.why]||['⏳ ما فعّل','#92400e'];
+  return '<span class="sg-st no">ما فعّل</span><small class="sg-sub" style="color:'+w[1]+'">'+w[0]+'</small>'; }
+function _sgWaMsg(u){ if(u.verified) return 'السلام عليكم '+(u.name||'')+'، معك منصة مناقصة 👋';
+  var why=u.role==='provider'?'عشان تقدر تقدّم عروضك على المشاريع':'عشان يُنشر مشروعك ويوصلك عروض';
+  var fix=/typo|invalid|bad|spam/.test(u.why||'')?'\nيبدو إن بريدك مكتوب غلط والإيميل ما يوصلك'+(u.fix?' (يمكن تقصد '+u.fix+')':'')+' — أرسل لنا بريدك الصحيح هنا ونصحّحه ونفعّله لك.':'\nلو ما وصلك إيميل التفعيل (شيّك على البريد المزعج)، رد علينا هنا ونفعّله لك.';
+  return 'السلام عليكم '+(u.name||'')+'، معك منصة مناقصة 👋\nلاحظنا إن بريدك '+(u.email||'')+' ما تفعّل للحين — فعّله '+why+'.'+fix; }
+function _sgWa(u,cls,txt){ var ph=_waNorm(u.phone); if(!ph)return ''; return '<a class="'+cls+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="https://wa.me/'+ph+'?text='+encodeURIComponent(_sgWaMsg(u))+'">'+txt+'</a>'; }
+function _sgPaint(listOnly){
+  var box=document.getElementById('dash-vstats'), d=_SG; if(!box||!d)return; var R=_sgRange();
+  if(listOnly&&document.getElementById('sg-tbl')){ _sgPaintList(); return; }
+  var B={}; (d.by||[]).forEach(function(x){B[x.m]=x;});
+  var reg=_SG_ORD.reduce(function(a,m){return a+((B[m]||{}).n||0);},0), ver=_SG_ORD.reduce(function(a,m){return a+((B[m]||{}).ver||0);},0);
+  var rate=reg?Math.round(ver/reg*100):0, prate=(d.prev&&d.prev.n)?Math.round(d.prev.ver/d.prev.n*100):null;
+  var segs=[['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['month','هالشهر'],['90d','3 شهور'],['all','الكل'],['custom','تخصيص']];
+  var h='<div class="sg-hd"><div><h3>التسجيل والتفعيل</h3><small>كيف سجّلوا · مين فعّل · ووين علق الباقي — '+esc(R.lbl)+'</small></div>'
+    +'<div class="vs-seg sg-per">'+segs.map(function(x){return '<button type="button" class="'+(_sgS.p.k===x[0]?'on':'')+'" onclick="_sgPer(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div></div>'
+    +(_sgS.p.k==='custom'?'<div class="vsl-cus" style="margin-bottom:10px"><label>من <input type="date" id="sg-f" value="'+(_sgS.p.from||'')+'"></label><label>إلى <input type="date" id="sg-t" value="'+(_sgS.p.to||'')+'"></label><button class="ct2-b pri" onclick="_sgPer(\'custom\')">عرض</button></div>':'');
+  h+='<div class="sg-top">'
+    +'<div class="sg-card"><div class="sg-ct"><span>التسجيلات حسب الطريقة</span><b class="sg-tot">'+fmtNum(reg)+' <small>سجّلوا</small></b>'+_sgDelta(reg,d.prev?d.prev.n:null)+'</div>'
+      +'<div class="sg-lg">'+_SG_ORD.map(function(m){return '<span><i style="background:'+_SG_M[m].c+'"></i>'+_SG_M[m].n+'</span>';}).join('')+'</div>'
+      +(reg?_sgChart(d,R):'<div class="vs-s" style="padding:30px 0;text-align:center">ما فيه تسجيلات في هالفترة</div>')+'</div>'
+    +'<div class="sg-card"><div class="sg-ct"><span>نسبة التفعيل</span></div>'
+      +'<div class="sg-rate"><b>'+(reg?rate+'%':'—')+'</b>'+(reg&&prate!=null?_sgDelta(rate,prate,true):'')+'</div><small class="vs-s">'+fmtNum(ver)+' من '+fmtNum(reg)+' فعّلوا بريدهم</small>'
+      +'<div class="sg-mr">'+_SG_ORD.map(function(m){ var x=B[m]||{n:0,ver:0}, p=x.n?Math.round(x.ver/x.n*100):0;
+        return '<button type="button" class="sg-mrow'+(_sgS.m===m?' on':'')+'" onclick="_sgSet(\'m\',_sgS.m===\''+m+'\'?\'\':\''+m+'\')">'+_sgMi(m)+'<span class="sg-mn">'+_SG_M[m].n+'<small>'+fmtNum(x.n)+' سجّل'+(reg?' · '+Math.round(x.n/reg*100)+'%':'')+'</small></span><span class="sg-bar"><i style="width:'+(x.n?Math.max(3,p):0)+'%;background:'+_SG_M[m].c+'"></i></span><b>'+(x.n?p+'%':'—')+'</b></button>'; }).join('')+'</div>'
+      +'<small class="vs-s">متوسط وقت التفعيل بالبريد: <b>'+_sgMinT((B.email||{}).avg_min)+'</b>'+((B.google||B.apple)?' · Google وApple يتفعّلون فوراً':'')+'</small></div>'
+  +'</div>';
+  h+='<div class="sg-card sg-lc" id="sg-tbl"></div>';
+  box.innerHTML=h; _sgPaintList();
+}
+function _sgPaintList(){
+  var el=document.getElementById('sg-tbl'), d=_SG; if(!el||!d)return;
+  var base=_sgBase(), L=_sgList();
+  var cM=function(m){return base.filter(function(u){return !m||u.method===m;}).length;};
+  var bm=base.filter(function(u){return !_sgS.m||u.method===_sgS.m;});
+  var nP=bm.filter(function(u){return !u.verified;}).length, nV=bm.length-nP, nO=bm.filter(function(u){return !u.verified&&_sgOld3(u);}).length;
+  var chip=function(on,fn,html){return '<button type="button" class="sg-chip'+(on?' on':'')+'" onclick="'+fn+'">'+html+'</button>';};
+  var h='<div class="sg-fl"><div class="sg-chips">'+chip(!_sgS.m,"_sgSet('m','')",'الكل <em>'+fmtNum(cM(''))+'</em>')+_SG_ORD.map(function(m){return chip(_sgS.m===m,"_sgSet('m','"+m+"')",_sgMi(m)+_SG_M[m].n+' <em>'+fmtNum(cM(m))+'</em>');}).join('')+'</div>'
+    +'<div class="sg-chips">'+chip(!_sgS.st,"_sgSet('st','')",'الكل')+chip(_sgS.st==='pend',"_sgSet('st','pend')",'⏳ ما فعّلوا <em>'+fmtNum(nP)+'</em>')+chip(_sgS.st==='done',"_sgSet('st','done')",'✓ مفعّلين <em>'+fmtNum(nV)+'</em>')+(nO?chip(_sgS.st==='old3',"_sgSet('st','old3')",'تجاوزوا 3 أيام <em>'+fmtNum(nO)+'</em>'):'')+'</div>'
+    +'<div class="sg-fl2"><div class="sg-chips">'+chip(!_sgS.r,"_sgSet('r','')",'الكل')+chip(_sgS.r==='client',"_sgSet('r','client')",'عملاء')+chip(_sgS.r==='provider',"_sgSet('r','provider')",'مزوّدين')+'</div>'
+    +'<input type="search" class="sg-q" placeholder="بحث بالاسم أو البريد أو الجوال" value="'+esc(_sgS.q)+'" oninput="_sgQ(this.value)">'
+    +'<button type="button" class="ct2-b" onclick="_sgCsv()">⬇ تصدير</button></div></div>';
+  // وين المشكلة؟ (لما تختار «ما فعّلوا»)
+  if(_sgS.st==='pend'||_sgS.st==='old3'){ var W={}, P=bm.filter(function(u){return !u.verified&&(_sgS.st!=='old3'||_sgOld3(u));}); P.forEach(function(u){W[u.why]=(W[u.why]||0)+1;});
+    h+='<div class="sg-why"><span class="vs-s">ليش ما فعّلوا؟</span>'+_VSORD.filter(function(k){return W[k];}).map(function(k){var w=_VSWHY[k];return '<button type="button" class="sg-wc'+(_sgS.w===k?' on':'')+'" title="'+esc(w[2])+'" onclick="_sgSet(\'w\',\''+k+'\')"><b style="color:'+w[1]+'">'+w[0]+'</b><em>'+fmtNum(W[k])+'</em></button>';}).join('')+'</div>'; }
+  // الإرسال الجماعي (للي ما فعّلوا فقط)
+  var selectable=L.filter(function(u){return !u.verified;}), selN=selectable.filter(function(u){return _sgSel[u.id];}).length;
+  if(selectable.length){ var appN=selectable.filter(function(u){return _sgSel[u.id]&&u.has_app;}).length;
+    h+='<div class="vsb'+(selN?' on':'')+'"><label class="vsb-all"><input type="checkbox" '+(selN&&selN===selectable.length?'checked':'')+' onchange="_sgSelAll(this.checked)"> تحديد كل اللي ما فعّلوا ('+fmtNum(selectable.length)+')</label>'
+      +(selN?'<span class="vsb-n">محدد <b>'+fmtNum(selN)+'</b></span><label class="vsb-c"><input type="checkbox" '+(_sgCh.email?'checked':'')+' onchange="_sgCh.email=this.checked"> ✉️ إيميل تفعيل</label><label class="vsb-c"><input type="checkbox" '+(_sgCh.notify?'checked':'')+' onchange="_sgCh.notify=this.checked"> 🔔 إشعار <small>('+fmtNum(appN)+' عندهم التطبيق)</small></label><button class="ct2-b pri" onclick="_sgBulk(this)">إرسال للمحددين</button>':'<span class="vs-s">حدد اللي ما فعّلوا عشان ترسل لهم إيميل أو إشعار دفعة وحدة</span>')+'</div>'; }
+  if(!L.length){ el.innerHTML=h+'<div class="vs-s" style="padding:26px 0;text-align:center">ما فيه أحد بهالفلاتر 👌</div>'; return; }
+  h+='<div class="sg-tb" role="table"><div class="sg-r sg-th" role="row"><span></span><span>المستخدم</span><span>طريقة التسجيل</span><span>الحالة</span><span>الجهاز</span><span>من وين جاء</span><span>سجّل</span><span></span></div>';
+  h+=L.slice(0,_sgN).map(function(u){ var prov=u.role==='provider', src=u.src?((_VS_SRC[u.src]||[u.src])[0]):'—';
+    return '<div class="sg-r'+(_sgOpenId===u.id?' cur':'')+(_sgSel[u.id]?' sel':'')+'" role="row" tabindex="0" data-id="'+u.id+'" onclick="_sgRow(event,'+u.id+')" onkeydown="if(event.key===\'Enter\')_sgOpen('+u.id+')">'
+      +'<span class="sg-ck">'+(u.verified?'':'<input type="checkbox" aria-label="تحديد" '+(_sgSel[u.id]?'checked':'')+' onclick="event.stopPropagation()" onchange="_sgSelOne('+u.id+',this.checked)">')+'</span>'
+      +'<span class="sg-u"><span class="ct2-av" style="background:'+(prov?'#0f766e':'#1d4ed8')+'">'+esc(String(u.name||'؟').trim().charAt(0)||'؟')+'</span><span class="sg-un"><b>'+esc(u.name||'—')+'</b><small>'+(prov?'مزوّد':'عميل')+(u.city?' · '+esc(u.city):'')+(u.active===false?' · <span style="color:#b91c1c">موقوف</span>':'')+'</small></span></span>'
+      +'<span class="sg-m">'+_sgMi(u.method)+_SG_M[u.method||'email'].n+'</span>'
+      +'<span class="sg-s">'+_sgStatus(u)+'</span>'
+      +'<span class="sg-d">'+(_SG_DEV[u.dev]||'—')+'</span>'
+      +'<span class="sg-src">'+esc(src)+'</span>'
+      +'<span class="sg-t" title="'+esc(new Date(u.created_at).toLocaleString('ar-SA-u-nu-latn-ca-gregory'))+'">'+_adAgo(u.created_at)+'</span>'
+      +'<span class="sg-a">'+(u.verified?'':_sgWa(u,'ct2-b wa','واتساب'))+'<span class="sg-go" aria-hidden="true">‹</span></span></div>'; }).join('')+'</div>';
+  if(L.length>_sgN) h+='<a href="#" class="ct2-more" onclick="event.preventDefault();_sgN+=100;_sgPaintList()">عرض المزيد ('+fmtNum(L.length-_sgN)+' باقي)</a>';
+  el.innerHTML=h;
+}
+function _sgRow(e,id){ if(e.target.closest('a,button,input,label'))return; _sgOpen(id); }
+function _sgSelAll(on){ _sgSel={}; if(on)_sgList().forEach(function(u){ if(!u.verified)_sgSel[u.id]=1; }); _sgPaintList(); }
+function _sgSelOne(id,on){ if(on)_sgSel[id]=1; else delete _sgSel[id]; _sgPaintList(); }
+function _sgBulk(btn){
+  var ids=_sgList().filter(function(u){return !u.verified&&_sgSel[u.id];}).map(function(u){return u.id;});
   if(!ids.length){toast('حدد أشخاص أول','error');return;}
-  if(!_vsCh.email&&!_vsCh.notify){toast('اختر إيميل أو إشعار','error');return;}
-  var what=[_vsCh.email?'إيميل تفعيل':'',_vsCh.notify?'إشعار':''].filter(Boolean).join(' + ');
+  if(!_sgCh.email&&!_sgCh.notify){toast('اختر إيميل أو إشعار','error');return;}
+  var what=[_sgCh.email?'إيميل تفعيل':'',_sgCh.notify?'إشعار':''].filter(Boolean).join(' + ');
   if(!confirm('إرسال '+what+' لـ '+ids.length+' شخص؟'))return;
   btn.disabled=true;btn.textContent='جاري الإرسال...';
-  fetch(API+'/api/admin/verify-bulk',Object.assign({method:'POST',body:JSON.stringify({ids:ids,email:_vsCh.email,notify:_vsCh.notify})},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(x){
+  fetch(API+'/api/admin/verify-bulk',Object.assign({method:'POST',body:JSON.stringify({ids:ids,email:_sgCh.email,notify:_sgCh.notify})},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(x){
     if(!x.ok){toast((x.d&&x.d.message)||'تعذّر','error');return;} var d=x.d, m=[];
-    if(_vsCh.notify)m.push('🔔 '+d.notified+' إشعار');
-    if(_vsCh.email)m.push('✉️ '+d.emailed+' إيميل');
+    if(_sgCh.notify)m.push('🔔 '+d.notified+' إشعار'); if(_sgCh.email)m.push('✉️ '+d.emailed+' إيميل');
     var sk=[]; if(d.skip_recent)sk.push(d.skip_recent+' انرسل لهم خلال 6 ساعات'); if(d.skip_bad)sk.push(d.skip_bad+' بريدهم مرفوض'); if(d.skip_typo)sk.push(d.skip_typo+' بريدهم فيه غلطة');
     toast('تم ✓ '+m.join(' · ')+(sk.length?' — تخطّينا: '+sk.join('، ')+' (كلّمهم واتساب)':''),'success');
-    _vsSel={}; setTimeout(_loadVStats,2500);
+    _sgSel={}; setTimeout(_loadVStats,2500);
   }).catch(function(){toast('تعذّر الاتصال','error');}).finally(function(){btn.disabled=false;btn.textContent='إرسال للمحددين';});
 }
-function _vsOpen(id){ try{ if((_allUsers||[]).some(function(x){return x.id===id;})){openUserView(id);return;} }catch(e){} location.hash='#users'; }
-function _vsResend(id,btn){ btn.disabled=true;btn.textContent='...';
-  fetch(API+'/api/admin/users/'+id+'/resend-verification',Object.assign({method:'POST',body:'{}'},hdr())).then(function(r){return r.json();}).then(function(d){ toast(d&&d.already?'بريده مفعّل':(d&&d.ok?'انرسل ✓':((d&&d.message)||'تعذّر الإرسال')),d&&d.ok?'success':'error'); setTimeout(_loadVStats,1500); })
-  .catch(function(){toast('تعذّر الاتصال','error');}).finally(function(){btn.disabled=false;btn.textContent='إعادة الإرسال';}); }
-function _vsVerify(id,btn){ if(!confirm('تفعيل بريد هذا المستخدم يدوياً؟'))return; btn.disabled=true;
-  fetch(API+'/api/admin/users/'+id+'/verify-email',Object.assign({method:'PUT'},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(x){ if(!x.ok){toast((x.d&&x.d.message)||'تعذّر','error');btn.disabled=false;return;} toast('تم التفعيل ✓','success'); _loadVStats(); })
+function _sgCsv(){
+  var L=_sgList(), q=function(v){ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  var rows=[['الاسم','البريد','الجوال','النوع','المدينة','طريقة التسجيل','مفعّل','كيف فعّل','ليش ما فعّل','الجهاز','من وين جاء','تاريخ التسجيل']].concat(L.map(function(u){
+    return [u.name,u.email,u.phone,u.role==='provider'?'مزوّد':'عميل',u.city,(_SG_M[u.method]||_SG_M.email).n,u.verified?'نعم':'لا',u.verified?(_SG_VIA[u.via]||''):'',u.verified?'':((_VSWHY[u.why]||[''])[0]),_SG_DEV[u.dev]||'',u.src?((_VS_SRC[u.src]||[u.src])[0]):'',new Date(u.created_at).toLocaleString('en-GB')]; }));
+  var blob=new Blob(['﻿'+rows.map(function(r){return r.map(q).join(',');}).join('\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='signups-'+_sgRange().from+'_'+_sgRange().to+'.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500); }
+// ═══ اللوحة الجانبية: رحلة المستخدم كاملة ═══
+function _sgClose(){ var d=document.getElementById('sgDr'),o=document.getElementById('sgOv'); if(d)d.classList.remove('on'); if(o)o.style.display='none'; _sgOpenId=null; document.querySelectorAll('#sg-tbl .sg-r.cur').forEach(function(x){x.classList.remove('cur');}); }
+function _sgOpen(id){
+  _sgOpenId=id; document.querySelectorAll('#sg-tbl .sg-r[data-id]').forEach(function(x){ x.classList.toggle('cur',+x.getAttribute('data-id')===id); });
+  var d=document.getElementById('sgDr');
+  if(!d){ var o=document.createElement('div'); o.id='sgOv'; o.className='rq-ov'; o.onclick=_sgClose; document.body.appendChild(o); d=document.createElement('aside'); d.id='sgDr'; d.className='rq-dr sg-dr'; d.setAttribute('aria-label','رحلة المستخدم'); document.body.appendChild(d);
+    document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&_sgOpenId)_sgClose(); }); window.addEventListener('hashchange',function(){ if(_sgOpenId)_sgClose(); }); }
+  document.getElementById('sgOv').style.display='block';
+  d.innerHTML='<div class="sg-dh"><button type="button" class="sg-x" onclick="_sgClose()" aria-label="إغلاق">✕</button></div><div class="loading" style="padding:40px"><div class="spinner"></div></div>';
+  requestAnimationFrame(function(){ d.classList.add('on'); });
+  fetch(API+'/api/admin/signups/'+id,hdr()).then(function(r){return r.ok?r.json():null;}).then(function(x){ if(_sgOpenId!==id)return;
+    if(!x||!x.user){ d.innerHTML='<div class="sg-dh"><button type="button" class="sg-x" onclick="_sgClose()" aria-label="إغلاق">✕</button></div>'+emptyState('تعذّر التحميل'); return; }
+    var u=x.user, prov=u.role==='provider', M=_SG_M[u.method]||_SG_M.email;
+    var MS={delivered:['وصل','#15803d'],opened:['فتحه','#15803d'],clicked:['ضغط الرابط','#15803d'],bounced:['ارتدّ — البريد غير موجود','#b91c1c'],suppressed:['محظور عند Resend','#b91c1c'],complained:['بلّغ إنه سبام','#b91c1c'],failed:['فشل الإرسال','#b91c1c'],sent:['انرسل','#64748b'],sending:['جاري الإرسال','#64748b'],delayed:['متأخر','#92400e']};
+    var fmt=function(a){ return new Date(a).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}); };
+    var ev=(x.events||[]).map(function(e){ var t='',c='#94a3b8',s='';
+      if(e.t==='visit'){ t='دخل الموقع من '+((_VS_SRC[e.src]||[e.src||'مصدر غير معروف'])[0]); s=_SG_DEV[e.dev]||''; c='#94a3b8'; }
+      else if(e.t==='signup'){ t='سجّل بـ '+((_SG_M[e.method]||M).n)+(e.method==='email'?'':' (بضغطة وحدة)'); s=_SG_DEV[e.dev]?'من '+_SG_DEV[e.dev]:''; c='#1d4ed8'; }
+      else if(e.t==='mail'){ var st=MS[e.status]||[e.status||'','#64748b']; t=e.kind==='welcome'?'انرسل إيميل الترحيب':'انرسل إيميل التفعيل'; s='<b style="color:'+st[1]+'">'+st[0]+'</b>'+(e.error&&/bounced|failed|suppressed/.test(e.status)?' · '+esc(e.error):''); c=/bounced|failed|suppressed|complained/.test(e.status)?'#dc2626':'#1d4ed8'; }
+      else if(e.t==='tries'){ t='حاول يكتب الرمز وغلط '+e.n+(e.n>1?' مرات':' مرة'); c='#f59e0b'; }
+      else if(e.t==='reminder'){ t='وصله تذكير تلقائي بالتفعيل'; c='#f59e0b'; }
+      else if(e.t==='verified'){ t='✓ فعّل بريده'; s=_SG_VIA[e.via]||''; c='#16a34a'; }
+      else if(e.t==='app'){ t='نزّل التطبيق'; s=e.platform==='ios'?'آيفون':(e.platform==='android'?'أندرويد':''); c='#7c3aed'; }
+      else if(e.t==='project'){ t='نشر أول مشروع'; s=esc(e.title||''); c='#0f766e'; }
+      else if(e.t==='bid'){ t='قدّم أول عرض'; s=esc(e.title||''); c='#0f766e'; }
+      else if(e.t==='seen'){ t='آخر دخول للمنصة'; c='#94a3b8'; }
+      return '<li><i style="background:'+c+'"></i><div><b>'+t+'</b>'+(s?'<span>'+s+'</span>':'')+'<small>'+fmt(e.at)+'</small></div></li>'; }).join('');
+    var w=u.verified?null:(_VSWHY[u.why]||null), alert='';
+    if(w){ alert='<div class="sg-al'+(/typo|invalid|bad|spam/.test(u.why)?' bad':'')+'"><b>'+w[0]+'</b>'+(u.why==='typo'&&u.fix?'<span dir="ltr" class="sg-fix">'+esc(String(u.email||'').split('@')[1]||'')+' ← '+esc(u.fix.split('@')[1]||'')+'</span><small>غالباً يقصد <b dir="ltr">'+esc(u.fix)+'</b></small>':'<small>'+w[2]+'</small>')+'</div>'; }
+    var acts='';
+    if(!u.verified){ acts=_sgWa(u,'sg-btn wa',/typo|invalid|bad|spam/.test(u.why)?'واتساب: صحّح بريدك':'واتساب: ذكّره يفعّل')
+      +(/typo|invalid|bad|spam/.test(u.why)?'':'<button type="button" class="sg-btn" onclick="_sgResend('+u.id+',this)">إعادة إرسال إيميل التفعيل</button>')
+      +'<button type="button" class="sg-btn" onclick="_sgVerify('+u.id+',this)">فعّله يدوياً</button>'; }
+    else acts=_sgWa(u,'sg-btn wa','تواصل واتساب');
+    acts+='<button type="button" class="sg-btn ghost" onclick="_sgProfile('+u.id+')">فتح ملفه الكامل</button>';
+    d.innerHTML='<div class="sg-dh"><span class="ct2-av" style="background:'+(prov?'#0f766e':'#1d4ed8')+';width:44px;height:44px;font-size:18px">'+esc(String(u.name||'؟').trim().charAt(0)||'؟')+'</span><div class="sg-dn"><b>'+esc(u.name||'—')+'</b><small dir="ltr">'+esc(u.email||'')+'</small></div><button type="button" class="sg-x" onclick="_sgClose()" aria-label="إغلاق">✕</button></div>'
+      +'<div class="sg-db">'
+      +'<div class="sg-tags"><span class="sg-tag">'+_sgMi(u.method)+M.n+'</span>'+(u.verified?'<span class="sg-tag ok">✓ مفعّل</span>':'<span class="sg-tag no">ما فعّل</span>')+'<span class="sg-tag">'+(prov?'مزوّد':'عميل')+(u.city?' · '+esc(u.city):'')+'</span>'+((u.projects||u.bids)?'<span class="sg-tag ok">'+(prov?u.bids+' عرض':u.projects+' مشروع')+'</span>':'')+'</div>'
+      +(u.phone?'<div class="sg-ph"><span>الجوال</span><b dir="ltr">'+esc(u.phone)+'</b></div>':'')
+      +alert
+      +'<div class="sg-jh">رحلة التسجيل</div><ul class="sg-tl">'+ev+'</ul>'
+      +'</div><div class="sg-df">'+acts+'</div>';
+  }).catch(function(){ if(_sgOpenId===id) d.innerHTML='<div class="sg-dh"><button type="button" class="sg-x" onclick="_sgClose()" aria-label="إغلاق">✕</button></div>'+emptyState('تعذّر الاتصال'); });
+}
+function _sgProfile(id){ _sgClose(); try{ if((_allUsers||[]).some(function(x){return x.id===id;})){ openUserView(id); return; } }catch(e){} location.hash='#users'; }
+function _sgResend(id,btn){ btn.disabled=true; var t=btn.textContent; btn.textContent='جاري الإرسال...';
+  fetch(API+'/api/admin/users/'+id+'/resend-verification',Object.assign({method:'POST',body:'{}'},hdr())).then(function(r){return r.json();}).then(function(d){ toast(d&&d.already?'بريده مفعّل':(d&&d.ok?'انرسل ✓':((d&&d.message)||'تعذّر الإرسال')),d&&d.ok?'success':'error'); if(d&&d.ok)setTimeout(function(){ if(_sgOpenId===id)_sgOpen(id); _loadVStats(); },1500); })
+  .catch(function(){toast('تعذّر الاتصال','error');}).finally(function(){btn.disabled=false;btn.textContent=t;}); }
+function _sgVerify(id,btn){ if(!confirm('تفعيل بريد هذا المستخدم يدوياً؟'))return; btn.disabled=true;
+  fetch(API+'/api/admin/users/'+id+'/verify-email',Object.assign({method:'PUT'},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(x){ if(!x.ok){toast((x.d&&x.d.message)||'تعذّر','error');btn.disabled=false;return;} toast('تم التفعيل ✓','success'); _sgOpen(id); _loadVStats(); })
   .catch(function(){toast('تعذّر الاتصال','error');btn.disabled=false;}); }
 // ═══ بطاقة «عقود المقاولات»: مين حمّل وأي عقد — للتسويق ═══
 var _CT={};

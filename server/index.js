@@ -3017,6 +3017,13 @@ async function setupDatabase() {
       await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS users_google_sub_uq ON users(google_sub) WHERE google_sub IS NOT NULL`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_sub VARCHAR(80)`);
       await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS users_apple_sub_uq ON users(apple_sub) WHERE apple_sub IS NOT NULL`);
+      // طريقة التسجيل (email/google/apple) + الجهاز وقت التسجيل — للوحة «التسجيل والتفعيل»
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_via VARCHAR(10)`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS signup_dev VARCHAR(12)`);
+      if ((await pool.query(`SELECT 1 FROM users WHERE signup_via IS NULL LIMIT 1`)).rows.length) { // مرة وحدة: تعبئة الحسابات القديمة
+        await _mig(`UPDATE users SET signup_via = CASE WHEN email_verified_via IN ('google','apple') AND email_verified_at IS NOT NULL AND email_verified_at <= created_at + INTERVAL '10 minutes' THEN email_verified_via ELSE 'email' END WHERE signup_via IS NULL`);
+        await _mig(`UPDATE users u SET signup_dev = w.dev FROM (SELECT DISTINCT ON (uid, day) uid, day, dev FROM site_visits WHERE uid IS NOT NULL ORDER BY uid, day, first_at) w WHERE u.signup_dev IS NULL AND w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date`);
+      }
       await _mig(`UPDATE bid_reports SET closed_at=NOW() WHERE status<>'open' AND closed_at IS NULL AND created_at < '2026-09-29'`);
       await _mig(`CREATE INDEX IF NOT EXISTS idx_bid_reports_prov ON bid_reports(provider_id, created_at)`);
       await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS hold_state VARCHAR(20)`);
@@ -3445,6 +3452,8 @@ app.post('/api/auth/google/complete', rateLimiter(10, 600000), async (req, res) 
   } catch(e) { console.error('google complete:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.post('/api/auth/register', rateLimiter(5, 600000), (req, res) => _registerHandler(req, res));
+// الجهاز وقت التسجيل: تطبيق آيفون / تطبيق أندرويد / جوال (متصفح) / كمبيوتر
+function _signupDev(req){ const ua = String(req.get('user-agent') || ''); if (_ctInApp(req)) return /iPhone|iPad|iOS|Darwin/i.test(ua) ? 'app_ios' : 'app_android'; return /Mobi|Android|iPhone|iPad/i.test(ua) ? 'mobile' : 'desktop'; }
 async function _registerHandler(req, res) {
   try {
     if (req._g) { req.body.email = req._g.email; req.body.password = require('crypto').randomBytes(18).toString('hex'); if (!req.body.name) req.body.name = req._g.name || ''; } // تسجيل عن طريق Google: البريد من Google وما يحتاج كلمة مرور
@@ -3552,6 +3561,7 @@ async function _registerHandler(req, res) {
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
     if (req._g) { const _pv = req._g.provider === 'apple' ? 'apple' : 'google'; try { await pool.query(`UPDATE users SET email_verified=true, email_verified_at=NOW(), email_verified_via=$3, ${_pv}_sub=$2 WHERE id=$1`, [user.id, req._g.sub, _pv]); user.email_verified = true; } catch(ge) { console.error('social link:', ge.message); } }
+    try { await pool.query('UPDATE users SET signup_via=$2, signup_dev=$3 WHERE id=$1', [user.id, req._g ? (req._g.provider === 'apple' ? 'apple' : 'google') : 'email', _signupDev(req)]); } catch(_) {}
     try {
       const isProvider = role === 'provider';
       const welcomeTitle = `🎉 أهلاً بك في منصة مناقصة، ${eEsc(name)}!`;
@@ -7939,6 +7949,77 @@ app.get('/api/admin/verify-stats', requirePermission('users.view'), async (req, 
       ORDER BY COALESCE(u.email_verified_at, u.created_at) DESC LIMIT 1000`, LP)).rows;
     res.json({ range: R, reg, via, mail, pending: pend, verified: done, all_unverified: allUnver });
   } catch(e) { console.error('verify-stats:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ التسجيل والتفعيل: كيف سجّلوا (البريد/Google/Apple) + مين فعّل + رحلة كل مستخدم ═══
+const _SU_M = `COALESCE(u.signup_via,'email')`;
+app.get('/api/admin/signups', requirePermission('users.view'), async (req, res) => {
+  try {
+    const R = _rangeFromQuery(req.query), P = [R.from, R.to], PP = [R.pfrom, R.pto];
+    const RD = `(u.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2`, ROLE = `u.role IN ('client','provider')`;
+    const monthly = R.days > 62;
+    const K = monthly ? `to_char(date_trunc('month', u.created_at + INTERVAL '3 hours'),'YYYY-MM')` : `to_char((u.created_at + INTERVAL '3 hours')::date,'YYYY-MM-DD')`;
+    const [series, by, prev, users] = await Promise.all([
+      pool.query(`SELECT ${K} AS k, ${_SU_M} AS m, COUNT(*)::int AS n FROM users u WHERE ${ROLE} AND ${RD} GROUP BY 1,2 ORDER BY 1`, P).then(r => r.rows),
+      pool.query(`SELECT ${_SU_M} AS m, COUNT(*)::int AS n, COUNT(*) FILTER (WHERE COALESCE(u.email_verified,true))::int AS ver,
+          ROUND(AVG(EXTRACT(EPOCH FROM (u.email_verified_at - u.created_at))/60) FILTER (WHERE u.email_verified_at >= u.created_at AND u.email_verified_via IN ('link','code')))::int AS avg_min
+        FROM users u WHERE ${ROLE} AND ${RD} GROUP BY 1`, P).then(r => r.rows),
+      pool.query(`SELECT COUNT(*)::int AS n, COUNT(*) FILTER (WHERE COALESCE(u.email_verified,true))::int AS ver FROM users u WHERE ${ROLE} AND ${RD}`, PP).then(r => r.rows[0]),
+      pool.query(`SELECT u.id, u.name, u.email, u.phone, u.role, u.city, u.created_at, ${_SU_M} AS method, COALESCE(u.email_verified,true) AS verified,
+          u.email_verified_at, u.email_verified_via AS via, u.signup_dev AS dev, GREATEST(u.last_seen_at,u.last_active) AS last_seen,
+          COALESCE(u.verify_code_tries,0)::int AS tries, u.verify_reminded_at AS reminded_at, COALESCE(u.is_active,true) AS active,
+          EXISTS(SELECT 1 FROM push_tokens pt WHERE pt.user_id=u.id) AS has_app,
+          (SELECT COUNT(*) FROM requests r WHERE r.client_id=u.id)::int AS projects,
+          (SELECT COUNT(*) FROM bids b WHERE b.provider_id=u.id)::int AS bids,
+          (SELECT w.src FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date ORDER BY w.first_at LIMIT 1) AS src,
+          (SELECT MAX(x.created_at) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify') AS last_mail,
+          (SELECT bool_or(x.status IN ('opened','clicked')) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify') AS ever_opened,
+          (SELECT COUNT(*) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify')::int AS sends,
+          (SELECT e.status FROM email_log e WHERE e.user_id=u.id AND e.kind='verify' ORDER BY e.id DESC LIMIT 1) AS mail_status
+        FROM users u WHERE ${ROLE} AND ${RD} ORDER BY u.created_at DESC LIMIT 2000`, P).then(r => r.rows)
+    ]);
+    users.forEach(u => { if (!u.verified) { u.why = _vsWhy(u); u.fix = _mailTypo(u.email) || null; } });
+    const ua = (await pool.query(`SELECT COUNT(*)::int AS n FROM users WHERE email_verified=false AND role IN ('client','provider') AND COALESCE(is_active,true)`)).rows[0];
+    res.json({ range: R, monthly, series, by, prev: prev || { n: 0, ver: 0 }, users, unver_all: (ua || {}).n || 0 });
+  } catch(e) { console.error('signups:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// رحلة مستخدم واحد: من وين جاء ← سجّل ← إيميلات التفعيل ← فعّل ← أول نشاط
+app.get('/api/admin/signups/:id', requirePermission('users.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); if (!id) return res.status(400).json({ message: 'رقم غير صحيح' });
+    const u = (await pool.query(`SELECT u.id, u.name, u.email, u.phone, u.role, u.city, u.created_at, ${_SU_M} AS method, COALESCE(u.email_verified,true) AS verified,
+        u.email_verified_at, u.email_verified_via AS via, u.signup_dev AS dev, GREATEST(u.last_seen_at,u.last_active) AS last_seen,
+        COALESCE(u.verify_code_tries,0)::int AS tries, u.verify_reminded_at AS reminded_at, COALESCE(u.is_active,true) AS active,
+        (SELECT MAX(x.created_at) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify') AS last_mail,
+        (SELECT bool_or(x.status IN ('opened','clicked')) FROM email_log x WHERE x.user_id=u.id AND x.kind='verify') AS ever_opened,
+        (SELECT e.status FROM email_log e WHERE e.user_id=u.id AND e.kind='verify' ORDER BY e.id DESC LIMIT 1) AS mail_status
+      FROM users u WHERE u.id=$1 AND u.role IN ('client','provider')`, [id])).rows[0];
+    if (!u) return res.status(404).json({ message: 'المستخدم غير موجود' });
+    const q = (sql) => pool.query(sql, [id]).then(r => r.rows).catch(() => []);
+    const [visits, mails, app1, req1, bid1, reqN, bidN] = await Promise.all([
+      q(`SELECT src, dev, first_at FROM site_visits WHERE uid=$1 ORDER BY first_at LIMIT 1`),
+      q(`SELECT kind, status, error, created_at, updated_at FROM email_log WHERE user_id=$1 AND kind IN ('verify','verify_reminder','welcome') ORDER BY id LIMIT 12`),
+      q(`SELECT platform, created_at FROM push_tokens WHERE user_id=$1 ORDER BY created_at LIMIT 1`),
+      q(`SELECT id, title, created_at FROM requests WHERE client_id=$1 ORDER BY created_at LIMIT 1`),
+      q(`SELECT b.id, r.title, b.created_at FROM bids b LEFT JOIN requests r ON r.id=b.request_id WHERE b.provider_id=$1 ORDER BY b.created_at LIMIT 1`),
+      q(`SELECT COUNT(*)::int AS n FROM requests WHERE client_id=$1`),
+      q(`SELECT COUNT(*)::int AS n FROM bids WHERE provider_id=$1`)
+    ]);
+    if (!u.verified) { u.why = _vsWhy(u); u.fix = _mailTypo(u.email) || null; }
+    u.projects = (reqN[0] || {}).n || 0; u.bids = (bidN[0] || {}).n || 0;
+    const ev = [];
+    const v = visits[0]; if (v && new Date(v.first_at) <= new Date(new Date(u.created_at).getTime() + 3600000)) ev.push({ t: 'visit', at: v.first_at, src: v.src, dev: v.dev });
+    ev.push({ t: 'signup', at: u.created_at, method: u.method, dev: u.dev });
+    mails.forEach(m => ev.push({ t: 'mail', at: m.created_at, kind: m.kind, status: m.status, error: m.error ? String(m.error).slice(0, 120) : null, upd: m.updated_at }));
+    if (u.tries > 0) ev.push({ t: 'tries', at: u.last_mail || u.created_at, n: u.tries });
+    if (u.reminded_at) ev.push({ t: 'reminder', at: u.reminded_at });
+    if (u.email_verified_at) ev.push({ t: 'verified', at: u.email_verified_at, via: u.via });
+    if (app1[0]) ev.push({ t: 'app', at: app1[0].created_at, platform: app1[0].platform });
+    if (req1[0]) ev.push({ t: 'project', at: req1[0].created_at, title: req1[0].title, rid: req1[0].id });
+    if (bid1[0]) ev.push({ t: 'bid', at: bid1[0].created_at, title: bid1[0].title });
+    ev.sort((a, b) => new Date(a.at) - new Date(b.at));
+    if (u.last_seen && new Date(u.last_seen) > new Date(ev[ev.length - 1].at)) ev.push({ t: 'seen', at: u.last_seen });
+    res.json({ user: u, events: ev });
+  } catch(e) { console.error('signup journey:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/users/:id/emails', requirePermission('users.view'), async (req, res) => {
   try { const r = await pool.query('SELECT id, to_email, subject, kind, status, error, created_at, updated_at FROM email_log WHERE user_id=$1 ORDER BY id DESC LIMIT 15', [parseInt(req.params.id)]); res.json(r.rows); }
