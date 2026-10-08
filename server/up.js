@@ -435,7 +435,7 @@
   // أي رابط صورة (في الموقع والتطبيق) يفتح هنا بدل ما يطلع من الصفحة
   D.addEventListener('click', function(e){
     if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey) return;
-    var a = e.target.closest && e.target.closest('a[href]'); if (!a || a.closest('#mqg') || a.hasAttribute('download')) return;
+    var a = e.target.closest && e.target.closest('a[href]'); if (!a || a.closest('#mqg') || a.hasAttribute('download') || a.hasAttribute('data-raw')) return;
     var h = a.getAttribute('href'); if (!isImgUrl(h)) return;
     if (openFrom(a, abs(h))) { e.preventDefault(); e.stopImmediatePropagation(); }
   }, true);
@@ -518,7 +518,7 @@
   }
   function msg(title, text, u){
     body.innerHTML = '<div class="mqv-msg"><b>' + esc(title) + '</b>' + esc(text || '')
-      + (u && !/^data:/i.test(u) ? '<br><button type="button" class="mqv-cp" data-a="copy" data-u="' + esc(u) + '">نسخ رابط الملف</button>' : '') + '</div>';
+      + (u && !/^data:/i.test(u) ? '<br>' + (app ? '' : '<a class="mqv-cp" data-raw="1" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;margin-left:8px" href="' + esc(u) + '">افتح الملف</a>') + '<button type="button" class="mqv-cp" data-a="copy" data-u="' + esc(u) + '">نسخ رابط الملف</button>' : '') + '</div>';
   }
   var curOpts = null, curUrl = '';
   function flash(b, t){ var o = b.textContent; b.textContent = t; setTimeout(function(){ b.textContent = o; }, 2200); }
@@ -641,7 +641,7 @@
   // التقاط الروابط
   D.addEventListener('click', function(e){
     if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey) return;
-    var a = e.target.closest && e.target.closest('a[href]'); if (!a) return;
+    var a = e.target.closest && e.target.closest('a[href]'); if (!a || a.hasAttribute('data-raw')) return;
     var u = a.getAttribute('href');
     if (!kind(u)) return;
     if (open(a.href && !/^data:/i.test(u) ? a.href : u, a.textContent)) { e.preventDefault(); e.stopPropagation(); }

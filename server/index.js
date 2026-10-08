@@ -244,7 +244,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '7'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '8'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
@@ -4790,7 +4790,7 @@ app.get('/api/file-view', rateLimiter(60, 60000), async (req, res) => {
     const base = R2_PUBLIC_URL.replace(/\/+$/, '') + '/';
     if (!r2Client || !R2_PUBLIC_URL || u.indexOf(base) !== 0) return res.status(400).json({ message: 'رابط غير مدعوم' });
     const key = decodeURIComponent(u.slice(base.length).split(/[?#]/)[0]);
-    if (!/^manaqasa\/[a-zA-Z0-9/_-]+\.[a-z0-9]{2,5}$/.test(key) || key.indexOf('..') !== -1) return res.status(400).json({ message: 'رابط غير مدعوم' });
+    if (!/^[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*\.[a-z0-9]{2,5}$/.test(key) || key.indexOf('..') !== -1) return res.status(400).json({ message: 'رابط غير مدعوم' });
     const g = await r2Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
     const ext = key.split('.').pop();
     const ct = ext === 'pdf' ? 'application/pdf' : (/^(jpe?g|png|webp|gif|heic)$/.test(ext) ? ('image/' + (ext === 'jpg' ? 'jpeg' : ext)) : 'application/octet-stream');
