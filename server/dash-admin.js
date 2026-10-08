@@ -2997,7 +2997,6 @@ function _bidCss(){
   +'.bc-flag{font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:999px;white-space:nowrap}'
   +'.bc-flag.high{background:#dc2626;color:#fff}.bc-flag.med{background:#fef3c7;color:#92400e}'
   +'.bc-act{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)}'
-  +'.bc-act button{padding:6px 11px;font-size:11.5px}'
   +'.pv-row{background:var(--card,#fff);border:1px solid var(--border);border-radius:14px;padding:13px 16px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}'
   +'.pv-rank{width:30px;height:30px;border-radius:50%;background:#f1f5f9;color:#475569;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:13px;flex:none}'
   +'.pv-bar{height:7px;background:#eef2f7;border-radius:6px;overflow:hidden;width:130px}.pv-bar i{display:block;height:100%}'
@@ -6040,7 +6039,7 @@ try{ var _sgL=JSON.parse(localStorage.getItem('adm_sg')||'null'); if(_sgL&&_sgL.
 function _sgSave(){ try{ localStorage.setItem('adm_sg',JSON.stringify({p:_sgS.p,m:_sgS.m,st:_sgS.st,r:_sgS.r})); }catch(e){} }
 var _SG_M={email:{n:'البريد',c:'#1d4ed8',bg:'#dbeafe',i:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>'},
   google:{n:'Google',c:'#16a34a',bg:'#fff',i:'<span class="sg-G"></span>'},
-  apple:{n:'Apple',c:'#0f172a',bg:'#000',i:'<svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.02-1.5-2.62-1.7-3.19-1.72-1.36-.14-2.65.8-3.34.8-.69 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.19-1.54 2.67-.39 6.62 1.11 8.79.73 1.06 1.6 2.25 2.75 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.71.71 2.88.69 1.19-.02 1.94-1.08 2.66-2.14.84-1.23 1.19-2.42 1.21-2.48-.03-.01-2.32-.89-2.34-3.55zM14.18 6.13c.61-.74 1.02-1.76.91-2.78-.88.04-1.94.59-2.57 1.32-.56.65-1.06 1.69-.93 2.69.98.08 1.98-.5 2.59-1.23z"/></svg>'}};
+  apple:{n:'Apple',c:'var(--sg-apple)',bg:'#000',i:'<svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M16.37 12.6c-.02-2.2 1.8-3.26 1.88-3.31-1.02-1.5-2.62-1.7-3.19-1.72-1.36-.14-2.65.8-3.34.8-.69 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.19-1.54 2.67-.39 6.62 1.11 8.79.73 1.06 1.6 2.25 2.75 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.71.71 2.88.69 1.19-.02 1.94-1.08 2.66-2.14.84-1.23 1.19-2.42 1.21-2.48-.03-.01-2.32-.89-2.34-3.55zM14.18 6.13c.61-.74 1.02-1.76.91-2.78-.88.04-1.94.59-2.57 1.32-.56.65-1.06 1.69-.93 2.69.98.08 1.98-.5 2.59-1.23z"/></svg>'}};
 var _SG_ORD=['email','google','apple'];
 var _SG_DEV={app_ios:'تطبيق آيفون',app_android:'تطبيق أندرويد',app:'التطبيق',mobile:'جوال (متصفح)',desktop:'كمبيوتر'};
 var _SG_VIA={link:'ضغط رابط الإيميل',code:'كتب الرمز',google:'من Google',apple:'من Apple',admin:'فعّلته الإدارة'};
@@ -6385,3 +6384,56 @@ function _dlPaint(){ var box=document.getElementById('deals-body'), d=_DL; if(!b
     return '<div class="dl-col"><div class="dl-ch"><i style="background:'+c[2]+'"></i>'+c[1]+'<b>'+L.length+'</b>'+(nf?'<span class="pl" style="background:#dbeafe;color:#1d4ed8">+'+nf+' '+esc(R.lbl)+'</span>':'')+'</div><div class="dl-cs">'+esc(c[3])+'</div>'
       +(L.length?L.map(function(x){return _dlCard(x,c[0]);}).join(''):'<div class="dl-empty">ما فيه شي</div>')+'</div>'; }).join('')+'</div>';
   box.innerHTML=h; }
+
+// ═══ الوضع الليلي: يصلّح الألوان الثابتة (خلفيات فاتحة ونصوص غامقة) تلقائياً عشان كل شي يقرأ ═══
+(function(){
+  var D=document, on=false, pend=null, Q=[];
+  function rgb(s){ var m=String(s||'').match(/[\d.]+/g); if(!m)return null; return [+m[0],+m[1],+m[2],m.length>3?+m[3]:1]; }
+  function lum(c){ var a=c.slice(0,3).map(function(v){v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);}); return .2126*a[0]+.7152*a[1]+.0722*a[2]; }
+  function cr(a,b){ var x=lum(a),y=lum(b); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); }
+  function hsl(c){ var r=c[0]/255,g=c[1]/255,b=c[2]/255,mx=Math.max(r,g,b),mn=Math.min(r,g,b),h=0,s=0,l=(mx+mn)/2;
+    if(mx!==mn){ var d=mx-mn; s=l>.5?d/(2-mx-mn):d/(mx+mn); h=mx===r?(g-b)/d+(g<b?6:0):(mx===g?(b-r)/d+2:(r-g)/d+4); h/=6; } return [h*360,s,l]; }
+  function base(){ return rgb(getComputedStyle(D.body).backgroundColor)||[15,23,42,1]; }
+  // لون الخلفية الفعلي تحت العنصر
+  function bgOf(el){ while(el&&el.nodeType===1){ var c=rgb(getComputedStyle(el).backgroundColor); if(c&&c[3]>.5)return c; el=el.parentElement; } return base(); }
+  function set(el,p,v){ if(!el._dk)el._dk={}; if(!(p in el._dk))el._dk[p]=[el.style.getPropertyValue(p),el.style.getPropertyPriority(p)]; el.style.setProperty(p,v,'important'); }
+  var SKIP={IMG:1,SVG:1,PATH:1,CANVAS:1,VIDEO:1,INPUT:0,IFRAME:1,BR:1,SCRIPT:1,STYLE:1};
+  function fix(el){
+    if(!el||el.nodeType!==1||SKIP[String(el.tagName).toUpperCase()]||el instanceof SVGElement||el.closest('.sb,#mqg,#mq-fv,[data-nodk]'))return;
+    var cs=getComputedStyle(el);
+    // خلفية فاتحة → داكنة بنفس اللون (لمسة خفيفة)
+    var b=rgb(cs.backgroundColor);
+    if(b&&b[3]>.4&&lum(b)>.55){ set(el,'background-color',mix(base(),b,hsl(b))); }
+    if(cs.backgroundImage&&/gradient/.test(cs.backgroundImage)){ var g=(cs.backgroundImage.match(/rgba?\([^)]*\)/g)||[]).map(rgb).filter(Boolean); if(g.length&&g.every(function(c){return c[3]<.2||lum(c)>.5;})){ set(el,'background-image','none'); var g0=g.filter(function(c){return c[3]>=.2;})[0]; if(g0)set(el,'background-color',mix(base(),g0,hsl(g0))); } }
+    // حدود فاتحة جداً
+    var bc=rgb(cs.borderTopColor); if(bc&&parseFloat(cs.borderTopWidth)>0&&lum(bc)>.6&&bc[3]>.5){ var hb=hsl(bc); set(el,'border-color',hb[1]>.2?'hsla('+Math.round(hb[0])+','+Math.round(hb[1]*100)+'%,55%,.45)':'var(--border)'); }
+    // نص مو مقروء → نفتّحه بنفس اللون
+    var hasT=false; for(var n=el.firstChild;n;n=n.nextSibling){ if(n.nodeType===3&&n.textContent.trim()){hasT=true;break;} }
+    if(hasT||el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT'){
+      var fg=rgb(cs.color), bgc=bgOf(el); if(fg&&cr(fg,bgc)<4.2){ var hf=hsl(fg), dark=lum(bgc)<.08; // على الأسطح الداكنة بس (الأزرار الملوّنة نتركها)
+        if(dark) set(el,'color',hf[1]>.25?'hsl('+Math.round(hf[0])+','+Math.round(Math.min(.9,hf[1])*100)+'%,72%)':'var(--text)');
+      }
+    }
+  }
+  function mix(bb,c,h){ // لون الخلفية الداكن المناسب: خلفية الصفحة + لمسة من اللون الأصلي
+    if(h[1]<=.15) return 'var(--card)';
+    var t=.16, rr=Math.round(bb[0]*(1-t)+c[0]*t), gg=Math.round(bb[1]*(1-t)+c[1]*t), b2=Math.round(bb[2]*(1-t)+c[2]*t);
+    // نشبّع اللون شوي عشان يبان
+    var hh=hsl([rr,gg,b2]); return 'hsl('+Math.round(h[0])+','+Math.round(Math.min(.38,h[1])*100)+'%,'+Math.round(Math.max(.14,Math.min(.19,hh[2]))*100)+'%)'; }
+  function sfix(el){ try{ fix(el); }catch(e){} }
+  function walk(root){ if(!root||root.nodeType!==1)return; if(root.closest&&root.closest('.sb'))return; sfix(root); var all=root.querySelectorAll('*'); for(var i=0;i<all.length;i++)sfix(all[i]); }
+  function unfix(el){ if(!el._dk)return; Object.keys(el._dk).forEach(function(p){ var o=el._dk[p]; if(o[0])el.style.setProperty(p,o[0],o[1]); else el.style.removeProperty(p); }); el._dk=null; }
+  function flush(){ pend=null; var q=Q; Q=[]; if(!on)return; q.forEach(function(r){ if(!r.el.isConnected)return; if(r.a){ unfix(r.el); r.el.querySelectorAll('*').forEach(unfix); } walk(r.el); }); mo.takeRecords(); }
+  var mo=new MutationObserver(function(ms){ if(!on)return; ms.forEach(function(m){ if(m.type==='childList'){ m.addedNodes.forEach(function(n){ if(n.nodeType===1)Q.push({el:n}); }); } else if(m.target&&m.target.nodeType===1)Q.push({el:m.target,a:1}); }); if(!pend)pend=setTimeout(flush,60); });
+  function revert(){ D.querySelectorAll('*').forEach(unfix); }
+  function apply(){
+    var want=D.documentElement.getAttribute('data-theme')==='dark';
+    if(want&&!on){ on=true; walk(D.body); mo.observe(D.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','style']}); mo.takeRecords(); }
+    else if(!want&&on){ on=false; mo.disconnect(); revert(); }
+  }
+  // مراجعة دورية خفيفة للصفحة المفتوحة (عناصر تتلوّن بعد ما ترسم)
+  setInterval(function(){ if(!on||D.hidden)return; var pg=D.querySelector('.page.on')||D.body; var all=pg.querySelectorAll('*'); for(var i=0;i<all.length;i++)sfix(all[i]); mo.takeRecords(); },2000);
+  window._dkApply=apply; window._dkWalk=function(r){ walk(r||D.body); };
+  new MutationObserver(apply).observe(D.documentElement,{attributes:true,attributeFilter:['data-theme']});
+  if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',apply); else apply();
+})();

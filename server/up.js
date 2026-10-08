@@ -118,7 +118,8 @@
     // وصلنا لخطوة قديمة حقتنا (النافذة انقفلت بطريقة ثانية) → نكمل رجوع
     if (ev.state && ev.state.mqb) { ev.stopImmediatePropagation(); try { history.back(); } catch(_){} }
   }, true);
-  W.mqBack = { push: push, release: release };
+  function drop(e){ var i = stack.indexOf(e); if (i >= 0) stack.splice(i, 1); } // انقفلت لأنه انتقل لصفحة/قسم ثاني: نخلي السجل
+  W.mqBack = { push: push, release: release, drop: drop };
 
   // ── مراقبة النوافذ المنبثقة في كل الصفحات ──
   var EX = /^(mqg|mq-fv|mq-up|mqMore|mnav|mnqSplash|toast|app)$/;
@@ -450,8 +451,7 @@
   var W = window, D = document, ua = navigator.userAgent || '';
   var app = !!W.ReactNativeWebView || /ManaqasaApp|Expo|; wv\)/i.test(ua);
   var standalone = false; try { standalone = W.navigator.standalone === true || (W.matchMedia && W.matchMedia('(display-mode: standalone)').matches); } catch(e){}
-  var touch = false; try { touch = W.matchMedia('(pointer:coarse)').matches && Math.min(screen.width, screen.height) < 820; } catch(e){}
-  if (!app && !standalone && !touch && !/[?&]mqviewer=1/.test(location.search)) return; // الجوال (تطبيق أو متصفح): الملفات تنفتح فوق الصفحة
+  // كل الأجهزة: PDF والصور تنفتح فوق الصفحة (ما نطلع لتبويب جديد)
 
   var IMG = /^(jpe?g|png|webp|gif|heic)$/i, OTHER = /^(dwg|dxf|xlsx?|docx?|zip|rar|7z|csv|rvt|pptx?)$/i;
   function kind(u){
@@ -486,6 +486,7 @@
       + '#mq-fv .mqv-t{flex:1;min-width:0;unicode-bidi:plaintext;text-align:right;font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.9}'
       + '#mq-fv .mqv-z{width:38px;height:38px;border-radius:11px;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;font:800 19px system-ui;cursor:pointer;flex-shrink:0}'
       + '#mq-fv .mqv-b{flex:1;overflow:auto;direction:ltr;-webkit-overflow-scrolling:touch;padding:12px 10px calc(16px + env(safe-area-inset-bottom,0px));touch-action:pan-x pan-y pinch-zoom}'
+      + '@media(min-width:1000px){#mq-fv .mqv-b{padding-left:calc(50% - 460px);padding-right:calc(50% - 460px)}}'
       + '#mq-fv .mqv-pg{display:block;margin:0 auto 10px;background:#fff;border-radius:4px;box-shadow:0 2px 10px rgba(0,0,0,.4);max-width:none}'
       + '#mq-fv .mqv-msg{color:#cbd5e1;text-align:center;padding:40px 18px;font-size:14.5px;line-height:1.9}'
       + '#mq-fv .mqv-msg b{display:block;color:#fff;font-size:16px;margin-bottom:6px}'
@@ -551,6 +552,8 @@
     if (k === 'other' && !app && !standalone) return false; // متصفح الجوال: الملفات الثانية تنزل عادي
     ui(); token++; var my = token;
     curOpts = opts || null; curUrl = u;
+    // المتصفح: زر «حفظ» لملفات المنصة (ينزل الملف بدون ما تطلع من الصفحة)
+    if (!curOpts && !app && k === 'pdf' && /\.r2\.dev\/|r2\.cloudflarestorage\.com\/|res\.cloudinary\.com\//i.test(u)) { var fn = nameOf(u, txt).replace(/\.pdf$/i, ''); curOpts = { save: '/api/dl?u=' + encodeURIComponent(u) + '&n=' + encodeURIComponent(fn + '.pdf'), fileName: fn }; }
     box.querySelector('[data-a="save"]').hidden = !(curOpts && curOpts.save);
     box.querySelector('[data-a="share"]').hidden = !(curOpts && curOpts.share);
     zoom = 1; ttl.textContent = nameOf(u, txt);

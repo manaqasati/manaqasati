@@ -1653,7 +1653,7 @@ function syncAuthUI(){
 }
 syncAuthUI();
 // ===== قائمة الجوال =====
-var _mnPushed=false;
+var _mnPushed=false, _mnBk=null;
 function mnavOpen(){
   var m=document.getElementById('mnav'); if(!m)return;
   try{ var u=getUser(), b=document.getElementById('mnLogin'); if(u&&b){ b.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>لوحة التحكم</span>'; var lh=document.getElementById('mnLh'); if(lh)lh.style.display='none'; b.setAttribute('onclick',"location.href='"+(effRole(u)==='provider'?'dashboard-provider.html':(effRole(u)==='admin'?'dashboard-admin.html':'dashboard-client.html'))+"'"); } }catch(e){}
@@ -1661,13 +1661,15 @@ function mnavOpen(){
   m.hidden=false; requestAnimationFrame(function(){ m.classList.add('on'); });
   document.documentElement.style.overflow='hidden';
   var bt=document.querySelector('nav .nav-burger'); if(bt)bt.setAttribute('aria-expanded','true');
-  if(!_mnPushed){ try{ history.pushState({mnav:1},''); _mnPushed=true; }catch(e){} }
+  if(window.mqBack){ if(!_mnBk)_mnBk=mqBack.push(function(){ _mnBk=null; var m2=document.getElementById('mnav'); if(m2&&!m2.hidden){ m2.classList.remove('on'); m2.hidden=true; document.documentElement.style.overflow=''; var b2=document.querySelector('nav .nav-burger'); if(b2)b2.setAttribute('aria-expanded','false'); } }); }
+  else if(!_mnPushed){ try{ history.pushState({mnav:1},''); _mnPushed=true; }catch(e){} }
   setTimeout(function(){ var x=m.querySelector('.mn-x'); if(x)x.focus(); },50);
 }
 function mnavClose(nav){
   var m=document.getElementById('mnav'); if(!m||m.hidden)return;
   m.classList.remove('on'); m.hidden=true; document.documentElement.style.overflow='';
   var bt=document.querySelector('nav .nav-burger'); if(bt)bt.setAttribute('aria-expanded','false');
+  if(_mnBk){ var e=_mnBk; _mnBk=null; if(nav)mqBack.drop(e); else mqBack.release(e); }
   if(_mnPushed){ _mnPushed=false; if(!nav){ try{ history.back(); }catch(e){} } else { try{ history.replaceState(null,'',location.href); }catch(e){} } }
 }
 window.addEventListener('popstate',function(){ if(_mnPushed){ _mnPushed=false; var m=document.getElementById('mnav'); if(m&&!m.hidden){ m.classList.remove('on'); m.hidden=true; document.documentElement.style.overflow=''; } } });

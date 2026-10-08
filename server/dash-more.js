@@ -104,7 +104,7 @@
       + '<button type="button" class="mm-out" data-act="out">تسجيل الخروج</button>';
   }
 
-  var box, pushed = false;
+  var box, pushed = false, bk = null;
   function build(){
     if (box) return;
     var st = D.createElement('style'); st.textContent = CSS; D.head.appendChild(st);
@@ -127,7 +127,8 @@
     build(); render();
     box.classList.add('on'); requestAnimationFrame(function(){ requestAnimationFrame(function(){ box.classList.add('in'); }); });
     D.documentElement.style.overflow = 'hidden'; setOn(true);
-    if (!pushed) { try { history.pushState({ mqMore: 1 }, ''); pushed = true; } catch(e){} }
+    if (W.mqBack) { if (!bk) bk = W.mqBack.push(function(){ bk = null; hide(); }); }
+    else if (!pushed) { try { history.pushState({ mqMore: 1 }, ''); pushed = true; } catch(e){} }
     if (PROV && tok()) {
       fetch('/api/provider/saai', { headers: { Authorization: 'Bearer ' + tok() } }).then(function(r){ return r.ok ? r.json() : null; })
         .then(function(d){ if (d) { state.saai = d; if (box.classList.contains('on')) render(); } }).catch(function(){});
@@ -141,6 +142,7 @@
   function close(nav){
     if (!box || !box.classList.contains('on')) return;
     hide();
+    if (bk) { var e = bk; bk = null; if (nav) W.mqBack.drop(e); else W.mqBack.release(e); }
     if (pushed) { pushed = false; if (!nav) { try { history.back(); } catch(e){} } }
   }
   W.addEventListener('popstate', function(){ if (pushed) { pushed = false; hide(); } });

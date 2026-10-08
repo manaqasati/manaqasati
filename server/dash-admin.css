@@ -14,6 +14,7 @@
   --sh2:0 1px 3px rgba(16,24,40,.1),0 1px 2px rgba(16,24,40,.06);
   --sh3:0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06);
   --sh4:0 12px 16px -4px rgba(16,24,40,.08),0 4px 6px -2px rgba(16,24,40,.03);
+}
 [data-theme="dark"]{
   --p:#3b82f6;--p2:#60a5fa;--p3:#1e293b;
   --p-light:#1e293b;--p-mid:#334155;
@@ -769,6 +770,8 @@ a.cu-pv:hover{border-color:#86efac}
 .dl-c,.dl-c>b,.dl-t{overflow-wrap:anywhere;word-break:break-word}
 
 /* ═══ التسجيل والتفعيل (رسم حسب الطريقة + جدول + رحلة كل مستخدم) ═══ */
+:root{--sg-apple:#0f172a}
+[data-theme="dark"]{--sg-apple:#cbd5e1}
 .sg-page{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
 .sg-busy{opacity:.55;pointer-events:none;transition:opacity .15s}
 .sg-hd{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
