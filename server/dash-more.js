@@ -100,7 +100,7 @@
     var dark = D.documentElement.getAttribute('data-theme') === 'dark';
     return '<div class="mm-f">' + (PROV ? '' : '<button type="button" data-act="wa">💬 تواصل معنا</button>')
       + '<button type="button" data-act="theme">' + (dark ? '☀️ فاتح' : '🌙 ليلي') + '</button>'
-      + (canSw ? '<button type="button" data-act="switch">⇄ ' + (PROV ? 'حساب العميل' : 'حساب المزوّد') + '</button>' : '') + '</div>'
+      + (canSw ? '<button type="button" data-act="switch">⇄ ' + (PROV ? 'حساب العميل' : 'حساب المزوّد') + '</button>' : (PROV ? '' : '<button type="button" data-act="becomeprov">🧰 صير مزوّد</button>')) + '</div>'
       + '<button type="button" class="mm-out" data-act="out">تسجيل الخروج</button>';
   }
 
@@ -155,6 +155,7 @@
     if (a.indexOf('url:') === 0) { close(true); location.href = a.slice(4); return; }
     if (a === 'wa') { close(true); location.href = 'https://wa.me/966594011313'; return; }
     if (a === 'theme') { if (typeof W.toggleTheme === 'function') W.toggleTheme(); render(); return; }
+    if (a === 'becomeprov') { go(function(){ if (typeof W.openBecomeProv === 'function') W.openBecomeProv(); else location.href = '/dashboard-client.html#profile'; }); return; }
     if (a === 'switch') { var sw = D.getElementById('switchDash'); close(true); if (sw) sw.click(); else location.href = PROV ? '/dashboard-client.html' : '/dashboard-provider.html'; return; }
     if (a === 'out') { close(true); if (typeof W.doLogout === 'function') W.doLogout(); else if (typeof W.logout === 'function') W.logout(); return; }
     if (a === 'pub' || a === 'share') {

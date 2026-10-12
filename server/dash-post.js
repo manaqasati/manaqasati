@@ -838,7 +838,7 @@ function loadTimeline(id){
 }
 function shareAchievement(id){
   var msg='✅ أنجزت مشروعي عبر منصة مناقصة بأفضل سعر!\nانشر طلبك واستقبل عروضاً من عدة مزودين واختر الأنسب:\nhttps://www.manaqasa.com';
-  if(navigator.share){navigator.share({title:'مناقصة',text:msg,url:'https://www.manaqasa.com'}).catch(function(){});}
+  if(navigator.share){navigator.share({title:'مناقصة',text:msg.replace(/\nhttps:\/\/www\.manaqasa\.com$/,''),url:'https://www.manaqasa.com'}).catch(function(){});}
   else if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){showToast('تم نسخ رسالة المشاركة','success');});}
 }
 function repostReq(id){
