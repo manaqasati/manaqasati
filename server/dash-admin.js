@@ -2400,7 +2400,8 @@ function _cnOpen(id){
     +'<div style="font-size:12.5px;font-weight:800;color:var(--muted)">قوالب سريعة — اضغط لإضافتها:</div>'
     +'<div style="display:flex;gap:7px;flex-wrap:wrap">'+_CN_TPL.map(function(t,i){return '<button type="button" class="ftab" onclick="_cnAdd('+i+')" style="border:1.5px solid #fde68a;background:#fffbeb;color:#92400e">'+t[0]+'</button>';}).join('')+'</div>'
     +'<textarea id="cn-text" rows="6" placeholder="اكتب الملاحظة — كل نقطة في سطر" style="width:100%;box-sizing:border-box;padding:12px;border:1.5px solid var(--border);border-radius:12px;font-family:inherit;font-size:14px;line-height:1.9;resize:vertical">'+esc(r.client_note||'')+'</textarea>'
-    +'<div style="font-size:12px;color:var(--muted);font-weight:700;background:#f8fafd;border-radius:10px;padding:8px 10px">تظهر للعميل في صفحة مشروعه فوق العروض، مع زر «أضف المعلومات الآن». ما يوصله إشعار ولا رسالة، ولا تظهر لأي مزوّد.</div>'
+    +'<div style="font-size:12px;color:var(--muted);font-weight:700;background:#f8fafd;border-radius:10px;padding:8px 10px">تظهر للعميل في صفحة مشروعه فوق العروض، مع زر «أضف المعلومات الآن». ولا تظهر لأي مزوّد.</div>'
+    +'<label style="display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:800;cursor:pointer"><input type="checkbox" id="cn-notify" checked style="width:18px;height:18px"> 📲 أرسل له إشعار (التطبيق والمنصة) + إيميل</label>'
     +'<div style="display:flex;gap:8px"><button id="cn-save" onclick="_cnSave('+id+')" style="flex:1;border:0;background:#f59e0b;color:#fff;border-radius:11px;padding:12px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer">حفظ وإظهارها للعميل</button>'
     +(r.client_note?'<button onclick="_cnSave('+id+',true)" class="btn-g" style="color:#dc2626;border-color:#fecaca">حذف الملاحظة</button>':'')+'</div></div>';
   d.onclick=function(e){if(e.target===d)d.remove();};
@@ -2413,12 +2414,13 @@ async function _cnSave(id,del){
   if(!del){ note=((document.getElementById('cn-text')||{}).value||'').trim(); if(!note){toast('اكتب الملاحظة أو اختر قالب','error');return;} }
   else if(!await askConfirm({title:'حذف الملاحظة',message:'تختفي الملاحظة من صفحة العميل.',confirmText:'احذف'}))return;
   var b=document.getElementById('cn-save'); if(b){b.disabled=true;b.textContent='جاري الحفظ...';}
-  fetch(API+'/api/admin/requests/'+id+'/client-note',Object.assign({method:'PUT',body:JSON.stringify({note:note})},hdr()))
+  var nt=document.getElementById('cn-notify'); var notify=!del&&(!nt||nt.checked);
+  fetch(API+'/api/admin/requests/'+id+'/client-note',Object.assign({method:'PUT',body:JSON.stringify({note:note,notify:notify})},hdr()))
     .then(function(r){return r.json().then(function(x){return {ok:r.ok,d:x};});})
     .then(function(x){
       if(!x.ok){toast((x.d&&x.d.message)||'تعذّر الحفظ','error'); if(b){b.disabled=false;b.textContent='حفظ وإظهارها للعميل';} return;}
       var m=document.getElementById('cnModal'); if(m)m.remove();
-      toast(del?'حُذفت الملاحظة':'تم — تظهر للعميل في صفحة مشروعه ✓','success');
+      toast(del?'حُذفت الملاحظة':('تم — تظهر للعميل في صفحة مشروعه ✓'+(x.d&&x.d.notified?' · وصله إشعار وإيميل':'')),'success');
       [_allReq||[],window._projReview||[]].forEach(function(list){list.forEach(function(r){ if(r.id===id){ r.client_note=del?null:note; r.client_note_at=del?null:new Date().toISOString(); r.client_note_seen_at=null; r.client_note_done_at=null; r.client_note_hidden=false; } });});
       if(window._rqSel===id&&document.getElementById('rqDrawer')&&document.getElementById('rqDrawer').classList.contains('on'))_rqOpen(id);
       try{renderRequests();}catch(e){}

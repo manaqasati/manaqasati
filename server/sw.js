@@ -1,4 +1,4 @@
-var CACHE = 'manaqasa-v7';
+var CACHE = 'manaqasa-v8';
 var STATIC = [
   './',
   './index.html',
@@ -164,7 +164,17 @@ self.addEventListener('fetch', function(e) {
     );
     return;
   }
-  // ── Static assets: cache first, fallback to network ──
+  // ── السكربتات والتنسيقات وملفات البيانات: من الشبكة أول (عشان التحديث يوصل)، والكاش بس لو ما فيه نت ──
+  if (/\.(js|css|json)(\?|$)/.test(url.split('#')[0])) {
+    e.respondWith(
+      fetch(e.request).then(function(res) {
+        if (res && res.status === 200 && res.type !== 'opaque') { var clone = res.clone(); caches.open(CACHE).then(function(c) { c.put(e.request, clone); }); }
+        return res;
+      }).catch(function() { return caches.match(e.request); })
+    );
+    return;
+  }
+  // ── Static assets (صور وخطوط): cache first, fallback to network ──
   e.respondWith(
     caches.match(e.request).then(function(cached) {
       if (cached) return cached;

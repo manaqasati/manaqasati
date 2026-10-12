@@ -244,7 +244,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '8'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '9'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
@@ -2929,7 +2929,7 @@ async function setupDatabase() {
     await _mig(`CREATE TABLE IF NOT EXISTS app_page_hits (day DATE NOT NULL, kind VARCHAR(8) NOT NULL, src VARCHAR(30) NOT NULL, os VARCHAR(10) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, src, os))`);
     try { await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
     // «ملاحظات الإدارة للعميل»: تظهر لصاحب المشروع فقط في صفحة مشروعه — بدون إشعارات
-    for (const _c of ['close_set_by TEXT','close_auto_kind TEXT','close_auto_days INTEGER','client_note TEXT','client_note_at TIMESTAMP','client_note_seen_at TIMESTAMP','client_note_done_at TIMESTAMP','client_note_hidden BOOLEAN DEFAULT FALSE']) {
+    for (const _c of ['close_set_by TEXT','close_auto_kind TEXT','close_auto_days INTEGER','client_note TEXT','client_note_at TIMESTAMP','client_note_seen_at TIMESTAMP','client_note_done_at TIMESTAMP','client_note_hidden BOOLEAN DEFAULT FALSE','client_note_notified_at TIMESTAMP']) {
       try { await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS ' + _c); } catch(e){}
     }
     // #٦ المندوب: اسم + نسبة% على المشروع — يُحتسب مستحقّه من قيمة العرض المعتمد
@@ -6788,6 +6788,11 @@ app.get('/api/support-contact', async (req, res) => {
   try { const num = await getSetting('support_whatsapp', '0594011313'); res.set('Cache-Control','public, max-age=120'); res.json({ whatsapp: String(num||'').trim() }); }
   catch(e){ res.json({ whatsapp: '0594011313' }); }
 });
+// بصمة النسخة الحالية من الواجهة (تتغير مع كل رفع يعدّل الصفحات أو السكربتات) — الصفحات المفتوحة من زمان تحدّث نفسها
+const _BUILD_ID = (function(){ try { const fs = require('fs'), h = crypto.createHash('sha1');
+  fs.readdirSync(__dirname).filter(f => /\.(html|js|css)$/.test(f) && f !== 'index.js').sort().forEach(f => { try { h.update(f); h.update(fs.readFileSync(__dirname + '/' + f)); } catch(_){} });
+  return h.digest('hex').slice(0, 12); } catch(e) { return String(Date.now()); } })();
+app.get('/api/build', (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ b: _BUILD_ID }); });
 app.get('/api/version', (req, res) => { res.json({ version: 'edit-geo-atts-30mb-v3', features: ['edit_geo','edit_attachments','dwg_30mb','provider_location','categories_fixed'], ts: '2026-08-14' }); });
 // أسماء قديمة للتخصصات → الاسم الحالي (روابط قديمة/نسخ تطبيق قديمة)
 const _CAT_ALIASES = { 'صيانة مصاعد': 'تركيب وصيانة مصاعد', 'أبواب': 'أبواب وبوابات أوتوماتيكية', 'جبس وطباشير': 'جبس' };
@@ -8786,17 +8791,42 @@ app.post('/api/admin/requests/:id/advise', requirePermission('requests.review'),
     res.json({ ok: true, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
-// ملاحظات الإدارة للعميل — حفظ/تعديل/حذف (بدون أي إشعار للعميل)
+// ملاحظات الإدارة للعميل — حفظ/تعديل/حذف + توصله إشعار (التطبيق والمنصة) وإيميل لما تكون جديدة أو تغيّرت
+async function _notifyClientNote(rid){
+  const r = (await pool.query(`SELECT r.id, r.title, r.client_id, r.client_note, r.client_note_notified_at, u.email, u.name FROM requests r JOIN users u ON u.id=r.client_id WHERE r.id=$1`, [rid])).rows[0];
+  if (!r || !r.client_note) return;
+  // تعديلات متتالية خلال 10 دقايق = إشعار واحد
+  if (r.client_note_notified_at && Date.now() - new Date(r.client_note_notified_at).getTime() < 600000) return;
+  await pool.query('UPDATE requests SET client_note_notified_at=NOW() WHERE id=$1', [rid]);
+  const title = '💡 ملاحظة من الإدارة على مشروعك';
+  const snip = String(r.client_note).replace(/\s+/g, ' ').slice(0, 140) + (String(r.client_note).length > 140 ? '…' : '');
+  const body = '«' + (r.title || 'مشروعك') + '»: ' + snip;
+  const url = '/dashboard-client.html#detail/' + rid;
+  await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [r.client_id, title, body, 'client_note', rid]);
+  sendPush(r.client_id, title, body, url, 'client_note', rid).catch(() => {});
+  try { wsBroadcast(r.client_id, { type: 'notification', notif: { title, body, ntype: 'client_note', ref_id: rid, url, created_at: new Date().toISOString() } }); } catch(_) {}
+  if (r.email) {
+    const html = emailTpl('ملاحظة من الإدارة على مشروعك',
+      '<p>هلا ' + eEsc(r.name || '') + '،</p><p>فريق مناقصة كتب لك ملاحظة على مشروعك <b>«' + eEsc(r.title || '') + '»</b> عشان يوصلك عروض أكثر وأدق:</p>'
+      + '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:14px 16px;margin:14px 0;color:#78350f;line-height:1.9;white-space:pre-wrap">' + eEsc(r.client_note) + '</div>'
+      + '<p style="color:#64748b;font-size:13px">الملاحظة تظهر لك أنت بس في صفحة مشروعك.</p>',
+      'افتح مشروعك', SITE_URL + url);
+    sendEmail(r.email, 'ملاحظة من الإدارة على مشروعك — ' + (r.title || ''), html, { uid: r.client_id, kind: 'client_note' }).catch(() => {});
+  }
+}
 app.put('/api/admin/requests/:id/client-note', requirePermission('requests.review'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const note = String(req.body.note || '').trim().slice(0, 2000);
+    const prev = (await pool.query('SELECT client_note FROM requests WHERE id=$1', [id])).rows[0];
     const r = note
       ? await pool.query(`UPDATE requests SET client_note=$1, client_note_at=NOW(), client_note_seen_at=NULL, client_note_done_at=NULL, client_note_hidden=FALSE WHERE id=$2 RETURNING id`, [note, id])
       : await pool.query(`UPDATE requests SET client_note=NULL, client_note_at=NULL, client_note_seen_at=NULL, client_note_done_at=NULL, client_note_hidden=FALSE WHERE id=$1 RETURNING id`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     await logAdmin(req, note ? 'client_note_set' : 'client_note_clear', 'request', id, note ? 'ملاحظة للعميل في صفحة المشروع' : 'حذف ملاحظة العميل');
-    res.json({ ok: true });
+    const changed = note && (!prev || String(prev.client_note || '').trim() !== note);
+    if (changed && req.body.notify !== false) _notifyClientNote(id).catch(e => console.error('client-note notify:', e.message));
+    res.json({ ok: true, notified: !!(changed && req.body.notify !== false) });
   } catch(e) { console.error('client-note:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // اقتراح قيمة العقد لإنشاء سعي يدوي: العرض المقبول (لو إجمالي ومنطقي) ← متوسط العروض الإجمالية ← ميزانية العميل

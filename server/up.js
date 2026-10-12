@@ -95,6 +95,57 @@
   }catch(e){}
 })();
 
+/* مناقصة — النسخة الجديدة توصل للكل
+   الجوال (والتطبيق) يرجّع الصفحة من الذاكرة لما تفتحه بعد ساعات، فيشوف نسخة قديمة.
+   هنا: لما ترجع للصفحة بعد غياب، نشيّك على السيرفر — لو فيه نسخة أحدث نحدّث الصفحة تلقائياً (إذا ما كان يكتب شي). */
+(function(){
+  if (window.__mqBuild) return; window.__mqBuild = true;
+  var W = window, D = document, mine = null, hiddenAt = 0, busy = false;
+  function get(cb){ try { fetch('/api/build', { cache: 'no-store', credentials: 'same-origin' }).then(function(r){ return r.ok ? r.json() : null; }).then(function(d){ cb(d && d.b); }).catch(function(){ cb(null); }); } catch(e){ cb(null); } }
+  function typing(){
+    var a = D.activeElement; if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && a.type !== 'checkbox' && a.type !== 'radio') return true;
+    var t = D.querySelectorAll('textarea'); for (var i = 0; i < t.length; i++) if (t[i].value && t[i].value.trim().length > 2 && t[i].offsetParent) return true;
+    return /\/(new|auth|payment)\.html$/.test(location.pathname); // نماذج طويلة: ما نحدّث تلقائياً
+  }
+  function check(){
+    if (busy || !mine) return; busy = true;
+    get(function(b){ busy = false; if (!b || b === mine) return;
+      if (typing()) { mine = b; return; } // نتركها هالمرة — بتتحدث في الفتحة الجاية
+      try { sessionStorage.setItem('mq_build_rl', String(Date.now())); } catch(e){}
+      location.reload();
+    });
+  }
+  function start(){ get(function(b){ mine = b; }); }
+  if (D.readyState === 'complete') setTimeout(start, 1500); else W.addEventListener('load', function(){ setTimeout(start, 1500); });
+  D.addEventListener('visibilitychange', function(){
+    if (D.hidden) { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 60000) check();
+  });
+  // رجوع للصفحة من ذاكرة المتصفح (زر الرجوع / فتح التبويب من جديد)
+  W.addEventListener('pageshow', function(e){ if (e.persisted) { if (!mine) start(); else check(); } });
+  // الصفحات اللي تبقى مفتوحة طويل: نشيّك كل 30 دقيقة لو الصفحة ظاهرة وما فيه كتابة
+  setInterval(function(){ if (!D.hidden) check(); }, 1800000);
+})();
+
+/* مناقصة — زر «رجوع» ما يعلق أبداً
+   لو الصفحة انفتحت في تبويب جديد (أو قبلها خطوات داخلية) history.back() ما يسوي شي → بعد لحظة نوديه للصفحة اللي جا منها أو الرئيسية */
+(function(){
+  if (window.__mqRawBack) return;
+  var W = window, H = W.history, raw = H.back.bind(H), t = null;
+  W.__mqRawBack = raw;
+  function cancel(){ if (t) { clearTimeout(t); t = null; } }
+  W.addEventListener('pagehide', cancel); W.addEventListener('beforeunload', cancel); W.addEventListener('popstate', cancel, true); W.addEventListener('hashchange', cancel);
+  H.back = function(){
+    cancel();
+    var here = location.href;
+    t = setTimeout(function(){ t = null; if (location.href !== here) return;
+      var r = document.referrer || '', same = r && r.indexOf(location.origin) === 0 && r.split('#')[0] !== here.split('#')[0];
+      location.href = same ? r : '/';
+    }, 700);
+    return raw();
+  };
+})();
+
 /* مناقصة — زر الرجوع يقفل النوافذ المنبثقة
    أي نافذة تنفتح فوق الصفحة (تفاصيل مشروع، تقييم، تأكيد، معرض صور…) تنقفل بزر الرجوع في الجوال/المتصفح
    بدل ما يطلع من الصفحة أو يغيّر القسم اللي تحتها. */
@@ -110,13 +161,13 @@
   function release(e){
     var i = stack.indexOf(e); if (i < 0) return; stack.splice(i, 1);
     // نرجع خطوة بس إذا آخر شي في السجل هو حقنا (لو الصفحة انتقلت لقسم ثاني نخليه)
-    if (history.state && history.state.mqb === e.id) { skip++; try { history.back(); } catch(_){ skip--; } }
+    if (history.state && history.state.mqb === e.id) { skip++; try { (W.__mqRawBack || history.back.bind(history))(); } catch(_){ skip--; } }
   }
   W.addEventListener('popstate', function(ev){
     if (skip > 0) { skip--; ev.stopImmediatePropagation(); return; }
     if (stack.length) { var e = stack.pop(); ev.stopImmediatePropagation(); try { e.close(); } catch(_){} return; }
     // وصلنا لخطوة قديمة حقتنا (النافذة انقفلت بطريقة ثانية) → نكمل رجوع
-    if (ev.state && ev.state.mqb) { ev.stopImmediatePropagation(); try { history.back(); } catch(_){} }
+    if (ev.state && ev.state.mqb) { ev.stopImmediatePropagation(); try { (W.__mqRawBack || history.back.bind(history))(); } catch(_){} }
   }, true);
   function drop(e){ var i = stack.indexOf(e); if (i >= 0) stack.splice(i, 1); } // انقفلت لأنه انتقل لصفحة/قسم ثاني: نخلي السجل
   W.mqBack = { push: push, release: release, drop: drop };

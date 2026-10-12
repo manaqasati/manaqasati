@@ -2047,6 +2047,7 @@ function _nfKind(t){
   if(t==='message'||t==='admin_message')return {g:'messages',i:'chat',c:'#1d4ed8',b:'#dbeafe'};
   if(t==='review'||t==='review_reply')return {g:'projects',i:'star',c:'#b45309',b:'#fef3c7'};
   if(t==='new_question'||t==='question_answered')return {g:'projects',i:'q',c:'#0369a1',b:'#e0f2fe'};
+  if(t==='client_note')return {g:'projects',i:'q',c:'#b45309',b:'#fef3c7'};
   if(t==='request'||t==='new_request'||t==='request_published'||t==='request_closed')return {g:'projects',i:'doc',c:'#6d28d9',b:'#ede9fe'};
   if(t==='reminder'||t==='saai')return {g:'system',i:'clock',c:'#b45309',b:'#fef3c7'};
   return {g:'system',i:'shield',c:'#475569',b:'#f1f5f9'};
