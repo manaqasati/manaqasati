@@ -1663,8 +1663,9 @@ async function _verifyCode(uid){
 function _codeBox(code){ return code ? `<p style="text-align:center;margin:18px 0 6px;color:#475569">أو اكتب هذا الرمز في المنصة:</p><p style="text-align:center;font-size:30px;font-weight:900;letter-spacing:8px;color:#1e3a8a;margin:0 0 6px;direction:ltr">${code}</p><p style="text-align:center;font-size:12px;color:#94a3b8;margin:0">الرمز صالح 24 ساعة</p>` : ''; }
 function eEsc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
-function emailTpl(title, body, btnText, btnUrl) {
+function emailTpl(title, body, btnText, btnUrl, opts) {
   const year = new Date().getFullYear();
+  const noApp = !!(opts && opts.noApp) || /كلمة المرور|تنبيه: تغيّر|حذف الحساب/.test(String(title||''));
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>
 <body style="margin:0;padding:0;background:#eef2f7;font-family:Tahoma,Arial,sans-serif;direction:rtl;-webkit-font-smoothing:antialiased">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0">${title} — منصة مناقصة</div>
@@ -1687,9 +1688,25 @@ function emailTpl(title, body, btnText, btnUrl) {
             <div style="font-size:19px;font-weight:800;color:#0F172A;margin-bottom:6px">${title}</div>
             <div style="width:46px;height:3px;background:#1d4ed8;border-radius:2px;margin-bottom:20px"></div>
             <div style="font-size:14.5px;color:#374151;line-height:1.95">${body}</div>
-            ${btnText && btnUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td style="border-radius:11px;background:linear-gradient(135deg,#1d4ed8,#1e3a8a)"><a href="${btnUrl}" style="display:inline-block;color:#fff;padding:15px 46px;border-radius:11px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:.3px">${btnText}</a></td></tr></table>` : ''}
+            ${btnText && btnUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td bgcolor="#1d4ed8" style="border-radius:11px;background-color:#1d4ed8;background:linear-gradient(135deg,#1d4ed8,#1e3a8a)"><a href="${btnUrl}" style="display:inline-block;background-color:#1d4ed8;color:#ffffff;padding:15px 46px;border-radius:11px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:.3px">${btnText}</a></td></tr></table>` : ''}
           </td></tr></table>
         </td></tr>
+        <!-- App -->
+        ${noApp ? '' : `<tr><td style="padding:4px 22px 26px">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#0f2544" style="background-color:#0f2544;border-radius:16px"><tr><td style="padding:22px 20px 20px">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td width="60" valign="top" style="padding-left:12px"><img src="${SITE_URL}/icon-192.png" width="56" height="56" alt="مناقصة" style="display:block;border-radius:14px;border:0"></td>
+              <td valign="middle" style="text-align:right">
+                <div style="font-size:18px;font-weight:900;color:#ffffff;line-height:1.4">حمّل تطبيق مناقصة</div>
+                <div style="font-size:13px;color:#a9bde3;font-weight:700;line-height:1.6">تابع مشروعك وعروضك أول بأول من جوالك</div>
+              </td></tr></table>
+            <table role="presentation" dir="rtl" width="100%" cellpadding="0" cellspacing="0" style="margin:12px 0 16px"><tr><td width="22" valign="top" style="color:#4ade80;font-weight:900;font-size:14px;line-height:2">✓</td><td style="font-size:13.5px;color:#dbe6ff;line-height:2;text-align:right">إشعار فوري مع كل عرض أو رسالة جديدة</td></tr><tr><td width="22" valign="top" style="color:#4ade80;font-weight:900;font-size:14px;line-height:2">✓</td><td style="font-size:13.5px;color:#dbe6ff;line-height:2;text-align:right">قارن العروض وكلّم المزوّدين بضغطة</td></tr><tr><td width="22" valign="top" style="color:#4ade80;font-weight:900;font-size:14px;line-height:2">✓</td><td style="font-size:13.5px;color:#dbe6ff;line-height:2;text-align:right">مجاني على iPhone و Android</td></tr></table>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+              <td width="50%" style="padding-left:5px"><a href="${SITE_URL}/app/go?os=ios&amp;src=email" style="display:block;background-color:#ffffff;color:#0f2544;text-decoration:none;text-align:center;border-radius:12px;padding:12px 6px;font-size:14px;font-weight:900;line-height:1.3"><span style="font-size:10.5px;font-weight:700;color:#55688a;display:block">حمّله من</span>App Store</a></td>
+              <td width="50%" style="padding-right:5px"><a href="${SITE_URL}/app/go?os=android&amp;src=email" style="display:block;background-color:#ffffff;color:#0f2544;text-decoration:none;text-align:center;border-radius:12px;padding:12px 6px;font-size:14px;font-weight:900;line-height:1.3"><span style="font-size:10.5px;font-weight:700;color:#55688a;display:block">حمّله من</span>Google Play</a></td>
+            </tr></table>
+          </td></tr></table>
+        </td></tr>`}
         <!-- Divider -->
         <tr><td style="padding:0 30px"><div style="height:1px;background:#E8EAED"></div></td></tr>
         <!-- Footer -->
@@ -1698,11 +1715,7 @@ function emailTpl(title, body, btnText, btnUrl) {
           <div style="font-size:11.5px;color:#94a3b8;line-height:1.8">تربط أصحاب المشاريع بأفضل المزودين<br>
             <a href="https://manaqasa.com" style="color:#1d4ed8;text-decoration:none;font-weight:700">manaqasa.com</a>
           </div>
-          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px auto 0"><tr><td style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:12px 16px;text-align:center">
-            <div style="font-size:12.5px;font-weight:800;color:#1e3a8a;margin-bottom:8px">📱 لا تفوّت شي — حمّل تطبيق مناقصة وتوصلك الإشعارات على جوالك</div>
-            <a href="${SITE_URL}/app/go?os=ios&amp;src=email" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;font-size:12px;font-weight:800;padding:8px 14px;border-radius:9px;margin:2px">App Store</a>
-            <a href="${SITE_URL}/app/go?os=android&amp;src=email" style="display:inline-block;background:#0f172a;color:#fff;text-decoration:none;font-size:12px;font-weight:800;padding:8px 14px;border-radius:9px;margin:2px">Google Play</a>
-          </td></tr></table>
+
           <div style="margin-top:14px;font-size:10.5px;color:#b8c0cc">© ${year} منصة مناقصة — جميع الحقوق محفوظة</div>
         </td></tr>
       </table>
