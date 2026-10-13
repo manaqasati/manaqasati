@@ -742,3 +742,12 @@
   }
   if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', go); else go();
 })();
+/* ── صورة ما تحمّلت: نخفيها بدل أيقونة الصورة المكسورة ── */
+(function(){
+  if (window.__mqImgErr) return; window.__mqImgErr = true;
+  document.addEventListener('error', function(e){
+    var t = e.target;
+    if (!t || t.tagName !== 'IMG' || t.hasAttribute('data-keep')) return;
+    t.style.visibility = 'hidden';
+  }, true);
+})();

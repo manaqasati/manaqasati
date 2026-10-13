@@ -244,7 +244,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '10'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '11'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
@@ -4352,7 +4352,7 @@ app.get('/api/requests', async (req, res) => {
 
 app.get('/api/requests/my', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.review_notes,r.client_note,r.client_note_at,r.client_note_done_at,r.client_note_hidden,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0) as min_bid,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC`, [req.user.id]);
+    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.review_notes,r.client_note,r.client_note_at,r.client_note_done_at,r.client_note_hidden,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0) as min_bid,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail,(COALESCE(array_length(r.images,1),0)>0 OR (jsonb_typeof(r.attachments)='array' AND jsonb_array_length(r.attachments)>0)) as has_att FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC`, [req.user.id]);
     res.json(r.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
   } catch(e) { console.error('/requests/my:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });

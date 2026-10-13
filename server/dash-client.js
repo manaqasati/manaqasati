@@ -924,12 +924,74 @@ function renderBestOffer(all){
 // ═══════════════════════════════════
 // LOAD REQUESTS
 // ═══════════════════════════════════
+// ═══ صفحة «مشاريعي»: تبويبات + بطاقة بمراحل والخطوة الجاية ═══
+var _rpTab='all', _rpAll=[];
+var _RP_PLAN=['بناء','تشطيبات ومقاولات عامة','تصاميم داخلي وخارجي','مكاتب هندسية','ترميم مبانٍ'];
+function _rpGrp(s){
+  if(s==='pending_review'||s==='review'||s==='needs_edit')return 'rev';
+  if(s==='open')return 'open';
+  if(s==='in_progress')return 'prog';
+  return 'done';
+}
+function _rpRender(all){
+  _rpAll=all||[];
+  var el=document.getElementById('all-reqs'); if(!el)return;
+  if(!_rpAll.length){ el.innerHTML=emptyReqsH(); return; }
+  var c={all:_rpAll.length,rev:0,open:0,prog:0,done:0};
+  _rpAll.forEach(function(r){ c[_rpGrp(r.status)]++; });
+  if(_rpTab!=='all'&&!c[_rpTab])_rpTab='all';
+  var T=[['all','الكل'],['rev','تحت المراجعة'],['open','يستقبل عروض'],['prog','قيد التنفيذ'],['done','منتهية']];
+  var h='<div class="rp-tabs" role="tablist">'+T.filter(function(t){return t[0]==='all'||c[t[0]];}).map(function(t){
+    return '<button type="button" role="tab" class="rp-tb'+(_rpTab===t[0]?' on':'')+'" onclick="_rpSet(\''+t[0]+'\')">'+t[1]+' <i>'+c[t[0]]+'</i></button>';
+  }).join('')+'</div>';
+  var L=_rpAll.filter(function(r){ return _rpTab==='all'||_rpGrp(r.status)===_rpTab; });
+  h+='<div class="rp-list">'+L.map(_rpCard).join('')+'</div>';
+  el.innerHTML=h;
+}
+function _rpPlan(id,e){ openEditReq(id,e); setTimeout(function(){ var i=document.getElementById('e-att-input'); var bx=i&&i.closest('.up-box'); if(bx){ bx.scrollIntoView({behavior:'smooth',block:'center'}); bx.classList.remove('flash'); void bx.offsetWidth; bx.classList.add('flash'); } },450); }
+function _rpSet(t){ _rpTab=t; _rpRender(_rpAll); try{ scanQuestions(_rpAll,false); }catch(e){} }
+function _rpCard(r){
+  var s=r.status, g=_rpGrp(s), nedit=s==='needs_edit', rej=s==='rejected', N='مشروعك';
+  var bids=parseInt(r.bid_count)||0, unseen=0;
+  try{ unseen=Math.max(0,bids-(parseInt(_getOffSeen()[r.id])||0)); }catch(e){}
+  var pill=nedit?['مطلوب تعديل','#fee2e2','#b91c1c']:rej?['مرفوض','#fee2e2','#b91c1c']:{rev:['تحت المراجعة','#fef3c7','#92400e'],open:['يستقبل عروض','#dcfce7','#15803d'],prog:['قيد التنفيذ','#dbeafe','#1d4ed8'],done:['مكتمل','#e0e7ff','#3730a3']}[g];
+  if(g==='done'&&!rej&&s!=='completed'&&s!=='done')pill=['منتهي','#f1f5f9','#475569'];
+  // المراحل: نُشر · مراجعة · عروض · تنفيذ · اكتمل
+  var stepIx={rev:1,open:2,prog:3,done:5}[g]; if(rej)stepIx=-1;
+  var steps='';
+  if(stepIx>=0){
+    var nm=['نُشر','مراجعة','عروض','تنفيذ','اكتمل'];
+    steps='<div class="rp-steps">'+nm.map(function(x,i){ var cl=i<stepIx?'on':(i===stepIx?(nedit?'bad':'now'):''); return '<span class="'+cl+'"></span>'; }).join('')+'</div>'
+      +'<div class="rp-sl">'+nm.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div>';
+  }
+  // الخطوة الجاية + زر
+  var ic='', tx='', bt='';
+  var B=function(lbl,fn,cls){ return '<button type="button" class="rp-bt '+(cls||'')+'" onclick="event.stopPropagation();'+fn+'">'+lbl+'</button>'; };
+  var needPlan=_RP_PLAN.indexOf(r.category)>=0 && !r.has_att;
+  if(nedit){ ic='⚠️'; tx='<b>الإدارة طلبت تعديل</b>'+(r.review_notes?' — '+esc(String(r.review_notes).slice(0,90)):''); bt=B('عدّل الحين','openEditReq('+r.id+',event)','red'); }
+  else if(rej){ ic='✕'; tx=N+' ما انقبل'+(r.review_notes?' — '+esc(String(r.review_notes).slice(0,90)):''); bt=B('التفاصيل','openDetail('+r.id+',event)','ghost'); }
+  else if(g==='rev'&&needPlan){ ic='📐'; tx='نراجعه خلال ساعات — <b>أرفق المخطط</b> عشان تجيك أسعار دقيقة'; bt=B('أرفق المخطط','_rpPlan('+r.id+',event)','amber'); }
+  else if(g==='rev'){ ic='🕒'; tx='نراجعه خلال ساعات ونبلغك أول ما يُنشر'; }
+  else if(g==='open'&&bids>0){ ic='💬'; tx='<b class="rp-blue">'+bids+' '+(bids===1?'عرض':(bids<=10?'عروض':'عرض'))+'</b>'+(unseen>0?' — '+unseen+' '+(unseen===1?'جديد ما شفته':'جديدة ما شفتها'):''); bt=B('قارن العروض','openDetail('+r.id+',event)','blue'); }
+  else if(g==='open'){ ic='⏳'; tx='ننتظر أول عرض'+(needPlan?' — <b>أرفق المخطط</b> عشان تجيك عروض أسرع':''); bt=needPlan?B('أرفق المخطط','_rpPlan('+r.id+',event)','amber'):B('أضف تفاصيل','openEditReq('+r.id+',event)','ghost'); }
+  else if(g==='prog'){ ic='🔨'; tx='الشغل جاري'+(r.provider_name?' مع <b>'+esc(r.provider_name)+'</b>':'')+' — أكّد الإتمام إذا خلص'; bt=B('تابع','openDetail('+r.id+',event)','blue'); }
+  else { ic='✓'; tx=(s==='completed'||s==='done')?('اكتمل'+(r.provider_name?' مع <b>'+esc(r.provider_name)+'</b>':'')+' — قيّم الشغل'):(N+' انتهى'); bt=B((s==='completed'||s==='done')?'قيّم':'التفاصيل','openDetail('+r.id+',event)','ghost'); }
+  var th=r.thumbnail?'<img loading="lazy" src="'+esc(r.thumbnail)+'" alt="">':catSvg(r.category,26);
+  return '<div class="rp-cd'+(g==='done'?' dim':'')+'" onclick="openDetail('+r.id+',event)">'
+    +'<div class="rp-top"><div class="rp-th g-'+g+'">'+th+'</div>'
+    +'<div class="rp-tt"><b>'+esc(r.title||'')+'</b><div class="rp-mt">'+(r.category?'<span>'+esc(r.category)+'</span>':'')+(r.city?'<span>'+esc(r.city)+'</span>':'')+'<span>'+timeAgo(r.created_at)+'</span></div></div>'
+    +'<span class="rp-pill" style="background:'+pill[1]+';color:'+pill[2]+'">'+pill[0]+'</span></div>'
+    +steps
+    +'<div class="rp-nx'+(nedit||rej?' bad':'')+'"><span class="rp-ic">'+ic+'</span><span class="rp-tx">'+tx+'</span>'+bt+'</div>'
+    +'<div class="hzp-qbadge" data-qid="'+r.id+'" style="display:none"></div>'
+  +'</div>';
+}
 function loadReqs(){
   var el=document.getElementById('all-reqs');
   if(el)el.innerHTML=_skCards(5);
   jFetch('/api/requests/my').then(function(all){
     if(!Array.isArray(all)){if(el)el.innerHTML=errH(loadReqs);return;}
-    if(el)el.innerHTML=all.length?all.map(function(r){return riCard(r,true);}).join(''):emptyReqsH();
+    _rpRender(all);
     scanQuestions(all,false);
   }).catch(function(){if(el)el.innerHTML=errH(loadReqs);});
 }
@@ -3017,7 +3079,7 @@ function _nfPaintC(){ var el=document.getElementById('notifs-list'); if(!el)retu
 function _nfSet(k){ _nfFilter=k; _nfPaintC(); }
 function loadNotifs(){
   var el=document.getElementById('notifs-list');if(!el)return;
-  if(!_nfList.length) el.innerHTML='<div class="loading">جاري التحميل...</div>';
+  if(!(_nfList&&_nfList.length)) el.innerHTML='<div class="loading">جاري التحميل...</div>';
   fetch(API+'/api/notifications',hdr()).then(function(r){return r.ok?r.json():[];}).then(function(ns){
     _nfList=Array.isArray(ns)?ns:(ns&&ns.data)?ns.data:[]; _nfPaintC();
   }).catch(function(){if(el)el.innerHTML=errH(loadNotifs);});
