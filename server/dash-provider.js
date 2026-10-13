@@ -1225,19 +1225,23 @@ function _renderBids(list){
     // الخطوة الجاية
     if(_wn&&!isAcc){ h+='<div class="rp-nx bad"><span class="rp-ic">✏️</span><span class="rp-tx"><b>العرض يحتاج تعديل</b> — اذكر تفاصيل من وصف المشروع نفسه</span><button type="button" class="rp-bt red" onclick="_editBidById('+(parseInt(b.id)||0)+')">عدّل العرض</button></div>'; }
     else if(isAcc){
-      h+='<div class="rp-nx"><span class="rp-ic">🔨</span><span class="rp-tx">'+(rs==='completed'?'المشروع مكتمل':'اعتمدك '+_esc(b.client_name||'العميل')+' — تواصل وابدأ')+'</span>'+(wa?'<a class="rp-bt wa" href="'+wa+'" target="_blank" rel="noopener">'+WA+' واتساب</a>':'')+'</div>';
+      h+='<div class="rp-nx"><span class="rp-ic">🔨</span><span class="rp-tx">'+(rs==='completed'?'المشروع مكتمل':'اعتمدك '+_esc(b.client_name||'العميل')+' — تواصل وابدأ')+'</span></div>';
       if(proj&&typeof _clmProjHtml==='function')h+=_clmProjHtml(proj);
     }
     else if(!isRej&&!isHeld&&!isHRej){
-      if(wa) h+='<div class="rp-nx"><span class="rp-ic">'+(b.seen_at?'👁':'📨')+'</span><span class="rp-tx">'+(b.seen_at?'العميل شاف عرضك':'العميل ما شاف عرضك للحين')+' — كلّمه واتساب</span><a class="rp-bt wa" href="'+wa+'" target="_blank" rel="noopener">'+WA+' واتساب</a></div>';
+      if(wa) h+='<div class="rp-nx"><span class="rp-ic">'+(b.seen_at?'👁':'📨')+'</span><span class="rp-tx">'+(b.seen_at?'العميل شاف عرضك':'العميل ما شاف عرضك للحين')+' — كلّمه واتساب من الزر تحت</span></div>';
       else h+='<div class="rp-nx"><span class="rp-ic">🔒</span><span class="rp-tx">رقم العميل يظهر لما يكون عرضك فيه سعر ووصف واضح (25 حرف أو أكثر) أو مرفق</span><button type="button" class="rp-bt ghost" onclick="_editBidById('+(parseInt(b.id)||0)+')">كمّل العرض</button></div>';
     }
     h+=_askBlock(b);
     if(b.note)h+='<div class="wk-note"><div class="wk-nt fmt-text">'+fmtText(b.note)+'</div><button type="button" class="wk-more" onclick="var n=this.previousElementSibling;n.classList.toggle(&quot;open&quot;);this.textContent=n.classList.contains(&quot;open&quot;)?&quot;أخفِ ‹&quot;:&quot;اقرأ رسالة العرض ‹&quot;">اقرأ رسالة العرض ‹</button></div>';
-    h+='<div class="wk-ft"><button type="button" onclick="_viewProj('+b.request_id+')" class="rp-lk pri">المشروع</button>';
-    if(b.client_id)h+='<button type="button" class="_bchat rp-lk" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'">محادثة</button>';
-    if(tel&&!isRej)h+='<a class="rp-lk" href="'+tel+'">اتصال</a>';
-    if(!isAcc&&!isRej)h+='<button type="button" onclick="_editBidById('+(parseInt(b.id)||0)+')" class="rp-lk">تعديل العرض</button>';
+    // أزرار واضحة بأيقونات: واتساب · اتصال · محادثة · المشروع · تعديل
+    var I=function(p){return '<svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'+p+'</svg>';};
+    h+='<div class="wk-ft">';
+    if(wa&&!isRej)h+='<a class="wk-b wa" href="'+wa+'" target="_blank" rel="noopener">'+WA.replace('width="15" height="15"','width="19" height="19"')+'<span>واتساب</span></a>';
+    if(tel&&!isRej)h+='<a class="wk-b" href="'+tel+'">'+I('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>')+'<span>اتصال</span></a>';
+    if(b.client_id)h+='<button type="button" class="_bchat wk-b" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'">'+I('<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>')+'<span>محادثة</span></button>';
+    h+='<button type="button" class="wk-b" onclick="_viewProj('+b.request_id+')">'+I('<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>')+'<span>المشروع</span></button>';
+    if(!isAcc&&!isRej)h+='<button type="button" class="wk-b" onclick="_editBidById('+(parseInt(b.id)||0)+')">'+I('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>')+'<span>تعديل</span></button>';
     h+='</div></div>';
     return h;
   }).join('');

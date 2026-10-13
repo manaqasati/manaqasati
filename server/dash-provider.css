@@ -699,3 +699,9 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-theme="dark"] .wk-tip{background:rgba(234,88,12,.1);border-color:rgba(234,88,12,.35);color:#fdba74}
 [data-theme="dark"] .pb-done{background:rgba(22,163,74,.12);border-color:rgba(22,163,74,.4);color:#86efac}
 @media(min-width:900px){#page-browse .pb-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}
+
+.wk-ft{display:flex;gap:8px;border-top:0;margin:2px 0 0;padding:0;flex-wrap:nowrap}
+.wk-b{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1.5px solid var(--border);background:var(--white);color:var(--p);border-radius:13px;padding:9px 4px;min-height:58px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:11.5px;cursor:pointer;text-decoration:none;line-height:1.2;text-align:center}
+.wk-b span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.wk-b:hover{border-color:var(--p-mid);background:var(--p-light)}
+.wk-b.wa{background:#16a34a;border-color:#16a34a;color:#fff}.wk-b.wa:hover{background:#15803d}
