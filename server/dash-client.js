@@ -1802,15 +1802,19 @@ function _fErr(id,txt){
     el.addEventListener('input',clr); el.addEventListener('change',clr); }
 }
 function _fErrClear(){ ['n-title','n-desc','n-city'].forEach(function(id){ var el=document.getElementById(id); if(el)el.classList.remove('f-err'); var m=document.getElementById('fe-'+id); if(m)m.style.display='none'; }); }
-// نافذة سؤال داخل الموقع — ترجع true لو ضغط الزر الأساسي
+// نافذة سؤال داخل الموقع — o.btns=[{id,t,cls}] وترجع id الزر (أو null لو قفلها)
 function _mqAsk(o){
   return new Promise(function(res){
     var w=document.createElement('div'); w.className='mq-ask';
-    w.innerHTML='<div class="box" role="dialog"><div class="ic">'+(o.icon||'💡')+'</div><h4></h4><p></p><div class="bt"><button class="ok"></button><button class="no"></button></div></div>';
-    w.querySelector('h4').textContent=o.title||''; w.querySelector('p').textContent=o.body||'';
-    w.querySelector('.ok').textContent=o.ok||'تمام'; w.querySelector('.no').textContent=o.no||'إلغاء';
+    var btns=o.btns||[{id:true,t:o.ok||'تمام',cls:'ok'},{id:false,t:o.no||'إلغاء'}];
+    w.innerHTML='<div class="box" role="dialog"><div class="ic"></div><h4></h4><p></p><ul class="li"></ul><div class="bt"></div></div>';
+    w.querySelector('.ic').textContent=o.icon||'💡';
+    w.querySelector('h4').textContent=o.title||'';
+    var p=w.querySelector('p'); if(o.body)p.textContent=o.body; else p.style.display='none';
+    var ul=w.querySelector('.li'); (o.items||[]).forEach(function(it){ var li=document.createElement('li'); li.innerHTML='<span class="i"></span><span><b></b><small></small></span>'; li.querySelector('.i').textContent=it.i; li.querySelector('b').textContent=it.t; li.querySelector('small').textContent=it.s||''; ul.appendChild(li); });
+    if(!(o.items||[]).length)ul.style.display='none';
     var done=function(v){ if(!w.parentNode)return; w.parentNode.removeChild(w); res(v); };
-    w.querySelector('.ok').onclick=function(){done(true);}; w.querySelector('.no').onclick=function(){done(false);};
+    var bt=w.querySelector('.bt'); btns.forEach(function(b){ var x=document.createElement('button'); x.textContent=b.t; if(b.cls)x.className=b.cls; x.onclick=function(){done(b.id);}; bt.appendChild(x); });
     w.onclick=function(e){ if(e.target===w)done(null); };
     document.body.appendChild(w);
   });
@@ -1845,18 +1849,18 @@ function submitReq(){
   var _PLAN_CATS=['بناء','تشطيبات ومقاولات عامة','تصاميم داخلي وخارجي','مكاتب هندسية','ترميم مبانٍ'];
   var _hasAtt=((window._reqFiles||[]).length+(window._reqImages||[]).length)>0;
   var _needPlan=_PLAN_CATS.indexOf(cat)>=0 && !_hasAtt;
-  Promise.resolve(desc.length>=40 || _mqAsk({icon:'✍️',title:'وصف مشروعك مختصر',body:'كل ما زادت التفاصيل (المطلوب بالضبط، الكمية أو المساحة، المواصفات) جاءتك عروض أدق وأسرع.',ok:'أكمل الوصف',no:'انشر كذا'}).then(function(v){
-    if(v===true){ var d=document.getElementById('n-desc'); if(d){ d.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(function(){try{d.focus({preventScroll:true});}catch(e){}},350); } return false; }
-    return v===false; }))
-  .then(function(go){
-    if(!go)return false;
-    if(!_needPlan)return true;
-    // بوابة المخطط: مشاريع البناء/التشطيب تحتاج مخططاً لدقّة العروض
-    return _mqAsk({icon:'📐',title:'أرفق المخطط عشان تجيك أسعار دقيقة',body:'مشاريع «'+cat+'» يحتاج فيها المنفذ يشوف المخطط. بدونه تجيك أسعار تقريبية وممكن تتغير وقت التنفيذ.',ok:'📐 أرفق المخطط الحين',no:'انشر بدون مخطط'}).then(function(v){
-      if(v===true){ var p=document.getElementById('n-plans'); if(p){ var bx=p.closest('.up-box'); if(bx){ bx.scrollIntoView({behavior:'smooth',block:'center'}); bx.classList.remove('flash'); void bx.offsetWidth; bx.classList.add('flash'); } p.click(); } return false; }
-      return v===false; });
-  })
-  .then(function(go){ if(go)_openAgree(); });
+  var _shortDesc=desc.length<40;
+  if(!_needPlan && !_shortDesc){ _openAgree(); return; }
+  // نافذة وحدة تجمع اللي ناقص (المخطط أولاً لأنه الأهم للأسعار)
+  var items=[], btns=[];
+  if(_needPlan){ items.push({i:'📐',t:'ما أرفقت المخطط',s:'مشاريع «'+cat+'» يحتاج فيها المنفذ يشوف المخطط عشان يعطيك سعر دقيق — بدونه تجيك أسعار تقريبية وممكن تتغير وقت التنفيذ.'}); btns.push({id:'plan',t:'📐 أرفق المخطط الحين',cls:'ok'}); }
+  if(_shortDesc){ items.push({i:'✍️',t:'وصف مشروعك مختصر',s:'اكتب المطلوب بالضبط، والكمية أو المساحة، والمواصفات.'}); btns.push({id:'desc',t:'✍️ أكمل الوصف',cls:_needPlan?'':'ok'}); }
+  btns.push({id:'go',t:'انشر كذا',cls:'ghost'});
+  _mqAsk({icon:_needPlan?'📐':'✍️',title:items.length>1?'قبل ما تنشر — مشروعك ناقصه شيئين':'قبل ما تنشر',items:items,btns:btns}).then(function(v){
+    if(v==='plan'){ var p=document.getElementById('n-plans'); if(p){ var bx=p.closest('.up-box'); if(bx){ bx.scrollIntoView({behavior:'smooth',block:'center'}); bx.classList.remove('flash'); void bx.offsetWidth; bx.classList.add('flash'); } p.click(); } return; }
+    if(v==='desc'){ var d=document.getElementById('n-desc'); if(d){ d.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(function(){try{d.focus({preventScroll:true});}catch(e){}},350); } return; }
+    if(v==='go')_openAgree();
+  });
 }
 function _openAgree(){
   // افتح اتفاقية الرسوم قبل النشر

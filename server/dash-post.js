@@ -1131,15 +1131,19 @@ function _fErr(id,txt){
     el.addEventListener('input',clr); el.addEventListener('change',clr); }
 }
 function _fErrClear(){ ['n-title','n-desc','n-city'].forEach(function(id){ var el=document.getElementById(id); if(el)el.classList.remove('f-err'); var m=document.getElementById('fe-'+id); if(m)m.style.display='none'; }); }
-// نافذة سؤال داخل الموقع — ترجع true لو ضغط الزر الأساسي
+// نافذة سؤال داخل الموقع — o.btns=[{id,t,cls}] وترجع id الزر (أو null لو قفلها)
 function _mqAsk(o){
   return new Promise(function(res){
     var w=document.createElement('div'); w.className='mq-ask';
-    w.innerHTML='<div class="box" role="dialog"><div class="ic">'+(o.icon||'💡')+'</div><h4></h4><p></p><div class="bt"><button class="ok"></button><button class="no"></button></div></div>';
-    w.querySelector('h4').textContent=o.title||''; w.querySelector('p').textContent=o.body||'';
-    w.querySelector('.ok').textContent=o.ok||'تمام'; w.querySelector('.no').textContent=o.no||'إلغاء';
+    var btns=o.btns||[{id:true,t:o.ok||'تمام',cls:'ok'},{id:false,t:o.no||'إلغاء'}];
+    w.innerHTML='<div class="box" role="dialog"><div class="ic"></div><h4></h4><p></p><ul class="li"></ul><div class="bt"></div></div>';
+    w.querySelector('.ic').textContent=o.icon||'💡';
+    w.querySelector('h4').textContent=o.title||'';
+    var p=w.querySelector('p'); if(o.body)p.textContent=o.body; else p.style.display='none';
+    var ul=w.querySelector('.li'); (o.items||[]).forEach(function(it){ var li=document.createElement('li'); li.innerHTML='<span class="i"></span><span><b></b><small></small></span>'; li.querySelector('.i').textContent=it.i; li.querySelector('b').textContent=it.t; li.querySelector('small').textContent=it.s||''; ul.appendChild(li); });
+    if(!(o.items||[]).length)ul.style.display='none';
     var done=function(v){ if(!w.parentNode)return; w.parentNode.removeChild(w); res(v); };
-    w.querySelector('.ok').onclick=function(){done(true);}; w.querySelector('.no').onclick=function(){done(false);};
+    var bt=w.querySelector('.bt'); btns.forEach(function(b){ var x=document.createElement('button'); x.textContent=b.t; if(b.cls)x.className=b.cls; x.onclick=function(){done(b.id);}; bt.appendChild(x); });
     w.onclick=function(e){ if(e.target===w)done(null); };
     document.body.appendChild(w);
   });
