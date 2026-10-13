@@ -1131,6 +1131,28 @@ function _fErr(id,txt){
     el.addEventListener('input',clr); el.addEventListener('change',clr); }
 }
 function _fErrClear(){ ['n-title','n-desc','n-city'].forEach(function(id){ var el=document.getElementById(id); if(el)el.classList.remove('f-err'); var m=document.getElementById('fe-'+id); if(m)m.style.display='none'; }); }
+// نافذة سؤال داخل الموقع — ترجع true لو ضغط الزر الأساسي
+function _mqAsk(o){
+  return new Promise(function(res){
+    var w=document.createElement('div'); w.className='mq-ask';
+    w.innerHTML='<div class="box" role="dialog"><div class="ic">'+(o.icon||'💡')+'</div><h4></h4><p></p><div class="bt"><button class="ok"></button><button class="no"></button></div></div>';
+    w.querySelector('h4').textContent=o.title||''; w.querySelector('p').textContent=o.body||'';
+    w.querySelector('.ok').textContent=o.ok||'تمام'; w.querySelector('.no').textContent=o.no||'إلغاء';
+    var done=function(v){ if(!w.parentNode)return; w.parentNode.removeChild(w); res(v); };
+    w.querySelector('.ok').onclick=function(){done(true);}; w.querySelector('.no').onclick=function(){done(false);};
+    w.onclick=function(e){ if(e.target===w)done(null); };
+    document.body.appendChild(w);
+  });
+}
+// سحب وإفلات الملفات على صناديق الرفع
+(function(){
+  function on(e){ var b=e.target&&e.target.closest&&e.target.closest('.up-box'); return b; }
+  document.addEventListener('dragover',function(e){ var b=on(e); if(!b)return; e.preventDefault(); b.classList.add('drag'); });
+  document.addEventListener('dragleave',function(e){ var b=on(e); if(b)b.classList.remove('drag'); });
+  document.addEventListener('drop',function(e){ var b=on(e); if(!b)return; e.preventDefault(); b.classList.remove('drag');
+    var i=b.querySelector('input[type=file]'); if(!i||!e.dataTransfer||!e.dataTransfer.files.length)return;
+    try{ i.files=e.dataTransfer.files; i.dispatchEvent(new Event('change',{bubbles:true})); }catch(err){} });
+})();
 function submitReq(){
   var cat=document.getElementById('n-cat').value;
   var catOther=cat==='أخرى'?document.getElementById('n-cat-other').value.trim():'';

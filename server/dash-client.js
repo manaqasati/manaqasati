@@ -1802,6 +1802,28 @@ function _fErr(id,txt){
     el.addEventListener('input',clr); el.addEventListener('change',clr); }
 }
 function _fErrClear(){ ['n-title','n-desc','n-city'].forEach(function(id){ var el=document.getElementById(id); if(el)el.classList.remove('f-err'); var m=document.getElementById('fe-'+id); if(m)m.style.display='none'; }); }
+// نافذة سؤال داخل الموقع — ترجع true لو ضغط الزر الأساسي
+function _mqAsk(o){
+  return new Promise(function(res){
+    var w=document.createElement('div'); w.className='mq-ask';
+    w.innerHTML='<div class="box" role="dialog"><div class="ic">'+(o.icon||'💡')+'</div><h4></h4><p></p><div class="bt"><button class="ok"></button><button class="no"></button></div></div>';
+    w.querySelector('h4').textContent=o.title||''; w.querySelector('p').textContent=o.body||'';
+    w.querySelector('.ok').textContent=o.ok||'تمام'; w.querySelector('.no').textContent=o.no||'إلغاء';
+    var done=function(v){ if(!w.parentNode)return; w.parentNode.removeChild(w); res(v); };
+    w.querySelector('.ok').onclick=function(){done(true);}; w.querySelector('.no').onclick=function(){done(false);};
+    w.onclick=function(e){ if(e.target===w)done(null); };
+    document.body.appendChild(w);
+  });
+}
+// سحب وإفلات الملفات على صناديق الرفع
+(function(){
+  function on(e){ var b=e.target&&e.target.closest&&e.target.closest('.up-box'); return b; }
+  document.addEventListener('dragover',function(e){ var b=on(e); if(!b)return; e.preventDefault(); b.classList.add('drag'); });
+  document.addEventListener('dragleave',function(e){ var b=on(e); if(b)b.classList.remove('drag'); });
+  document.addEventListener('drop',function(e){ var b=on(e); if(!b)return; e.preventDefault(); b.classList.remove('drag');
+    var i=b.querySelector('input[type=file]'); if(!i||!e.dataTransfer||!e.dataTransfer.files.length)return;
+    try{ i.files=e.dataTransfer.files; i.dispatchEvent(new Event('change',{bubbles:true})); }catch(err){} });
+})();
 function submitReq(){
   var cat=document.getElementById('n-cat').value;
   var catOther=cat==='أخرى'?document.getElementById('n-cat-other').value.trim():'';
@@ -1820,13 +1842,23 @@ function submitReq(){
   if(err){if(msg){msg.textContent=err;msg.className='alert err';}return;}
   if(cityErr)cityErr.style.display='none';
   document.getElementById('n-city').style.borderColor='';
-  if(desc.length<40){ if(!confirm('وصف مشروعك مختصر — كل ما زادت التفاصيل جاءتك عروض أدق وأسرع. تبي ترسله الآن؟'))return; }
-  // بوابة المخطط: مشاريع البناء/التشطيب تحتاج مخططاً لدقّة العروض
   var _PLAN_CATS=['بناء','تشطيبات ومقاولات عامة','تصاميم داخلي وخارجي','مكاتب هندسية','ترميم مبانٍ'];
   var _hasAtt=((window._reqFiles||[]).length+(window._reqImages||[]).length)>0;
-  if(_PLAN_CATS.indexOf(cat)>=0 && !_hasAtt){
-    if(!confirm('📐 مشاريع «'+cat+'» تحتاج مخططاً ليقدّم المنفذون أسعاراً دقيقة.\n\nبدون مخطط ستصلك تقديرات تقريبية فقط، وقد تتغيّر الأسعار عند التنفيذ.\n\nننصحك بإرفاق المخطط الآن (زر «المخططات والملفات» بالأعلى).\n\nتبي تنشر المشروع بدون مخطط؟')) return;
-  }
+  var _needPlan=_PLAN_CATS.indexOf(cat)>=0 && !_hasAtt;
+  Promise.resolve(desc.length>=40 || _mqAsk({icon:'✍️',title:'وصف مشروعك مختصر',body:'كل ما زادت التفاصيل (المطلوب بالضبط، الكمية أو المساحة، المواصفات) جاءتك عروض أدق وأسرع.',ok:'أكمل الوصف',no:'انشر كذا'}).then(function(v){
+    if(v===true){ var d=document.getElementById('n-desc'); if(d){ d.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(function(){try{d.focus({preventScroll:true});}catch(e){}},350); } return false; }
+    return v===false; }))
+  .then(function(go){
+    if(!go)return false;
+    if(!_needPlan)return true;
+    // بوابة المخطط: مشاريع البناء/التشطيب تحتاج مخططاً لدقّة العروض
+    return _mqAsk({icon:'📐',title:'أرفق المخطط عشان تجيك أسعار دقيقة',body:'مشاريع «'+cat+'» يحتاج فيها المنفذ يشوف المخطط. بدونه تجيك أسعار تقريبية وممكن تتغير وقت التنفيذ.',ok:'📐 أرفق المخطط الحين',no:'انشر بدون مخطط'}).then(function(v){
+      if(v===true){ var p=document.getElementById('n-plans'); if(p){ var bx=p.closest('.up-box'); if(bx){ bx.scrollIntoView({behavior:'smooth',block:'center'}); bx.classList.remove('flash'); void bx.offsetWidth; bx.classList.add('flash'); } p.click(); } return false; }
+      return v===false; });
+  })
+  .then(function(go){ if(go)_openAgree(); });
+}
+function _openAgree(){
   // افتح اتفاقية الرسوم قبل النشر
   var ac=document.getElementById('agreeCheck');if(ac){ac.checked=false;}
   var ab=document.getElementById('agreeBtn');if(ab){ab.disabled=true;}

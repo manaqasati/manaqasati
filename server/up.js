@@ -705,3 +705,40 @@
   };
   W.mqOpenFile = open;
 })();
+/* ── حقل التاريخ: كروم بالعربي يكتب «يوم/شهر/سنة» بحروف مقلوبة — نخفيه ونكتب بداله «اختر التاريخ» ── */
+(function(){
+  var W = window, D = document;
+  if (W.__mqDate) return; W.__mqDate = true;
+  var st = D.createElement('style');
+  st.textContent = '.mq-dt{position:relative;display:block;width:100%}'
+    + '.mq-dt>.mq-dt-ph{display:none;position:absolute;top:50%;right:14px;transform:translateY(-50%);color:#94a3b8;pointer-events:none;font-size:14px;font-family:inherit;white-space:nowrap}'
+    + '.mq-dt.mq-dt-empty>.mq-dt-ph{display:block}'
+    + '.mq-dt.mq-dt-empty>input::-webkit-datetime-edit{color:transparent}'
+    + '.mq-dt.mq-dt-empty>input:focus::-webkit-datetime-edit{color:inherit}'
+    + '.mq-dt.mq-dt-empty>input:focus+.mq-dt-ph{display:none}';
+  (D.head || D.documentElement).appendChild(st);
+  // بس حقول النماذج الكاملة العرض (ما نلمس فلاتر التواريخ الصغيرة في لوحة الإدارة)
+  var SEL = 'input[type=date]#n-deadline,input[type=date]#e-deadline,input[type=date][data-mqdt]';
+  var desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  function fix(inp){
+    if (inp.__mqdt || !inp.parentNode) return; inp.__mqdt = 1;
+    var w = D.createElement('span'); w.className = 'mq-dt';
+    inp.parentNode.insertBefore(w, inp); w.appendChild(inp);
+    var ph = D.createElement('span'); ph.className = 'mq-dt-ph';
+    ph.textContent = inp.getAttribute('placeholder') || 'اختر التاريخ'; w.appendChild(ph);
+    // الأيقونة تكون يمين لو الحقل ltr، فنبعد النص عنها
+    function side(){ try { ph.style.right = (W.getComputedStyle(inp).direction === 'ltr') ? '44px' : '14px'; } catch(e){} }
+    side(); setTimeout(side, 800);
+    function upd(){ w.classList.toggle('mq-dt-empty', !desc.get.call(inp)); }
+    try { Object.defineProperty(inp, 'value', { configurable: true, get: function(){ return desc.get.call(inp); }, set: function(v){ desc.set.call(inp, v); upd(); } }); } catch(e){}
+    inp.addEventListener('input', upd); inp.addEventListener('change', upd); inp.addEventListener('blur', upd);
+    inp.addEventListener('click', function(){ try { if (inp.showPicker) inp.showPicker(); } catch(e){} });
+    upd();
+  }
+  function scan(root){ try { (root.querySelectorAll ? root : D).querySelectorAll(SEL).forEach(fix); if (root.matches && root.matches(SEL)) fix(root); } catch(e){} }
+  function go(){
+    scan(D);
+    if (W.MutationObserver) new MutationObserver(function(ms){ ms.forEach(function(m){ m.addedNodes && m.addedNodes.forEach(function(n){ if (n.nodeType === 1) scan(n); }); }); }).observe(D.body, { childList: true, subtree: true });
+  }
+  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', go); else go();
+})();

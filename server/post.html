@@ -237,12 +237,12 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
             </div>
             <div class="fg ff">
               <label>الصور (حتى 8)</label>
-              <input type="file" accept="image/*" multiple onchange="previewImages(this)" style="padding:8px">
+              <label class="up-box"><input type="file" class="up-inp" accept="image/*" multiple onchange="previewImages(this)"><span class="up-ic">🖼️</span><span class="up-tx"><b>اضغط لإضافة صور</b><small>حتى 8 صور · أو اسحبها هنا</small></span></label>
               <div id="img-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px"></div>
             </div>
             <div class="fg ff">
-              <label>مخططات أو ملفات (حتى 12 · PDF · DWG · Excel · Word · ZIP · RAR — اختياري)</label>
-              <input type="file" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.rar,.7z,.csv" multiple onchange="previewFiles(this)" style="padding:8px">
+              <label>المخططات والملفات</label>
+              <label class="up-box up-plan"><input type="file" id="n-plans" class="up-inp" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.rar,.7z,.csv" multiple onchange="previewFiles(this)"><span class="up-ic">📐</span><span class="up-tx"><b>ارفع المخطط</b><small>PDF · DWG · Excel · Word · ZIP — حتى 12 ملف · أو اسحبه هنا</small></span><span class="up-badge">مهم للأسعار</span></label>
               <div id="file-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
             </div>
           </div>
