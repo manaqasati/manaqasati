@@ -432,6 +432,7 @@ function _renderDash(o){
   if(n.ask_penalized) q.push({c:'org',t:'مزوّدين كثّروا طلبات الاعتماد',s:'3 «ما اتفقنا» خلال شهر — عروضهم نازلة 10 أيام',n:n.ask_penalized,pg:'bidreasons',ic:'<path d="M12 5v14M5 12l7 7 7-7"/>',go:'راجع'});
   if(n.claims_denied) q.push({c:'red',t:'عميل نفى تعامله مع مزوّد',s:'مزوّد طلب توثيق مشروع والعميل قال «ما تعاملت معه»',n:n.claims_denied,pg:'claims',ic:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/>',go:'راجع'});
   var _fN=fr?fr.flags:n.flags; if(_fN) q.push({c:'org',t:'عروض مرصودة',s:((fr?fr.flag_providers:n.flag_providers)||0)+' مزوّد'+(fr?' · جديدة':''),n:_fN,seen:'flags',pg:'offerwatch',ic:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',tab:'auto'});
+  if(fr&&fr.closed) q.push({c:fr.closed_outside?'red':'amb',t:'مشاريع انقفلت',s:fr.closed_outside?(fr.closed_outside+' اتفقوا من برا'):'جديدة',n:fr.closed,seen:'closed',pg:'closereasons',go:'افتح',ic:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>'});
   if(fr&&fr.unver3) q.push({c:'blu',t:'ما فعّلوا بريدهم بعد 3 أيام',s:'وصلهم تذكير تلقائي وما فعّلوا — كلّمهم واتساب',n:fr.unver3,pg:'vstats',seen:'unver3',go:'تابعهم',ic:'<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/>'});
   if(fr){_FRESH=fr;_applyFresh();}
   var na=document.getElementById('needs-action');
@@ -457,10 +458,11 @@ function _renderDash(o){
   if(fd){
     var FL={outside_region:'عرض خارج المنطقة',out_of_scope:'عروض خارج نطاق خدمته',spam_speed:'عروض سريعة متتالية',spam_spread:'عروض في مناطق كثيرة',contact_share:'رقم تواصل في العرض'};
     var rows=(o.feed||[]).map(function(x){
-      var dot={request:'#1d4ed8',bid:'#16a34a',award:'#f59e0b',flag:'#dc2626'}[x.k]||'#94a3b8', t='';
+      var dot={request:'#1d4ed8',bid:'#16a34a',award:'#f59e0b',flag:'#dc2626',close:'#64748b'}[x.k]||'#94a3b8', t='';
       if(x.k==='request') t='<b>'+esc(x.who)+'</b> نشر مشروع «'+esc(x.what)+'»';
       else if(x.k==='bid') t='<b>'+esc(x.who)+'</b> قدّم عرض '+fmtNum(x.amount)+' ر.س'+(x.unit&&x.unit!=='total'?(x.unit==='meter'?' للمتر':' للوحدة'):'')+' على «'+esc(x.what)+'»';
       else if(x.k==='award') t='<b>'+esc(x.who)+'</b> اختار «'+esc(x.what)+'»';
+      else if(x.k==='close') t='<b>'+esc(x.who)+'</b> قفل مشروعه «'+esc(x.what)+'»'+(x.unit?' — <span style="color:'+(x.unit==='chose_outside'?'#dc2626':'#64748b')+';font-weight:800">'+esc((typeof _RO_REASONS!=='undefined'&&_RO_REASONS[x.unit])||x.unit)+'</span>':'')+(parseInt(x.amount)?' · كان عنده '+_fuN(parseInt(x.amount),'عرض واحد','عرضين','عروض','عرض'):' · بدون عروض');
       else t='رصد: '+esc(FL[x.what]||x.what||'مخالفة')+' — <b>'+esc(x.who)+'</b>';
       return '<div class="ad-row" onclick="gsOpenReq('+(x.rid||0)+')"><i class="ad-dot" style="background:'+dot+'"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t+'</span><span class="t">'+_adAgo(x.at)+'</span></div>';
     }).join('');
@@ -513,6 +515,12 @@ function loadUsers(){
 }
 function filterRole(role,el){_roleFilter=role;document.querySelectorAll('#page-users .ftab').forEach(function(t){t.classList.remove('on');});if(el)el.classList.add('on');renderUsers();}
 // رقم الجوال بأي صيغة: 05… / 9665… / +966 / 00966 / أرقام عربية / مسافات → آخر الأرقام بدون مفتاح الدولة والصفر
+// سبب اختفاء العرض بعد فتح الرقم — عشان تعرف مين حذفه بالضبط
+function _cuGone(by){
+  var g='<b style="color:#64748b">', r='<b style="color:#dc2626">';
+  var m={admin:g+'العرض حذفته الإدارة</b>', admin_account:g+'الإدارة حذفت حسابه</b>', self_account:r+'⚠️ حذف حسابه بعد ما أخذ الرقم</b>', account:r+'⚠️ حسابه محذوف (بعد ما أخذ الرقم)</b>', legacy:r+'⚠️ حذف عرضه (قبل إيقاف الحذف)</b>'};
+  return m[by]||(r+'⚠️ حذف عرضه بعد ما أخذ الرقم</b>');
+}
 function _phNorm(x){ x=String(x||'').replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);}).replace(/[۰-۹]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d);}).replace(/\D/g,''); return x.replace(/^(00966|966|0)/,''); }
 function filterUsers(){_searchTerm=document.getElementById('user-search').value.toLowerCase();renderUsers();}
 // المزوّد «يخدم» المدينة بنفس منطق دعوة المزوّدين: مقرّه فيها، أو اختارها ضمن مدن خدمته، أو يخدم كل المملكة، أو ما حدد مدينة أصلاً
@@ -1373,7 +1381,7 @@ function _cuPaint(){
     +seg.map(function(x){var v=t[x[0]]||0;return v?'<i style="width:'+pc(v)+'%;background:'+x[1]+'" title="'+x[2]+': '+v+'"></i>':'';}).join('')+'</div><div class="cu-lg">'
     +seg.map(function(x){return '<span><b style="background:'+x[1]+'"></b>'+x[2]+' '+fmtNum(t[x[0]]||0)+'</span>';}).join('')+'</div></div>';
   var P=_clList, cnt=function(o){return P.filter(function(p){return p.outcome===o;}).length;};
-  var chips=[['risk','⚠️ خطر تسريب',cnt('risk')],['gone','🚩 حذف عرضه',P.filter(function(p){return p.gone;}).length],['all','الكل',P.length],['won','رست عليه',cnt('won')],['open','مفتوحة',cnt('open')],['other','رست على غيره',cnt('other')]];
+  var chips=[['risk','⚠️ خطر تسريب',cnt('risk')],['gone','🚩 اختفى عرضه',P.filter(function(p){return p.gone;}).length],['all','الكل',P.length],['won','رست عليه',cnt('won')],['open','مفتوحة',cnt('open')],['other','رست على غيره',cnt('other')]];
   h+='<div class="cu-2"><div class="ad-card cu-list"><div class="cu-bar"><div class="cu-chips">'+chips.map(function(c){return '<button type="button" class="cu-chip'+(c[0]===_cuF?' on':'')+(c[0]==='risk'?' rk':'')+'" onclick="_cuF=\''+c[0]+'\';_cuPaint()">'+c[1]+' '+c[2]+'</button>';}).join('')+'</div>'
     +'<input id="cl-search" class="cu-srch" oninput="clSearch()" placeholder="🔍 مزوّد، عميل، أو مشروع…"></div><div id="cl-cards"></div></div>';
   var pv=d.providers||[], mx=Math.max.apply(null,pv.map(function(x){return x.opens;}).concat([1]));
@@ -1389,7 +1397,7 @@ function _clRenderCards(list){
   if(!list.length){box.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted);font-weight:700">'+(_cuF==='risk'?'ما فيه مشاريع انقفلت بدون ترسية بعد فتح الرقم 👌':'لا نتائج')+'</div>';return;}
   box.innerHTML=list.slice(0,150).map(function(p){
     var oc=_CU_OC[p.outcome]||_CU_OC.open, risk=p.outcome==='risk';
-    var provs=p.provs.map(function(v){var ph=_waNorm(v.phone);return '<'+(ph?'a href="https://wa.me/'+ph+'" target="_blank" rel="noopener" title="واتساب '+esc(v.name||'')+'"':'span')+' class="cu-pv"><i>'+esc((v.name||'م').charAt(0))+'</i>'+esc(v.name||'—')+'<small>· '+fmtDate(v.at)+'</small>'+(v.won?'<b>✓ رسى عليه</b>':'')+(v.bid_gone?(v.gone_by==='admin'?'<b style="color:#64748b">العرض حذفته الإدارة</b>':'<b style="color:#dc2626">⚠️ حذف عرضه بعد ما أخذ الرقم</b>'):'')+'</'+(ph?'a':'span')+'>';}).join('');
+    var provs=p.provs.map(function(v){var ph=_waNorm(v.phone);return '<'+(ph?'a href="https://wa.me/'+ph+'" target="_blank" rel="noopener" title="واتساب '+esc(v.name||'')+'"':'span')+' class="cu-pv"><i>'+esc((v.name||'م').charAt(0))+'</i>'+esc(v.name||'—')+'<small>· '+fmtDate(v.at)+'</small>'+(v.won?'<b>✓ رسى عليه</b>':'')+(v.bid_gone?_cuGone(v.gone_by):'')+'</'+(ph?'a':'span')+'>';}).join('');
     var cph=_waNorm(p.client_phone), acts='';
     if(p.outcome==='risk'||p.outcome==='open'){
       if(cph)acts+='<a class="act-btn ab-default cu-w" href="https://wa.me/'+cph+'?text='+encodeURIComponent('السلام عليكم '+(p.client_name||'')+'،\nمعك منصة مناقصة بخصوص مشروعك «'+(p.title||'')+'». هل اتفقت مع أحد من المزوّدين اللي قدّموا عروضهم؟ إذا تم، نقدر نوثّق المشروع ونفتح لك تقييم المزوّد.')+'" target="_blank" rel="noopener">💬 اسأل العميل</a>';
@@ -4072,7 +4080,7 @@ function loadBidReasons(days){
 function _brClearPen(id){ if(!confirm('ترجع عروض هذا المزوّد لترتيبها الطبيعي الحين؟'))return; fetch(API+'/api/admin/users/'+id+'/ask-penalty/clear',Object.assign({method:'PUT'},hdr())).then(function(r){toast(r.ok?'تم':'تعذّر',r.ok?'success':'error');loadBidReasons();}); }
 function loadCloseReasons(){
   var b=document.getElementById('closereasons-body'); if(b)b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
-  fetch(API+'/api/admin/close-reasons',hdr()).then(function(r){return r.json();}).then(function(d){ renderCloseReasons(d); })
+  fetch(API+'/api/admin/close-reasons',hdr()).then(function(r){return r.json();}).then(function(d){ renderCloseReasons(d); try{_adSeen('closed');}catch(e){} })
     .catch(function(){ if(b)b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>'; });
 }
 var _CR_MISS={price:'💰 الأسعار أعلى من ميزانيته',far:'📍 ما فيه مزوّد قريب',few:'🔢 العروض قليلة',weak:'📄 العروض ضعيفة / ما فهموا المشروع'};

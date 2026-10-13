@@ -3091,7 +3091,7 @@ async function setupDatabase() {
     } catch(e) { console.error('bid_reports migrate:', e.message); }
     await _mig(`CREATE TABLE IF NOT EXISTS engagement_state (user_id INTEGER PRIMARY KEY, reminders_sent INTEGER DEFAULT 0, last_reminded TIMESTAMP, updated_at TIMESTAMP DEFAULT NOW())`);
     await _mig(`CREATE TABLE IF NOT EXISTS contact_unlocks (id SERIAL PRIMARY KEY, provider_id INTEGER, client_id INTEGER, request_id INTEGER, bid_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(provider_id, request_id))`);
-    try { await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS commission_reminded TIMESTAMP'); await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS bid_deleted_by VARCHAR(20)'); await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS bid_deleted_at TIMESTAMP'); } catch(e){}
+    try { await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS commission_reminded TIMESTAMP'); await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS bid_deleted_by VARCHAR(20)'); await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS bid_deleted_at TIMESTAMP'); await _mig('ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS provider_name_snap VARCHAR(255)'); } catch(e){}
     await _mig(`CREATE TABLE IF NOT EXISTS platform_settings (key VARCHAR(60) PRIMARY KEY, value TEXT, updated_at TIMESTAMP DEFAULT NOW())`);
     await _mig(`INSERT INTO platform_settings (key, value) VALUES ('review_minutes','1440') ON CONFLICT (key) DO NOTHING`);
     await _mig(`UPDATE platform_settings SET value='1440' WHERE key='review_minutes' AND value='5'`);
@@ -3750,6 +3750,8 @@ app.delete('/api/account/delete', auth, async (req, res) => {
       await client.query('BEGIN');
       // الحذف حسب العلاقة مو حسب الدور — الحساب اللي عنده دورين (عميل ومزوّد) كان يفشل حذفه
       const _own = `(SELECT id FROM requests WHERE client_id=$1)`;
+      // نوثّق في سجل السعي إن المزوّد حذف حسابه بنفسه (قبل ما تنحذف عروضه) + نحفظ اسمه
+      await client.query(`UPDATE contact_unlocks cu SET bid_deleted_by=COALESCE(cu.bid_deleted_by,'self_account'), bid_deleted_at=COALESCE(cu.bid_deleted_at,NOW()), provider_name_snap=COALESCE(NULLIF(u.business_name,''),u.name) FROM users u WHERE u.id=cu.provider_id AND cu.provider_id=$1`, [userId]);
       await client.query('DELETE FROM bids WHERE provider_id=$1', [userId]);
       await client.query(`DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1 OR request_id IN ${_own}`, [userId]);
       await client.query(`DELETE FROM reports WHERE reporter_id=$1 OR reported_id=$1 OR request_id IN ${_own}`, [userId]);
@@ -8195,6 +8197,7 @@ app.delete('/api/admin/users/:id', requirePermission('users.delete'), async (req
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      await client.query(`UPDATE contact_unlocks cu SET bid_deleted_by=COALESCE(cu.bid_deleted_by,'admin_account'), bid_deleted_at=COALESCE(cu.bid_deleted_at,NOW()), provider_name_snap=COALESCE(NULLIF(u.business_name,''),u.name) FROM users u WHERE u.id=cu.provider_id AND cu.provider_id=$1`, [uid]);
       await client.query('DELETE FROM bids WHERE provider_id=$1', [uid]);
       await client.query('DELETE FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1 OR request_id IN (SELECT id FROM requests WHERE client_id=$1)', [uid]);
       await client.query('DELETE FROM notifications WHERE user_id=$1', [uid]);
@@ -8354,12 +8357,12 @@ app.get('/api/admin/contact-unlocks', requirePermission('requests.view'), async 
         COUNT(*) FILTER (WHERE ${OUT}='won')::int AS won, COUNT(*) FILTER (WHERE ${OUT}='other')::int AS other,
         COUNT(*) FILTER (WHERE ${OUT}='risk')::int AS risk, COUNT(*) FILTER (WHERE ${OUT}='open')::int AS open,
         COUNT(DISTINCT cu.request_id) FILTER (WHERE ${OUT}='risk')::int AS risk_projects,
-        COUNT(*) FILTER (WHERE COALESCE(cu.bid_deleted_by,'')<>'admin' AND NOT EXISTS (SELECT 1 FROM bids bb WHERE bb.request_id=cu.request_id AND bb.provider_id=cu.provider_id))::int AS gone
+        COUNT(*) FILTER (WHERE COALESCE(cu.bid_deleted_by,'') NOT LIKE 'admin%' AND NOT EXISTS (SELECT 1 FROM bids bb WHERE bb.request_id=cu.request_id AND bb.provider_id=cu.provider_id))::int AS gone
       FROM contact_unlocks cu JOIN requests rq ON rq.id=cu.request_id WHERE ${IN}`, P)).rows[0];
     t.saai_protected = (await pool.query(`SELECT COALESCE(SUM(s.saai_amount),0)::int AS v FROM saai_ledger s WHERE EXISTS (SELECT 1 FROM contact_unlocks cu JOIN requests rq ON rq.id=cu.request_id WHERE cu.request_id=s.request_id AND cu.provider_id=s.provider_id AND rq.assigned_provider_id=cu.provider_id AND ${IN})`, P)).rows[0].v;
     const rows = (await pool.query(`SELECT cu.request_id, cu.created_at, cu.commission_reminded, cu.provider_id, ${OUT} AS outcome, cu.bid_deleted_by,
         NOT EXISTS (SELECT 1 FROM bids bb WHERE bb.request_id=cu.request_id AND bb.provider_id=cu.provider_id) AS bid_gone,
-        COALESCE(NULLIF(p.business_name,''), p.name) AS provider_name, p.phone AS provider_phone,
+        COALESCE(NULLIF(p.business_name,''), p.name, cu.provider_name_snap) AS provider_name, p.phone AS provider_phone, (p.id IS NULL) AS acct_gone,
         rq.title, rq.status, rq.city, rq.assigned_provider_id, c.id AS client_id, c.name AS client_name, c.phone AS client_phone
       FROM contact_unlocks cu JOIN requests rq ON rq.id=cu.request_id LEFT JOIN users p ON p.id=cu.provider_id LEFT JOIN users c ON c.id=cu.client_id
       WHERE cu.request_id IN (SELECT cu2.request_id FROM contact_unlocks cu2 WHERE (cu2.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2 GROUP BY 1 ORDER BY MAX(cu2.created_at) DESC LIMIT 400)
@@ -8368,8 +8371,8 @@ app.get('/api/admin/contact-unlocks', requirePermission('requests.view'), async 
     for (const x of rows) {
       let g = map.get(x.request_id);
       if (!g) { g = { request_id: x.request_id, title: x.title, status: x.status, city: x.city, client_id: x.client_id, client_name: x.client_name, client_phone: x.client_phone, last_at: x.created_at, reminded_at: null, provs: [] }; map.set(x.request_id, g); }
-      g.provs.push({ id: x.provider_id, name: x.provider_name, phone: x.provider_phone, at: x.created_at, won: x.outcome === 'won', bid_gone: !!x.bid_gone, gone_by: x.bid_deleted_by || null });
-      if (x.bid_gone && x.bid_deleted_by !== 'admin') g.gone = true;
+      g.provs.push({ id: x.provider_id, name: x.provider_name, phone: x.provider_phone, at: x.created_at, won: x.outcome === 'won', bid_gone: !!x.bid_gone, gone_by: x.bid_deleted_by || (x.acct_gone ? 'account' : (x.bid_gone && new Date(x.created_at) < new Date('2026-10-06T19:00:00Z') ? 'legacy' : null)), acct_gone: !!x.acct_gone });
+      if (x.bid_gone && !/^admin/.test(x.bid_deleted_by || '')) g.gone = true;
       if (x.commission_reminded && (!g.reminded_at || x.commission_reminded > g.reminded_at)) g.reminded_at = x.commission_reminded;
       g.outcome = x.assigned_provider_id ? (g.provs.some(v => v.won) || x.outcome === 'won' ? 'won' : 'other') : x.outcome;
     }
@@ -10057,6 +10060,9 @@ async function _adminOverview(){
           (SELECT 'award', r.assigned_at, cu.name, COALESCE(NULLIF(pu.business_name,''),pu.name), NULL, r.id, NULL FROM requests r JOIN users cu ON cu.id=r.client_id JOIN users pu ON pu.id=r.assigned_provider_id WHERE r.assigned_at IS NOT NULL ORDER BY r.assigned_at DESC LIMIT 4)
           UNION ALL
           (SELECT 'flag', f.created_at, COALESCE(NULLIF(u.business_name,''),u.name), f.reason, NULL, f.request_id, NULL FROM offer_flags f JOIN users u ON u.id=f.provider_id ORDER BY f.created_at DESC LIMIT 4)
+          UNION ALL
+          (SELECT 'close', r.closed_at, u.name, r.title, (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id), r.id, r.close_reason FROM requests r JOIN users u ON u.id=r.client_id
+             WHERE r.closed_at IS NOT NULL AND r.close_reason IS NOT NULL AND r.close_reason<>'admin_closed' AND r.close_reason NOT LIKE 'auto%' AND r.status IN ('closed_auto','closed','cancelled') ORDER BY r.closed_at DESC LIMIT 4)
         ) x WHERE at IS NOT NULL ORDER BY at DESC LIMIT 10`),
       many(`SELECT id, name, business_name, email, role, city, created_at, profile_image,
           (role='client' AND COALESCE(can_provide,FALSE)=FALSE AND (NULLIF(TRIM(business_name),'') IS NOT NULL OR char_length(COALESCE(bio,''))>=20)) AS looks_prov,
@@ -10083,15 +10089,19 @@ async function _adminFresh(aid){
          AND u.created_at < NOW() - INTERVAL '3 days' AND u.created_at > GREATEST(NOW() - INTERVAL '30 days', $6::timestamp - INTERVAL '3 days'))::int AS unver3,
       (SELECT COUNT(*) FROM offer_flags WHERE resolved IS NOT TRUE AND created_at > $2)::int AS flags,
       (SELECT COUNT(DISTINCT provider_id) FROM offer_flags WHERE resolved IS NOT TRUE AND created_at > $2)::int AS flag_providers,
-      (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE status='open' AND created_at > $3)::int AS bid_report_providers`,
-    [since('questions'), since('flags'), since('bidrep'), since('reports'), since('engagement'), since('unver3')])).rows[0];
+      (SELECT COUNT(DISTINCT provider_id) FROM bid_reports WHERE status='open' AND created_at > $3)::int AS bid_report_providers,
+      (SELECT COUNT(*) FROM requests WHERE close_reason IS NOT NULL AND close_reason<>'admin_closed' AND close_reason NOT LIKE 'auto%' AND closed_at > GREATEST(NOW() - INTERVAL '30 days', $7)
+         AND status IN ('closed_auto','closed','cancelled'))::int AS closed,
+      (SELECT COUNT(*) FROM requests WHERE close_reason='chose_outside' AND closed_at > GREATEST(NOW() - INTERVAL '30 days', $7)
+         AND status IN ('closed_auto','closed','cancelled'))::int AS closed_outside`,
+    [since('questions'), since('flags'), since('bidrep'), since('reports'), since('engagement'), since('unver3'), since('closed')])).rows[0];
   return r;
 }
 app.get('/api/admin/fresh', auth, adminOnly, async (req, res) => {
   try { res.json(await _adminFresh(req.user.id)); } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/admin/seen', auth, adminOnly, async (req, res) => {
-  try { const k = String(req.body && req.body.k || ''); if (!['questions','flags','bidrep','reports','engagement','unver3'].includes(k)) return res.status(400).json({ message: 'غير معروف' });
+  try { const k = String(req.body && req.body.k || ''); if (!['questions','flags','bidrep','reports','engagement','unver3','closed'].includes(k)) return res.status(400).json({ message: 'غير معروف' });
     await pool.query('INSERT INTO admin_seen(admin_id,k,seen_at) VALUES($1,$2,NOW()) ON CONFLICT (admin_id,k) DO UPDATE SET seen_at=NOW()', [req.user.id, k]); res.json({ ok: true }); }
   catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
