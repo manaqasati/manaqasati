@@ -220,7 +220,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
               <option>تركيب وصيانة مصاعد</option><option>أبواب وبوابات أوتوماتيكية</option>
               <option>ترميم مبانٍ</option><option>تنظيف واجهات المباني</option>
               <option>حفر آبار ومضخات</option>
-              <option>أنظمة الحريق والسلامة</option><option>تخطيط المواقف والسلامة المرورية</option><option>معدات ثقيلة</option><option>عوازل مائية</option><option>أنظمة شمسية</option><option>صيانة عامة</option><option>إنشاءات معدنية وهناجر</option><option>أعمال الطرق والأسفلت</option><option>صرف صحي وبيارات</option><option>أرضيات إيبوكسي</option><option>تحلية ومعالجة مياه</option><option>تشطيبات ومقاولات عامة</option><option>مكاتب هندسية</option>
+              <option>أنظمة الحريق والسلامة</option><option>تخطيط المواقف والسلامة المرورية</option><option>معدات ثقيلة</option><option>عوازل مائية</option><option>أنظمة شمسية</option><option>صيانة عامة</option><option>إنشاءات معدنية وهناجر</option><option>أعمال الطرق والأسفلت</option><option>انترلوك وبلدورات</option><option>صرف صحي وبيارات</option><option>أرضيات إيبوكسي</option><option>تحلية ومعالجة مياه</option><option>تشطيبات ومقاولات عامة</option><option>مكاتب هندسية</option>
               <option>أخرى</option>
             </select>
           </div>
@@ -663,14 +663,46 @@ function fmtIns(id,kind){
 </script>
 
 
-<div id="becomeProvModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)closeBecomeProv()">
-  <div style="background:#fff;border-radius:18px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto;padding:22px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3 style="margin:0;font-size:18px;font-weight:900;color:var(--p,#1d4ed8)">تفعيل تقديم العروض</h3><button onclick="closeBecomeProv()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#94a3b8">×</button></div>
-    <p style="font-size:12.5px;color:#64748b;line-height:1.7;margin:0 0 16px">أكمل بياناتك كمزوّد لتظهر للعملاء وتقدّم عروضك. (تقييمك كمزوّد يبدأ من جديد.)</p>
-    <div style="margin-bottom:13px"><label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px">التخصصات <span style="color:#ef4444">*</span></label><div id="bpSpecs" style="display:flex;flex-wrap:wrap;gap:7px;max-height:170px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:11px;padding:11px"></div></div>
-    <div style="margin-bottom:13px"><label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px">المدينة <span style="color:#ef4444">*</span></label><select id="bpCity" style="width:100%;padding:11px;border:1.5px solid #e2e8f0;border-radius:11px;font-family:'Tajawal',sans-serif"></select></div>
-    <div style="margin-bottom:16px"><label style="display:block;font-size:13px;font-weight:700;margin-bottom:6px">نبذة عنك (اختياري)</label><textarea id="bpBio" rows="3" placeholder="خبرتك ومجال عملك..." style="width:100%;padding:11px;border:1.5px solid #e2e8f0;border-radius:11px;font-family:'Tajawal',sans-serif;resize:vertical"></textarea></div>
-    <button onclick="submitBecomeProv(this)" style="width:100%;padding:13px;background:var(--p,#1d4ed8);color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:15px;cursor:pointer">تفعيل الآن</button>
+<style>
+#becomeProvModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9998;align-items:center;justify-content:center;padding:16px}
+.bpm{background:#fff;color:#0f172a;border-radius:18px;max-width:440px;width:100%;max-height:90vh;overflow-y:auto;padding:22px;box-sizing:border-box}
+.bpm h3{margin:0;font-size:18px;font-weight:900;color:var(--p,#1d4ed8)}
+.bpm .bp-x{background:none;border:none;font-size:24px;cursor:pointer;color:#94a3b8;min-width:40px;min-height:40px}
+.bpm .bp-sub{font-size:12.5px;color:#64748b;line-height:1.7;margin:0 0 16px}
+.bpm .bp-f{margin-bottom:13px}
+.bpm .bp-l{display:block;font-size:13px;font-weight:800;margin-bottom:6px}
+.bpm .bp-l i{color:#ef4444;font-style:normal}
+#bpSpecs{display:flex;flex-wrap:wrap;gap:7px;max-height:190px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:11px;padding:11px}
+#bpSpecs label{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;background:#f1f5f9;border:1.5px solid transparent;padding:6px 11px;border-radius:20px;cursor:pointer}
+#bpSpecs label:has(input:checked){background:#eff6ff;border-color:var(--p,#1d4ed8);color:var(--p,#1d4ed8)}
+#bpSpecs input{accent-color:var(--p,#1d4ed8)}
+.bpm select,.bpm textarea{width:100%;box-sizing:border-box;padding:11px;border:1.5px solid #e2e8f0;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;background:#fff;color:#0f172a}
+.bpm textarea{resize:vertical}
+#bpQ{width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:11px;font-family:'Tajawal',sans-serif;font-size:14px;margin-bottom:8px;background:#fff;color:#0f172a}
+[data-theme="dark"] #bpQ{background:#0b1529;border-color:#1e3358;color:#e2e8f0}
+.bpm .bp-bad{border-color:#ef4444!important;background:#fef2f2}
+#bpErr{display:none;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:11px;padding:10px 12px;font-size:13px;font-weight:800;margin-bottom:10px;line-height:1.6}
+#bpGo{width:100%;padding:13px;background:var(--p,#1d4ed8);color:#fff;border:none;border-radius:12px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:15px;cursor:pointer;min-height:50px}
+#bpGo:disabled{opacity:.7;cursor:wait}
+[data-theme="dark"] .bpm{background:#0f1b33;color:#e2e8f0}
+[data-theme="dark"] .bpm h3{color:#93c5fd}
+[data-theme="dark"] .bpm .bp-sub{color:#94a3b8}
+[data-theme="dark"] #bpSpecs{border-color:#1e3358}
+[data-theme="dark"] #bpSpecs label{background:#16264a;color:#cbd5e1}
+[data-theme="dark"] #bpSpecs label:has(input:checked){background:#1e3a8a;border-color:#60a5fa;color:#fff}
+[data-theme="dark"] .bpm select,[data-theme="dark"] .bpm textarea{background:#0b1529;border-color:#1e3358;color:#e2e8f0}
+[data-theme="dark"] .bpm .bp-bad{border-color:#f87171!important;background:#3b1220}
+[data-theme="dark"] #bpErr{background:#3b1220;border-color:#7f1d1d;color:#fecaca}
+</style>
+<div id="becomeProvModal" onclick="if(event.target===this)closeBecomeProv()">
+  <div class="bpm">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><h3>تفعيل تقديم العروض</h3><button type="button" class="bp-x" onclick="closeBecomeProv()" aria-label="إغلاق">×</button></div>
+    <p class="bp-sub">أكمل بياناتك كمزوّد لتظهر للعملاء وتقدّم عروضك. (تقييمك كمزوّد يبدأ من جديد.)</p>
+    <div class="bp-f"><label class="bp-l">التخصصات <i>*</i></label><input id="bpQ" type="search" placeholder="ابحث عن تخصصك… مثال: انترلوك" oninput="_bpFilter(this.value)" autocomplete="off"><div id="bpSpecs"></div></div>
+    <div class="bp-f"><label class="bp-l" for="bpCity">المدينة <i>*</i></label><select id="bpCity" onchange="this.classList.remove('bp-bad');_bpErr('')"></select></div>
+    <div class="bp-f" style="margin-bottom:16px"><label class="bp-l" for="bpBio">نبذة عنك (اختياري)</label><textarea id="bpBio" rows="3" placeholder="خبرتك ومجال عملك..."></textarea></div>
+    <div id="bpErr" role="alert"></div>
+    <button type="button" id="bpGo" onclick="submitBecomeProv(this)">تفعيل الآن</button>
   </div>
 </div>
 <script>
@@ -685,13 +717,14 @@ function _bpProfileState(p){
 }
 function _bpLimit(cb){
   var n=document.querySelectorAll('#bpSpecs input:checked').length;
-  if(n>5){ cb.checked=false; if(typeof showToast==='function')showToast('الحد الأقصى 5 تخصصات','error'); }
+  if(n>5){ cb.checked=false; _bpErr('الحد الأقصى 5 تخصصات'); } else { _bpErr(''); document.getElementById('bpSpecs').classList.remove('bp-bad'); }
 }
 function openBecomeProv(){
   var m=document.getElementById('becomeProvModal'); m.style.display='flex';
   var wrap=document.getElementById('bpSpecs');
   var _renderCats=function(cats){
-    wrap.innerHTML='<div style="font-size:11.5px;color:#64748b;margin-bottom:9px;width:100%">اختر من 1 إلى 5 تخصصات</div>'+cats.map(function(c){return '<label style="display:inline-flex;align-items:center;gap:5px;font-size:12.5px;background:#f1f5f9;padding:6px 11px;border-radius:20px;cursor:pointer"><input type="checkbox" value="'+esc(String(c).replace(/"/g,''))+'" onchange="_bpLimit(this)" style="accent-color:var(--p,#1d4ed8)">'+esc(c)+'</label>';}).join('');
+    wrap.innerHTML='<div style="font-size:11.5px;color:#64748b;margin-bottom:9px;width:100%">اختر من 1 إلى 5 تخصصات</div>'+cats.map(function(c){return '<label><input type="checkbox" value="'+esc(String(c).replace(/"/g,''))+'" onchange="_bpLimit(this)">'+esc(c)+'</label>';}).join('');
+    _bpPrefill();
   };
   if(!wrap.children.length){
     var _fallback=['تبريد وتكييف','كهرباء','سباكة','نجارة','تنظيف','حدادة','ألمنيوم','بناء','دهانات وديكور','معدات ثقيلة','عوازل مائية','أنظمة شمسية','صيانة عامة','أخرى'];
@@ -701,21 +734,60 @@ function openBecomeProv(){
   }
   var cs=document.getElementById('bpCity');
   if(cs && !cs.options.length && typeof fillCitySelect==='function')fillCitySelect(cs);
+  _bpErr(''); _bpPrefill();
+  if(!_bpProf){ try{ jFetch('/api/client/profile').then(function(p){ _bpProf=p||{}; _bpPrefill(); }).catch(function(){}); }catch(e){} }
+}
+// نعبّي المدينة والتخصصات من الملف (لو موجودة) عشان ما ينسى المدينة فيعلق الزر
+var _bpProf=null;
+function _bpPrefill(){
+  var p=_bpProf||{}; var u={}; try{u=JSON.parse(localStorage.getItem('user')||'{}');}catch(e){}
+  var city=p.city||u.city||'';
+  var cs=document.getElementById('bpCity');
+  if(cs && !cs.value && city){ for(var i=0;i<cs.options.length;i++){ if(cs.options[i].value===city||cs.options[i].text===city){ cs.selectedIndex=i; break; } } }
+  var bio=document.getElementById('bpBio'); if(bio && !bio.value && p.bio) bio.value=p.bio;
+  var sp=Array.isArray(p.specialties)?p.specialties:[];
+  if(sp.length && !document.querySelector('#bpSpecs input:checked')){ [].forEach.call(document.querySelectorAll('#bpSpecs input'),function(x){ if(sp.indexOf(x.value)>-1)x.checked=true; }); }
+}
+function _bpFilter(q){
+  q=String(q||'').trim().replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+  [].forEach.call(document.querySelectorAll('#bpSpecs label'),function(l){ var t=l.textContent.replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي'); l.style.display=(!q||t.indexOf(q)>-1||l.querySelector('input').checked)?'':'none'; });
+}
+function _bpErr(msg,el){
+  var e=document.getElementById('bpErr'); if(!e)return;
+  e.textContent=msg||''; e.style.display=msg?'block':'none';
+  if(msg){ try{ (el||e).scrollIntoView({block:'center',behavior:'smooth'}); }catch(x){} }
 }
 function closeBecomeProv(){ document.getElementById('becomeProvModal').style.display='none'; }
 function submitBecomeProv(btn){
+  btn=btn||document.getElementById('bpGo');
+  if(btn.disabled)return;
   var specs=[].slice.call(document.querySelectorAll('#bpSpecs input:checked')).map(function(x){return x.value;});
-  var city=(document.getElementById('bpCity')||{}).value||'';
+  var cs=document.getElementById('bpCity'), sw=document.getElementById('bpSpecs');
+  var city=(cs||{}).value||'';
   var bio=(document.getElementById('bpBio')||{}).value||'';
-  if(!specs.length){ if(typeof showToast==='function')showToast('اختر تخصصاً واحداً على الأقل','error'); return; }
-  if(!city){ if(typeof showToast==='function')showToast('اختر مدينتك','error'); return; }
+  sw.classList.remove('bp-bad'); if(cs)cs.classList.remove('bp-bad');
+  if(!specs.length){ sw.classList.add('bp-bad'); _bpErr('اختر تخصصاً واحداً على الأقل من القائمة فوق',sw); return; }
+  if(!city){ if(cs)cs.classList.add('bp-bad'); _bpErr('اختر مدينتك من القائمة',cs); return; }
+  _bpErr('');
   btn.disabled=true; btn.textContent='جارٍ التفعيل...';
-  jFetch('/api/me/enable-provider',{method:'POST',body:JSON.stringify({specialties:specs,city:city,bio:bio})}).then(function(r){
-    btn.disabled=false; btn.textContent='تفعيل الآن';
-    if(r&&r.ok){ try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_provide=true;_u.last_mode='provider';localStorage.setItem('user',JSON.stringify(_u));localStorage.setItem('activeMode','provider');}catch(e){} if(typeof showToast==='function')showToast('تم التفعيل! حسابك صار مزوّداً أيضاً','success'); closeBecomeProv(); setTimeout(function(){ location.href='/dashboard-provider.html'; },900); }
-    else if(typeof showToast==='function')showToast((r&&r.message)||'تعذّر التفعيل','error');
-  }).catch(function(){ btn.disabled=false; btn.textContent='تفعيل الآن'; if(typeof showToast==='function')showToast('تعذّر التفعيل','error'); });
+  var done=false, ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+  var tm=setTimeout(function(){ if(done)return; try{ctl&&ctl.abort();}catch(e){} fail('الاتصال بطيء — تأكد من الإنترنت وحاول مرة ثانية'); },20000);
+  function fail(m){ if(done)return; done=true; clearTimeout(tm); btn.disabled=false; btn.textContent='تفعيل الآن'; _bpErr(m||'تعذّر التفعيل، حاول مرة ثانية'); }
+  fetch(API+'/api/me/enable-provider',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({specialties:specs,city:city,bio:bio}),signal:ctl?ctl.signal:undefined})
+  .then(function(r){
+    if(r.status===401){ if(typeof _sessionExpired==='function')_sessionExpired(); return fail('انتهت جلستك — سجّل دخولك من جديد'); }
+    return r.json().catch(function(){return {};}).then(function(d){
+      if(!r.ok||!(d&&d.ok)) return fail((d&&d.message)||'تعذّر التفعيل، حاول مرة ثانية');
+      done=true; clearTimeout(tm);
+      try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_provide=true;_u.last_mode='provider';localStorage.setItem('user',JSON.stringify(_u));localStorage.setItem('activeMode','provider');}catch(e){}
+      btn.textContent='✓ تم التفعيل — ننقلك للوحة المزوّد...';
+      if(typeof showToast==='function')showToast('تم التفعيل! حسابك صار مزوّداً أيضاً','success');
+      setTimeout(function(){ location.href='/dashboard-provider.html'; },900);
+    });
+  }).catch(function(){ fail('تعذّر الاتصال — تأكد من الإنترنت وحاول مرة ثانية'); });
 }
+// فتح النافذة مباشرة من رابط ‎#becomeprov (من صفحة النشر مثلاً)
+(function(){ function _go(){ if(location.hash==='#becomeprov'){ try{ history.replaceState(null,'',location.pathname); }catch(e){} setTimeout(openBecomeProv,600); } } if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_go); else _go(); })();
 </script>
 <script>
 function _initSwitchDash(){ try{ jFetch('/api/client/profile').then(function(p){ if(p){ try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_provide=!!p.can_provide;localStorage.setItem('user',JSON.stringify(_u));}catch(e){} if(p.can_provide){ var b=document.getElementById('switchDash'); if(b)b.style.display='flex'; } if(!p.can_provide){ jFetch('/api/me/provider-hint').then(function(h){ p._hint=!!(h&&h.show); if(h&&h.dismissed){ try{ localStorage.setItem(_rbKey(),'-1'); }catch(e){} } try{_roleBanner(p);}catch(e){} }).catch(function(){ try{_roleBanner(p);}catch(e){} }); } else { try{_roleBanner(p);}catch(e){} } } }).catch(function(){}); }catch(e){} }
