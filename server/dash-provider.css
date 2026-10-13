@@ -705,3 +705,48 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .wk-b span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .wk-b:hover{border-color:var(--p-mid);background:var(--p-light)}
 .wk-b.wa{background:#16a34a;border-color:#16a34a;color:#fff}.wk-b.wa:hover{background:#15803d}
+
+/* ═══ تصفّح المشاريع — النموذج 4 «أمر عمل» ═══ */
+.bx-hd{background:#0f2544;color:#fff;border-radius:20px;padding:16px 16px 14px;margin-bottom:14px;display:flex;flex-direction:column;gap:12px;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:22px 22px}
+.bx-hd h1{margin:0;font-family:'Cairo',sans-serif;font-size:21px;font-weight:800;color:#fff}
+.bx-hd p{margin:-8px 0 0;font-size:13px;color:#a9bde3;font-weight:700}
+.bx-sr{display:flex;align-items:center;gap:8px;background:#fff;border-radius:14px;padding:0 6px 0 12px;min-height:48px;color:#7a8aa6}
+.bx-sr input{flex:1;min-width:0;border:0;outline:none;background:transparent;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:700;color:#0f2544;padding:10px 0}
+.bx-fb{position:relative;width:38px;height:38px;flex-shrink:0;border:0;border-radius:11px;background:#1d4ed8;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.bx-fb i{position:absolute;top:-5px;left:-5px;background:#f59e0b;color:#fff;font-style:normal;font-size:10.5px;font-weight:900;border-radius:999px;padding:1px 6px}
+.bx-panel{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.bx-panel label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:800;color:#a9bde3}
+.bx-panel select{width:100%;border:0;border-radius:10px;padding:9px 8px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:12.5px;background:#fff;color:#0f2544;outline:none}
+.bx-fl{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none}.bx-fl::-webkit-scrollbar{display:none}
+.bx-fc{flex-shrink:0;border:1px solid rgba(255,255,255,.28);background:transparent;color:#dbe6ff;border-radius:999px;padding:6px 13px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:12.5px;min-height:36px;cursor:pointer}
+.bx-fc.on{background:#fff;color:#0f2544;border-color:#fff}
+.tk{background:var(--white);border-radius:18px;position:relative;cursor:pointer;box-shadow:0 1px 0 var(--border),0 8px 24px -16px rgba(15,37,68,.35);border:1px solid var(--border)}
+.tk-h{display:flex;align-items:center;gap:8px;padding:12px 14px 0;font-size:12px;font-weight:800;color:var(--muted)}
+.tk-ic{width:28px;height:28px;border-radius:8px;background:var(--p-light);color:var(--p);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.tk-nw{margin-right:auto;color:#0369a1;background:#e0f2fe;border-radius:999px;padding:2px 9px;font-size:11px;white-space:nowrap}
+.tk-nw.old{background:var(--bg);color:var(--muted)}
+.tk-b{padding:8px 14px 12px;display:flex;gap:12px}
+.tk-tx{flex:1;min-width:0}
+.tk-tx b{display:block;font-family:'Cairo',sans-serif;font-size:16.5px;font-weight:800;line-height:1.4;color:var(--text);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tk-tx p{margin:4px 0 0;font-size:12.5px;line-height:1.75;color:var(--muted);font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tk-bp{width:76px;height:76px;border-radius:12px;flex-shrink:0;overflow:hidden;background:#e8f0fe;background-image:linear-gradient(#c9d9f7 1px,transparent 1px),linear-gradient(90deg,#c9d9f7 1px,transparent 1px);background-size:10px 10px;display:flex;align-items:center;justify-content:center;color:#1d4ed8}
+.tk-bp img{width:100%;height:100%;object-fit:cover}
+.tk-spec{display:grid;grid-template-columns:repeat(3,1fr);margin:0 14px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.tk-spec div{padding:8px 6px;text-align:center;border-left:1px solid var(--border);min-width:0}.tk-spec div:last-child{border-left:0}
+.tk-spec small{display:block;font-size:10.5px;font-weight:800;color:var(--hint)}
+.tk-spec b{display:block;font-size:13.5px;font-weight:900;margin-top:2px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk-spec b.g{color:#15803d}
+.tk-perf{position:relative;height:18px;margin-top:10px}
+.tk-perf::before{content:'';position:absolute;left:16px;right:16px;top:50%;border-top:2px dashed var(--border)}
+.tk-perf i{position:absolute;top:0;width:18px;height:18px;border-radius:50%;background:var(--bg);border:1px solid var(--border)}.tk-perf .l{left:-10px}.tk-perf .r{right:-10px}
+.tk-f{display:flex;align-items:center;gap:10px;padding:2px 14px 14px}
+.tk-go{flex:1;border:0;background:#1d4ed8;color:#fff;border-radius:12px;padding:11px;font-family:'Tajawal',sans-serif;font-weight:900;font-size:14px;min-height:44px;cursor:pointer}
+.tk-done{flex:1;border:1.5px solid #bbf7d0;background:#f0fdf4;color:#15803d;border-radius:12px;padding:11px;font-family:'Tajawal',sans-serif;font-weight:900;font-size:13.5px;min-height:44px;cursor:pointer}
+.tk-sv{width:44px;height:44px;flex-shrink:0;border:1.5px solid var(--border);background:var(--white);color:var(--p);border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.tk-sv.on{background:var(--p-light);border-color:var(--p-mid)}
+.pb-list{gap:14px}
+[data-theme="dark"] .tk-bp{background-color:rgba(59,130,246,.12);background-image:linear-gradient(rgba(147,197,253,.18) 1px,transparent 1px),linear-gradient(90deg,rgba(147,197,253,.18) 1px,transparent 1px);color:#93c5fd}
+[data-theme="dark"] .tk-nw{background:rgba(14,165,233,.15);color:#7dd3fc}
+[data-theme="dark"] .tk-spec b.g{color:#4ade80}
+[data-theme="dark"] .tk-done{background:rgba(22,163,74,.12);border-color:rgba(22,163,74,.4);color:#86efac}
+@media(min-width:900px){#page-browse .pb-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.bx-panel{max-width:620px}}
