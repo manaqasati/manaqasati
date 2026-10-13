@@ -1850,17 +1850,25 @@ function submitReq(){
   var _hasAtt=((window._reqFiles||[]).length+(window._reqImages||[]).length)>0;
   var _needPlan=_PLAN_CATS.indexOf(cat)>=0 && !_hasAtt;
   var _shortDesc=desc.length<40;
-  if(!_needPlan && !_shortDesc){ _openAgree(); return; }
-  // نافذة وحدة تجمع اللي ناقص (المخطط أولاً لأنه الأهم للأسعار)
-  var items=[], btns=[];
-  if(_needPlan){ items.push({i:'📐',t:'ما أرفقت المخطط',s:'مشاريع «'+cat+'» يحتاج فيها المنفذ يشوف المخطط عشان يعطيك سعر دقيق — بدونه تجيك أسعار تقريبية وممكن تتغير وقت التنفيذ.'}); btns.push({id:'plan',t:'📐 أرفق المخطط الحين',cls:'ok'}); }
-  if(_shortDesc){ items.push({i:'✍️',t:'وصف مشروعك مختصر',s:'اكتب المطلوب بالضبط، والكمية أو المساحة، والمواصفات.'}); btns.push({id:'desc',t:'✍️ أكمل الوصف',cls:_needPlan?'':'ok'}); }
-  btns.push({id:'go',t:'انشر كذا',cls:'ghost'});
-  _mqAsk({icon:_needPlan?'📐':'✍️',title:items.length>1?'قبل ما تنشر — مشروعك ناقصه شيئين':'قبل ما تنشر',items:items,btns:btns}).then(function(v){
-    if(v==='plan'){ var p=document.getElementById('n-plans'); if(p){ var bx=p.closest('.up-box'); if(bx){ bx.scrollIntoView({behavior:'smooth',block:'center'}); bx.classList.remove('flash'); void bx.offsetWidth; bx.classList.add('flash'); } p.click(); } return; }
-    if(v==='desc'){ var d=document.getElementById('n-desc'); if(d){ d.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(function(){try{d.focus({preventScroll:true});}catch(e){}},350); } return; }
-    if(v==='go')_openAgree();
-  });
+  // بطاقة وحدة: اللي ناقص (المخطط/الوصف) يطلع فوق داخل بطاقة الاتفاقية نفسها
+  var box=document.getElementById('agree-miss'), tip=document.getElementById('agree-tip');
+  if(box){
+    var h='';
+    if(_needPlan||_shortDesc){
+      h='<div class="am-t">⚠️ قبل ما تنشر — '+((_needPlan&&_shortDesc)?'مشروعك ناقصه شيئين':'مشروعك ناقصه شي')+'</div>';
+      if(_needPlan) h+='<div class="am-r"><span class="am-i">📐</span><div class="am-x"><b>ما أرفقت المخطط</b><small>مشاريع «'+esc(cat)+'» يحتاج فيها المنفذ يشوف المخطط عشان يعطيك سعر دقيق — بدونه تجيك أسعار تقريبية.</small></div><button type="button" class="am-b" onclick="_amGo(\'plan\')">أرفق المخطط</button></div>';
+      if(_shortDesc) h+='<div class="am-r"><span class="am-i">✍️</span><div class="am-x"><b>وصف مشروعك مختصر</b><small>اكتب المطلوب بالضبط، والكمية أو المساحة، والمواصفات.</small></div><button type="button" class="am-b" onclick="_amGo(\'desc\')">أكمل الوصف</button></div>';
+    }
+    box.innerHTML=h; box.style.display=h?'block':'none';
+    if(tip) tip.style.display=h?'none':'';
+  }
+  _openAgree();
+}
+// زر من داخل بطاقة الاتفاقية: يقفلها ويوديه للمخطط أو الوصف
+function _amGo(w){
+  closeAgree();
+  if(w==='plan'){ var p=document.getElementById('n-plans'); if(p){ var bx=p.closest('.up-box'); if(bx){ bx.scrollIntoView({behavior:'smooth',block:'center'}); bx.classList.remove('flash'); void bx.offsetWidth; bx.classList.add('flash'); } p.click(); } return; }
+  var d=document.getElementById('n-desc'); if(d){ d.scrollIntoView({behavior:'smooth',block:'center'}); setTimeout(function(){try{d.focus({preventScroll:true});}catch(e){}},350); }
 }
 function _openAgree(){
   // افتح اتفاقية الرسوم قبل النشر

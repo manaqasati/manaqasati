@@ -807,3 +807,16 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .mq-ask .li b{display:block;font-size:14px;font-weight:800;margin-bottom:2px}
 .mq-ask .li small{display:block;font-size:12.5px;line-height:1.7;color:var(--muted)}
 .mq-ask .bt button.ghost{background:transparent;border-color:transparent;color:var(--muted);font-weight:700}
+
+/* اللي ناقص في المشروع — داخل بطاقة الاتفاقية */
+#agree-miss{background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:12px;margin-bottom:16px}
+#agree-miss .am-t{font-size:14px;font-weight:900;color:#92400e;margin-bottom:10px}
+#agree-miss .am-r{display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid #fde68a;border-radius:12px;padding:10px;margin-top:8px}
+#agree-miss .am-i{font-size:20px;flex-shrink:0}
+#agree-miss .am-x{flex:1;min-width:0}
+#agree-miss .am-x b{display:block;font-size:13.5px;font-weight:800;color:var(--text)}
+#agree-miss .am-x small{display:block;font-size:12px;line-height:1.7;color:var(--muted)}
+#agree-miss .am-b{flex-shrink:0;background:#d97706;color:#fff;border:0;border-radius:10px;padding:9px 12px;font-family:'Tajawal',sans-serif;font-size:12.5px;font-weight:800;cursor:pointer;white-space:nowrap}
+[data-theme="dark"] #agree-miss{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.35)}
+[data-theme="dark"] #agree-miss .am-t{color:#fbbf24}
+[data-theme="dark"] #agree-miss .am-r{border-color:rgba(245,158,11,.3)}
