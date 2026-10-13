@@ -631,3 +631,71 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
   .sa-s #saai-bank .card{margin-top:0!important}
 }
 .vb-st{margin-top:8px;font-size:12.5px;font-weight:700;line-height:1.7}.vb-st a{font-weight:900;text-decoration:underline}.vb-warn{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:7px 10px}.vb-ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:10px;padding:7px 10px}.vb-tip{color:#64748b}
+
+/* ═══ تصميم موحّد (النموذج 1): بطاقات المشاريع + عروضي + الرئيسية ═══ */
+.rp-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
+.rp-tabs::-webkit-scrollbar{display:none}
+.rp-tb{flex-shrink:0;border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:999px;padding:8px 13px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px;min-height:38px;cursor:pointer}
+.rp-tb i{font-style:normal;background:var(--bg);color:var(--p);border-radius:999px;padding:1px 7px;font-size:11.5px}
+.rp-tb.on{background:var(--p);border-color:var(--p);color:#fff}.rp-tb.on i{background:rgba(255,255,255,.22);color:#fff}
+.rp-mt{display:flex;flex-wrap:wrap;gap:4px 8px;font-size:12px;font-weight:700;color:var(--muted);margin-top:3px}
+.rp-pill{flex-shrink:0;font-size:11px;font-weight:900;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.rp-steps{display:flex;gap:4px}.rp-steps span{flex:1;height:5px;border-radius:5px;background:var(--border)}
+.rp-steps .on{background:var(--p)}.rp-steps .now{background:#f59e0b}
+.rp-sl{display:flex;justify-content:space-between;font-size:10.5px;font-weight:800;color:var(--hint);margin-top:-6px}
+.rp-nx{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:9px 11px;font-size:12.5px;font-weight:700;color:var(--text2);line-height:1.6}
+.rp-nx.bad{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+.rp-ic{flex-shrink:0;font-size:15px}.rp-tx{flex:1;min-width:0}
+.rp-bt{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;border:0;border-radius:11px;padding:9px 12px;font-family:'Tajawal',sans-serif;font-weight:900;font-size:12.5px;white-space:nowrap;min-height:38px;cursor:pointer;text-decoration:none}
+.rp-bt.red{background:#dc2626;color:#fff}.rp-bt.wa{background:#16a34a;color:#fff}.rp-bt.ghost{background:var(--white);border:1.5px solid var(--border);color:var(--p)}
+.rp-lk{border:0;background:none;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer;padding:6px 2px;min-height:34px;text-decoration:none;display:inline-flex;align-items:center}
+.rp-lk.pri{color:var(--p)}
+/* عروضي */
+.wk-tip{display:flex;align-items:center;gap:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:10px 12px;font-size:12.5px;font-weight:800;color:#9a3412;margin-bottom:12px;cursor:pointer}
+.wk-tip span{flex:1;line-height:1.6}.wk-tip b{white-space:nowrap;color:#c2410c}
+.wk-cd{background:var(--white);border:1px solid var(--border);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.wk-top{display:flex;gap:10px;align-items:flex-start}
+.wk-tt{flex:1;min-width:0}.wk-tt b{display:block;font-size:15px;font-weight:900;line-height:1.5;color:var(--text);cursor:pointer;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.wk-pr{flex-shrink:0;text-align:left}.wk-pr b{display:block;font-family:'Cairo',sans-serif;font-size:18px;color:var(--green,#15803d);line-height:1.2}.wk-pr small{font-size:11px;font-weight:800;color:var(--muted)}
+.wk-note{background:var(--bg);border-radius:12px;padding:10px 12px}
+.wk-nt{font-size:13px;line-height:1.85;color:var(--text2);max-height:3.7em;overflow:hidden}
+.wk-nt.open{max-height:none}
+.wk-more{border:0;background:none;color:var(--p);font-family:'Tajawal',sans-serif;font-weight:800;font-size:12.5px;padding:4px 0 0;cursor:pointer}
+.wk-ft{display:flex;flex-wrap:wrap;gap:4px 16px;border-top:1px solid var(--border);margin:0 -14px -4px;padding:8px 14px 0}
+/* بطاقات المشاريع (تصفّح + الرئيسية) */
+.pb-list{display:flex;flex-direction:column;gap:11px}
+.pb-cd{background:var(--white);border:1px solid var(--border);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:10px;cursor:pointer;transition:.15s}
+.pb-cd:hover{border-color:var(--p-mid);box-shadow:0 4px 16px rgba(37,99,235,.08)}
+.pb-top{display:flex;gap:11px;align-items:flex-start}
+.pb-th{width:62px;height:62px;border-radius:14px;flex-shrink:0;background:var(--bg);color:var(--p);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.pb-th img{width:100%;height:100%;object-fit:cover}
+.pb-tt{flex:1;min-width:0}.pb-tt>b{display:block;font-size:15px;font-weight:900;line-height:1.45;color:var(--text);overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pb-mt{font-size:12px;font-weight:700;color:var(--muted);margin-top:3px}
+.pb-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}.pb-chips span{font-size:10.5px;font-weight:900;border-radius:999px;padding:2px 8px}
+.pb-chips .c{background:var(--p-light);color:var(--p)}.pb-chips .n{background:#e0f2fe;color:#0369a1}
+.pb-pr{flex-shrink:0;text-align:left}.pb-pr b{display:block;font-family:'Cairo',sans-serif;font-size:16px;color:var(--green,#15803d)}.pb-pr small{font-size:10.5px;font-weight:800;color:var(--muted)}
+.pb-ft{display:flex;gap:8px}
+.pb-go{flex:1;border:0;background:var(--p);color:#fff;border-radius:12px;padding:10px;font-family:'Tajawal',sans-serif;font-weight:900;font-size:13.5px;min-height:42px;cursor:pointer}
+.pb-done{flex:1;border:1.5px solid #bbf7d0;background:#f0fdf4;color:#15803d;border-radius:12px;padding:10px;font-family:'Tajawal',sans-serif;font-weight:900;font-size:13px;min-height:42px;cursor:pointer}
+.pb-sv{width:42px;flex-shrink:0;border:1.5px solid var(--border);background:var(--white);color:var(--p);border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.pb-sv.on{background:var(--p-light);border-color:var(--p-mid)}
+.pb-filters{display:flex;flex-direction:column;gap:9px;margin-bottom:6px}
+.pb-search{display:flex;align-items:center;gap:8px;background:var(--white);border:1.5px solid var(--border);border-radius:13px;padding:0 12px;min-height:46px}
+.pb-search input{font-size:14px!important;color:var(--text)}
+.pb-chiprow{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.pb-chiprow::-webkit-scrollbar{display:none}
+.pb-fc{flex-shrink:0;display:inline-flex;align-items:center;border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:999px;padding:0 12px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:12.5px;min-height:38px;cursor:pointer;white-space:nowrap}
+.pb-fc.on{background:var(--p);border-color:var(--p);color:#fff}
+.pb-fc.sel{padding:0 4px 0 8px}
+.pb-fc select{border:0;background:transparent;color:inherit;font-family:inherit;font-weight:800;font-size:12.5px;outline:none;cursor:pointer;padding:8px 4px;max-width:130px;field-sizing:content}
+.pb-count{font-size:12.5px;font-weight:800;color:var(--muted);margin:2px 2px 10px}
+/* الرئيسية */
+.pv-kp{display:flex;gap:8px;margin-top:14px}
+.pv-kp button{flex:1;background:rgba(255,255,255,.1);border:0;border-radius:13px;padding:10px 4px;color:#fff;font-family:'Tajawal',sans-serif;cursor:pointer;text-align:center}
+.pv-kp b{display:block;font-family:'Cairo',sans-serif;font-size:19px;font-weight:900}.pv-kp small{font-size:10.5px;font-weight:800;color:#c9d8ff}
+.pv-lv{display:flex;align-items:center;gap:10px;background:var(--white);border:1px solid var(--border);border-radius:14px;padding:11px 13px;font-size:12.5px;font-weight:800;color:var(--text2);margin:14px 0}
+.pv-bar{flex:1;height:6px;background:var(--border);border-radius:6px;overflow:hidden}.pv-bar i{display:block;height:100%;background:var(--p)}
+.pv-lv .nx{color:var(--p);white-space:nowrap}
+[data-theme="dark"] .rp-nx.bad{background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.35);color:#fca5a5}
+[data-theme="dark"] .wk-tip{background:rgba(234,88,12,.1);border-color:rgba(234,88,12,.35);color:#fdba74}
+[data-theme="dark"] .pb-done{background:rgba(22,163,74,.12);border-color:rgba(22,163,74,.4);color:#86efac}
+@media(min-width:900px){#page-browse .pb-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}}

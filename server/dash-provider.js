@@ -458,30 +458,19 @@ function _renderHome(data){
   var _accVal=_myBids.filter(function(b){return b.status==='accepted';}).reduce(function(a,b){return a+(parseFloat(b.price)||0);},0);
   function _pl(n,a){n=parseInt(n)||0;if(n===1)return a[0];if(n===2)return a[1];if(n<=10)return n+' '+a[2];return n+' '+a[3];}
   var _PRJ=['مشروع جديد','مشروعان جديدان','مشاريع جديدة','مشروعاً جديداً'];
-  html+='<div class="hh-hero">'
+  // ── الرئيسية (النموذج 1): رأس مختصر بالأرقام · يحتاج منك · فرص تناسبك · المستوى ──
+  html+='<div class="hh-hero pv-hero">'
     +'<div class="hh-top"><div class="ph-av hh-av">'+avHtml.replace('color:#fff','color:#1e3a8a')+'</div>'
       +'<div style="min-width:0"><div class="hh-greet">أهلاً، '+_esc(firstName)+'</div><div class="hh-hi">'+_esc(profile.business_name||_me.name||'')+' '+_tierBadge(profile.tier)+_pubBadge(profile.badge)+'</div></div>'
       +'<span class="hh-rate"><span style="color:#F0A500">★</span>'+rat+'</span></div>'
-    +'<div class="hh-hl">'+(newCount>0?(_pl(newCount,_PRJ)+(matchedBySpec?' تناسب تخصصك':' متاحة الآن')):'لا مشاريع جديدة الآن')+'</div>'
-    +'<div class="hh-sub">'+(newCount>0?(matchedBySpec?'في مدينتك والمدن اللي تخدمها':'أضف تخصصاتك ليظهر لك الأنسب')+(_lowComp>0?' · '+_lowComp+' منها قليلة المنافسة':''):'تجيك إشعارات أول ما ينزل مشروع في تخصصك')+'</div>'
-    +'<div class="hh-acts"><button class="hh-b1" onclick="gotoPage(&quot;browse&quot;)">تصفّح المشاريع</button><button class="hh-b2" onclick="gotoPage(&quot;works&quot;)">عروضي'+(pend?' ('+pend+')':'')+'</button></div>'
-  +'</div>';
-  html+='<div class="hh-kpi">'
-    +'<div><div class="hh-n">'+_monthBids+'</div><div class="hh-l">عروض هذا الشهر</div></div>'
-    +'<div><div class="hh-n g">'+(_myBids.length?acceptRate+'%':'—')+'</div><div class="hh-l">نسبة القبول</div></div>'
-    +'<div><div class="hh-n">'+(_accVal?fmtN(_accVal):'0')+'</div><div class="hh-l">ر.س أعمال مقبولة</div></div>'
+    +'<div class="pv-kp">'
+      +'<button type="button" onclick="gotoPage(&quot;browse&quot;)"><b>'+newCount+'</b><small>'+(matchedBySpec?'مشروع يناسبك':'مشروع متاح')+'</small></button>'
+      +'<button type="button" onclick="gotoPage(&quot;works&quot;)"><b>'+pend+'</b><small>عرض ينتظر العميل</small></button>'
+      +'<button type="button" onclick="gotoPage(&quot;works&quot;)"><b>'+(_accVal?fmtN(_accVal):'0')+'</b><small>ر.س أعمال مقبولة</small></button>'
+    +'</div>'
   +'</div>';
   html+='<div id="ph-qa-nudge"></div>';
   html+='<div class="nudges" id="ph-nudges"></div>';
-
-  // المستوى
-  var _tiers=[{n:'مزود جديد',s:'جديد',m:0},{n:'مزود نشط',s:'نشط',m:3},{n:'مزود مميّز',s:'مميّز',m:10},{n:'خبير معتمد',s:'خبير معتمد',m:25}];
-  var _ci=0;for(var _ti=0;_ti<_tiers.length;_ti++){if(done>=_tiers[_ti].m)_ci=_ti;}
-  var _next=_tiers[_ci+1]||null;
-  var _lvlNote=_next?(function(r){return (r===1?'صفقة واحدة':r===2?'صفقتان':r+' صفقات')+' للمستوى التالي';})(_next.m-done):'أعلى مستوى 🏅';
-  html+='<div class="hh-lvl"><div class="hh-lvl-h">مستواك: '+_tiers[_ci].n+'<span>'+_lvlNote+'</span></div>'
-    +'<div class="hh-lvl-bar">'+_tiers.map(function(t,k){return '<i class="'+(k<=_ci?'on':(k===_ci+1?'cur':''))+'"></i>';}).join('')+'</div>'
-    +'<div class="hh-lvl-l">'+_tiers.map(function(t,k){return '<span'+(k===_ci?' class="on"':'')+'>'+t.s+'</span>';}).join('')+'</div></div>';
 
   // اكتمال الملف
   var _pcItems=[
@@ -499,44 +488,24 @@ function _renderHome(data){
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">'+_pcItems.filter(function(x){return !x.d;}).map(function(x){return '<span class="hh-pc-chip">+ '+x.l+'</span>';}).join('')+'</div></div></div>';
   }
 
-  // فرص تناسبك
-  var _listPool=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);}).slice(0,6);
-  html+='<div class="hh-sec"><h3>'+(matchedBySpec?'فرص تناسبك':'أحدث المشاريع المتاحة')+'</h3><button class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل</button></div>';
-  if(_listPool.length){
-    var f=_listPool[0],fbc=parseInt(f.bid_count)||0,fnew=(Date.now()-new Date(f.created_at))<86400000;
-    var fimg=f.thumbnail||f.image_url||(f.images&&f.images[0])||null;
-    var fsaved=window._savedIds&&window._savedIds.indexOf(f.id)>=0;
-    html+='<div class="hh-op">'
-      +'<div class="hh-row" style="cursor:pointer" onclick="_viewProj('+f.id+')"><div class="hh-ic">'+(_safeUrl(fimg)?'<img loading="lazy" src="'+_esc(_safeUrl(fimg))+'" alt="">':catSvg(f.category,24))+'</div>'
-      +'<div class="hh-body"><div class="hh-chips">'+(fbc<=1?'<span class="hh-pill open">قليل المنافسة</span>':'')+(fnew?'<span class="hh-pill prog">جديد</span>':'')+'</div>'
-      +'<div class="hh-t">'+_esc(f.title||'')+'</div>'
-      +'<div class="hh-note">'+[f.city?_esc(f.city):'',timeAgoP(f.created_at),_arN(fbc,'b')].filter(Boolean).join(' · ')+'</div></div></div>'
-      +'<div style="display:flex;gap:8px"><button class="hh-cta" style="flex:1" onclick="openBidFormDirectly('+f.id+')">قدّم عرضك</button>'
-      +'<button class="hh-save'+(fsaved?' on':'')+'" title="'+(fsaved?'محفوظ':'حفظ للاحقاً')+'" aria-label="حفظ" onclick="_toggleSave('+f.id+',this)"><svg width="18" height="18" viewBox="0 0 24 24" fill="'+(fsaved?'currentColor':'none')+'" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></button></div>'+_CTL
-    +'</div>';
-    if(_listPool.length>1) html+=_renderBrowseList(_listPool.slice(1,5));
-  }else{
-    html+='<div class="hh-op" style="text-align:center;align-items:center;padding:24px 14px"><div style="font-size:13.5px;font-weight:800;color:var(--text)">ما فيه مشاريع جديدة الآن</div><div class="hh-note">'+(matchedBySpec?'تجيك إشعارات بالمشاريع الجديدة في تخصصك':'تابع لاحقاً أو وسّع تخصصاتك من ملفك')+'</div><button class="hh-cta" style="padding:10px 20px" onclick="gotoPage(&quot;browse&quot;)">تصفّح كل المشاريع</button></div>';
-  }
+  // فرص تناسبك — كل مشروع بنفس الشكل وزر «قدّم عرض»
+  var _listPool=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);}).slice(0,5);
+  html+='<div class="hh-sec"><h3>'+(matchedBySpec?'فرص تناسبك':'أحدث المشاريع المتاحة')+'</h3><button class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل'+(newCount>5?' ('+newCount+')':'')+'</button></div>';
+  if(_listPool.length){ html+=_renderBrowseList(_listPool); }
+  else{ html+='<div class="hh-op" style="text-align:center;align-items:center;padding:24px 14px"><div style="font-size:13.5px;font-weight:800;color:var(--text)">ما فيه مشاريع جديدة الآن</div><div class="hh-note">تجيك إشعارات أول ما ينزل مشروع في تخصصك</div></div>'; }
 
-  var lastBump=profile.last_bumped_at;
   var _savedPool=(allReq||[]).filter(function(r){return r&&r.status==='open'&&window._savedIds&&window._savedIds.indexOf(r.id)>=0;});
   if(_savedPool.length){
     html+='<div class="hh-sec"><h3>🔖 محفوظاتي</h3><button class="ch-link" onclick="_gotoSaved()">عرض الكل</button></div>';
-    html+=_renderBrowseList(_savedPool.slice(0,4));
+    html+=_renderBrowseList(_savedPool.slice(0,3));
   }
 
-  // آخر عروضي
-  html+='<div class="hh-sec"><h3>آخر عروضي</h3><button class="ch-link" onclick="gotoPage(&quot;works&quot;)">متابعة الكل</button></div>';
-  if(_myBids.length){
-    html+='<div class="hh-bl">';
-    _myBids.slice(0,5).forEach(function(b){
-      var pc=b.status==='accepted'?'open':b.status==='rejected'?'done':'rev';
-      var pl=b.status==='accepted'?'مقبول':b.status==='rejected'?'غير مختار':'قيد المراجعة';
-      html+='<div class="hh-bi" onclick="gotoPage(&quot;works&quot;)"><div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_esc(b.request_title||'—')+'</div><div class="hh-note" style="font-size:11.5px">'+_fpr(b.price)+' · '+timeAgoP(b.created_at)+'</div></div><span class="hh-pill '+pc+'">'+pl+'</span></div>';
-    });
-    html+='</div>';
-  }else{html+=_empty('لا يوجد عروض بعد','ابدأ بتصفح المشاريع');}
+  // المستوى — سطر مختصر
+  var _tiers=[{n:'مزود جديد',m:0},{n:'مزود نشط',m:3},{n:'مزود مميّز',m:10},{n:'خبير معتمد',m:25}];
+  var _ci=0;for(var _ti=0;_ti<_tiers.length;_ti++){if(done>=_tiers[_ti].m)_ci=_ti;}
+  var _next=_tiers[_ci+1]||null;
+  var _pct=_next?Math.max(6,Math.round((done-_tiers[_ci].m)/(_next.m-_tiers[_ci].m)*100)):100;
+  html+='<div class="pv-lv"><span>مستواك: <b>'+_tiers[_ci].n+'</b></span><div class="pv-bar"><i style="width:'+_pct+'%"></i></div><span class="nx">'+(_next?((_next.m-done)===1?'صفقة واحدة':(_next.m-done)===2?'صفقتان':(_next.m-done)+' صفقات')+' للتالي':'أعلى مستوى 🏅')+'</span></div>';
 
   html+='<div id="ph-sharecard"></div>';
 
@@ -656,6 +625,15 @@ function _renderProvNudges(bids,pool,matchedBySpec){
   var newMatch=pool.length;
   var chev='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>';
   var reqItems=[];
+  var _pendN=bids.filter(function(b){return b.status==='pending';}).length;
+  if(_pendN>0) reqItems.push('<div class="nudge" style="border-right-color:#f59e0b" onclick="gotoPage(\'works\')">'
+      +'<div class="nudge-ic" style="background:#fef3c7;color:#b45309"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'
+      +'<div class="nudge-body"><div class="nudge-t">'+(_pendN===1?'عرض ينتظر':(_pendN===2?'عرضين ينتظرون':_pendN+' عروض تنتظر'))+' قرار العميل</div><div class="nudge-s">كلّم العميل واتساب — يرفع فرصتك</div></div>'
+      +'<div class="nudge-cta">عروضي '+chev+'</div></div>');
+  if(!matchedBySpec) reqItems.push('<div class="nudge" style="border-right-color:#6366f1" onclick="gotoPage(\'profile\')">'
+      +'<div class="nudge-ic" style="background:#e0e7ff;color:#3730a3"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div>'
+      +'<div class="nudge-body"><div class="nudge-t">حدّد تخصصاتك ومدنك</div><div class="nudge-s">يطلع لك المشاريع اللي تناسبك أول</div></div>'
+      +'<div class="nudge-cta">حسابي '+chev+'</div></div>');
   accepted.slice(0,2).forEach(function(b){
     reqItems.push('<div class="nudge" style="border-right-color:var(--green)" onclick="_viewProj('+b.request_id+')">'
       +'<div class="nudge-ic" style="background:var(--green-l);color:var(--green)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>'
@@ -663,9 +641,9 @@ function _renderProvNudges(bids,pool,matchedBySpec){
       +'<div class="nudge-cta">فتح '+chev+'</div></div>');
   });
   function paint(msgItem){
-    var items=(msgItem?[msgItem]:[]).concat(reqItems).slice(0,3);
+    var items=(msgItem?[msgItem]:[]).concat(reqItems).slice(0,4);
     slot.innerHTML=items.length
-      ?'<div class="nudges-h"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> يحتاج إجراء منك</div>'+items.join('')
+      ?'<div class="nudges-h"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="vertical-align:-2px"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg> يحتاج منك</div>'+items.join('')
       :'';
   }
   _api('/api/provider/conversations').then(function(convs){
@@ -757,18 +735,21 @@ function _renderBrowse(){
     var open=_allProjs.filter(function(p){return p&&p.status==='open';});
     var nb=_el('nb-open');if(nb){nb.style.display=open.length?'':'none';nb.textContent=open.length;}
     var html='<div class="pghd"><div class="pg-t">تصفح المشاريع</div><div class="pg-s">'+open.length+' مشروع متاح</div></div>';
-    html+='<div class="card card-accent">';
-    html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">';
-    html+='<div style="flex:1;min-width:160px;display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:0 12px"><svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="bQ" placeholder="ابحث..." oninput="_filterBrowse()" style="border:none;background:transparent;font-size:12px;padding:8px 0;flex:1;outline:none;font-family:Tajawal,sans-serif"></div>';
-    html+='<select id="bCat" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل التصنيفات</option></select>';
-    html+='<select id="bCit" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="">كل المدن</option></select>';
-    html+='<select id="bSort" onchange="_filterBrowse()" style="padding:8px 11px;border:1px solid var(--border);border-radius:9px;font-size:11px;font-weight:600;background:var(--bg);color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif;outline:none"><option value="new">الأحدث</option><option value="old">الأقدم</option><option value="budget">الأعلى ميزانية</option></select>';
-    html+='<button id="bSmart" onclick="_toggleSmart()" style="padding:8px 14px;border:1.5px solid #c7d2fe;border-radius:9px;font-size:11.5px;font-weight:800;background:#eef2ff;color:#4338ca;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap;transition:all .15s">✨ الأنسب لي</button>';
-    html+='<button id="bSaved" onclick="_toggleSavedFilter()" style="padding:8px 14px;border:1.5px solid #c7d2fe;border-radius:9px;font-size:11.5px;font-weight:800;background:#eef2ff;color:#4338ca;cursor:pointer;font-family:Tajawal,sans-serif;white-space:nowrap;transition:all .15s">🔖 المحفوظة</button>';
-    html+='</div><div id="bList">'+_renderBrowseList(open)+'</div></div>';
+    html+='<div class="pb-filters">';
+    html+='<div class="pb-search"><svg width="13" height="13" fill="none" stroke="var(--muted)" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="bQ" placeholder="ابحث..." oninput="_filterBrowse()" style="border:none;background:transparent;font-size:12px;padding:8px 0;flex:1;outline:none;font-family:Tajawal,sans-serif"></div>';
+    html+='<div class="pb-chiprow">'
+      +'<button id="bSmart" type="button" class="pb-fc" onclick="_toggleSmart()">✨ الأنسب لي</button>'
+      +'<label class="pb-fc sel"><select id="bCit" onchange="_filterBrowse()"><option value="">كل المدن</option></select></label>'
+      +'<label class="pb-fc sel"><select id="bCat" onchange="_filterBrowse()"><option value="">كل التخصصات</option></select></label>'
+      +'<label class="pb-fc sel"><select id="bSort" onchange="_filterBrowse()"><option value="new">الأحدث</option><option value="old">الأقدم</option><option value="budget">الأعلى ميزانية</option></select></label>'
+      +'<button id="bSaved" type="button" class="pb-fc" onclick="_toggleSavedFilter()">🔖 المحفوظة</button>'
+    +'</div></div>';
+    html+='<div class="pb-count" id="bCount">'+open.length+' مشروع متاح</div>';
+    html+='<div id="bList">'+_renderBrowseList(open)+'</div>';
     pg.innerHTML=html;
     var catSel=_el('bCat');CATS.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;catSel.appendChild(o);});
     var citSel=_el('bCit');CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;citSel.appendChild(o);});
+    var _bs=_el('bSmart');if(_bs)_bs.classList.toggle('on',_smartOn);var _bv=_el('bSaved');if(_bv)_bv.classList.toggle('on',_savedOn);if(_smartOn||_savedOn)_filterBrowse();
     _lb.done();
   }catch(e){console.error('_renderBrowse error:',e);_lb.done();}
 }
@@ -786,9 +767,9 @@ function _toggleSave(id,btn){
     if(_savedOn)_filterBrowse();
   }).catch(function(){ if(typeof showToast==='function')showToast('تعذّر الحفظ','error'); });
 }
-function _toggleSavedFilter(){_savedOn=!_savedOn;var b=_el('bSaved');if(b){b.style.background=_savedOn?'#4338ca':'#eef2ff';b.style.color=_savedOn?'#fff':'#4338ca';b.style.borderColor=_savedOn?'#4338ca':'#c7d2fe';}_filterBrowse();}
+function _toggleSavedFilter(){_savedOn=!_savedOn;var b=_el('bSaved');if(b)b.classList.toggle('on',_savedOn);_filterBrowse();}
 var _smartOn=false;
-function _toggleSmart(){_smartOn=!_smartOn;var b=_el('bSmart');if(b){b.style.background=_smartOn?'#4338ca':'#eef2ff';b.style.color=_smartOn?'#fff':'#4338ca';b.style.borderColor=_smartOn?'#4338ca':'#c7d2fe';}_filterBrowse();}
+function _toggleSmart(){_smartOn=!_smartOn;var b=_el('bSmart');if(b)b.classList.toggle('on',_smartOn);_filterBrowse();}
 function _inMyAreaG(city){
   var p=window._prof||{};
   if(p.serves_all_cities)return true;
@@ -820,6 +801,7 @@ function _filterBrowse(){
     var ta=new Date(a.created_at||0).getTime(),tb=new Date(b.created_at||0).getTime();
     return srt==='old'?(ta-tb):(tb-ta);
   });
+  var _bc=_el('bCount');if(_bc)_bc.textContent=f.length+' مشروع'+((q||cat||cit||_savedOn||_smartOn)?' يطابق اختيارك':' متاح');
   var el=_el('bList');if(el){ if(_savedOn&&!f.length){ el.innerHTML=_empty('لا مشاريع محفوظة','احفظ أي مشروع بالضغط على 🔖 لتجده هنا لاحقاً'); } else if(_smartOn&&!f.length){ el.innerHTML=_empty('لا مشاريع تناسب تخصصك في منطقتك حالياً','ألغِ «الأنسب لي» لتصفّح كل المشاريع، أو وسّع مدن خدمتك من ملفك'); } else { el.innerHTML=_renderBrowseList(f); } }
 }
 function catSvg(cat,size){
@@ -849,30 +831,23 @@ function catSvg(cat,size){
 }
 function _renderBrowseList(list){
   if(!list||!list.length)return _empty('لا يوجد مشاريع متاحة حالياً. تفقد لاحقاً!','');
-  return list.map(function(r){
-    var img=r.thumbnail||r.image_url||(r.images&&r.images[0])||null;
-    var meta=[];
-    if(r.city)meta.push(_esc(r.city));
-    meta.push(timeAgoP(r.created_at));
-    meta.push(_arN(r.bid_count,'b'));
-    img=_safeUrl(img);
-    var imgHtml=img
-      ?'<div class="hz-img"><img src="'+_esc(img)+'" loading="lazy"></div>'
-      :'<div class="hz-img hz-noimg">'+catSvg(r.category,28)+'</div>';
-    var h='<div class="hz-item" onclick="_viewProj('+r.id+')">';
-    h+=imgHtml;
-    h+='<div class="hz-body">';
-    h+='<div class="hz-title">'+_esc(r.title)+'</div>';
-    if(parseInt(r.bid_count||0)===0)h+='<div style="display:inline-block;background:#fef3c7;color:#b45309;font-size:9.5px;font-weight:800;padding:2px 9px;border-radius:20px;margin-top:2px">🔥 فرصة ذهبية</div>';
-    if(r.category)h+='<div class="hz-cat">'+_esc(r.category)+'</div>';
-    h+='<div class="hz-meta">'+meta.map(function(m){return '<span>'+m+'</span>';}).join('')+'</div>';
-    h+='</div>';
-    if(r.budget_max)h+='<div class="hz-price">'+fmtN(r.budget_max)+'<span>ر.س</span></div>';
-    var _sv=(window._savedIds&&window._savedIds.indexOf(r.id)>=0);
-    h+='<button class="hz-save'+(_sv?' on':'')+'" onclick="event.stopPropagation();_toggleSave('+r.id+',this)" title="'+(_sv?'محفوظ':'حفظ للاحقاً')+'"><svg viewBox="0 0 24 24" width="17" height="17" fill="'+(_sv?'currentColor':'none')+'" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></button>';
-    h+='</div>';
-    return h;
-  }).join('');
+  var bidOn={}; (_myBids||[]).forEach(function(b){ bidOn[b.request_id]=1; });
+  return '<div class="pb-list">'+list.map(function(r){
+    var img=_safeUrl(r.thumbnail||r.image_url||(r.images&&r.images[0])||null);
+    var bc=parseInt(r.bid_count||0)||0, fresh=(Date.now()-new Date(r.created_at))<86400000;
+    var comp=bc===0?['ما عليه ولا عرض — كن الأول','#dcfce7','#15803d']:(bc===1?['عرض واحد بس','#dcfce7','#15803d']:[_arN(bc,'b'),bc>=5?'#fef3c7':'#f1f5f9',bc>=5?'#92400e':'#475569']);
+    var sv=(window._savedIds&&window._savedIds.indexOf(r.id)>=0);
+    var did=!!bidOn[r.id];
+    return '<div class="pb-cd" onclick="_viewProj('+r.id+')">'
+      +'<div class="pb-top"><div class="pb-th">'+(img?'<img src="'+_esc(img)+'" loading="lazy" alt="">':catSvg(r.category,26))+'</div>'
+      +'<div class="pb-tt"><b>'+_esc(r.title||'')+'</b><div class="pb-mt">'+[r.city?_esc(r.city):'',timeAgoP(r.created_at)].filter(Boolean).join(' · ')+'</div>'
+      +'<div class="pb-chips">'+(r.category?'<span class="c">'+_esc(r.category)+'</span>':'')+'<span style="background:'+comp[1]+';color:'+comp[2]+'">'+comp[0]+'</span>'+(fresh?'<span class="n">جديد</span>':'')+'</div></div>'
+      +(r.budget_max?'<div class="pb-pr"><b>'+fmtN(r.budget_max)+'</b><small>ر.س ميزانية</small></div>':'')+'</div>'
+      +'<div class="pb-ft">'+(did?'<button type="button" class="pb-done" onclick="event.stopPropagation();gotoPage(\'works\')">✓ قدّمت عرض — تابعه</button>'
+        :'<button type="button" class="pb-go" onclick="event.stopPropagation();openBidFormDirectly('+r.id+')">قدّم عرض</button>')
+      +'<button type="button" class="pb-sv'+(sv?' on':'')+'" aria-label="حفظ" title="'+(sv?'محفوظ':'حفظ للاحقاً')+'" onclick="event.stopPropagation();_toggleSave('+r.id+',this)"><svg viewBox="0 0 24 24" width="17" height="17" fill="'+(sv?'currentColor':'none')+'" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></button></div>'
+    +'</div>';
+  }).join('')+'</div>';
 }
 
 // ── نص اتفاقية عمولة المنصة (كامل) ──
@@ -1111,29 +1086,40 @@ async function loadWorks(){
   var pend=_myBids.filter(function(b){return b.status==='pending';}).length;
   var prog=_myProjs.filter(function(p){return p.status==='in_progress';}).length;
   var done=_myProjs.filter(function(p){return p.status==='completed';}).length;
-  var html='<div class="pghd"><div class="pg-t">مشاريعي وعروضي</div><div class="pg-s">'+_myBids.length+' عرض · '+_myProjs.length+' مشروع</div></div>';
-  if(_myBids.some(function(b){return b.contact_unlocked;}) && !(function(){try{return localStorage.getItem('mnq_contact_banner_seen');}catch(e){return 0;}})()){
-    html+='<div id="contact-banner" style="background:linear-gradient(135deg,#065f46,#059669);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">'
-      +'<div style="flex:1;min-width:200px"><div style="font-weight:800;font-size:14px;margin-bottom:3px">✨ جديد: تواصل مباشر مع أصحاب مشاريعك</div><div style="font-size:12px;opacity:.92;line-height:1.7">عروضك الحقيقية تتيح لك الآن الاتصال والواتساب مباشرة مع العميل — افتح العرض بالأسفل وبتلقى أزرار التواصل.</div></div>'
-      +'<button onclick="var e=document.getElementById(&quot;contact-banner&quot;);if(e)e.remove();try{localStorage.setItem(&quot;mnq_contact_banner_seen&quot;,&quot;1&quot;);}catch(x){}" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:9px;padding:8px 14px;font-family:Tajawal,sans-serif;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">فهمت ✓</button>'
-    +'</div>';
-  }
-  html+=_bidStandingBanner();
-  if(typeof _clmTierHtml==='function'){
-    try{ var _dn=_myProjs.filter(function(p){return p.status==='completed';}).length; if(_myBids.length||_myProjs.length)html+=_clmTierHtml(_dn);
-      _myProjs.filter(function(p){return p.status==='in_progress'&&!p.claim_status;}).slice(0,2).forEach(function(p){ html+='<div style="background:var(--white,#fff);border:1px solid #fde68a;border-radius:14px;padding:12px 14px;margin-bottom:12px"><div style="font-size:14px;font-weight:900">'+_esc(p.title||'')+'</div><div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:2px">قيد التنفيذ'+(p.client_name?' · '+_esc(p.client_name):'')+'</div>'+_clmProjHtml(p)+'</div>'; });
-    }catch(e){}
-  }
-  html+=_askMotivCard();
-  html+='<div style="display:flex;gap:6px;margin-bottom:16px;background:var(--bg);border-radius:12px;padding:4px"><button class="tab-btn on" id="wtab-bids" onclick="_wTab(&quot;bids&quot;,this)">العروض ('+_myBids.length+')</button><button class="tab-btn" id="wtab-projs" onclick="_wTab(&quot;projs&quot;,this)">المشاريع ('+_myProjs.length+')</button></div>';
-  html+='<div id="wtab-bids-wrap">'+_renderBids(_myBids)+'</div>';
+  var html='<div class="pghd"><div class="pg-t">عروضي</div><div class="pg-s">'+_myBids.length+' عرض · '+_myProjs.length+' مشروع</div></div>';
+  // تنبيه واحد مختصر بدل البطاقات الكثيرة (التفاصيل تنفتح عند الضغط)
+  var _sb=_bidStandingBanner();
+  if(_sb) html+='<div class="wk-tip" onclick="var d=document.getElementById(&quot;wk-tip-full&quot;);if(d)d.style.display=d.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg><span>'+((window._bidStanding||{}).review?'عروضك الجديدة تحت المراجعة':'عروضك تحتاج تحسين')+' — اكتب تفاصيل من وصف المشروع نفسه</span><b>التفاصيل ‹</b></div><div id="wk-tip-full" style="display:none">'+_sb+'</div>';
+  var C=_wkCounts();
+  var T=[['all','الكل',C.all],['wait','بانتظار العميل',C.wait],['acc','مقبولة',C.acc],['rej','منتهية',C.rej],['projs','مشاريعي',_myProjs.length]];
+  if(_wkTabSel!=='all'&&!(T.filter(function(x){return x[0]===_wkTabSel;})[0]||[])[2])_wkTabSel='all';
+  html+='<div class="rp-tabs wk-tabs" role="tablist">'+T.filter(function(x){return x[0]==='all'||x[2];}).map(function(x){return '<button type="button" role="tab" class="rp-tb'+(_wkTabSel===x[0]?' on':'')+'" data-wk="'+x[0]+'" onclick="_wkTab(&quot;'+x[0]+'&quot;)">'+x[1]+' <i>'+x[2]+'</i></button>';}).join('')+'</div>';
+  html+='<div id="wtab-bids-wrap"></div>';
   html+='<div id="wtab-projs-wrap" style="display:none">'+_renderProjs(_myProjs)+'</div>';
   pg.innerHTML=html;_lb.done();
-  pg.querySelectorAll('._bchat,._pchat').forEach(function(btn){
+  _wkPaint();
+  pg.querySelectorAll('._pchat').forEach(function(btn){
     btn.addEventListener('click',function(){
       openChatRoom(parseInt(btn.getAttribute('data-rid')),parseInt(btn.getAttribute('data-cid')),'','');
     });
   });
+}
+var _wkTabSel='all';
+function _wkGrp(b){ if(b.status==='accepted')return 'acc'; if(b.status==='rejected'&&!b.chance_open)return 'rej'; return 'wait'; }
+function _wkCounts(){ var c={all:_myBids.length,wait:0,acc:0,rej:0}; _myBids.forEach(function(b){c[_wkGrp(b)]++;}); return c; }
+function _wkTab(k){
+  _wkTabSel=k;
+  document.querySelectorAll('.wk-tabs .rp-tb').forEach(function(x){x.classList.toggle('on',x.getAttribute('data-wk')===k);});
+  var pw=_el('wtab-projs-wrap'),bw=_el('wtab-bids-wrap');
+  if(pw)pw.style.display=k==='projs'?'':'none'; if(bw)bw.style.display=k==='projs'?'none':'';
+  if(k!=='projs')_wkPaint();
+}
+function _wkPaint(){
+  var w=_el('wtab-bids-wrap'); if(!w)return;
+  var k=_wkTabSel; if(k==='projs'){ _wkTab('projs'); return; }
+  var L=_myBids.filter(function(b){ return k==='all'||_wkGrp(b)===k; });
+  w.innerHTML=_renderBids(L);
+  w.querySelectorAll('._bchat').forEach(function(btn){ btn.addEventListener('click',function(){ openChatRoom(parseInt(btn.getAttribute('data-rid')),parseInt(btn.getAttribute('data-cid')),'',''); }); });
 }
 function _wTab(tab,btn){
   document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('on');});if(btn)btn.classList.add('on');
@@ -1202,52 +1188,56 @@ function _bidStandingBanner(){
     +'<div style="font-size:12px;color:#9a3412;font-weight:700;margin-top:9px;line-height:1.7">'+(st.review?'عروضك الجديدة تظهر للعملاء بعد موافقة الإدارة (خلال ساعات).':'لو استمرت البلاغات، عروضك الجديدة بتنتظر مراجعة الإدارة قبل ما تظهر للعملاء.')+'</div></div></div>';
 }
 function _renderBids(list){
-  if(!list.length)return _empty('لا يوجد عروض','ابدأ بتصفح المشاريع');
+  if(!list.length)return _empty('لا يوجد عروض هنا','ابدأ بتصفح المشاريع وقدّم عرضك');
   list=list.slice().sort(function(a,b){return (b.chance_open?1:0)-(a.chance_open?1:0);});
+  var WA='<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3.5A11.8 11.8 0 0 0 1.9 17.7L.5 23.5l6-1.6A11.8 11.8 0 0 0 20.5 3.5zM12 21.6a9.6 9.6 0 0 1-4.9-1.3l-.4-.2-3.6.9 1-3.5-.2-.4A9.6 9.6 0 1 1 12 21.6zm5.3-7.2c-.3-.1-1.7-.8-2-.9s-.5-.1-.7.1-.8.9-.9 1.1-.3.2-.6.1a7.9 7.9 0 0 1-3.9-3.4c-.3-.5.3-.5.8-1.6.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6a1.2 1.2 0 0 0-.8.4 3.5 3.5 0 0 0-1.1 2.6 6.1 6.1 0 0 0 1.3 3.2 13.9 13.9 0 0 0 5.3 4.7c2 .8 2.7.9 3.7.8a3.1 3.1 0 0 0 2-1.4 2.5 2.5 0 0 0 .2-1.4c-.1-.2-.3-.2-.6-.4z"/></svg>';
   return list.map(function(b){
     var isAcc=b.status==='accepted',isRej=b.status==='rejected';
-    var stCls=isAcc?'wst-acc':isRej?'wst-rej':'wst-pend';
-    var stLbl=isAcc?'مقبول':isRej?(b.chance_open?'فرصة ثانية':'غير مختار'):(b.improved_at?'✨ عرض محسّن':'قيد المراجعة');
-    if(isRej&&b.chance_open)stCls='wst-acc';
+    var stLbl=isAcc?'مقبول':isRej?(b.chance_open?'فرصة ثانية':'غير مختار'):(b.improved_at?'✨ عرض محسّن':'بانتظار العميل');
+    var pill=isAcc?['#dcfce7','#15803d']:isRej?(b.chance_open?['#dbeafe','#1d4ed8']:['#f1f5f9','#475569']):['#fef3c7','#92400e'];
     var isHeld=b.hold_state==='held',isHRej=b.hold_state==='rejected';
-    var stSty=isHeld?' style="background:#fef3c7;color:#92400e"':(isHRej?' style="background:#fef2f2;color:#b91c1c"':'');
-    if(isHeld)stLbl='تحت المراجعة';else if(isHRej)stLbl='لم يُعتمد';
+    if(isHeld){stLbl='تحت المراجعة';pill=['#fef3c7','#92400e'];}else if(isHRej){stLbl='لم يُعتمد';pill=['#fef2f2','#b91c1c'];}
     var _wn=(_pvWarns||[]).some(function(w){return String(w.bid_id)===String(b.id);});
-    if(_wn&&!isAcc){stLbl='⚠️ يحتاج تعديل';stSty=' style="background:#fee2e2;color:#b91c1c"';}
-    var h='<div class="wz-item">';
-    h+='<div class="wz-head"><div class="wz-title">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</div><span class="wz-status '+stCls+'"'+stSty+'>'+stLbl+'</span></div>';
+    if(_wn&&!isAcc){stLbl='⚠️ يحتاج تعديل';pill=['#fee2e2','#b91c1c'];}
+    var proj=isAcc?(_myProjs||[]).filter(function(p){return String(p.id)===String(b.request_id);})[0]:null;
+    var rs=(proj&&proj.status)||b.req_status;
+    // المراحل: قدّمت · شافه العميل · اعتمدك · التنفيذ · تقييم
+    var ix=isAcc?(rs==='completed'?4:3):(b.seen_at?2:1);
+    var steps='';
+    if(!isRej&&!isHRej){ var nm=['قدّمت','شافه العميل','اعتمدك','التنفيذ','تقييم'];
+      steps='<div class="rp-steps">'+nm.map(function(x,k){return '<span class="'+(k<ix?'on':(k===ix?'now':''))+'"></span>';}).join('')+'</div><div class="rp-sl">'+nm.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div>'; }
+    var wa='', tel='';
+    if(b.contact_unlocked&&b.client_phone){
+      var _pc=String(b.client_phone).replace(/[^0-9]/g,'');
+      var _wnum=_pc.indexOf('966')===0?_pc:(_pc.indexOf('0')===0?'966'+_pc.slice(1):'966'+_pc);
+      var _wt='مرحباً '+(b.client_name||'')+'،\nأتواصل معك عبر منصة مناقصة بشأن مشروعكم: '+(b.request_title||'')+'\nأنا '+((typeof _me!=='undefined'&&_me&&_me.name)||'المزود')+'.';
+      wa='https://wa.me/'+_wnum+'?text='+encodeURIComponent(_wt); tel='tel:'+_esc(b.client_phone);
+    }
+    var h='<div class="wk-cd">';
+    h+='<div class="wk-top"><div class="wk-tt"><b onclick="_viewProj('+b.request_id+')">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</b><div class="rp-mt">'+[b.category?_esc(b.category):'',b.city?_esc(b.city):'','قدّمت '+timeAgoP(b.created_at)].filter(Boolean).join(' · ')+'</div></div>'
+      +'<div class="wk-pr"><b>'+fmtN(b.price)+'</b><small>ر.س'+(b.days?' · '+b.days+' يوم':'')+'</small></div></div>';
+    h+='<span class="rp-pill" style="align-self:flex-start;background:'+pill[0]+';color:'+pill[1]+'">'+stLbl+'</span>';
+    h+=steps;
     if(typeof _rjProvHtml==='function')h+=_rjProvHtml(b);
     if(typeof _clmBidHtml==='function')h+=_clmBidHtml(b);
-    if(isHeld)h+='<div style="background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;margin-bottom:8px;line-height:1.7">⏳ عرضك بانتظار موافقة الإدارة — بيظهر لصاحب المشروع بعد المراجعة</div>';
-    if(isHRej)h+='<div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;margin-bottom:8px;line-height:1.7">عرضك ما ظهر لصاحب المشروع'+(b.hold_reason?' — السبب: '+_esc(b.hold_reason):'')+'. عدّله بتفاصيل تخص المشروع ويرجع للمراجعة.</div>';
-    h+='<div class="wz-summary">';
-    h+='<div class="wz-cell"><div class="wz-lbl">المبلغ</div><div class="wz-val gold">'+fmtN(b.price)+' <span class="wz-u">ر.س</span></div></div>';
-    if(b.days)h+='<div class="wz-cell"><div class="wz-lbl">مدة التنفيذ</div><div class="wz-val">'+b.days+' <span class="wz-u">يوم</span></div></div>';
-    h+='<div class="wz-cell"><div class="wz-lbl">تاريخ العرض</div><div class="wz-val sm">'+_fdt(b.created_at)+'</div></div>';
-    h+='</div>';
-    if(b.note)h+='<div class="wz-note fmt-text">'+fmtText(b.note)+'</div>';
-    if((b.status==='pending'||!b.status)&&!isHeld&&!isHRej){h+=b.seen_at?'<div style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;background:#dcfce7;color:#15803d;font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:999px">👁 العميل شاف عرضك — وقت مناسب تتواصل</div>':'<div style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;background:var(--bg);color:var(--muted);font-size:11.5px;font-weight:800;padding:4px 11px;border-radius:999px">لم يطّلع عليه العميل بعد</div>';}
-    if(b.contact_unlocked && b.client_phone){
-      var _pc=String(b.client_phone).replace(/[^0-9]/g,'');
-      var _wn=_pc.indexOf('966')===0?_pc:(_pc.indexOf('0')===0?'966'+_pc.slice(1):'966'+_pc);
-      var _wt='مرحباً '+(b.client_name||'')+'،\nأتواصل معك عبر منصة مناقصة بشأن مشروعكم: '+(b.request_title||'')+'\nأنا '+((typeof _me!=='undefined'&&_me&&_me.name)||'المزود')+'.';
-      h+='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:11px 13px;margin-top:10px">';
-      h+='<div style="font-size:12px;font-weight:800;color:#166534;margin-bottom:8px">📞 تواصل مع '+_esc(b.client_name||'العميل')+'</div>';
-      h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
-      h+='<a href="https://wa.me/'+_wn+'?text='+encodeURIComponent(_wt)+'" target="_blank" style="padding:10px;background:#25d366;color:#fff;border-radius:9px;font-size:12px;font-weight:700;text-decoration:none;text-align:center;font-family:Tajawal,sans-serif">واتساب</a>';
-      h+='<a href="tel:'+_esc(b.client_phone)+'" style="padding:10px;background:#dcfce7;color:#166534;border:1px solid #bbf7d0;border-radius:9px;font-size:12px;font-weight:700;text-decoration:none;text-align:center;font-family:Tajawal,sans-serif">اتصال</a>';
-      h+='</div>';
-      h+='<div style="font-size:10.5px;color:#64748b;margin-top:8px;line-height:1.6">💡 التعامل داخل المنصة يحفظ حقوقك والضمان.</div>';
-      h+='</div>';
-    } else if(!isRej){
-      h+='<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:11px 13px;margin-top:10px;font-size:11.5px;color:#92620e;line-height:1.7">⚠️ لمشاهدة بيانات العميل والتواصل معه: أرفق عرضاً حقيقياً وواضحاً (سعر + تفاصيل كافية أو ملف عرض سعر). العروض الفاضية أو العبث تعرّض حسابك للإيقاف.</div>';
+    if(isHeld)h+='<div class="rp-nx"><span class="rp-ic">⏳</span><span class="rp-tx">عرضك بانتظار موافقة الإدارة — بيظهر للعميل بعدها</span></div>';
+    if(isHRej)h+='<div class="rp-nx bad"><span class="rp-ic">✕</span><span class="rp-tx">عرضك ما ظهر لصاحب المشروع'+(b.hold_reason?' — '+_esc(b.hold_reason):'')+'</span></div>';
+    // الخطوة الجاية
+    if(_wn&&!isAcc){ h+='<div class="rp-nx bad"><span class="rp-ic">✏️</span><span class="rp-tx"><b>العرض يحتاج تعديل</b> — اذكر تفاصيل من وصف المشروع نفسه</span><button type="button" class="rp-bt red" onclick="_editBidById('+(parseInt(b.id)||0)+')">عدّل العرض</button></div>'; }
+    else if(isAcc){
+      h+='<div class="rp-nx"><span class="rp-ic">🔨</span><span class="rp-tx">'+(rs==='completed'?'المشروع مكتمل':'اعتمدك '+_esc(b.client_name||'العميل')+' — تواصل وابدأ')+'</span>'+(wa?'<a class="rp-bt wa" href="'+wa+'" target="_blank" rel="noopener">'+WA+' واتساب</a>':'')+'</div>';
+      if(proj&&typeof _clmProjHtml==='function')h+=_clmProjHtml(proj);
+    }
+    else if(!isRej&&!isHeld&&!isHRej){
+      if(wa) h+='<div class="rp-nx"><span class="rp-ic">'+(b.seen_at?'👁':'📨')+'</span><span class="rp-tx">'+(b.seen_at?'العميل شاف عرضك':'العميل ما شاف عرضك للحين')+' — كلّمه واتساب</span><a class="rp-bt wa" href="'+wa+'" target="_blank" rel="noopener">'+WA+' واتساب</a></div>';
+      else h+='<div class="rp-nx"><span class="rp-ic">🔒</span><span class="rp-tx">رقم العميل يظهر لما يكون عرضك فيه سعر ووصف واضح (25 حرف أو أكثر) أو مرفق</span><button type="button" class="rp-bt ghost" onclick="_editBidById('+(parseInt(b.id)||0)+')">كمّل العرض</button></div>';
     }
     h+=_askBlock(b);
-    h+='<div class="card-actions"><button onclick="_viewProj('+b.request_id+')" class="ca-btn ca-view">عرض المشروع</button>';
-    if(b.client_id)h+='<button class="_bchat ca-btn ca-chat" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'">محادثة</button>';
-    if(!isAcc&&!isRej){
-      h+='<button onclick="_editBidById('+(parseInt(b.id)||0)+')" class="ca-btn ca-view">تعديل العرض</button>';
-    }
+    if(b.note)h+='<div class="wk-note"><div class="wk-nt fmt-text">'+fmtText(b.note)+'</div><button type="button" class="wk-more" onclick="var n=this.previousElementSibling;n.classList.toggle(&quot;open&quot;);this.textContent=n.classList.contains(&quot;open&quot;)?&quot;أخفِ ‹&quot;:&quot;اقرأ رسالة العرض ‹&quot;">اقرأ رسالة العرض ‹</button></div>';
+    h+='<div class="wk-ft"><button type="button" onclick="_viewProj('+b.request_id+')" class="rp-lk pri">المشروع</button>';
+    if(b.client_id)h+='<button type="button" class="_bchat rp-lk" data-rid="'+b.request_id+'" data-cid="'+b.client_id+'">محادثة</button>';
+    if(tel&&!isRej)h+='<a class="rp-lk" href="'+tel+'">اتصال</a>';
+    if(!isAcc&&!isRej)h+='<button type="button" onclick="_editBidById('+(parseInt(b.id)||0)+')" class="rp-lk">تعديل العرض</button>';
     h+='</div></div>';
     return h;
   }).join('');
@@ -2551,7 +2541,7 @@ async function _askAcceptSend(id,btn,payload,done){
     var b=_myBids.find(function(x){return String(x.id)===String(id);});
     if(b&&payload){ if(payload.price)b.price=payload.price; if(payload.days)b.days=payload.days; }
     if(b){ b.ask_status='pending'; b.ask_can=false; b.ask_why='cooldown'; b.ask_next_at=d.next_at; b.ask_left=d.left; b.ask_last_at=new Date().toISOString(); b.ask_sends=d.sends; }
-    var w=_el('wtab-bids-wrap'); if(w){ w.innerHTML=_renderBids(_myBids); w.querySelectorAll('._bchat').forEach(function(bt){ bt.addEventListener('click',function(){ openChatRoom(parseInt(bt.getAttribute('data-rid')),parseInt(bt.getAttribute('data-cid')),'',''); }); }); }
+    var w=_el('wtab-bids-wrap'); if(w){ _wkPaint(); return; } if(w){ w.innerHTML=_renderBids(_myBids); w.querySelectorAll('._bchat').forEach(function(bt){ bt.addEventListener('click',function(){ openChatRoom(parseInt(bt.getAttribute('data-rid')),parseInt(bt.getAttribute('data-cid')),'',''); }); }); }
   }catch(e){ if(typeof showToast==='function')showToast('تعذّر الاتصال','error'); if(btn){btn.disabled=false;btn.textContent='اطلب من العميل اعتماد عرضك';} if(done)done(false); }
 }
 // ═══ الإشعارات (تصميم جديد): فلترة حسب النوع + تجميع حسب اليوم + أيقونة ولون لكل نوع ═══
