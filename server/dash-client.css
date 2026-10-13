@@ -852,3 +852,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 /* مشاريعي: التبويبات بعرض كامل، والبطاقات عمودين في الكمبيوتر */
 #all-reqs>.rp-tabs,#all-reqs>.rp-list{grid-column:1/-1}
 @media(min-width:900px){.rp-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}}
+
+/* صفحة المشروع: زر المخطط + التبويبات تكفي الجوال */
+.dh-plan{display:flex;align-items:center;gap:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:14px;padding:10px 12px;margin-top:10px}
+.dh-plan>span{font-size:20px}.dh-plan>div{flex:1;min-width:0}.dh-plan b{display:block;font-size:13.5px;font-weight:900;color:#92400e}.dh-plan small{display:block;font-size:12px;color:#a16207;font-weight:700;line-height:1.6}
+.dh-plan button{flex-shrink:0;border:0;background:#d97706;color:#fff;border-radius:10px;padding:9px 12px;font-family:'Tajawal',sans-serif;font-weight:900;font-size:12.5px;cursor:pointer;min-height:38px}
+[data-theme="dark"] .dh-plan{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.35)}[data-theme="dark"] .dh-plan b{color:#fbbf24}[data-theme="dark"] .dh-plan small{color:#fcd34d}
+@media(max-width:480px){.tab-btn{flex:1 1 auto;padding:9px 6px;font-size:12px}.tab-btn svg{display:none}}

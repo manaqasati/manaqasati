@@ -1248,6 +1248,20 @@ function _detChips(r){
   if(r.geo_lat&&r.geo_lng) ch.push('🗺️ الموقع محدد');
   return ch.map(function(c){return '<span>'+c+'</span>';}).join('');
 }
+// الشريط الثابت تحت يطلع بس لما أزرار الرأس تختفي من الشاشة (ما يتكرر معها)
+var _dbObs=null;
+function _detBarWatch(on){
+  var bar=document.getElementById('det-bar'); if(!bar)return;
+  if(_dbObs){ try{_dbObs.disconnect();}catch(e){} _dbObs=null; }
+  bar.style.display='none';
+  var acts=document.querySelector('#det-head .dh-acts')||document.querySelector('#det-head .dh');
+  if(!on||!acts||!window.IntersectionObserver)return;
+  _dbObs=new IntersectionObserver(function(es){ es.forEach(function(e){ bar.style.display=(!e.isIntersecting && e.boundingClientRect.top<0)?'':'none'; }); });
+  _dbObs.observe(acts);
+}
+// مشاريع البناء بدون مخطط: زر «أرفق المخطط» داخل بطاقة الحالة
+function _detNeedPlan(r){ var P=['بناء','تشطيبات ومقاولات عامة','تصاميم داخلي وخارجي','مكاتب هندسية','ترميم مبانٍ']; return P.indexOf(r.category)>=0 && !_detAtts(r).length && !_detImgs(r).length && ['pending_review','review','needs_edit','open'].indexOf(r.status)>=0; }
+function _detPlanCta(r){ return _detNeedPlan(r)?'<div class="dh-plan"><span>📐</span><div><b>ما أرفقت المخطط</b><small>المنفّذ يحتاج يشوفه عشان يعطيك سعر دقيق</small></div><button type="button" onclick="_rpPlan('+r.id+',event)">أرفق المخطط</button></div>':''; }
 function _detRender(r){
   var c=_detCan(r), id=r.id;
   var ago=r.created_at?_detAgo(r.created_at):'';
@@ -1256,7 +1270,7 @@ function _detRender(r){
     +'<div class="rdh-title" style="margin:6px 0 2px">'+esc(r.title)+'</div>'
     +(ago?'<div class="dh-sub">أُرسل '+ago+'</div>':'')
     +'<div class="dh-chips">'+_detChips(r)+'</div>'
-    +_detSteps(r)+_detBanner(r)
+    +_detSteps(r)+_detBanner(r)+_detPlanCta(r)
     +'<div id="actions-wrap" class="dh-cta"></div>'
     +'<div class="dh-acts">'
       +(c.edit&&r.status!=='needs_edit'?'<button class="dh-b pri" onclick="openEditReq('+id+',event)">'+_DI.edit+' تعديل المشروع</button>':'')
@@ -1280,9 +1294,11 @@ function _detRender(r){
   }
   // شريط ثابت تحت (جوال)
   var bar=document.getElementById('det-bar');
-  if(bar){ bar.innerHTML=c.edit?('<button class="dh-b '+(r.status==='needs_edit'?'red':'pri')+'" style="flex:1" onclick="openEditReq('+id+',event)">'+_DI.edit+(r.status==='needs_edit'?' عدّل وأعد الإرسال':' تعديل المشروع')+'</button><button class="dh-b sq" onclick="_detMenu(this,'+id+')" aria-label="خيارات">'+_DI.dots+'</button>'):''; bar.style.display=c.edit?'':'none'; document.getElementById('page-detail').classList.toggle('has-bar',!!c.edit); }
+  if(bar){ bar.innerHTML=c.edit?('<button class="dh-b '+(r.status==='needs_edit'?'red':'pri')+'" style="flex:1" onclick="openEditReq('+id+',event)">'+_DI.edit+(r.status==='needs_edit'?' عدّل وأعد الإرسال':' تعديل المشروع')+'</button><button class="dh-b sq" onclick="_detMenu(this,'+id+')" aria-label="خيارات">'+_DI.dots+'</button>'):''; bar.style.display='none'; document.getElementById('page-detail').classList.toggle('has-bar',!!c.edit); _detBarWatch(!!c.edit); }
   // تبويب التفاصيل
   _detDetails(r);
+  // مشروع ما انتشر للحين وما عليه عروض: نفتح «التفاصيل» بدل تبويب عروض فاضي
+  if(!(parseInt(r.bid_count)||0) && ['pending_review','review','needs_edit','rejected'].indexOf(r.status)>=0){ var _tb=document.querySelector('.tab-btn[onclick*="details"]'); if(_tb&&document.getElementById('tab-bids')&&document.getElementById('tab-bids').classList.contains('on')) showTab('details',_tb); }
 }
 function _detAgo(d){ var s=(Date.now()-new Date(d))/1000; if(s<3600)return 'قبل '+Math.max(1,Math.round(s/60))+' دقيقة'; if(s<86400)return 'قبل '+Math.round(s/3600)+' ساعة'; var n=Math.round(s/86400); return n<30?'قبل '+n+' يوم':'في '+fmtDate(d); }
 function _detSize(b){ b=+b||0; if(!b)return ''; if(b>=1048576)return (b/1048576).toFixed(b>=10485760?0:1)+'MB'; return Math.max(1,Math.round(b/1024))+'KB'; }
