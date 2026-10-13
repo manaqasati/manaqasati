@@ -666,6 +666,8 @@ function _rpCard(r){
     +steps
     +'<div class="rp-nx'+(nedit||rej?' bad':'')+'"><span class="rp-ic">'+ic+'</span><span class="rp-tx">'+tx+'</span>'+bt+'</div>'
     +'<div class="hzp-qbadge" data-qid="'+r.id+'" style="display:none"></div>'
+    +'<div class="rp-ft">'+(['open','pending_review','review','needs_edit'].indexOf(s)>=0&&!nedit&&bt.indexOf('openEditReq')<0&&bt.indexOf('_rpPlan')<0?'<button type="button" class="rp-lk" onclick="event.stopPropagation();openEditReq('+r.id+',event)">✏️ تعديل</button>':'<span></span>')
+      +'<button type="button" class="rp-lk pri" onclick="event.stopPropagation();openDetail('+r.id+',event)">عرض التفاصيل ‹</button></div>'
   +'</div>';
 }
 function loadReqs(){

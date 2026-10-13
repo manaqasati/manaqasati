@@ -859,3 +859,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .dh-plan button{flex-shrink:0;border:0;background:#d97706;color:#fff;border-radius:10px;padding:9px 12px;font-family:'Tajawal',sans-serif;font-weight:900;font-size:12.5px;cursor:pointer;min-height:38px}
 [data-theme="dark"] .dh-plan{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.35)}[data-theme="dark"] .dh-plan b{color:#fbbf24}[data-theme="dark"] .dh-plan small{color:#fcd34d}
 @media(max-width:480px){.tab-btn{flex:1 1 auto;padding:9px 6px;font-size:12px}.tab-btn svg{display:none}}
+
+.rp-ft{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);margin:0 -14px -4px;padding:9px 14px 0}
+.rp-lk{border:0;background:none;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer;padding:6px 2px;min-height:34px}
+.rp-lk.pri{color:var(--p)}
