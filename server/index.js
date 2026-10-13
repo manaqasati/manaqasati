@@ -359,7 +359,7 @@ ${rel.length ? `<section class="card"><h2>عقود مشابهة</h2><div class="
 ${(function(){ const cat = Object.keys(_SEO_CT).find(k => _SEO_CT[k] === slug); if (!cat) return ''; const who = _SEO_WHO[cat] || cat; return `<section class="card"><h2>تبحث عن ${E(who)}؟</h2><div class="grid">${['الرياض','جدة','الدمام','مكة المكرمة','المدينة المنورة','الخبر','الطائف','بريدة','أبها','حائل'].map(ci => `<a href="/dalil/${seoSlug(cat)}/${seoSlug(ci)}">${E(who)} في ${E(ci)}</a>`).join('')}</div></section>`; })()}
 <p class="note">هذا العقد نموذج استرشادي جاهز، وليس عقدًا موحدًا يناسب جميع المشاريع. راجعه قبل التوقيع، ويُفضّل مراجعته من مختص قانوني. ولا يُعدّ استشارة قانونية.</p>
 </main><div class="foot"><a href="/">الرئيسية</a><a href="/contracts">عقود المقاولات</a><a href="/terms.html">الشروط والأحكام</a></div>
-<script> function _bk(){var r=document.referrer||'',same=r&&r.indexOf(location.origin)===0&&r!==location.href;if(same&&history.length>1){history.back();return;}location.href=same?r:'/';} (function(){var l=document.getElementById('bkL');if(!l)return;var r=document.referrer||'';  if(r.indexOf(location.origin)!==0){l.textContent='الرئيسية';return;}  if(/dashboard-provider/.test(r))l.textContent='لوحتي';else if(/dashboard-client/.test(r))l.textContent='لوحتي';else if(/\\/contracts(\\?|$|#)/.test(r))l.textContent='العقود';else if(/\\/project\\//.test(r))l.textContent='المشروع';else if(/\\/dalil\\//.test(r))l.textContent='الدليل';  var u={};try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}  var a=document.getElementById('topAct');if(a&&localStorage.getItem('token')&&u.role){    if(u.role==='provider'){a.textContent='لوحتي';a.href='/dashboard-provider.html';}    else if(u.role==='admin'){a.textContent='لوحة الإدارة';a.href='/dashboard-admin.html';}    else {a.textContent='+ مشروع جديد';a.href='/dashboard-client.html#new';}  }})(); </script><script src="/track.js" defer></script></body></html>`;
+<script> function _bk(){var r=document.referrer||'',same=r&&r.indexOf(location.origin)===0&&r!==location.href;if(same&&history.length>1){history.back();return;}location.href=same?r:'/';} (function(){var l=document.getElementById('bkL');if(!l)return;var r=document.referrer||'';  if(r.indexOf(location.origin)!==0){l.textContent='الرئيسية';return;}  if(/dashboard-provider/.test(r))l.textContent='لوحتي';else if(/dashboard-client/.test(r))l.textContent='لوحتي';else if(/\\/contracts(\\?|$|#)/.test(r))l.textContent='العقود';else if(/\\/project\\//.test(r))l.textContent='المشروع';else if(/\\/dalil\\//.test(r))l.textContent='الدليل';  var u={};try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}  var a=document.getElementById('topAct');if(a&&localStorage.getItem('token')&&u.role){    if(u.role==='provider'){a.textContent='لوحتي';a.href='/dashboard-provider.html';}    else if(u.role==='admin'){a.textContent='لوحة الإدارة';a.href='/dashboard-admin.html';}    else {a.textContent='+ مشروع جديد';a.href='/dashboard-client.html#new';}  }})(); </script><script src="/track.js?v=3" defer></script></body></html>`;
   res.setHeader('Cache-Control', 'public, max-age=600');
   res.type('html').send(html);
 });
@@ -6586,6 +6586,23 @@ app.post('/api/reviews/:id/reply', auth, providerOnly, async (req, res) => {
 
 // ═══ QUESTIONS & CLARIFICATIONS (الأسئلة والتوضيحات) ═══
 // GET: قائمة أسئلة مشروع (عامة، بدون تسجيل دخول)
+// أسئلة المزوّد اللي انرد عليها — طلب واحد بدل طلب لكل مشروع قدّم عليه
+app.get('/api/provider/answered-questions', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT id, request_id, answered_at, created_at FROM request_questions
+      WHERE asker_id=$1 AND answer IS NOT NULL AND btrim(answer)<>'' ORDER BY answered_at DESC NULLS LAST LIMIT 500`, [req.user.id]);
+    res.set('Cache-Control', 'no-store'); res.json(r.rows);
+  } catch(e) { console.error('answered-questions:', e.message); res.json([]); }
+});
+// عدد الأسئلة اللي تنتظر رد العميل في كل مشاريعه — طلب واحد بدل طلب لكل مشروع
+app.get('/api/client/question-counts', auth, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT q.request_id, COUNT(*)::int AS n FROM request_questions q JOIN requests r ON r.id=q.request_id
+      WHERE r.client_id=$1 AND (q.answer IS NULL OR btrim(q.answer)='') GROUP BY q.request_id`, [req.user.id]);
+    const counts = {}; r.rows.forEach(x => { counts[x.request_id] = x.n; });
+    res.set('Cache-Control', 'no-store'); res.json({ counts });
+  } catch(e) { console.error('question-counts:', e.message); res.json({ counts: {} }); }
+});
 app.get('/api/requests/:id/questions', async (req, res) => {
   try {
     const r = await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, u.profile_image as asker_image FROM request_questions q JOIN users u ON q.asker_id=u.id WHERE q.request_id=$1 ORDER BY q.created_at ASC`, [parseInt(req.params.id)]);

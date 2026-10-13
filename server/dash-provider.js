@@ -1,3 +1,27 @@
+/* مناقصة — طلبات القراءة المتكررة لنفس الرابط خلال ثانية ونص تاخذ نفس الرد (اللوحة كانت تطلب نفس الشي 2-3 مرات وقت الفتح) */
+(function(){
+  if (window.__mqDedupe || !window.fetch) return; window.__mqDedupe = true;
+  var F = window.fetch, M = {};
+  window.fetch = function(input, init){
+    try {
+      var u = typeof input === 'string' ? input : (input && input.url) || '';
+      var m = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+      if (m !== 'GET' && m !== 'HEAD' && !/\/api\/(hit|me\/ping|me\/app-status|build|client-log|log)\b/.test(u)) M = {}; // أي حفظ/تعديل يمسح المحفوظ عشان ما نعرض بيانات قديمة
+      if (m === 'GET' && u.indexOf('/api/') !== -1 && !/\/api\/(build|me\/ping)/.test(u)) {
+        var h = init && init.headers, a = '';
+        try { a = h ? (h.Authorization || h.authorization || (h.get && h.get('Authorization')) || '') : ''; } catch(_){}
+        var k = u + '|' + a, now = Date.now(), c = M[k];
+        if (c && now - c.t < 1500) return c.p.then(function(r){ return r.clone(); });
+        var p = F.apply(this, arguments);
+        M[k] = { t: now, p: p };
+        p.then(function(r){ if (!r.ok) delete M[k]; }, function(){ delete M[k]; });
+        for (var x in M) if (now - M[x].t > 8000) delete M[x];
+        return p.then(function(r){ return r.clone(); });
+      }
+    } catch(e){}
+    return F.apply(this, arguments);
+  };
+})();
 /* مناقصة — كود dashboard-provider.html (مفصول عشان يتخزّن في الجوال ويفتح أسرع) */
 
 function fmtN(n){ return n?String(Math.round(Number(n))).replace(/\B(?=(\d{3})+(?!\d))/g,','):'0'; }
@@ -2449,22 +2473,17 @@ function _renderProvAnswerNudge(){
   reqs=reqs.slice(0,25); if(!reqs.length)return;
   var seen=_seenAnsGet();
   var total=0, topReq=null, topTs=-1, allQids=[], done=0;
-  reqs.forEach(function(rid){
-    _api('/api/requests/'+rid+'/questions').then(function(qs){
-      if(Array.isArray(qs)){
-        qs.forEach(function(q){
-          var ans=(q.answer&&String(q.answer).trim());
-          if(ans && String(q.asker_id)===String(mine) && seen.indexOf(q.id)<0){
-            total++; allQids.push(q.id);
-            var ts=new Date(q.answered_at||q.created_at).getTime()||0;
-            if(ts>=topTs){ topTs=ts; topReq=rid; }
-          }
-        });
-      }
-    }).catch(function(){}).then(function(){
-      done++; if(done===reqs.length) _paintProvAnsNudge(total,topReq,allQids);
-    });
-  });
+  // طلب واحد لكل أسئلتي اللي انرد عليها (بدل طلب لكل مشروع)
+  _api('/api/provider/answered-questions').then(function(qs){
+    if(Array.isArray(qs)){
+      qs.forEach(function(q){
+        if(reqs.indexOf(q.request_id)<0 || seen.indexOf(q.id)>=0) return;
+        total++; allQids.push(q.id);
+        var ts=new Date(q.answered_at||q.created_at).getTime()||0;
+        if(ts>=topTs){ topTs=ts; topReq=q.request_id; }
+      });
+    }
+  }).catch(function(){}).then(function(){ _paintProvAnsNudge(total,topReq,allQids); });
 }
 function _paintProvAnsNudge(total,topReq,qids){
   var slot=_el('ph-qa-nudge'); if(!slot)return;

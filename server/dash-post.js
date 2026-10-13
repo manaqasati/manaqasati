@@ -1,3 +1,27 @@
+/* مناقصة — طلبات القراءة المتكررة لنفس الرابط خلال ثانية ونص تاخذ نفس الرد (اللوحة كانت تطلب نفس الشي 2-3 مرات وقت الفتح) */
+(function(){
+  if (window.__mqDedupe || !window.fetch) return; window.__mqDedupe = true;
+  var F = window.fetch, M = {};
+  window.fetch = function(input, init){
+    try {
+      var u = typeof input === 'string' ? input : (input && input.url) || '';
+      var m = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+      if (m !== 'GET' && m !== 'HEAD' && !/\/api\/(hit|me\/ping|me\/app-status|build|client-log|log)\b/.test(u)) M = {}; // أي حفظ/تعديل يمسح المحفوظ عشان ما نعرض بيانات قديمة
+      if (m === 'GET' && u.indexOf('/api/') !== -1 && !/\/api\/(build|me\/ping)/.test(u)) {
+        var h = init && init.headers, a = '';
+        try { a = h ? (h.Authorization || h.authorization || (h.get && h.get('Authorization')) || '') : ''; } catch(_){}
+        var k = u + '|' + a, now = Date.now(), c = M[k];
+        if (c && now - c.t < 1500) return c.p.then(function(r){ return r.clone(); });
+        var p = F.apply(this, arguments);
+        M[k] = { t: now, p: p };
+        p.then(function(r){ if (!r.ok) delete M[k]; }, function(){ delete M[k]; });
+        for (var x in M) if (now - M[x].t > 8000) delete M[x];
+        return p.then(function(r){ return r.clone(); });
+      }
+    } catch(e){}
+    return F.apply(this, arguments);
+  };
+})();
 // حدود المرفقات في المشروع (لازم تطابق السيرفر)
 var _MQ_IMG=8, _MQ_ATT=12;
 function _mqCnt(id,n,max,lbl){ var g=document.getElementById(id); if(!g)return; var c=document.getElementById(id+'-cnt'); if(!c){ c=document.createElement('div'); c.id=id+'-cnt'; c.style.cssText='font-size:11.5px;font-weight:800;color:#64748b;margin-top:6px'; g.parentNode.insertBefore(c,g.nextSibling); } c.textContent=n?(n+' من '+max+' '+lbl):''; c.style.color=n>=max?'#b45309':'#64748b'; }
@@ -284,23 +308,18 @@ function paintQBadge(id,pn){
 }
 function scanQuestions(all,doNudge){
   all=all||[];
-  // نفحص أحدث 8 طلبات فقط (كان 30 = حتى 30 طلب شبكة متزامن يسبب بطئاً ملموساً)
-  var cand=all.slice(0,8);
-  if(!cand.length){ if(doNudge){ paintQNudge(0,null); } return; }
-  var total=0, topReq=null, topN=0, done=0;
-  cand.forEach(function(r){
-    jFetch('/api/requests/'+r.id+'/questions').then(function(qs){
-      var pn=Array.isArray(qs)?qs.filter(_cqPending).length:0;
-      paintQBadge(r.id,pn);
-      // النبيه العلوي يتجاهل الطلبات التي اطّلع عليها المستخدم (حتى لو لم يجب)
-      if(pn>0 && !_isReqQSeen(r.id)){ total+=pn; if(pn>topN){ topN=pn; topReq=r; } }
-    }).catch(function(){ paintQBadge(r.id,0); }).then(function(){
-      done++;
-      if(done===cand.length && doNudge){ paintQNudge(total,topReq); }
-    });
-  });
+  if(!all.length){ if(doNudge){ paintQNudge(0,null); } return; }
+  // طلب واحد لكل المشاريع بدل طلب لكل مشروع
+  _qCounts().then(function(cnt){
+    var total=0, topReq=null, topN=0;
+    all.forEach(function(r){ var pn=+(cnt[r.id]||0); paintQBadge(r.id,pn);
+      if(pn>0 && !_isReqQSeen(r.id)){ total+=pn; if(pn>topN){ topN=pn; topReq=r; } } });
+    if(doNudge){ paintQNudge(total,topReq); }
+  }).catch(function(){ all.forEach(function(r){ paintQBadge(r.id,0); }); });
 }
-function renderQuestionNudgeRefresh(){ if(_qNudgeReqs) renderQuestionNudge(_qNudgeReqs); }
+var _qcP=null,_qcT=0;
+function _qCounts(){ if(_qcP&&Date.now()-_qcT<3000)return _qcP; _qcT=Date.now(); _qcP=jFetch('/api/client/question-counts').then(function(d){ return (d&&d.counts)||{}; }); _qcP.catch(function(){_qcP=null;}); return _qcP; }
+function renderQuestionNudgeRefresh(){ _qcP=null; if(_qNudgeReqs) renderQuestionNudge(_qNudgeReqs); }
 function paintQNudge(total,topReq){
   var slot=document.getElementById('ph-q-nudge'); if(!slot)return;
   if(!total||!topReq){ slot.innerHTML=''; return; }
