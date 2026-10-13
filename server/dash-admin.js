@@ -2104,7 +2104,11 @@ function getFilteredRequests(){
   var term=((document.getElementById('req-search')||{}).value||'').toLowerCase();
   var ci=(document.getElementById('rf-city')||{}).value||'';
   var cat=(document.getElementById('rf-cat')||{}).value||'';
+  var bmn=(document.getElementById('rf-bmin')||{}).value, bmx=(document.getElementById('rf-bmax')||{}).value;
+  bmn=bmn===''||bmn==null?null:parseInt(bmn); bmx=bmx===''||bmx==null?null:parseInt(bmx);
+  if(bmn!=null&&bmx!=null&&bmn>bmx){var _t=bmn;bmn=bmx;bmx=_t;}
   return (_allReq||[]).filter(function(r){
+    var _bn=parseInt(r.bid_count)||0; if(bmn!=null&&_bn<bmn)return false; if(bmx!=null&&_bn>bmx)return false;
     if(_reqFilter==='stale'){ if(!_rqStale(r))return false; }
     else if(_reqFilter==='notes'){ if(!(r.client_note&&!r.client_note_done_at))return false; }
     else if(_reqFilter==='nosaai'){ if(!_noSaai(r))return false; }
@@ -2124,7 +2128,7 @@ function fillReqFilters(){
   var kSel=document.getElementById('rf-cat');
   if(kSel&&kSel.options.length<=1){Object.keys(cats).sort().forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;kSel.appendChild(o);});}
 }
-function resetReqFilters(){['rf-city','rf-cat'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var sr=document.getElementById('req-search');if(sr)sr.value='';syncReqFiltersToHash();renderRequests();}
+function resetReqFilters(){['rf-city','rf-cat','rf-bmin','rf-bmax'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var sr=document.getElementById('req-search');if(sr)sr.value='';syncReqFiltersToHash();renderRequests();}
 function applyReqFiltersFromHash(){
   var ps=_parseHashParams();
   [['city','rf-city'],['cat','rf-cat']].forEach(function(m){var e=document.getElementById(m[1]);if(e&&ps[m[0]]!=null)e.value=ps[m[0]];});
@@ -2177,7 +2181,7 @@ function renderRequests(){
   var cnt=document.getElementById('rf-count');if(cnt)cnt.textContent=filtered.length+' نتيجة';
   if(!filtered.length){document.getElementById('requests-table').innerHTML=emptyState('لا يوجد مشاريع مطابقة');return;}
   var _rTotal=filtered.length;
-  var _rSig=[(document.getElementById('req-search')||{}).value,(document.getElementById('rf-city')||{}).value,(document.getElementById('rf-cat')||{}).value,(typeof _reqFilter!=='undefined'?_reqFilter:''),filtered.length].join('|');
+  var _rSig=[(document.getElementById('req-search')||{}).value,(document.getElementById('rf-city')||{}).value,(document.getElementById('rf-cat')||{}).value,(document.getElementById('rf-bmin')||{}).value,(document.getElementById('rf-bmax')||{}).value,(typeof _reqFilter!=='undefined'?_reqFilter:''),filtered.length].join('|');
   filtered=_pgSlice('r',filtered,_rSig);
   var sm={open:['مفتوح','b-open'],in_progress:['قيد التنفيذ','b-progress'],executing:['قيد التنفيذ','b-progress'],assigned:['تم الإسناد','b-progress'],completed:['مكتمل','b-completed'],pending_review:['مراجعة','b-review'],review:['مراجعة','b-review'],needs_edit:['مطلوب تعديل','b-edit'],rejected:['مرفوض','b-rej'],closed:['مغلق','b-rej'],closed_auto:['مغلق','b-rej'],cancelled:['ملغى','b-rej'],expired:['منتهي','b-rej']};
   var eye='<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';

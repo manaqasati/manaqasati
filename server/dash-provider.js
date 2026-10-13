@@ -1835,7 +1835,7 @@ function loadSaai(){
       }).join('');
       list='<div class="card" style="padding:6px 18px">'+list+'</div>';
     }
-    var selfBtn='<button class="btn-new" style="width:100%;margin-bottom:14px;padding:13px;font-size:14px" onclick="_spSelfOpen()">سدّد سعي على مشروع ثاني</button><div style="font-size:11.5px;color:var(--muted);font-weight:700;text-align:center;margin:-8px 0 14px">اتفقت مع عميل والعرض ما انقبل داخل المنصة؟ سدّد من هنا</div>';
+    var selfBtn='<button type="button" class="sp-self" onclick="_spSelfOpen()"><span class="sp-ic"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="12" y1="15" x2="16" y2="15"/></svg></span><span class="sp-tx"><b>سدّد سعي على مشروع ثاني</b><small>اتفقت مع عميل والعرض ما انقبل داخل المنصة؟ سدّد من هنا</small></span><span class="sp-ar">‹</span></button>';
     pg.innerHTML='<div class="sa-wrap"><div class="sa-m">'+wallet+list+'</div><div class="sa-s">'+selfBtn+'<div id="saai-bank"></div></div></div>';
     // بيانات التحويل + الحاسبة (لمن يحوّل مباشرة)
     _api('/api/bank-info').then(function(bk){
