@@ -2065,6 +2065,7 @@ function renderProjReview(){
       +'<details style="border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px;padding:10px 12px"><summary style="cursor:pointer;font-size:12.5px;font-weight:800;color:#166534">💡 ملاحظة للعميل مع النشر (اختيارية — تظهر له في صفحة مشروعه)</summary>'+tipChips('rv-tip-'+sel.id)+'<textarea id="rv-tip-'+sel.id+'" placeholder="مثال: أرفق المخططات لتحصل على عروض أدق..." style="width:100%;padding:9px 11px;border:1.5px solid #bbf7d0;border-radius:10px;font-family:Tajawal,sans-serif;font-size:12.5px;min-height:44px;resize:vertical;background:#fff;box-sizing:border-box"></textarea></details>'
       +'<div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:13px;font-weight:900">لو تبي تطلب تعديل أو ترفض — اختر السبب:</div>'+reasonChips('rv-notes-'+sel.id)
         +'<textarea id="rv-notes-'+sel.id+'" placeholder="ملاحظات التعديل للعميل، أو سبب الرفض النهائي..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;min-height:54px;resize:vertical;box-sizing:border-box"></textarea></div>'
+      +_prProvBox(sel)
       +'<div class="pr-btns"><button style="background:#16a34a;color:#fff" onclick="reviewAct('+sel.id+',\'approve\')">اعتماد ونشر</button><button style="background:#d97706;color:#fff" onclick="reviewAct('+sel.id+',\'needs_edit\')">طلب تعديل</button><button style="background:#fff;color:#dc2626;border:1.5px solid #fecaca;flex:0 1 auto;min-width:100px" onclick="reviewAct('+sel.id+',\'reject\')">رفض</button></div>'
     +'</div>'
     +'<div class="pr-side"><div class="pr-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b style="font-size:15px">فحص الجودة</b><span class="pl" style="background:'+(q.score>=80?'#e3f5e9;color:#166534':(q.score>=55?'#fef3c7;color:#92400e':'#fef2f2;color:#b91c1c'))+'">'+q.score+'%</span></div>'
@@ -2107,6 +2108,41 @@ function _prHist(){
       +(list.length>8?'<div style="text-align:center;padding-top:8px"><a href="#" onclick="event.preventDefault();window._prHistAll=!window._prHistAll;_prHist()" style="font-weight:900;font-size:13px">'+(window._prHistAll?'عرض أقل':'عرض الكل ('+list.length+')')+'</a></div>':'')
       +'</div>';
   }).catch(function(){});
+}
+// ═══ «مزوّد سجّل كعميل» — منشوره نبذة عن شغله مو مشروع ═══
+var _PROV_RX=/(نقدّ?م|نوفّ?ر|خدماتنا|نحن |لدينا|خبرتنا|خبرة \d|سنوات خبرة|تواصل معنا|للتواصل|نستقبل|متخصص(ون|ين)? في|أعمالنا|فريقنا|بأفضل الأسعار|أسعار منافسة)/;
+var _PROV_NAME_RX=/(مؤسس[هة]|شرك[هة]|مقاولات|للمقاولات|مكتب|ورش[هة]|م\.|co\b|est\b)/i;
+function _prLooksProv(sel){
+  var why=[];
+  if(_PROV_NAME_RX.test(String(sel.client_name||'')))why.push('اسم الحساب «'+esc(sel.client_name)+'» اسم منشأة');
+  var d=String(sel.description||'')+' '+String(sel.title||''); var m=d.match(_PROV_RX); if(m)why.push('الوصف فيه «'+esc(m[0].trim())+'»');
+  return why;
+}
+function _prProvBox(sel){
+  var why=_prLooksProv(sel), hot=why.length>0;
+  return '<details class="pr-prov'+(hot?' hot':'')+'"'+(hot?' open':'')+'><summary>🛠 '+(hot?'يبدو إنه مزوّد سجّل كعميل':'هذا مزوّد سجّل كعميل؟')+'</summary>'
+    +'<div class="pr-prov-b">'
+    +(hot?'<div class="pr-prov-why">ليش نشك: '+why.join(' · ')+'</div>':'')
+    +'<div>استخدم هذا الخيار لو اللي نشره <b>تعريف بشغله أو خدماته</b> (مثل: «نقدم خدمات دهانات وترميم…») مو مشروع يطلب له عروض. وش يصير:</div>'
+    +'<ol><li>المنشور <b>ينرفض</b> وما ينشر للمزوّدين (ولا يحسب عليه).</li>'
+    +'<li>نحفظ وصفه كـ<b>نبذة</b> وتصنيفه كـ<b>تخصص</b> في حسابه (لو كانت فاضية).</li>'
+    +'<li>يوصله إشعار وإيميل يشرح له إن حسابه عميل، مع زر <b>«فعّل تقديم العروض»</b> يفتح له النافذة وبياناته جاهزة.</li>'
+    +'<li>يطلع لك رابط واتساب برسالة جاهزة لو تبي تكلّمه.</li></ol>'
+    +'<button type="button" onclick="reviewIsProv('+sel.id+')">🛠 حوّله لتفعيل حساب مزوّد</button></div></details>';
+}
+async function reviewIsProv(id){
+  if(!await askConfirm({title:'مزوّد سجّل كعميل',message:'بنرفض المنشور ونرسل له شرح وزر يفعّل فيه حساب المزوّد (بياناته تتعبّى جاهزة). متأكد؟',confirmText:'نعم، أرسل'}))return;
+  fetch(API+'/api/admin/requests/'+id+'/review',Object.assign({method:'PUT',body:JSON.stringify({action:'is_provider'})},hdr()))
+    .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+    .then(function(res){
+      if(!res.ok){toast((res.d&&res.d.message)||'تعذّر التنفيذ','error');return;}
+      toast('أُرسل له شرح وزر تفعيل حساب المزوّد ✓','success');
+      if(res.d&&res.d.wa_link)showWaFollowup(res.d.wa_link);
+      _projReview=(_projReview||[]).filter(function(x){return x.id!==id;});
+      setProjReviewBadge(_projReview.length);
+      window._prDone=(window._prDone||0)+1; renderProjReview();
+      if(!_projReview.length){var host=document.getElementById('projreview-list');if(host)host.innerHTML=emptyState('لا توجد مشاريع بانتظار المراجعة 🎉');}
+    }).catch(function(){toast('تعذّر الاتصال','error');});
 }
 async function reviewAct(id,action){
   var ta=document.getElementById('rv-notes-'+id);

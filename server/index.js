@@ -2000,6 +2000,7 @@ async function notify(userId, title, body, type, refId) {
     await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [userId, title, body, type, refId]);
     const url = (() => {
       if (!type) return '/';
+      if (type === 'becomeprov') return '/dashboard-client.html#becomeprov';
       if (type === 'message') return '/dashboard-client.html#messages';
       if (type === 'bid' || type === 'bid_accepted' || type === 'bid_rejected') return '/dashboard-provider.html#bids';
       if (type === 'new_request') return '/dashboard-provider.html';
@@ -4115,7 +4116,7 @@ app.put('/api/profile', auth, async (req, res) => {
 
 app.get('/api/client/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,email,phone,city,bio,business_name,badge,profile_image,role,COALESCE(can_provide,FALSE) as can_provide,created_at,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND (category IS DISTINCT FROM 'direct')) as total_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress' AND (category IS DISTINCT FROM 'direct')) as active_requests FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,email,phone,city,bio,specialties,business_name,badge,profile_image,role,COALESCE(can_provide,FALSE) as can_provide,created_at,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND (category IS DISTINCT FROM 'direct')) as total_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='completed') as completed_requests,(SELECT COUNT(*) FROM requests WHERE client_id=users.id AND status='in_progress' AND (category IS DISTINCT FROM 'direct')) as active_requests FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -9005,6 +9006,40 @@ function _reviewWa(action, title, reason, phone){
     : `السلام عليكم، بخصوص مشروعك «${title}» في منصة مناقصة:\n${_note}`;
   return `https://wa.me/${ph}?text=${encodeURIComponent(waMsg)}`;
 }
+// «مزوّد سجّل كعميل»: اللي نشره نبذة عن شغله مو مشروع ← نرفض المنشور بلطف، ونوجّهه يفعّل حساب المزوّد
+// ونحفظ النبذة والتخصص في حسابه (لو فاضية) عشان تتعبّى له جاهزة في نافذة التفعيل
+const _ISPROV_NOTE = 'واضح إن اللي نشرته تعريف بشغلك كمقدّم خدمة، مو مشروع تطلب له عروض. قسم المشاريع مخصّص لأصحاب المشاريع. فعّل «تقديم العروض» من حسابك (مجاناً) وتوصلك مشاريع العملاء في تخصصك ومدينتك وتقدّم عليها.';
+async function _reviewIsProvider(req, res, id){
+  try {
+    const q = await pool.query(`SELECT r.id, r.client_id, r.title, r.description, r.category, r.extra_categories, r.city, u.name, u.email, u.phone, u.bio, u.specialties, u.city AS ucity, COALESCE(u.can_provide,FALSE) AS cp
+      FROM requests r JOIN users u ON u.id=r.client_id WHERE r.id=$1`, [id]);
+    if (!q.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const x = q.rows[0];
+    await pool.query(`UPDATE requests SET status='rejected', review_notes=$1 WHERE id=$2`, [_ISPROV_NOTE, id]);
+    // نعبّي بياناته كمزوّد لو ناقصة (ما نلمس شي موجود)
+    const cats = [x.category].concat(Array.isArray(x.extra_categories) ? x.extra_categories : []).filter(c => c && CATEGORIES.includes(c) && c !== 'أخرى').slice(0, 5);
+    const bio = String(x.description || '').trim().slice(0, 1000);
+    try {
+      await pool.query(`UPDATE users SET bio=CASE WHEN COALESCE(TRIM(bio),'')='' THEN NULLIF($1,'') ELSE bio END,
+          specialties=CASE WHEN COALESCE(cardinality(specialties),0)=0 AND cardinality($2::text[])>0 THEN $2::text[] ELSE specialties END,
+          city=COALESCE(NULLIF(city,''), NULLIF($3,'')), provider_hint_dismissed=FALSE WHERE id=$4`, [bio, cats, x.city || '', x.client_id]);
+    } catch(e){ console.error('isprov fill:', e.message); }
+    const link = SITE_URL + '/dashboard-client.html#becomeprov';
+    const title = '🛠 حسابك مسجّل كعميل — فعّل تقديم العروض';
+    if (!x.cp) await notify(x.client_id, title, `بخصوص «${x.title}»: ${_ISPROV_NOTE}`, 'becomeprov', id);
+    else await notify(x.client_id, '🛠 هذا تعريف بشغلك مو مشروع', `بخصوص «${x.title}»: حسابك مفعّل كمزوّد — قدّم عروضك على المشاريع من لوحة المزوّد بدل نشر مشروع.`, 'request', id);
+    if (x.email) {
+      const body = `<p>مرحباً${x.name ? ' ' + eEsc(x.name) : ''}،</p><p>شكراً لنشرك «<strong>${eEsc(x.title)}</strong>».</p>`
+        + `<p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;color:#1e3a8a;margin:10px 0">${_ISPROV_NOTE}</p>`
+        + `<p>جهّزنا لك بياناتك (التخصص والنبذة) — بس اضغط الزر واختر مدينتك وفعّل.</p>`;
+      sendEmail(x.email, title, emailTpl(title, body, x.cp ? 'افتح لوحة المزوّد' : 'فعّل تقديم العروض', x.cp ? SITE_URL + '/dashboard-provider.html' : link)).catch(()=>{});
+    }
+    await logAdmin(req, 'review_request', 'request', id, 'مزوّد سجّل كعميل — رُفض المنشور ووُجّه لتفعيل المزوّد');
+    let wa_link = null; const ph = normPhone(x.phone);
+    if (ph) wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(`السلام عليكم ${x.name || ''}، معك فريق منصة مناقصة 👋\nشفنا إنك نشرت «${x.title}» — وواضح إنه تعريف بشغلك كمقدّم خدمة، مو مشروع تطلب له عروض.\n\nحسابك الحين مسجّل كعميل. فعّل «تقديم العروض» مجاناً من هنا وتوصلك مشاريع العملاء في تخصصك ومدينتك:\n${x.cp ? SITE_URL + '/dashboard-provider.html' : link}`)}`;
+    res.json({ ok: true, id, status: 'rejected', wa_link });
+  } catch(e) { console.error('isprov:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+}
 // سجل آخر المراجعات (اعتماد / تعديل / رفض) مع رابط واتساب جاهز — للتواصل لاحقاً
 app.get('/api/admin/review-history', requirePermission('requests.review'), async (req, res) => {
   try {
@@ -9018,6 +9053,7 @@ app.get('/api/admin/review-history', requirePermission('requests.review'), async
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
   try {
     const id = parseInt(req.params.id); const { action, reason } = req.body;
+    if (action === 'is_provider') return _reviewIsProvider(req, res, id);
     if (!['approve','needs_edit','reject'].includes(action)) return res.status(400).json({ message: 'إجراء غير صحيح' });
     // «طلب تعديل» و«رفض نهائي» يتطلّبان ملاحظة/سبباً يصل للعميل
     if (action !== 'approve' && !String(reason||'').trim()) {

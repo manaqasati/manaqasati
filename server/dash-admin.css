@@ -866,3 +866,19 @@ a.cu-pv:hover{border-color:#86efac}
 
 .rf-bids{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:var(--muted);background:var(--card,#fff);border:1.5px solid var(--border);border-radius:10px;padding:0 8px;min-height:40px}
 .rf-bids select{border:0!important;background:transparent!important;padding:6px 2px!important;min-width:0!important;width:auto!important;font-weight:900;color:var(--text)}
+
+/* «مزوّد سجّل كعميل» في مراجعة المشاريع */
+.pr-prov{border:1px solid #ddd6fe;background:#f5f3ff;border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.pr-prov summary{cursor:pointer;font-size:13px;font-weight:900;color:#5b21b6}
+.pr-prov.hot{border-color:#f59e0b;background:#fffbeb}
+.pr-prov.hot summary{color:#92400e}
+.pr-prov-b{font-size:12.5px;line-height:1.85;color:var(--text2,#334155);margin-top:8px}
+.pr-prov-b ol{margin:6px 0 10px;padding-inline-start:20px}
+.pr-prov-why{background:#fff;border:1px dashed #f59e0b;border-radius:9px;padding:6px 9px;margin-bottom:8px;font-weight:800;color:#92400e}
+.pr-prov-b button{width:100%;border:0;background:#6d28d9;color:#fff;border-radius:11px;padding:11px;font-family:Tajawal,sans-serif;font-weight:900;font-size:13.5px;cursor:pointer;min-height:44px}
+[data-theme="dark"] .pr-prov{background:#1e1838;border-color:#4c1d95}
+[data-theme="dark"] .pr-prov summary{color:#c4b5fd}
+[data-theme="dark"] .pr-prov.hot{background:#2a1f0a;border-color:#b45309}
+[data-theme="dark"] .pr-prov.hot summary{color:#fcd34d}
+[data-theme="dark"] .pr-prov-b{color:#cbd5e1}
+[data-theme="dark"] .pr-prov-why{background:#1a1407;color:#fcd34d}
