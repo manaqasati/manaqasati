@@ -317,7 +317,7 @@ function applyAvatar(img){
 (function(){
   var n=user.name||'—';
   document.getElementById('userName').textContent=n;
-  var _hi=document.getElementById('phHi');if(_hi)_hi.textContent='أهلاً، '+n.split(' ')[0];
+  var _hi=document.getElementById('phHi');if(_hi)_hi.textContent='أهلاً، '+_firstNm(n);
   ['userAv','mobAv','profileAv','phAv'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=n[0]||'ع';});
   var cached=localStorage.getItem('client_avatar_'+user.id);
   if(isImg(cached))applyAvatar(cached);
@@ -3001,3 +3001,5 @@ function _sqAns(id,a,btn){
   }).catch(function(){ if(card)card.querySelectorAll('button').forEach(function(b){b.disabled=false;}); });
 }
 window.addEventListener('load',function(){setTimeout(function(){try{if(localStorage.getItem('token'))_sqLoad();}catch(e){}},800);});
+
+function _firstNm(n){var w=String(n||'').trim().split(/\s+/);if(w.length>1&&/^(ابو|أبو|ابن|بن|ام|أم|عبد|عبدال|آل|ال)$/.test(w[0]))return w[0]+' '+w[1];return w[0]||'';}

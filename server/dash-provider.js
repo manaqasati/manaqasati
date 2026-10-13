@@ -448,7 +448,7 @@ function _renderHome(data){
   var featured=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);})[0]||null;
   var newCount=pool.length;
   var avHtml=(profile&&_safeUrl(profile.profile_image))?'<img loading="lazy" src="'+_esc(_safeUrl(profile.profile_image))+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:20px;font-weight:900;color:#fff">'+_esc((_me.name||'م')[0])+'</span>';
-  var firstName=String(_me.name||'المزود').split(' ')[0];
+  var firstName=_firstNm(_me.name)||'المزود';
   var html='<div id="ph-invites"></div>';
 
   // ── الرئيسية الجديدة ──
@@ -2640,3 +2640,5 @@ function _nfOpenP(id){
   if(k==='offers'||t==='accept_ask'){ gotoPage('works'); return; }
   if(n.ref_id&&(t==='new_request'||t==='request'||t==='new_question'||t==='question_answered')&&typeof _viewProj==='function'){ _viewProj(n.ref_id); return; }
 }
+
+function _firstNm(n){var w=String(n||'').trim().split(/\s+/);if(w.length>1&&/^(ابو|أبو|ابن|بن|ام|أم|عبد|عبدال|آل|ال)$/.test(w[0]))return w[0]+' '+w[1];return w[0]||'';}
