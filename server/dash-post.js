@@ -1119,6 +1119,18 @@ function pickMyLocation(){
     showToast('تعذّر تحديد الموقع \u2014 تأكّد من السماح للمتصفح','error');
   },{enableHighAccuracy:true,timeout:10000});
 }
+// يلوّن الحقل الناقص بالأحمر + رسالة تحته + ينزل له — ويختفي أول ما يكتب
+function _fErr(id,txt){
+  var el=document.getElementById(id); if(!el)return;
+  el.classList.add('f-err');
+  var m=document.getElementById('fe-'+id);
+  if(txt&&!m){ m=document.createElement('div'); m.id='fe-'+id; m.className='f-err-msg'; el.parentNode.insertBefore(m,el.nextSibling); }
+  if(m){ m.textContent=txt; m.style.display=txt?'block':'none'; }
+  try{ el.scrollIntoView({behavior:'smooth',block:'start'}); setTimeout(function(){ try{el.focus({preventScroll:true});}catch(e){} },350); }catch(e){}
+  if(!el._feBound){ el._feBound=1; var clr=function(){ if(String(el.value||'').trim()){ el.classList.remove('f-err'); var mm=document.getElementById('fe-'+id); if(mm)mm.style.display='none'; if(id==='n-city'){ var ce=document.getElementById('city-err'); if(ce)ce.style.display='none'; el.style.borderColor=''; } } };
+    el.addEventListener('input',clr); el.addEventListener('change',clr); }
+}
+function _fErrClear(){ ['n-title','n-desc','n-city'].forEach(function(id){ var el=document.getElementById(id); if(el)el.classList.remove('f-err'); var m=document.getElementById('fe-'+id); if(m)m.style.display='none'; }); }
 function submitReq(){
   var cat=document.getElementById('n-cat').value;
   var catOther=cat==='أخرى'?document.getElementById('n-cat-other').value.trim():'';
@@ -1129,11 +1141,11 @@ function submitReq(){
   var deadline=document.getElementById('n-deadline').value;
   var msg=document.getElementById('new-msg');
   var cityErr=document.getElementById('city-err');
-  var err='';
-  if(!title)err='يرجى كتابة عنوان الطلب';
+  var err='';_fErrClear();
+  if(!title){err='يرجى كتابة عنوان الطلب';_fErr('n-title','اكتب عنوان الطلب');}
   else if(!cat){err='حدّد التخصص — اضغط «اختر التخصص» تحت العنوان';try{var _cb=document.getElementById('n-catbox');if(_cb){_cb.scrollIntoView({behavior:'smooth',block:'center'});_cb.style.outline='2px solid #dc2626';_cb.style.borderRadius='14px';setTimeout(function(){_cb.style.outline='';},2500);}}catch(e){}}
-  else if(!desc)err='يرجى كتابة تفاصيل الطلب';
-  else if(!city){err='يرجى اختيار المدينة';document.getElementById('n-city').style.borderColor='var(--red)';if(cityErr)cityErr.style.display='block';}
+  else if(!desc){err='يرجى كتابة تفاصيل الطلب';_fErr('n-desc','اكتب تفاصيل الطلب — وش المطلوب بالضبط والكمية أو المساحة');}
+  else if(!city){err='يرجى اختيار المدينة';_fErr('n-city','');document.getElementById('n-city').style.borderColor='var(--red)';if(cityErr)cityErr.style.display='block';}
   if(err){if(msg){msg.textContent=err;msg.className='alert err';}return;}
   if(cityErr)cityErr.style.display='none';
   document.getElementById('n-city').style.borderColor='';

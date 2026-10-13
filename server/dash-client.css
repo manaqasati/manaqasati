@@ -764,3 +764,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .extra-head .eh-opt{font-size:11.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px}
 .extra-fields{display:block}
 input[type=date]{direction:ltr;text-align:right}
+
+/* الحقل الناقص بالأحمر */
+.f-err{scroll-margin-top:130px;border-color:#dc2626 !important;background:#fef2f2 !important;box-shadow:0 0 0 3px rgba(220,38,38,.12) !important}
+.f-err-msg{display:none;color:#dc2626;font-size:12px;font-weight:700;margin-top:6px}
+[data-theme=dark] .f-err,body.dark .f-err{background:rgba(220,38,38,.10) !important}
+[data-theme=dark] .f-err-msg,body.dark .f-err-msg{color:#f87171}
