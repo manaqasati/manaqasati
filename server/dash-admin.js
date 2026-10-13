@@ -515,6 +515,23 @@ function filterRole(role,el){_roleFilter=role;document.querySelectorAll('#page-u
 // رقم الجوال بأي صيغة: 05… / 9665… / +966 / 00966 / أرقام عربية / مسافات → آخر الأرقام بدون مفتاح الدولة والصفر
 function _phNorm(x){ x=String(x||'').replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);}).replace(/[۰-۹]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d);}).replace(/\D/g,''); return x.replace(/^(00966|966|0)/,''); }
 function filterUsers(){_searchTerm=document.getElementById('user-search').value.toLowerCase();renderUsers();}
+// المزوّد «يخدم» المدينة بنفس منطق دعوة المزوّدين: مقرّه فيها، أو اختارها ضمن مدن خدمته، أو يخدم كل المملكة، أو ما حدد مدينة أصلاً
+function _uServes(u,eff){
+  if(eff[u.city])return true;
+  if(u.role!=='provider')return false;
+  if(u.serves_all_cities)return true;
+  var sc=u.service_cities||[]; for(var i=0;i<sc.length;i++){ if(eff[sc[i]])return true; }
+  return !u.city && !sc.length;
+}
+function _uCityCell(u){
+  var h=esc(u.city||'—');
+  if(u.role==='provider'){
+    var sc=(u.service_cities||[]).filter(function(c){return c&&c!==u.city;});
+    var t=u.serves_all_cities?'يخدم كل المدن':(sc.length?('+ يخدم '+(sc.length===1?esc(sc[0]):sc.length+' مدن')):'');
+    if(t)h+='<div style="font-size:11px;font-weight:700;color:var(--p,#1d4ed8);margin-top:2px" title="'+esc(u.serves_all_cities?'كل المدن':sc.join('، '))+'">'+t+'</div>';
+  }
+  return h;
+}
 function getFilteredUsers(){
   var ci=msVals('city');
   var sp=msVals('spec');
@@ -527,7 +544,7 @@ function getFilteredUsers(){
     else if(_roleFilter==='idle'){ if(!_uIdle(u))return false; }
     else if(_roleFilter!=='all'&&u.role!==_roleFilter)return false;
     if(_searchTerm){ var _qd=_phNorm(_searchTerm); var _hit=(u.name||'').toLowerCase().includes(_searchTerm)||(u.email||'').toLowerCase().includes(_searchTerm)||(u.business_name||'').toLowerCase().includes(_searchTerm)||(_qd.length>=3&&_phNorm(u.phone).indexOf(_qd)>=0); if(!_hit)return false; }
-    if(ci.length){ var _eff={}; ci.forEach(function(v){ if(v.indexOf('منطقة ')===0){(INV_REGIONS[v.slice(6)]||[]).forEach(function(c){_eff[c]=1;});} else _eff[v]=1; }); if(!_eff[u.city])return false; }
+    if(ci.length){ var _eff={}; ci.forEach(function(v){ if(v.indexOf('منطقة ')===0){(INV_REGIONS[v.slice(6)]||[]).forEach(function(c){_eff[c]=1;});} else _eff[v]=1; }); if(!_uServes(u,_eff))return false; }
     if(sp.length){var _a=(u.specialties||[]).concat(u.notify_categories||[]);if(!sp.some(function(x){return _a.indexOf(x)>=0;}))return false;}
     if(stt==='active'&&!u.is_active)return false;
     if(stt==='banned'&&u.is_active)return false;
@@ -557,7 +574,7 @@ function renderUsers(){
       +'<td><input type="checkbox" class="uchk" '+(_selUsers[u.id]?'checked':'')+' onclick="toggleUserSel('+u.id+',this.checked)"></td>'
       +'<td><div class="u-cell"><div class="u-av">'+(isImg(u.profile_image)?'<img src="'+esc(_safeUrl(u.profile_image))+'">':esc((u.name||'?')[0]))+'</div><div><div class="u-name">'+esc(u.name)+(_uLooksProv(u)?'<span class="u-lp">يبدو مزوّد</span>':'')+(u.tier&&u.tier!=='new'?' '+tierChip(u.tier)+(u.tier_locked?'<span title="مثبّت" style="color:var(--p);margin-right:2px"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24" style="vertical-align:middle"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></span>':''):'')+(u.badge&&u.badge!=='none'?' '+badgeChip(u.badge):'')+'</div><div class="u-email">'+esc(u.email)+'</div></div></div></td>'
       +'<td><span class="badge b-'+u.role+'">'+(u.role==='client'?'عميل':'مزود')+'</span></td>'
-      +'<td style="font-size:12.5px;color:var(--muted)">'+esc(u.city||'—')+'</td>'
+      +'<td style="font-size:12.5px;color:var(--muted)">'+_uCityCell(u)+'</td>'
       +'<td style="font-size:12.5px;color:var(--muted)">'+activity+'</td>'
       +'<td>'+(function(){var p=_uPct(u); if(p==null)return '<span style="color:var(--muted)">—</span>'; var c=p>=80?'#16a34a':(p>=50?'#f59e0b':'#dc2626'); return '<div class="u-pc"><div class="b"><i style="width:'+p+'%;background:'+c+'"></i></div><span>'+p+'%</span></div>';})()+'</td>'
       +'<td>'+_uSeen(u)+'</td>'
@@ -595,10 +612,16 @@ function fillUserFilters(){
   var cityOpts=Object.keys(citySet2).sort(function(a,b){return a.localeCompare(b,'ar');});
   var regionOpts=Object.keys(INV_REGIONS).map(function(rg){return 'منطقة '+rg;});
   msSetup('city','كل المدن',regionOpts.concat(cityOpts),renderUsers);
+  // التخصصات تجي بعد طلب الشبكة — نحفظ اللي في الرابط عشان ما يضيع قبل ما تجهز القائمة
+  var _pendSpec=null; try{ var _hp=_parseHashParams(); if(_hp.spec)_pendSpec=String(_hp.spec).split(',').map(function(x){return x.trim();}).filter(Boolean); }catch(e){}
+  var _specDone=function(opts){
+    msSetup('spec','كل التخصصات',opts,renderUsers);
+    if(_pendSpec&&_pendSpec.length&&!msVals('spec').length){ _pendSpec.forEach(function(x){ if(_MS.spec.opts.indexOf(x)<0)_MS.spec.opts.push(x); _MS.spec.sel.push(x); }); msRender('spec'); if(typeof msLabel==='function')msLabel('spec'); if(document.getElementById('uf-count'))renderUsers(); }
+  };
   fetch(API+'/api/categories').then(function(r){return r.json();}).then(function(d){
     var canon=(d&&(d.categories||d))||[]; var set={}; canon.forEach(function(c){set[c]=1;}); Object.keys(specset).forEach(function(c){set[c]=1;});
-    msSetup('spec','كل التخصصات',Object.keys(set).sort(function(a,b){return a.localeCompare(b,'ar');}),renderUsers);
-  }).catch(function(){ msSetup('spec','كل التخصصات',Object.keys(specset).sort(),renderUsers); });
+    _specDone(Object.keys(set).sort(function(a,b){return a.localeCompare(b,'ar');}));
+  }).catch(function(){ _specDone(Object.keys(specset).sort()); });
   var bSel=document.getElementById('uf-badge');
   if(bSel&&bSel.options.length<=1){(typeof BADGE_CATALOG!=='undefined'?BADGE_CATALOG:[]).forEach(function(b){var o=document.createElement('option');o.value=b.key;o.textContent=b.label;bSel.appendChild(o);});var no=document.createElement('option');no.value='none';no.textContent='بدون لقب';bSel.appendChild(no);}
 }
