@@ -1323,7 +1323,7 @@ var _CU_OC={won:['✓ رسى على مزوّد فتح الرقم','#dcfce7','#15
 function loadContactLog(days){
   if(typeof days==='number')_cuDays=days; else if(_cuDays==null)_cuDays=30;
   var host=document.getElementById('contactlog-list');if(!host)return;
-  var sg=document.getElementById('cu-seg'); if(sg)sg.innerHTML='<div class="br-seg">'+[[7,'7 أيام'],[30,'30 يوم'],[90,'3 شهور'],[0,'الكل']].map(function(x){return '<button type="button" class="'+(x[0]===_cuDays?'on':'')+'" onclick="loadContactLog('+x[0]+')">'+x[1]+'</button>';}).join('')+'</div>';
+  var sg=document.getElementById('cu-seg'); if(sg)sg.innerHTML='<div class="br-seg">'+[[1,'اليوم'],[7,'7 أيام'],[30,'30 يوم'],[90,'3 شهور'],[0,'الكل']].map(function(x){return '<button type="button" class="'+(x[0]===_cuDays?'on':'')+'" onclick="loadContactLog('+x[0]+')">'+x[1]+'</button>';}).join('')+'</div>';
   if(!host.querySelector('.cu-ks'))host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
   var to=new Date(Date.now()+3*3600000), f=function(d){return d.toISOString().slice(0,10);};
   var qs=_cuDays?('from='+f(new Date(to.getTime()-(_cuDays-1)*86400000))+'&to='+f(to)):'all=1&to='+f(to);
