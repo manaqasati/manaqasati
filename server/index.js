@@ -645,11 +645,16 @@ function _sortByProximity(rows, reqCity, cityKey){
   return rows;
 }
 function sameRegion(a, b){ if(!a||!b) return false; const ra=_CITY2REGION[String(a).trim()], rb=_CITY2REGION[String(b).trim()]; return !!ra && ra===rb; }
-async function matchingProviders(cats, city, allCities, cities){
+async function matchingProviders(cats, city, allCities, cities, baseOnly){
   const catArr = Array.isArray(cats) ? cats.filter(Boolean) : (cats ? [cats] : []);
   const catCond = '(cardinality($1::text[])=0 OR COALESCE(notify_categories, specialties, ARRAY[]::text[]) && $1::text[] OR COALESCE(specialties, ARRAY[]::text[]) && $1::text[])';
   let cityCond, params;
   if (allCities) { cityCond='TRUE'; params=[catArr]; }
+  else if (baseOnly) {
+    // «مقرّهم فقط»: المدينة المسجّلة للمزوّد بس — بدون «يخدم كل المدن» ومدن الخدمة
+    const list = (Array.isArray(cities) && cities.length) ? cities : (city ? [city] : []);
+    cityCond='city = ANY($2::text[])'; params=[catArr, list];
+  }
   else if (Array.isArray(cities) && cities.length) {
     cityCond='(COALESCE(serves_all_cities,FALSE) OR city = ANY($2::text[]) OR (service_cities && $2::text[]))';
     params=[catArr, cities];
@@ -8268,7 +8273,7 @@ app.post('/api/admin/requests/:id/match-count', requirePermission('requests.view
     const rq = await pool.query('SELECT category, extra_categories, city FROM requests WHERE id=$1', [id]);
     if (!rq.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : _reqCats(rq.rows[0]);
-    const rows = await matchingProviders(_cats, rq.rows[0].city, !!req.body.all_cities, req.body.cities);
+    const rows = await matchingProviders(_cats, rq.rows[0].city, !!req.body.all_cities, req.body.cities, !!req.body.base_only);
     res.json({ count: rows.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -8284,7 +8289,7 @@ app.post('/api/admin/requests/:id/invite-providers', requirePermission('requests
     const row = rq.rows[0];
     if (row.status !== 'open') return res.status(400).json({ message: 'المشروع غير منشور — اعتمده للعروض أولاً' });
     const _cats = Array.isArray(req.body.categories) && req.body.categories.length ? req.body.categories : _reqCats(row);
-    const rows = await matchingProviders(_cats, row.city, allCities, req.body.cities);
+    const rows = await matchingProviders(_cats, row.city, allCities, req.body.cities, !!req.body.base_only);
     if (!_bulkClaim('invite', [id, doNotify, doEmail, rows.map(x => x.id)])) return _bulkDup(res);
     const link = SITE_URL + '/project/x-' + id + '?id=' + id;
     let notified = 0, emailed = 0;

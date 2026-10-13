@@ -30,6 +30,16 @@
 <link rel="preconnect" href="https://manaqasati-production.up.railway.app">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/dash-admin.css">
+<style>
+.inv-who{display:flex;gap:6px;margin-bottom:14px}
+.inv-who button{flex:1;border:1.5px solid var(--border,#e2e8f0);background:var(--card,#fff);color:var(--text,#0f172a);border-radius:11px;padding:8px 10px;font-family:Tajawal,sans-serif;cursor:pointer;text-align:right;min-height:48px}
+.inv-who b{display:block;font-size:13px;font-weight:800}.inv-who small{display:block;font-size:11px;font-weight:600;color:var(--muted,#64748b);margin-top:1px}
+.inv-who button.on{border-color:var(--p,#1d4ed8);background:#eff6ff;color:#1d4ed8}
+.inv-who button.on small{color:#3b5bb5}
+[data-theme="dark"] .inv-who button.on{background:#1e3a8a;border-color:#60a5fa;color:#fff}
+[data-theme="dark"] .inv-who button.on small{color:#bfdbfe}
+.inv-who.off{opacity:.45;pointer-events:none}
+</style>
 </head>
 <body>
 <script>try{if(localStorage.getItem('theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}
@@ -131,6 +141,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="ufilters" id="user-filters">
           <div class="ms" id="ms-city"><button type="button" class="ms-btn" onclick="msToggle('city')"><span id="ms-city-lbl">كل المدن</span><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="ms-panel" id="ms-city-panel"></div></div>
           <div class="ms" id="ms-spec"><button type="button" class="ms-btn" onclick="msToggle('spec')"><span id="ms-spec-lbl">كل التخصصات</span><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="ms-panel" id="ms-spec-panel"></div></div>
+          <select id="uf-who" onchange="renderUsers()" title="يطبّق على فلتر المدينة"><option value="">المدينة: كل من يخدمها</option><option value="base">المدينة: مقرّه فيها فقط</option></select>
           <select id="uf-status" onchange="renderUsers()"><option value="">كل الحالات</option><option value="active">نشط</option><option value="banned">محظور</option></select>
           <select id="uf-badge" onchange="renderUsers()"><option value="">كل الألقاب</option></select>
           <select id="uf-offers" onchange="renderUsers()"><option value="">كل العروض</option><option value="has">قدّم عروضاً</option><option value="none">لم يقدّم</option></select>
@@ -602,7 +613,11 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div id="inv-title" style="font-weight:800;font-size:14px;margin-bottom:10px"></div>
       <div id="inv-count" style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:11px;padding:13px 15px;font-size:13.5px;color:#1e40af;font-weight:800;margin-bottom:14px">جاري حساب المطابقين...</div>
       <label style="display:block;font-size:12.5px;font-weight:800;color:#475569;margin-bottom:6px">النطاق (المنطقة/المدن):</label>
-      <select id="inv-scope" onchange="_invCount()" style="width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;margin-bottom:14px;background:#fff;outline:none"></select>
+      <select id="inv-scope" onchange="_invCount()" style="width:100%;padding:11px 12px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;margin-bottom:8px;background:#fff;outline:none"></select>
+      <div id="inv-who" class="inv-who" role="radiogroup" aria-label="مين يدخل">
+        <button type="button" data-v="serve" class="on" onclick="_invWho(this)"><b>كل من يخدمها</b><small>مقرّه فيها + اللي يغطيها</small></button>
+        <button type="button" data-v="base" onclick="_invWho(this)"><b>مقرّهم فيها فقط</b><small>المدينة المسجّلة بس</small></button>
+      </div>
       <label style="display:block;font-size:12.5px;font-weight:800;color:#475569;margin-bottom:6px">التخصصات (تصنيف المشروع محدّد تلقائياً — أضف تخصصات قريبة):</label>
       <div id="inv-cats" style="max-height:150px;overflow:auto;border:1.5px solid var(--border);border-radius:11px;padding:8px 12px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:6px 14px"></div>
       <div style="font-size:12.5px;font-weight:800;color:#475569;margin-bottom:8px">قنوات الإرسال:</div>

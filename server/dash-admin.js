@@ -535,6 +535,7 @@ function _uCityCell(u){
 function getFilteredUsers(){
   var ci=msVals('city');
   var sp=msVals('spec');
+  var _uWho=(document.getElementById('uf-who')||{}).value||'';
   var stt=(document.getElementById('uf-status')||{}).value||'';
   var bd=(document.getElementById('uf-badge')||{}).value||'';
   var ofr=(document.getElementById('uf-offers')||{}).value||'';
@@ -544,7 +545,7 @@ function getFilteredUsers(){
     else if(_roleFilter==='idle'){ if(!_uIdle(u))return false; }
     else if(_roleFilter!=='all'&&u.role!==_roleFilter)return false;
     if(_searchTerm){ var _qd=_phNorm(_searchTerm); var _hit=(u.name||'').toLowerCase().includes(_searchTerm)||(u.email||'').toLowerCase().includes(_searchTerm)||(u.business_name||'').toLowerCase().includes(_searchTerm)||(_qd.length>=3&&_phNorm(u.phone).indexOf(_qd)>=0); if(!_hit)return false; }
-    if(ci.length){ var _eff={}; ci.forEach(function(v){ if(v.indexOf('منطقة ')===0){(INV_REGIONS[v.slice(6)]||[]).forEach(function(c){_eff[c]=1;});} else _eff[v]=1; }); if(!_uServes(u,_eff))return false; }
+    if(ci.length){ var _eff={}; ci.forEach(function(v){ if(v.indexOf('منطقة ')===0){(INV_REGIONS[v.slice(6)]||[]).forEach(function(c){_eff[c]=1;});} else _eff[v]=1; }); if(_uWho==='base'?!_eff[u.city]:!_uServes(u,_eff))return false; }
     if(sp.length){var _a=(u.specialties||[]).concat(u.notify_categories||[]);if(!sp.some(function(x){return _a.indexOf(x)>=0;}))return false;}
     if(stt==='active'&&!u.is_active)return false;
     if(stt==='banned'&&u.is_active)return false;
@@ -563,7 +564,7 @@ function renderUsers(){
   var tbl=document.getElementById('users-table');
   if(!filtered.length){tbl.innerHTML=emptyState('لا يوجد مستخدمون مطابقون');updateSelBar();return;}
   var _total=filtered.length;
-  var _sig=[_roleFilter,_searchTerm,msVals('city').join(','),msVals('spec').join(','),(document.getElementById('uf-status')||{}).value,(document.getElementById('uf-badge')||{}).value,(document.getElementById('uf-offers')||{}).value].join('|');
+  var _sig=[_roleFilter,_searchTerm,msVals('city').join(','),msVals('spec').join(','),(document.getElementById('uf-status')||{}).value,(document.getElementById('uf-badge')||{}).value,(document.getElementById('uf-offers')||{}).value,(document.getElementById('uf-who')||{}).value].join('|');
   filtered=_pgSlice('u',filtered,_sig);
   var allSel=filtered.every(function(u){return _selUsers[u.id];});
   tbl.innerHTML='<table><thead><tr>'
@@ -625,7 +626,7 @@ function fillUserFilters(){
   var bSel=document.getElementById('uf-badge');
   if(bSel&&bSel.options.length<=1){(typeof BADGE_CATALOG!=='undefined'?BADGE_CATALOG:[]).forEach(function(b){var o=document.createElement('option');o.value=b.key;o.textContent=b.label;bSel.appendChild(o);});var no=document.createElement('option');no.value='none';no.textContent='بدون لقب';bSel.appendChild(no);}
 }
-function resetUserFilters(){msClear('city');msClear('spec');['uf-status','uf-badge','uf-offers'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var srch=document.getElementById('user-search');if(srch)srch.value='';_searchTerm='';syncUserFiltersToHash();renderUsers();}
+function resetUserFilters(){msClear('city');msClear('spec');['uf-status','uf-badge','uf-offers','uf-who'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var srch=document.getElementById('user-search');if(srch)srch.value='';_searchTerm='';syncUserFiltersToHash();renderUsers();}
 function applyUserFiltersFromHash(){
   var ps=_parseHashParams();
   [['status','uf-status'],['badge','uf-badge']].forEach(function(m){
@@ -1861,11 +1862,15 @@ var INV_REGIONS={
   'الباحة':['الباحة','بلجرشي','المندق','المخواة','قلوة','العقيق','القرى','غامد الزناد'],
   'الجوف':['سكاكا','دومة الجندل','القريات','طبرجل','صوير']
 };
+function _invWhoVal(){ var b=document.querySelector('#inv-who button.on'); return b?b.getAttribute('data-v'):'serve'; }
+function _invWho(btn){ document.querySelectorAll('#inv-who button').forEach(function(x){x.classList.toggle('on',x===btn);x.setAttribute('aria-checked',x===btn?'true':'false');}); _invCount(); }
+function _invWhoSync(){ var sc=((document.getElementById('inv-scope')||{}).value)||'city'; var w=document.getElementById('inv-who'); if(w)w.classList.toggle('off',sc==='all'); }
 function _invScopeBody(){
   var sc=((document.getElementById('inv-scope')||{}).value)||'city';
   var body={};
   if(sc==='all')body.all_cities=true;
   else if(sc.indexOf('region:')===0)body.cities=INV_REGIONS[sc.slice(7)]||[];
+  if(sc!=='all'&&_invWhoVal()==='base')body.base_only=true;
   var cats=[];
   Array.prototype.forEach.call(document.querySelectorAll('#inv-cats input[type=checkbox]:checked'),function(c){cats.push(c.value);});
   if(cats.length)body.categories=cats;
@@ -1891,16 +1896,18 @@ function openInvite(id){
     cats=projCats.concat(cats.filter(function(c){return projCats.indexOf(c)<0;}));
     cbox.innerHTML=cats.map(function(c){var ck=(projCats.indexOf(c)>=0)?' checked':'';return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:#334155;cursor:pointer;white-space:nowrap"><input type="checkbox" value="'+esc(c)+'" onchange="_invCount()"'+ck+'> '+esc(c)+'</label>';}).join('');
   }
+  var _w0=document.querySelector('#inv-who button[data-v="serve"]'); if(_w0)document.querySelectorAll('#inv-who button').forEach(function(x){x.classList.toggle('on',x===_w0);});
   document.getElementById('inv-notify').checked=true;
   document.getElementById('inv-email').checked=true;
   document.getElementById('inviteModal').classList.add('show');
   _invCount();
 }
 function _invCount(){
+  _invWhoSync();
   var el=document.getElementById('inv-count'); if(el)el.textContent='...جاري الحساب';
   fetch(API+'/api/admin/requests/'+_invReqId+'/match-count',Object.assign({method:'POST',body:JSON.stringify(_invScopeBody())},hdr()))
     .then(function(r){return r.json();})
-    .then(function(d){ if(!el)return; if(d&&typeof d.count==='number'){ el.textContent = d.count? ('يطابق مشروعك '+d.count+' مزوّداً') : 'لا يوجد مزوّد مطابق في هذا النطاق — جرّب منطقة أوسع'; } else el.textContent='تعذّر الحساب'; })
+    .then(function(d){ if(!el)return; if(d&&typeof d.count==='number'){ el.textContent = d.count? ('يطابق مشروعك '+d.count+' مزوّداً'+(_invScopeBody().base_only?' — مقرّهم في النطاق فقط':'')) : 'لا يوجد مزوّد مطابق في هذا النطاق — جرّب منطقة أوسع'; } else el.textContent='تعذّر الحساب'; })
     .catch(function(){ if(el)el.textContent='تعذّر الحساب'; });
 }
 function sendInvite(){
