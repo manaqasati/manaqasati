@@ -637,7 +637,7 @@ function fillUserFilters(){
 function resetUserFilters(){msClear('city');msClear('spec');['uf-status','uf-badge','uf-offers','uf-who'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});var srch=document.getElementById('user-search');if(srch)srch.value='';_searchTerm='';syncUserFiltersToHash();renderUsers();}
 function applyUserFiltersFromHash(){
   var ps=_parseHashParams();
-  [['status','uf-status'],['badge','uf-badge']].forEach(function(m){
+  [['status','uf-status'],['badge','uf-badge'],['who','uf-who']].forEach(function(m){
     var e=document.getElementById(m[1]); if(e&&ps[m[0]]!=null){ e.value=ps[m[0]]; }
   });
   ['city','spec'].forEach(function(k){ if(ps[k]!=null&&_MS[k]){ String(ps[k]).split(',').forEach(function(x){ x=x.trim(); if(x&&_MS[k].opts.indexOf(x)<0)_MS[k].opts.push(x); if(x&&_MS[k].sel.indexOf(x)<0)_MS[k].sel.push(x); }); msRender(k); } });
@@ -649,6 +649,7 @@ function syncUserFiltersToHash(){
   var parts=[];
   if(msVals('city').length)parts.push('city='+encodeURIComponent(msVals('city').join(',')));
   if(msVals('spec').length)parts.push('spec='+encodeURIComponent(msVals('spec').join(',')));
+  if(((document.getElementById('uf-who')||{}).value||'')==='base')parts.push('who=base');
   if(v('uf-status'))parts.push('status='+encodeURIComponent(v('uf-status')));
   if(v('uf-badge'))parts.push('badge='+encodeURIComponent(v('uf-badge')));
   var q=((document.getElementById('user-search')||{}).value||'').trim();
