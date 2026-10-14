@@ -1526,6 +1526,11 @@ function applyAll(){
   F_CI=(document.getElementById('fc')||{value:''}).value;
   F_CAT=(document.getElementById('fcat')||{value:''}).value;
   PAGE=8;
+  // المدينة/التخصص: نجيب مشاريعها من الخادم (القائمة الأولى فيها أحدث 100 بس) وندمجها
+  if(F_CI||F_CAT){ var _k=F_CI+'|'+F_CAT; window._lvFetched=window._lvFetched||{}; if(!window._lvFetched[_k]){ window._lvFetched[_k]=1;
+    fetch(API+'/api/requests?'+(F_CI?'city='+encodeURIComponent(F_CI):'')+(F_CAT?(F_CI?'&':'')+'category='+encodeURIComponent(F_CAT):'')).then(function(r){return r.ok?r.json():[];}).then(function(L){
+      if(!Array.isArray(L)||!L.length)return; var ids={}; ALL.forEach(function(p){ids[p.id]=1;}); var add=L.filter(function(p){return !ids[p.id];});
+      if(add.length){ ALL=ALL.concat(add).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);}); applyAll(); } }).catch(function(){}); } }
   CUR=ALL.filter(function(p){
     if(F_ST==='open'&&p.status!=='open')return false;
     if(F_ST==='done'&&p.status!=='completed'&&p.status!=='in_progress'&&p.status!=='done')return false;
@@ -1684,7 +1689,9 @@ async function load(){
     var r=await fetch(API+'/api/requests');var d=await r.json();
     ALL=Array.isArray(d)?d:[];CUR=ALL;
     var open=ALL.filter(function(p){return p.status==='open';}).length;
-    var sub=document.getElementById('lv-proj-sub');if(sub)sub.textContent=ALL.length+' مشروع متاح، '+open+' مفتوح للعروض الآن';
+    var sub=document.getElementById('lv-proj-sub');if(sub)sub.textContent=open+' مفتوح للعروض الآن';
+    // العدد الحقيقي من الخادم (القائمة تجيب أحدث 100 بس)
+    fetch(API+'/api/requests/stats').then(function(r){return r.ok?r.json():null;}).then(function(st){ if(st&&st.all!=null&&sub){ sub.textContent=st.all.toLocaleString('en')+' مشروع على المنصة، '+st.open.toLocaleString('en')+' مفتوح للعروض الآن'; } }).catch(function(){});
     render(ALL);
     try{_hxFeed(ALL);}catch(e){}
   }catch(e){

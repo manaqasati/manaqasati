@@ -4350,6 +4350,19 @@ app.put('/api/provider/bump', auth, providerOnly, async (req, res) => {
 
 // ═══ REQUESTS ═══
 // ═══ الخريطة الحيّة في الرئيسية — أرقام حقيقية لكل مدينة + آخر الأحداث (بدون أسماء ولا عناوين) ═══
+// العدد الحقيقي للمشاريع المعروضة للعامة (القائمة نفسها ترجع أحدث 100 بس)
+let _rqStats = null, _rqStatsAt = 0;
+app.get('/api/requests/stats', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'public, max-age=60');
+    if (!_rqStats || Date.now() - _rqStatsAt > 60000) {
+      const r = (await pool.query(`SELECT COUNT(*)::int AS all, COUNT(*) FILTER (WHERE r.status='open')::int AS open FROM requests r
+        WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected') AND COALESCE(r.invite_state,'') <> 'exclusive'`)).rows[0];
+      _rqStats = r; _rqStatsAt = Date.now();
+    }
+    res.json(_rqStats);
+  } catch(e) { res.json({ all: null, open: null }); }
+});
 let _cityMapCache = null, _cityMapAt = 0;
 app.get('/api/public/city-map', async (req, res) => {
   try {
