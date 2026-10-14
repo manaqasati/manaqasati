@@ -784,7 +784,7 @@ app.get(/^\/project\/(.+)$/, async (req, res) => {
 
 app.get('/api/requests/public/:id', async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id); if (!id) return res.status(404).json({ message: 'غير موجود' });
     const r = await pool.query(`
       SELECT r.id, r.title, r.description, r.category, r.category_other, r.extra_categories, r.city, r.district, r.client_id, r.invited_provider_id, r.invite_state, r.invite_started_at,
         r.budget_max, r.geo_lat, r.geo_lng,

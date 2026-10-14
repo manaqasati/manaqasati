@@ -467,6 +467,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .hh-steps i{flex:1;height:5px;border-radius:5px;background:#dbe5f5}
 .hh-steps i.on{background:#1d4ed8}.hh-steps i.cur{background:#93b0ee}.hh-steps.done i{background:#16a34a}
 .hh-stl{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#5b6b85;margin-top:-6px}
+.hh-stl span{flex:1;text-align:center}.hh-stl span:first-child{text-align:right}.hh-stl span:last-child{text-align:left}
 .hh-stl span.on{color:#1d4ed8}
 .hh-box{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;background:#f5f8fd;border-radius:12px;padding:10px}
 .hh-box .k{font-size:11px;color:#5b6b85;font-weight:700}

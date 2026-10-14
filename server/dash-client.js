@@ -1,3 +1,4 @@
+var _STEP_N=['أرسلته','المراجعة','العروض','اخترت مزوّد','اكتمل'];
 /* مناقصة — طلبات القراءة المتكررة لنفس الرابط خلال ثانية ونص تاخذ نفس الرد (اللوحة كانت تطلب نفس الشي 2-3 مرات وقت الفتح) */
 (function(){
   if (window.__mqDedupe || !window.fetch) return; window.__mqDedupe = true;
@@ -709,9 +710,10 @@ function _hhCard(r){
   if(rev){ return h+'<div class="hh-note">يراجع فريقنا مشروعك قبل نشره — عادةً خلال ساعات</div></div>'; }
   if(rej){ return h+'</div>'; }
   // مراحل المشروع
-  var lv=open?(bc>0?2:1):prog?3:4;
-  var steps='';for(var i=1;i<=4;i++){steps+='<i class="'+(i<=lv?'on':(i===lv+1&&prog?'cur':''))+'"></i>';}
-  var lbl=['نُشر','العروض','اختيار مزوّد','التنفيذ'];
+  // نفس المراحل في كل مكان: أرسلته · المراجعة · العروض · اخترت مزوّد · اكتمل
+  var lv=open?3:prog?4:5;
+  var steps='';for(var i=1;i<=5;i++){steps+='<i class="'+(i<=lv?'on':'')+'"></i>';}
+  var lbl=_STEP_N;
   h+='<div class="hh-steps'+(done?' done':'')+'">'+steps+'</div>'
     +'<div class="hh-stl">'+lbl.map(function(t,k){return '<span'+(k<lv?' class="on"':'')+'>'+t+'</span>';}).join('')+'</div>';
   if(open){
@@ -765,8 +767,8 @@ function _hhCurrent(all){
   if(!box){ box=document.createElement('div'); box.id='hhCur'; hero.appendChild(box); }
   hero.classList.add('has-cur');
   var r=pk.r, st=r.status, nb=parseInt(r.bid_count)||0, id=r.id;
-  var bad=(st==='needs_edit'), on=st==='in_progress'?3:(st==='open'?2:1);
-  var N=['أرسلته','مراجعة الإدارة','استقبال العروض','اخترت مزوّد','مكتمل'];
+  var bad=(st==='needs_edit'), on=st==='in_progress'?3:(st==='open'?2:((st==='completed'||st==='done')?5:1));
+  var N=_STEP_N;
   var steps='<div class="hc-steps">'+N.map(function(n,i){ var c=i<on?'dn':(i===on?(bad?'bad':'on'):''); return '<div class="'+c+'"><span>'+(c==='dn'?'✓':(c==='bad'?'!':(i+1)))+'</span><em>'+n+'</em></div>'; }).join('')+'</div>';
   var pill={needs_edit:['مطلوب تعديل','#fee2e2','#b91c1c'],pending_review:['تحت المراجعة','#fef3c7','#92400e'],review:['تحت المراجعة','#fef3c7','#92400e'],open:['يستقبل عروض','#dcfce7','#15803d'],in_progress:['قيد التنفيذ','#dbeafe','#1d4ed8']}[st];
   var unseen=st==='open'&&_hasUnseenOffers(r);
@@ -956,11 +958,11 @@ function _rpCard(r){
   try{ unseen=Math.max(0,bids-(parseInt(_getOffSeen()[r.id])||0)); }catch(e){}
   var pill=nedit?['مطلوب تعديل','#fee2e2','#b91c1c']:rej?['مرفوض','#fee2e2','#b91c1c']:{rev:['تحت المراجعة','#fef3c7','#92400e'],open:['يستقبل عروض','#dcfce7','#15803d'],prog:['قيد التنفيذ','#dbeafe','#1d4ed8'],done:['مكتمل','#e0e7ff','#3730a3']}[g];
   if(g==='done'&&!rej&&s!=='completed'&&s!=='done')pill=['منتهي','#f1f5f9','#475569'];
-  // المراحل: نُشر · مراجعة · عروض · تنفيذ · اكتمل
+  // المراحل: أرسلته · المراجعة · العروض · اخترت مزوّد · اكتمل
   var stepIx={rev:1,open:2,prog:3,done:5}[g]; if(rej)stepIx=-1;
   var steps='';
   if(stepIx>=0){
-    var nm=['نُشر','مراجعة','عروض','تنفيذ','اكتمل'];
+    var nm=_STEP_N;
     steps='<div class="rp-steps">'+nm.map(function(x,i){ var cl=i<stepIx?'on':(i===stepIx?(nedit?'bad':'now'):''); return '<span class="'+cl+'"></span>'; }).join('')+'</div>'
       +'<div class="rp-sl">'+nm.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div>';
   }
@@ -1216,7 +1218,7 @@ function _detBanner(r){
 function _detSteps(r){
   var st=r.status; if(['closed_auto','expired','closed','cancelled'].indexOf(st)>=0) return '';
   var on=_detStage(st), bad=(st==='needs_edit'||st==='rejected');
-  var N=['أرسلته','مراجعة الإدارة','استقبال العروض','اخترت مزوّد','مكتمل'];
+  var N=_STEP_N;
   return '<div class="dh-steps">'+N.map(function(n,i){ var c=i<on?'dn':(i===on?(bad?'bad':'on'):''); if(on===5)c='dn'; return '<div class="'+c+'"><span class="d">'+(c==='dn'?'✓':(c==='bad'?'!':(i+1)))+'</span><span class="l">'+n+'</span></div>'; }).join('')+'</div>';
 }
 function _detCan(r){ var st=r.status; return {edit:['open','pending_review','review','needs_edit'].indexOf(st)>=0, close:st==='open', share:st==='open'||st==='in_progress'||st==='completed', preview:['rejected','deleted'].indexOf(st)<0}; }

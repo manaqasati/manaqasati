@@ -642,7 +642,7 @@ function _rpCard(r){
   var stepIx={rev:1,open:2,prog:3,done:5}[g]; if(rej)stepIx=-1;
   var steps='';
   if(stepIx>=0){
-    var nm=['نُشر','مراجعة','عروض','تنفيذ','اكتمل'];
+    var nm=(typeof _STEP_N!=='undefined'?_STEP_N:['أرسلته','المراجعة','العروض','اخترت مزوّد','اكتمل']);
     steps='<div class="rp-steps">'+nm.map(function(x,i){ var cl=i<stepIx?'on':(i===stepIx?(nedit?'bad':'now'):''); return '<span class="'+cl+'"></span>'; }).join('')+'</div>'
       +'<div class="rp-sl">'+nm.map(function(x){return '<span>'+x+'</span>';}).join('')+'</div>';
   }
