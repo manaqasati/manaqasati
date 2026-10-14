@@ -4349,6 +4349,46 @@ app.put('/api/provider/bump', auth, providerOnly, async (req, res) => {
 });
 
 // ═══ REQUESTS ═══
+// ═══ الخريطة الحيّة في الرئيسية — أرقام حقيقية لكل مدينة + آخر الأحداث (بدون أسماء ولا عناوين) ═══
+let _cityMapCache = null, _cityMapAt = 0;
+app.get('/api/public/city-map', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'public, max-age=60');
+    if (_cityMapCache && Date.now() - _cityMapAt < 60000) return res.json(_cityMapCache);
+    const ND = `(r.category IS DISTINCT FROM 'direct') AND COALESCE(r.invite_state,'') <> 'exclusive'`;
+    const [open, provs, allProv, first, top, ev] = await Promise.all([
+      pool.query(`SELECT r.city, COUNT(*)::int n FROM requests r WHERE r.status='open' AND ${ND} AND COALESCE(r.city,'')<>'' GROUP BY 1`),
+      pool.query(`SELECT c, COUNT(DISTINCT id)::int n FROM (
+          SELECT id, city AS c FROM users WHERE role='provider' AND is_active=TRUE AND COALESCE(city,'')<>''
+          UNION ALL SELECT id, unnest(service_cities) FROM users WHERE role='provider' AND is_active=TRUE AND service_cities IS NOT NULL) z GROUP BY 1`),
+      pool.query(`SELECT COUNT(*)::int n FROM users WHERE role='provider' AND is_active=TRUE AND COALESCE(serves_all_cities,FALSE)`),
+      pool.query(`SELECT city, COUNT(*)::int k, percentile_cont(0.5) WITHIN GROUP (ORDER BY h)::float AS med FROM (
+          SELECT r.city, EXTRACT(EPOCH FROM (MIN(b.created_at) - COALESCE(r.submitted_at, r.created_at)))/3600 AS h
+          FROM requests r JOIN bids b ON b.request_id=r.id WHERE ${ND} AND r.created_at > NOW() - INTERVAL '120 days' AND COALESCE(r.city,'')<>'' GROUP BY r.id, r.city) q
+        WHERE h >= 0 GROUP BY city`),
+      pool.query(`SELECT city, category, COUNT(*)::int n FROM requests r WHERE ${ND} AND r.created_at > NOW() - INTERVAL '180 days'
+          AND r.status NOT IN ('pending_review','review','needs_edit','rejected') AND COALESCE(r.city,'')<>'' AND COALESCE(r.category,'')<>'' AND r.category<>'أخرى' GROUP BY 1,2`),
+      pool.query(`SELECT * FROM (
+          (SELECT 'bid' AS k, b.created_at AS at, r.city, r.category FROM bids b JOIN requests r ON r.id=b.request_id WHERE ${ND} AND COALESCE(r.city,'')<>'' ORDER BY b.created_at DESC LIMIT 10)
+          UNION ALL
+          (SELECT 'post', r.created_at, r.city, r.category FROM requests r WHERE ${ND} AND r.status IN ('open','in_progress','completed','assigned') AND COALESCE(r.city,'')<>'' ORDER BY r.created_at DESC LIMIT 8)
+          UNION ALL
+          (SELECT 'award', r.assigned_at, r.city, r.category FROM requests r WHERE ${ND} AND r.assigned_at IS NOT NULL AND COALESCE(r.city,'')<>'' ORDER BY r.assigned_at DESC LIMIT 5)
+        ) x WHERE at IS NOT NULL AND at > NOW() - INTERVAL '30 days' ORDER BY at DESC LIMIT 14`)
+    ]);
+    const C = {};
+    const g = c => (C[c] = C[c] || { city: c, open: 0, provs: 0, first_h: null, top: [] });
+    open.rows.forEach(x => { g(x.city).open = x.n; });
+    provs.rows.forEach(x => { if (x.c) g(x.c).provs = x.n; });
+    first.rows.forEach(x => { if (x.k >= 3 && x.med != null) g(x.city).first_h = Math.round(x.med * 10) / 10; });
+    const T = {}; top.rows.forEach(x => { (T[x.city] = T[x.city] || []).push(x); });
+    Object.keys(T).forEach(c => { g(c).top = T[c].sort((a, b) => b.n - a.n).slice(0, 4).map(x => x.category); });
+    const out = { all_cities_provs: allProv.rows[0] ? allProv.rows[0].n : 0, cities: Object.values(C),
+      events: ev.rows.map(x => ({ k: x.k, at: x.at, city: x.city, cat: x.category || '' })), at: new Date().toISOString() };
+    _cityMapCache = out; _cityMapAt = Date.now();
+    res.json(out);
+  } catch(e) { console.error('city-map:', e.message); res.json({ cities: [], events: [] }); }
+});
 app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;

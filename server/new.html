@@ -602,6 +602,7 @@ function _restore(){
     var el=$(DFIELDS[k]); if(el) el.value=String(dr[k]);
   });
   if(q) $('n-title').value=q;
+  var _qci=String(QP.get('city')||'').trim().slice(0,60); if(_qci) dr.ci=_qci;
   if(dr.ci){ if(selectHas($('n-city'),dr.ci)) $('n-city').value=dr.ci; else _pendCity=dr.ci; }
   var cat=qc||dr.c||'', sel=$('n-cat');
   if(cat&&selectHas(sel,cat)){
