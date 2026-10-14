@@ -548,8 +548,8 @@ function _getSelectedSpecs(){ return (window._specSel||[]).slice(); }
 async function apiFetch(p,o){
   var ctrl=new AbortController(); var _to=setTimeout(function(){try{ctrl.abort();}catch(e){}},60000);
   return fetch(API+p,Object.assign({headers:{'Content-Type':'application/json'},signal:ctrl.signal},o||{}))
-    .then(function(r){return r.json();})
-    .catch(function(){return{};})
+    .then(function(r){ return r.text().then(function(t){ try{ return JSON.parse(t); }catch(e){ return { message:(r.status===429?'محاولات كثيرة، انتظر دقائق وحاول مرة ثانية':'الخادم ما رد صح (رمز '+r.status+') — حاول مرة ثانية بعد دقيقة'), _status:r.status }; } }); })
+    .catch(function(e){ return { message:(e&&e.name==='AbortError')?'الاتصال بطيء جداً — تأكد من الإنترنت وحاول مرة ثانية':'تعذر الاتصال بالسيرفر — تأكد من الإنترنت أو جرّب شبكة ثانية', _net:true }; })
     .then(function(v){clearTimeout(_to);return v;});
 }
 
@@ -750,7 +750,7 @@ async function doForgot(){
   if(!id){setAl(null,'أدخل بريدك الإلكتروني أولاً','err');return;}
   var body=METHOD==='phone'?{email:fmtPhone(id)}:{email:id};
   var r=await apiFetch('/api/auth/forgot-password',{method:'POST',body:JSON.stringify(body)});
-  setAl(null,r.message||'تم إرسال رابط إعادة التعيين','ok');
+  setAl(null,r.message||'تم إرسال رابط إعادة التعيين',(r._net||r._status)?'err':'ok');
 }
 
 document.addEventListener('keydown',function(e){

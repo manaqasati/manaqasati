@@ -3470,7 +3470,8 @@ app.post('/api/auth/google/complete', rateLimiter(10, 600000), async (req, res) 
     const prov = p.provider === 'apple' ? 'apple' : 'google', pcol = prov === 'apple' ? 'apple_sub' : 'google_sub';
     if (!req.body.phone || !String(req.body.phone).trim()) return res.status(400).json({ message: 'رقم الجوال مطلوب' });
     const dup = (await pool.query(`SELECT id FROM users WHERE ${pcol}=$1 OR LOWER(email)=LOWER($2) LIMIT 1`, [p.sub, p.email])).rows[0];
-    if (dup) return res.status(400).json({ message: 'عندك حساب بهذا البريد — ارجع واضغط زر الدخول وبيدخلك عليه' });
+    // الحساب موجود (مثلاً انشأ قبل شوي وضاع الرد ثم ضغط مرة ثانية) ← ندخّله عليه مباشرة بدل رسالة خطأ
+    if (dup) return _socialLogin(res, prov, { sub: p.sub, email: p.email, name: p.name });
     req._g = { sub: p.sub, email: p.email, name: p.name, provider: prov };
     return _registerHandler(req, res);
   } catch(e) { console.error('google complete:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
