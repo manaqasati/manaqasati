@@ -248,7 +248,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '12'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '13'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
@@ -2948,6 +2948,8 @@ async function setupDatabase() {
     // إحصائيات الزيارات: صف لكل زائر باليوم (معرّف مؤقت يتغيّر يومياً — بدون IP) + عداد الصفحات
     await _mig(`CREATE TABLE IF NOT EXISTS site_visits (day DATE NOT NULL, vkey VARCHAR(16) NOT NULL, src VARCHAR(16) NOT NULL DEFAULT 'direct', dev VARCHAR(8) NOT NULL DEFAULT 'mobile', page VARCHAR(24), uid INTEGER, role VARCHAR(10), hits INTEGER NOT NULL DEFAULT 1, first_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (day, vkey))`);
     await _mig(`CREATE INDEX IF NOT EXISTS site_visits_uid ON site_visits(uid, day) WHERE uid IS NOT NULL`);
+    await _mig(`ALTER TABLE site_visits ADD COLUMN IF NOT EXISTS dg VARCHAR(2)`);
+    await _mig(`CREATE TABLE IF NOT EXISTS demo_events (day DATE NOT NULL, grp VARCHAR(2) NOT NULL, ev VARCHAR(12) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, grp, ev))`);
     await _mig(`CREATE TABLE IF NOT EXISTS site_pages (day DATE NOT NULL, page VARCHAR(24) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, page))`);
     await _mig(`CREATE TABLE IF NOT EXISTS app_page_hits (day DATE NOT NULL, kind VARCHAR(8) NOT NULL, src VARCHAR(30) NOT NULL, os VARCHAR(10) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, src, os))`);
     try { await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS boosted_at TIMESTAMP`); } catch(e){}
@@ -3947,6 +3949,34 @@ async function _liveLabel(p, h){
   if (/^\/b2b/.test(path)) return { k: 'b2b', t: 'صفحة الأعمال' };
   return { k: 'other', t: path.slice(0, 60) };
 }
+// ═══ تجربة «مناقصة في 30 ثانية»: نص الزوار (A) يشوفون الزر، والنص الثاني (B) لا — عشان نقارن ═══
+app.post('/api/demo/ev', rateLimiter(30, 60000), express.json({ limit: '1kb' }), async (req, res) => {
+  res.status(204).end();
+  try {
+    const b = req.body || {}, g = b.g === 'A' || b.g === 'B' ? b.g : null, ev = String(b.e || '');
+    if (!g || !['shown','open','done','cta','prov','skip','x'].includes(ev)) return;
+    if (_BOT_RE.test(String(req.headers['user-agent'] || ''))) return;
+    const day = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+    await pool.query(`INSERT INTO demo_events (day, grp, ev, n) VALUES ($1,$2,$3,1) ON CONFLICT (day, grp, ev) DO UPDATE SET n=demo_events.n+1`, [day, g, ev]);
+  } catch(e) {}
+});
+app.get('/api/admin/demo-test', requirePermission('analytics.view'), async (req, res) => {
+  try {
+    const ev = (await pool.query(`SELECT grp, ev, SUM(n)::int n, MIN(day) AS first FROM demo_events GROUP BY 1,2`)).rows;
+    const first = ev.reduce((m, x) => (!m || x.first < m) ? x.first : m, null);
+    const vis = (await pool.query(`SELECT dg, COUNT(DISTINCT vkey)::int v FROM site_visits WHERE dg IS NOT NULL GROUP BY 1`)).rows;
+    const conv = (await pool.query(`WITH g AS (SELECT DISTINCT dg, uid FROM site_visits WHERE dg IS NOT NULL AND uid IS NOT NULL)
+      SELECT g.dg, COUNT(DISTINCT u.id)::int signups,
+        COUNT(DISTINCT u.id) FILTER (WHERE EXISTS (SELECT 1 FROM requests r WHERE r.client_id=u.id AND (r.category IS DISTINCT FROM 'direct')))::int posters,
+        COUNT(DISTINCT u.id) FILTER (WHERE u.role='provider' OR COALESCE(u.can_provide,FALSE))::int providers
+      FROM g JOIN users u ON u.id=g.uid WHERE u.role<>'admin' AND u.created_at >= COALESCE($1::date, '2000-01-01') GROUP BY 1`, [first])).rows;
+    const out = { since: first, A: { visitors: 0 }, B: { visitors: 0 } };
+    vis.forEach(x => out[x.dg] && (out[x.dg].visitors = x.v));
+    ev.forEach(x => out[x.grp] && (out[x.grp][x.ev] = x.n));
+    conv.forEach(x => out[x.dg] && Object.assign(out[x.dg], { signups: x.signups, posters: x.posters, providers: x.providers }));
+    res.json(out);
+  } catch(e) { console.error('demo-test:', e.message); res.status(500).json({ message: 'تعذّر' }); }
+});
 app.get('/api/admin/visits/live/list', requirePermission('analytics.view'), async (req, res) => {
   try {
     const now = Date.now(), lim = now - 300000, rows = [];
@@ -3994,9 +4024,10 @@ app.post('/api/hit', rateLimiter(120, 60000), express.json({ limit: '2kb' }), op
     _liveTouch(vkey, req, { p: b.p, h: b.h, src: _hitSrc(b.r, b.s, b.m), dev });
     const page = _hitPage(b.p);
     const uid = req.user ? req.user.id : null, role = req.user ? String(req.user.role || '').slice(0, 10) : null;
-    await pool.query(`INSERT INTO site_visits (day, vkey, src, dev, page, uid, role) VALUES ($1,$2,$3,$4,$5,$6,$7)
-      ON CONFLICT (day, vkey) DO UPDATE SET hits=site_visits.hits+1, uid=COALESCE(site_visits.uid, EXCLUDED.uid), role=COALESCE(site_visits.role, EXCLUDED.role)`,
-      [day, vkey, _hitSrc(b.r, b.s, b.m), dev, page, uid, role]);
+    const dg = (b.dg === 'A' || b.dg === 'B') ? b.dg : null;
+    await pool.query(`INSERT INTO site_visits (day, vkey, src, dev, page, uid, role, dg) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      ON CONFLICT (day, vkey) DO UPDATE SET hits=site_visits.hits+1, uid=COALESCE(site_visits.uid, EXCLUDED.uid), role=COALESCE(site_visits.role, EXCLUDED.role), dg=COALESCE(site_visits.dg, EXCLUDED.dg)`,
+      [day, vkey, _hitSrc(b.r, b.s, b.m), dev, page, uid, role, dg]);
     await pool.query(`INSERT INTO site_pages (day, page, n) VALUES ($1,$2,1) ON CONFLICT (day, page) DO UPDATE SET n=site_pages.n+1`, [day, page]);
   } catch(e) {}
 });

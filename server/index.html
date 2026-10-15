@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+<script>/* تجربة «مناقصة في 30 ثانية»: كل زائر جديد ينحط في مجموعة ثابتة — A يشوف الزر، B ما يشوفه (للمقارنة) */try{if(!localStorage.getItem('mnq_dg'))localStorage.setItem('mnq_dg',Math.random()<.5?'A':'B');}catch(e){}</script>
 <script>
 /* توجيه فوري للمسجّل — قبل رسم أي شيء (يمنع ومضة الرئيسية) */
 (function(){
@@ -975,6 +976,68 @@
   .hm-tick{font-size:12.5px;padding:10px 13px}
 }
 @media (prefers-reduced-motion:reduce){.hm-pin .p{animation:none;opacity:.6}.hm-tx.in{animation:none}}
+
+/* ═══ «مناقصة في 30 ثانية» ═══ */
+@keyframes dmRise{0%{transform:translateY(130%)}100%{transform:none}}
+@keyframes dmRing{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.55)}50%{box-shadow:0 0 0 9px rgba(255,255,255,0)}}
+@keyframes dmUp{0%{transform:translateY(16px);opacity:0}100%{transform:none;opacity:1}}
+@keyframes dmPop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+@keyframes dmDrop{0%{transform:translateY(-30px);opacity:0}100%{transform:none;opacity:1}}
+@keyframes dmBlink{50%{opacity:0}}
+@keyframes dmGlow{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.45)}50%{box-shadow:0 0 0 10px rgba(34,197,94,0)}}
+#dmPill{position:fixed;bottom:88px;left:14px;right:14px;margin:0 auto;max-width:440px;box-sizing:border-box;z-index:9000;background:#0f2544;color:#fff;border-radius:18px;padding:11px 12px 11px 8px;display:flex;align-items:center;gap:11px;box-shadow:0 18px 40px -14px rgba(15,37,68,.7);animation:dmRise .6s cubic-bezier(.2,.9,.3,1.2) both;font-family:'Tajawal',sans-serif;cursor:pointer;border:0;text-align:right}
+#dmPill .pl{width:44px;height:44px;border-radius:50%;background:#fff;color:#0f2544;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;animation:dmRing 1.6s infinite}
+#dmPill b{display:block;font-size:15px;font-weight:900}#dmPill small{font-size:12px;font-weight:700;color:#a9bde3}
+#dmPill .x{margin-right:auto;color:#a9bde3;font-size:17px;padding:8px 10px;border:0;background:none;cursor:pointer;font-family:inherit;min-width:40px;min-height:40px}
+body.dm-open{overflow:hidden}
+body.dm-open #waFloat,body.dm-open #toTopBtn,body.dm-open #mnqBackToChoose{display:none!important}
+#dmOv{position:fixed;inset:0;z-index:9500;background:rgba(2,8,23,.72);display:flex;align-items:center;justify-content:center;font-family:'Tajawal',sans-serif}
+.dm-st{position:relative;width:min(400px,100vw);height:min(800px,100dvh);background:radial-gradient(120% 70% at 50% 0%,#1e3a8a 0%,#0b1a33 60%);color:#fff;overflow:hidden;border-radius:26px}
+@media (max-width:500px){.dm-st{width:100vw;height:100dvh;border-radius:0}}
+.dm-bars{position:absolute;top:14px;left:14px;right:14px;display:flex;gap:5px;z-index:5}
+.dm-bars span{flex:1;height:4px;border-radius:3px;background:rgba(255,255,255,.22);overflow:hidden}
+.dm-bars i{display:block;height:100%;width:0;background:#fff;border-radius:3px}
+.dm-top{position:absolute;top:28px;left:14px;right:14px;display:flex;align-items:center;gap:8px;z-index:5}
+.dm-top b{font-family:'Cairo',sans-serif;font-size:16px}
+.dm-skip{margin-right:auto;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.08);color:#fff;border-radius:999px;padding:6px 13px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;min-height:34px}
+.dm-cap{position:absolute;top:80px;left:20px;right:20px;text-align:center;animation:dmUp .5s ease both}
+.dm-cap small{display:inline-block;background:rgba(255,255,255,.12);border-radius:999px;padding:3px 11px;font-size:12px;font-weight:800;color:#c9d8ff}
+.dm-cap h2{margin:8px 0 0;font-family:'Cairo',sans-serif;font-size:26px;font-weight:900;line-height:1.3;color:#fff}
+.dm-ph{position:absolute;left:30px;right:30px;top:196px;bottom:64px;background:#f2f6fc;border-radius:30px;color:#0f2544;padding:16px 14px;box-shadow:0 30px 60px -20px rgba(0,0,0,.6);overflow:hidden;animation:dmUp .6s .1s ease both}
+.dm-h{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:900;color:#55688a;margin-bottom:10px}
+.dm-in{background:#fff;border:1.5px solid #1d4ed8;border-radius:12px;padding:11px 12px;font-size:14px;font-weight:800;min-height:20px;color:#0f2544}
+.dm-in i{display:inline-block;width:2px;height:16px;background:#1d4ed8;vertical-align:-3px;animation:dmBlink .8s infinite}
+.dm-lbl{font-size:11.5px;font-weight:900;color:#55688a;margin:10px 0 5px}
+.dm-chips{display:flex;gap:6px;flex-wrap:wrap}
+.dm-chips span{background:#fff;border:1.5px solid #dfe7f3;border-radius:999px;padding:5px 10px;font-size:12px;font-weight:800;animation:dmPop .4s ease both}
+.dm-chips .on{border-color:#1d4ed8;background:#eff6ff;color:#1d4ed8}
+.dm-img{height:70px;border-radius:12px;background:linear-gradient(135deg,#cbd5e1,#94a3b8);margin-top:4px;animation:dmPop .45s ease both;display:flex;align-items:center;justify-content:center;font-size:24px}
+.dm-send{margin-top:12px;background:#1d4ed8;color:#fff;border-radius:12px;padding:11px;text-align:center;font-weight:900;font-size:14px;animation:dmPop .4s ease both}
+.dm-send.ok{background:#16a34a;animation:dmGlow 1.2s infinite}
+.dm-of{background:#fff;border:1.5px solid #e3eaf5;border-radius:14px;padding:10px 11px;margin-bottom:8px;display:flex;align-items:center;gap:9px;animation:dmDrop .45s cubic-bezier(.2,.9,.3,1.2) both;transition:opacity .4s,transform .4s}
+.dm-of .av{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:14px;flex-shrink:0}
+.dm-of b{display:block;font-size:13px;font-weight:900}.dm-of small{font-size:11px;color:#55688a;font-weight:700}
+.dm-of .pr{margin-right:auto;text-align:left;font-family:'Cairo',sans-serif;font-weight:900;font-size:15px;white-space:nowrap}
+.dm-of .pr small{display:block;font-family:'Tajawal';font-size:10.5px}
+.dm-of.best{border-color:#16a34a;box-shadow:0 0 0 2px #16a34a inset}
+.dm-of.dim{opacity:.4;transform:scale(.97)}
+.dm-tag{display:inline-block;background:#dcfce7;color:#15803d;border-radius:999px;padding:1px 7px;font-size:10px;font-weight:900;margin-right:4px}
+.dm-note{position:absolute;bottom:16px;left:14px;right:14px;background:#0f2544;color:#fff;border-radius:12px;padding:9px 11px;font-size:12px;font-weight:800;animation:dmUp .5s ease both}
+.dm-done{text-align:center;padding-top:10px}
+.dm-done .ck{width:64px;height:64px;border-radius:50%;background:#16a34a;color:#fff;font-size:34px;display:flex;align-items:center;justify-content:center;margin:6px auto 10px;animation:dmPop .5s ease both}
+.dm-done h3{margin:0;font-family:'Cairo',sans-serif;font-size:19px;font-weight:900;color:#0f2544}
+.dm-done p{margin:5px 0 12px;font-size:12.5px;font-weight:700;color:#55688a;line-height:1.7}
+.dm-stars{display:flex;justify-content:center;gap:4px;font-size:26px;color:#f59e0b;min-height:34px}
+.dm-stars span{animation:dmPop .35s ease both}
+.dm-end{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center;animation:dmUp .5s ease both}
+.dm-end h2{margin:6px 0 0;font-family:'Cairo',sans-serif;font-size:28px;font-weight:900;line-height:1.35;color:#fff}
+.dm-end p{margin:10px 0 22px;font-size:14.5px;font-weight:600;color:#c9d8ff;line-height:1.8}
+.dm-cta{display:block;width:100%;box-sizing:border-box;background:#fff;color:#0f2544;border:0;border-radius:15px;padding:15px;font-weight:900;font-size:16px;font-family:inherit;cursor:pointer;animation:dmGlow 1.4s infinite;min-height:52px}
+.dm-sec{margin-top:12px;border:0;background:none;color:#c9d8ff;font-size:13.5px;font-weight:800;font-family:inherit;cursor:pointer;min-height:40px}
+.dm-trust{display:flex;gap:12px;justify-content:center;margin-top:14px;font-size:11.5px;font-weight:800;color:#a9bde3}
+.dm-rp{margin-top:14px;border:0;background:none;color:#a9bde3;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;min-height:36px}
+.dm-ex{position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:11px;font-weight:700;color:#7d93bd}
+@media (prefers-reduced-motion:reduce){#dmPill .pl,.dm-send.ok,.dm-cta{animation:none}}
 </style>
 </head>
 <body>
@@ -2359,6 +2422,69 @@ window.mnqOpenChoose=function(e){
   function load(){ fetch((typeof API!=='undefined'?API:'')+'/api/public/city-map').then(function(r){return r.ok?r.json():null;}).then(function(d){ if(!d||!Array.isArray(d.cities))return; D=d; start(); }).catch(function(){}); }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load); else load();
   setInterval(function(){ if(!document.hidden&&D)load(); },120000);
+})();
+</script>
+
+<script>
+// ═══ «مناقصة في 30 ثانية» — زر يطلع بعد 7 ثواني (للمجموعة A بس) ويفتح تجربة متحركة ═══
+(function(){
+  var G=null; try{ G=localStorage.getItem('mnq_dg'); }catch(e){}
+  var api=(typeof API!=='undefined'?API:'');
+  function ev(e){ try{ fetch(api+'/api/demo/ev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({g:G,e:e}),keepalive:true}).catch(function(){}); }catch(x){} }
+  function seen(){ try{ return localStorage.getItem('mnq_dm_x')||localStorage.getItem('mnq_dm_done'); }catch(e){ return 1; } }
+  function E(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+  var L=70, T=null, t=0, sc=-1, dn=false;
+  var O=[['م','مؤسسة البواني','4.9','12 يوم','14,500','#1d4ed8'],['ر','الركن الحديث','4.7','10 أيام','16,200','#0891b2'],['ت','التشييد المتميز','4.8','15 يوم','13,900','#7c3aed']];
+  var FULL='ترميم مجلس وصالة 60م²، دهان وأرضيات';
+  function ofHtml(o,i){ return '<div class="dm-of" data-i="'+i+'"><span class="av" style="background:'+o[5]+'">'+o[0]+'</span><div><b>'+E(o[1])+'<span class="dm-tag" style="display:none">اخترته ✓</span></b><small>⭐ '+o[2]+' · '+o[3]+'</small></div><div class="pr">'+o[4]+'<small>ر.س</small></div></div>'; }
+  function scene(n){
+    var b=document.getElementById('dmBody'); if(!b)return;
+    var C=[['1 · تكتب وش تبي','اكتب مشروعك<br>بكلمتين'],['2 · المزوّدين يتنافسون','توصلك العروض<br>وأنت مرتاح'],['3 · أنت تختار','قارن واختار<br>الأنسب لك'],['4 · الشغل خلص','وتقيّم المزوّد<br>عشان غيرك يستفيد']];
+    if(n>=4){ b.innerHTML='<div class="dm-end"><small style="font-size:12px;font-weight:800;color:#86efac">✓ هذي مناقصة</small><h2>مشروعك الجاي؟<br>خلّهم يتنافسون عليه</h2><p>تنشر مجاناً، توصلك عروض من مزوّدين في مدينتك، وأنت تختار.</p><button type="button" class="dm-cta" id="dmCta">انشر مشروعك مجاناً</button><button type="button" class="dm-sec" id="dmProv">أنا مزوّد — وريني المشاريع ‹</button><div class="dm-trust"><span>✓ مجاني</span><span>✓ بدون التزام</span><span>✓ أنت تختار</span></div><button type="button" class="dm-rp" id="dmRp">↻ شوفها مرة ثانية</button></div>';
+      document.getElementById('dmCta').onclick=function(){ ev('cta'); close(); try{ hxGo(''); }catch(e){ location.href='/new.html'; } };
+      document.getElementById('dmProv').onclick=function(){ ev('prov'); close(); try{ goAuthRole('provider'); }catch(e){ location.href='/auth.html?role=provider'; } };
+      document.getElementById('dmRp').onclick=function(){ start(); };
+      document.getElementById('dmSkip').textContent='إغلاق ✕'; return; }
+    var ph='';
+    if(n===0) ph='<div class="dm-h">✍️ مشروع جديد</div><div class="dm-in"><span id="dmTy"></span><i></i></div><div id="dmCity" style="display:none"><div class="dm-lbl">المدينة</div><div class="dm-chips"><span class="on">الرياض</span><span>جدة</span><span>الدمام</span></div></div><div id="dmImg" style="display:none"><div class="dm-lbl">صورة (اختياري)</div><div class="dm-img">📷</div></div><div id="dmSend" class="dm-send" style="display:none">انشر المشروع</div>';
+    if(n===1) ph='<div class="dm-h">🔔 ترميم مجلس 60م² · الرياض</div><div id="dmOfs"></div><div id="dmN" class="dm-note" style="display:none">📲 كل عرض يوصلك إشعار على جوالك</div>';
+    if(n===2) ph='<div class="dm-h">⚖️ قارن العروض</div>'+O.map(ofHtml).join('')+'<div id="dmN" class="dm-note" style="display:none">💡 الأنسب مو لازم الأرخص — وتكلّمه واتساب مباشرة</div>';
+    if(n===3) ph='<div class="dm-done"><div class="ck">✓</div><h3>اكتمل المشروع</h3><p>ترميم مجلس 60م² · مؤسسة البواني<br>بالسعر المتفق عليه بالضبط</p><div class="dm-stars" id="dmSt"></div></div>';
+    b.innerHTML='<div class="dm-cap"><small>'+C[n][0]+'</small><h2>'+C[n][1]+'</h2></div><div class="dm-ph">'+ph+'</div><div class="dm-ex">مثال توضيحي — الأسماء والأسعار للتوضيح فقط</div>';
+  }
+  function show(id,on){ var e=document.getElementById(id); if(e&&on&&e.style.display==='none')e.style.display=''; }
+  function tick(){
+    t++; var n=Math.min(4,Math.floor(t/L)), k=t-n*L;
+    if(n!==sc){ sc=n; scene(n); if(n>=4&&!dn){ dn=true; ev('done'); try{localStorage.setItem('mnq_dm_done','1');}catch(e){} clearInterval(T); } }
+    var bs=document.querySelectorAll('#dmOv .dm-bars i'); for(var i=0;i<4;i++){ if(bs[i]) bs[i].style.width=(n>i?100:(n===i?Math.round(k/L*100):0))+'%'; }
+    if(n===0){ var ty=document.getElementById('dmTy'); if(ty) ty.textContent=FULL.slice(0,Math.floor(k*1.3)); show('dmCity',k>30); show('dmImg',k>40); show('dmSend',k>48); var sd=document.getElementById('dmSend'); if(sd&&k>58&&!sd.classList.contains('ok')){ sd.classList.add('ok'); sd.textContent='✓ انتشر — المزوّدين يشوفونه الحين'; } }
+    if(n===1){ var w=document.getElementById('dmOfs'), want=Math.min(3,Math.floor(k/14)); if(w) while(w.children.length<want) w.insertAdjacentHTML('beforeend',ofHtml(O[w.children.length],w.children.length)); show('dmN',k>46); }
+    if(n===2){ if(k===29){ document.querySelectorAll('#dmOv .dm-of').forEach(function(x,i){ x.classList.add(i===0?'best':'dim'); if(i===0)x.querySelector('.dm-tag').style.display=''; }); } show('dmN',k>40); }
+    if(n===3){ var st=document.getElementById('dmSt'), ns=Math.max(0,Math.min(5,Math.floor((k-6)/5))); if(st) while(st.children.length<ns) st.insertAdjacentHTML('beforeend','<span>★</span>'); }
+  }
+  function start(){ clearInterval(T); t=0; sc=-1; dn=false; document.getElementById('dmSkip').textContent='تخطّي'; tick(); T=setInterval(tick,100); }
+  function close(){ clearInterval(T); var o=document.getElementById('dmOv'); if(o)o.remove(); document.body.classList.remove('dm-open'); document.removeEventListener('keydown',esc); }
+  function esc(e){ if(e.key==='Escape')close(); }
+  function open(){
+    ev('open'); var p=document.getElementById('dmPill'); if(p)p.remove();
+    var o=document.createElement('div'); o.id='dmOv'; o.setAttribute('role','dialog'); o.setAttribute('aria-modal','true'); o.setAttribute('aria-label','كيف تشتغل مناقصة');
+    o.innerHTML='<div class="dm-st"><div class="dm-bars"><span><i></i></span><span><i></i></span><span><i></i></span><span><i></i></span></div><div class="dm-top"><b>مناقصة</b><button type="button" class="dm-skip" id="dmSkip">تخطّي</button></div><div id="dmBody"></div></div>';
+    o.onclick=function(e){ if(e.target===o)close(); };
+    document.body.appendChild(o); document.body.classList.add('dm-open'); document.addEventListener('keydown',esc);
+    document.getElementById('dmSkip').onclick=function(){ if(sc>=4){ close(); return; } ev('skip'); t=4*L-1; tick(); };
+    start();
+  }
+  function pill(){
+    if(G!=='A'||seen()||document.getElementById('dmPill'))return;
+    try{ var u=localStorage.getItem('token'); if(u)return; }catch(e){}
+    var b=document.createElement('div'); b.id='dmPill'; b.setAttribute('role','button'); b.tabIndex=0;
+    b.innerHTML='<span class="pl">▶</span><div><b>شوف مناقصة في 30 ثانية</b><small>كيف توصلك عروض أسعار بدون ما تتعب</small></div><button type="button" class="x" aria-label="إغلاق">✕</button>';
+    b.onclick=function(e){ if(e.target.closest('.x')){ e.stopPropagation(); ev('x'); try{localStorage.setItem('mnq_dm_x','1');}catch(x){} b.remove(); return; } open(); };
+    b.onkeydown=function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); open(); } };
+    document.body.appendChild(b); ev('shown');
+  }
+  window.mnqDemo=open; // للتجربة من الكونسول
+  if(G==='A') setTimeout(pill,7000);
 })();
 </script>
 </body>

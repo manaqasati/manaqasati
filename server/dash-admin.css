@@ -980,3 +980,16 @@ a.cu-pv:hover{border-color:#86efac}
 [data-theme="dark"] .lv-role.p{background:#3b2a07;color:#fcd34d}[data-theme="dark"] .lv-role.c{background:#172554;color:#93c5fd}
 [data-theme="dark"] .lv-f button.on{background:#3b82f6;border-color:#3b82f6}
 @media (max-width:600px){.lv-ov{padding:0;align-items:stretch}.lv-box{max-height:100vh;border-radius:0}}
+
+/* تجربة «مناقصة في 30 ثانية» */
+.dt-v{background:var(--bg);border-radius:12px;padding:10px 12px;font-size:13.5px;font-weight:800;color:var(--text);margin:6px 0 12px;line-height:1.7}
+.dt-g{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.dt-c{border:1px solid var(--border);border-top:4px solid var(--c);border-radius:14px;padding:12px}
+.dt-h{font-size:14px;font-weight:900;color:var(--c);margin-bottom:6px}.dt-h small{display:block;font-size:11.5px;color:var(--muted);font-weight:700}
+.dt-r{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:1px solid var(--border);font-size:13px;font-weight:700;color:var(--muted)}
+.dt-r b{color:var(--text);font-size:15px}.dt-r em,.dt-s em{font-style:normal;font-size:12px;color:var(--c,#1d4ed8);font-weight:900}
+.dt-f{margin-top:12px}.dt-ft{font-size:12.5px;font-weight:800;color:var(--muted);margin-bottom:6px}
+.dt-ss{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.dt-s{background:var(--bg);border-radius:12px;padding:9px 6px;text-align:center}
+.dt-s b{display:block;font-size:18px;font-weight:900;color:var(--text)}.dt-s span{font-size:11.5px;font-weight:700;color:var(--muted);line-height:1.5}
+@media (max-width:700px){.dt-ss{grid-template-columns:repeat(2,minmax(0,1fr))}}

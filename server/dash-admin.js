@@ -395,7 +395,7 @@ function loadDashboard(){
   }
   fetch(API+'/api/admin/overview',hdr()).then(function(r){return r.json();}).then(function(o){
     if(!o||!o.kpi){ var kp=document.getElementById('dash-kpis'); if(kp)kp.innerHTML=emptyState('تعذر تحميل الإحصائيات'); return; }
-    window._overview=o; _renderDash(o); try{_perRender();_loadVisits();_loadAppStats();_loadCtStats();}catch(e){}
+    window._overview=o; _renderDash(o); try{_perRender();_loadVisits();_loadAppStats();_loadCtStats();}catch(e){} try{_loadDemoTest();}catch(e){}
   }).catch(function(){ var kp=document.getElementById('dash-kpis'); if(kp)kp.innerHTML=emptyState('تعذر تحميل الإحصائيات'); });
   fetch(API+'/api/admin/reports',hdr()).then(function(r){return r.json();}).then(function(reps){
     var pending=Array.isArray(reps)?reps.filter(function(r){return r.status==='pending'||!r.status;}).length:0;
@@ -6669,4 +6669,25 @@ function _lvLoad(){
         +'<div class="lv-meta">'+(act?'<b class="lv-on">● نشط الحين</b>':'آخر حركة قبل '+_lvDur(x.idle_s))+' · له '+_lvDur(x.on_s)+' في الموقع · '+x.pages+' '+(x.pages===1?'صفحة':'صفحات')+(x.src==='direct'?' · دخل مباشرة':(src?' · جا من '+esc(src):''))+'</div></div></div>';
     }).join('');
   }).catch(function(){ var box=document.getElementById('lvL'); if(box)box.innerHTML='<div class="lv-empty">تعذّر التحميل</div>'; });
+}
+
+// ═══ تجربة «مناقصة في 30 ثانية»: مقارنة اللي شافوا الزر (A) باللي ما شافوه (B) ═══
+function _loadDemoTest(){
+  var box=document.getElementById('dash-demo'); if(!box)return;
+  fetch(API+'/api/admin/demo-test',hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(!d||(!d.A.visitors&&!d.B.visitors)){ box.style.display='none'; return; } box.style.display='';
+    var A=d.A,B=d.B, pc=function(a,b){ return b?Math.round(a/b*1000)/10:0; };
+    var ra=pc(A.signups||0,A.visitors), rb=pc(B.signups||0,B.visitors), pa=pc(A.posters||0,A.visitors), pb=pc(B.posters||0,B.visitors);
+    var enough=A.visitors>=200&&B.visitors>=200, verdict;
+    if(!enough) verdict='⏳ نحتاج 200 زائر على الأقل في كل مجموعة قبل الحكم — الحين: '+fmtNum(A.visitors)+' و '+fmtNum(B.visitors);
+    else if(ra>rb*1.15) verdict='✅ اللي شافوا الزر يسجّلون أكثر بـ '+Math.round((ra/(rb||0.1)-1)*100)+'% — الفكرة ناجحة';
+    else if(rb>ra*1.15) verdict='❌ اللي ما شافوا الزر يسجّلون أكثر — الفكرة ما نفعت (أو الزر يشتت)';
+    else verdict='➖ ما فيه فرق واضح للحين بين المجموعتين';
+    var col=function(t,c,x,r,p,sub){ return '<div class="dt-c" style="--c:'+c+'"><div class="dt-h">'+t+'<small>'+sub+'</small></div><div class="dt-r"><span>زوار</span><b>'+fmtNum(x.visitors)+'</b></div><div class="dt-r"><span>سجّلوا</span><b>'+fmtNum(x.signups||0)+' <em>'+r+'%</em></b></div><div class="dt-r"><span>نشروا مشروع</span><b>'+fmtNum(x.posters||0)+' <em>'+p+'%</em></b></div></div>'; };
+    var st=function(l,n,of){ return '<div class="dt-s"><b>'+fmtNum(n||0)+'</b><span>'+l+(of?' <em>'+pc(n||0,of)+'%</em>':'')+'</span></div>'; };
+    box.innerHTML='<div class="ad-ch"><h3>🎬 تجربة «مناقصة في 30 ثانية»</h3><span class="ad-fp">من '+(d.since?new Date(d.since).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'}):'—')+'</span></div>'
+      +'<div class="dt-v">'+verdict+'</div>'
+      +'<div class="dt-g">'+col('A — شافوا الزر','#1d4ed8',A,ra,pa,'نص الزوار')+col('B — ما شافوه','#64748b',B,rb,pb,'للمقارنة')+'</div>'
+      +'<div class="dt-f"><div class="dt-ft">وش سوّت مجموعة A مع الزر:</div><div class="dt-ss">'+st('طلع لهم الزر',A.shown)+st('ضغطوه',A.open,A.shown)+st('كمّلوها لآخرها',A.done,A.open)+st('ضغطوا «انشر مشروعك»',A.cta,A.open)+st('سكّروا الزر',A.x,A.shown)+'</div></div>';
+  }).catch(function(){ box.style.display='none'; });
 }

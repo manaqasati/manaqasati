@@ -89,7 +89,8 @@
     try { t = localStorage.getItem('token'); } catch(e){}
     var app = !!window.ReactNativeWebView || /ManaqasaApp|Expo/i.test(navigator.userAgent || '');
     var pid = q.get('id'); var pp = p + (pid && /^\d+$/.test(pid) ? '?id=' + pid : '');
-    var body = JSON.stringify({ p: pp, h: (location.hash || '').slice(0, 60), r: document.referrer || '', s: q.get('utm_source') || '', m: q.get('utm_medium') || '', app: app });
+    var dg = null; try { dg = localStorage.getItem('mnq_dg'); } catch(e){}
+    var body = JSON.stringify({ p: pp, h: (location.hash || '').slice(0, 60), r: document.referrer || '', s: q.get('utm_source') || '', m: q.get('utm_medium') || '', app: app, dg: dg });
     var h = { 'Content-Type': 'application/json' }; if (t) h.Authorization = 'Bearer ' + t;
     var go = function(){ try { fetch('/api/hit', { method: 'POST', headers: h, body: body, keepalive: true, credentials: 'same-origin' }).catch(function(){}); } catch(e){} };
     if (document.readyState === 'complete') setTimeout(go, 300); else window.addEventListener('load', function(){ setTimeout(go, 300); });
