@@ -186,6 +186,10 @@ app.post('/api/csp-report', rateLimiter(40, 60000), express.json({ type: ['appli
       const dir = String(r['effective-directive'] || r.effectiveDirective || r['violated-directive'] || r.violatedDirective || '').split(' ')[0].slice(0, 40);
       const blocked = strip(r['blocked-uri'] || r.blockedURL || '');
       if (!dir || /^(chrome|moz|safari|safari-web|ms-browser)-extension/i.test(blocked)) continue; // إضافات المتصفح: مو من موقعنا
+      const _src = String(r['source-file'] || r.sourceFile || '');
+      if (/^(chrome|moz|safari|safari-web|ms-browser)-extension/i.test(_src)) continue; // سكربت من إضافة متصفح (مثل wasm-eval)
+      if (dir.startsWith('frame-src') && /^(null|about|)$/i.test(blocked)) continue; // إطارات فاضية تسويها سكربتات التتبّع — ما تحمّل شي
+      if (/^https:\/\/(www|translate)\.(gstatic|googleapis)\.com\/_\/translate_http/i.test(blocked)) continue; // ترجمة Google اللي يشغّلها الزائر بنفسه
       let page = strip(r['document-uri'] || r.documentURL || ''); try { page = new URL(page).pathname.slice(0, 120); } catch(e) {}
       const sample = String(r['script-sample'] || r.sample || (r['source-file'] || r.sourceFile ? 'من: ' + strip(r['source-file'] || r.sourceFile) : '')).slice(0, 80);
       const up = await pool.query(`UPDATE csp_reports SET n=n+1, last_at=NOW() WHERE directive=$1 AND blocked=$2 AND page=$3`, [dir, blocked, page]);
