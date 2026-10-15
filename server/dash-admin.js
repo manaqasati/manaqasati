@@ -6066,11 +6066,12 @@ function _vsKpis(d){
   var T=function(l,n,dl,spk,pg){return '<div class="ad-kc go" role="button" tabindex="0" onclick="_niGo(\''+pg+'\')"><div class="ad-kl">'+l+'</div><div class="ad-kn">'+n+'</div>'+dl+spk+'</div>';};
   var tr=function(a,b){ if(!a&&!b)return '<div class="ad-kt">ما فيه نشاط</div>'; if(!b)return '<div class="ad-kt up">▲ ما كان فيه شي '+esc(cmp.replace('عن ',''))+'</div>'; var dd=Math.round((a-b)/b*100); return '<div class="ad-kt '+(dd>=0?'up':'dn')+'">'+(dd>=0?'▲ ':'▼ ')+Math.abs(dd)+'% '+esc(cmp)+'</div>'; };
   kp.innerHTML='<div class="ad-k">'
-    +T('مشاريع جديدة — '+esc(R.lbl),fmtNum(c.requests),tr(c.requests,p.requests),_adSpark(sp.map(function(x){return x.r;}),'#d97706'),'requests')
+    // «مشاريع جديدة» = كل اللي انرسلت (حتى اللي تحت المراجعة أو انرفضت) — و«انتشرت» = نفس رقم «نُشر» في مسار المشاريع
+    +T('مشاريع جديدة — '+esc(R.lbl),fmtNum(c.requests)+(d.pfunnel&&d.pfunnel.published!==c.requests?'<small style="font-size:12px;color:var(--muted);font-weight:800"> · '+fmtNum(d.pfunnel.published)+' انتشرت</small>':''),tr(c.requests,p.requests),_adSpark(sp.map(function(x){return x.r;}),'#d97706'),'requests')
     +T('عروض — '+esc(R.lbl),fmtNum(c.bids),tr(c.bids,p.bids),_adSpark(sp.map(function(x){return x.b;}),'#16a34a'),'bids')
     +T('صفقات (قبول عرض)',fmtNum(c.deals),tr(c.deals,p.deals),_adSpark(sp.map(function(x){return x.dl;}),'#1d4ed8'),'saai')
     +'<div class="ad-kc go" role="button" tabindex="0" onclick="_niGo(\'requests\')"><div class="ad-kl">مشاريع جاها عرض</div><div class="ad-kn" style="color:#15803d">'+pc+'%</div><div class="ad-kt">'+(cv.with_bids||0)+' من '+(cv.n||0)+' · آخر 30 يوم</div><div class="ad-kbar"><i style="width:'+pc+'%;background:#16a34a"></i></div></div>'
-    +'<div class="ad-kc go" role="button" tabindex="0" onclick="_niGo(\'saai\')"><div class="ad-kl">سعي محصّل — '+esc(R.lbl)+'</div><div class="ad-kn">'+fmtNum(Math.round(c.collected||0))+' <small>ر.س</small></div><div class="ad-kt" style="color:#b45309">'+fmtNum(sa.due||0)+' ر.س مستحق'+(sa.due_n?' · '+sa.due_n+' مشروع':'')+'</div></div>'
+    +'<div class="ad-kc go" role="button" tabindex="0" onclick="_niGo(\'saai\')"><div class="ad-kl">سعي محصّل — '+esc(R.lbl)+'</div><div class="ad-kn">'+fmtNum(Math.round(c.collected||0))+' <small>ر.س</small></div><div class="ad-kt" style="color:#b45309">'+fmtNum(sa.due||0)+' ر.س مستحق للحين (كل الفترات)'+(sa.due_n?' · '+sa.due_n+' مشروع':'')+'</div></div>'
     +'</div>';
   if(d.pfunnel) _adFunnel(d.pfunnel,R.lbl);
 }
