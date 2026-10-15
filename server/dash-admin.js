@@ -6687,6 +6687,14 @@ function _loadDemoTest(){
     var st=function(l,n,of){ return '<div class="dt-s"><b>'+fmtNum(n||0)+'</b><span>'+l+(of?' <em>'+pc(n||0,of)+'%</em>':'')+'</span></div>'; };
     box.innerHTML='<div class="ad-ch"><h3>🎬 تجربة «مناقصة في 30 ثانية»</h3><span class="ad-fp">من '+(d.since?new Date(d.since).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'}):'—')+'</span></div>'
       +'<div class="dt-v">'+verdict+'</div>'
+      +(d.before&&d.after?(function(){ var b=d.before,a=d.after, r1=pc(b.signups,b.visitors), r2=pc(a.signups,a.visitors), p1=pc(b.posts,b.visitors), p2=pc(a.posts,a.visitors); var few=b.visitors<30||a.visitors<30; if(few){ r1=r2=p1=p2='—'; }
+        var arr=function(x,y){ if(x==='—'||y==='—')return '<i></i>'; if(!x&&!y)return ''; var dd=x?Math.round((y-x)/x*100):100; return '<em style="color:'+(dd>=0?'#15803d':'#b91c1c')+'">'+(dd>=0?'▲ ':'▼ ')+Math.abs(dd)+'%</em>'; };
+        var row=function(l,x,y,ex){ return '<div class="dt-ba-r"><span>'+l+'</span><b>'+x+'</b><b>'+y+'</b>'+(ex||'<i></i>')+'</div>'; };
+        return '<div class="dt-ba"><div class="dt-ft">قبل وبعد — الموقع كامل (للاستئناس: يتأثر بالإعلانات والأيام)</div>'
+          +'<div class="dt-ba-r dt-ba-h"><span></span><b>7 أيام قبل</b><b>من بداية التجربة ('+a.days+(a.days===1?' يوم':' أيام')+')</b><i>التغيّر</i></div>'
+          +row('زوار باليوم',fmtNum(Math.round(b.visitors/Math.max(1,b.days))),fmtNum(Math.round(a.visitors/Math.max(1,a.days))),arr(b.visitors/Math.max(1,b.days),a.visitors/Math.max(1,a.days)))
+          +row('نسبة التسجيل',r1+(few?'':'%'),r2+(few?'':'%'),arr(r1,r2))
+          +row('نسبة نشر مشروع',p1+(few?'':'%'),p2+(few?'':'%'),arr(p1,p2))+(few?'<div class="dt-ft" style="margin:6px 0 0">النسب تطلع بعد 30 زائر على الأقل في كل فترة</div>':'')+'</div>'; })():'')
       +'<div class="dt-g">'+col('A — شافوا الزر','#1d4ed8',A,ra,pa,'نص الزوار')+col('B — ما شافوه','#64748b',B,rb,pb,'للمقارنة')+'</div>'
       +'<div class="dt-f"><div class="dt-ft">وش سوّت مجموعة A مع الزر:</div><div class="dt-ss">'+st('طلع لهم الزر',A.shown)+st('ضغطوه',A.open,A.shown)+st('كمّلوها لآخرها',A.done,A.open)+st('ضغطوا «انشر مشروعك»',A.cta,A.open)+st('سكّروا الزر',A.x,A.shown)+'</div></div>';
   }).catch(function(){ box.style.display='none'; });

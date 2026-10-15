@@ -993,3 +993,7 @@ a.cu-pv:hover{border-color:#86efac}
 .dt-s{background:var(--bg);border-radius:12px;padding:9px 6px;text-align:center}
 .dt-s b{display:block;font-size:18px;font-weight:900;color:var(--text)}.dt-s span{font-size:11.5px;font-weight:700;color:var(--muted);line-height:1.5}
 @media (max-width:700px){.dt-ss{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.dt-ba{border:1px solid var(--border);border-radius:14px;padding:10px 12px;margin-bottom:12px}
+.dt-ba-r{display:grid;grid-template-columns:1.2fr 1fr 1.3fr .8fr;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--border);font-size:13px;font-weight:700;color:var(--muted)}
+.dt-ba-r b{color:var(--text);font-size:14.5px;font-weight:900}.dt-ba-r em,.dt-ba-r i{font-style:normal;font-size:12.5px;font-weight:900}
+.dt-ba-h{border-top:0;font-size:11.5px}.dt-ba-h b{font-size:11.5px;color:var(--muted);font-weight:800}.dt-ba-h i{color:var(--muted)}

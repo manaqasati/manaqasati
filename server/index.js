@@ -3974,6 +3974,18 @@ app.get('/api/admin/demo-test', requirePermission('analytics.view'), async (req,
     vis.forEach(x => out[x.dg] && (out[x.dg].visitors = x.v));
     ev.forEach(x => out[x.grp] && (out[x.grp][x.ev] = x.n));
     conv.forEach(x => out[x.dg] && Object.assign(out[x.dg], { signups: x.signups, posters: x.posters, providers: x.providers }));
+    // قبل وبعد: الموقع كامل — 7 أيام قبل بداية التجربة، ضد من بدايتها لين اليوم
+    if (first) {
+      const ba = async (f, t) => (await pool.query(`SELECT
+          (SELECT COUNT(*) FROM site_visits WHERE day BETWEEN $1 AND $2)::int AS visitors,
+          (SELECT COUNT(*) FROM users WHERE role<>'admin' AND (created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS signups,
+          (SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct') AND (created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2)::int AS posts,
+          ($2::date - $1::date + 1)::int AS days`, [f, t])).rows[0];
+      const f0 = new Date(first); const iso = d => new Date(d).toISOString().slice(0, 10);
+      const bTo = iso(f0.getTime() - 86400000), bFrom = iso(f0.getTime() - 7 * 86400000), today = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+      out.before = Object.assign({ from: bFrom, to: bTo }, await ba(bFrom, bTo));
+      out.after = Object.assign({ from: iso(f0), to: today }, await ba(iso(f0), today));
+    }
     res.json(out);
   } catch(e) { console.error('demo-test:', e.message); res.status(500).json({ message: 'تعذّر' }); }
 });
