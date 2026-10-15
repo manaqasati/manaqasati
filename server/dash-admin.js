@@ -69,7 +69,7 @@ function _navGroupsVis(){
   try{var mo=new MutationObserver(function(){_navSums();});document.querySelectorAll('.nav .ni-badge').forEach(function(b){mo.observe(b,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});});}catch(e){setInterval(_navSums,3000);}
 })();
 // ═══ الصفحات المدموجة: كل مجموعة صفحة وحدة بتبويبات فوق ═══
-var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
+var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
 var _PG2GRP={};Object.keys(GRPS).forEach(function(g){GRPS[g].t.forEach(function(t){var b=t.split('@')[0];if(!_PG2GRP[b])_PG2GRP[b]=g;});});
 function _gtVisible(g){var bar=document.querySelector('#gtabsHost .gtabs[data-grp="'+g+'"]');if(!bar)return [];return [].filter.call(bar.querySelectorAll('.gt'),function(b){return b.style.display!=='none';}).map(function(b){return b.getAttribute('data-tab');});}
 function showGroup(g){
@@ -117,6 +117,7 @@ function showPage(pg,el){
   if(el)el.classList.add('on');
   if(el)_navOpenFor(el);
   var meta={vstats:['التسجيل والتفعيل','كيف سجّلوا (البريد · Google · Apple) — مين فعّل ومين علق'],appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],deals:['متابعة الصفقات','مين اختار · مين ألغى · مين خلّص · مين سدّد'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
+  meta.outcomes=['نتائج المشاريع','وين راح كل مشروع — الترسية والإغلاق والسعي، ووش يحتاج قرارك'];
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
   _gtSync(pg);
   document.getElementById('pageSub').textContent=meta[pg][1];
@@ -135,6 +136,7 @@ function showPage(pg,el){
   if(pg==='health')loadHealth();
   if(pg==='followup')loadFollowups();
   if(pg==='closereasons')loadCloseReasons();
+  if(pg==='outcomes')loadOutcomes();
   if(pg==='deals')setTimeout(loadDeals,0);
   if(pg==='bidreasons')loadBidReasons();
   if(pg==='claims')loadClaims();
@@ -405,7 +407,7 @@ function _adFunnel(f,lbl){
   var fnl=document.getElementById('dash-funnel'); if(!fnl||!f)return;
   var P=f.published||0, steps=[['نُشر',P,'#1e3a8a',null],['جاه عرض',f.got_bid||0,'#1d4ed8',P],['تمت الترسية',f.awarded||0,'#0891b2',f.got_bid||0],['اكتمل',f.completed||0,'#16a34a',f.awarded||0],['سدّد السعي',f.saai_paid||0,'#f59e0b',f.awarded||0]];
   var worst=null; for(var i=1;i<4;i++){ var a=steps[i-1][1], b=steps[i][1]; if(a>0){ var r=b/a; if(!worst||r<worst.r)worst={r:r,from:steps[i-1][0],to:steps[i][0]}; } }
-  fnl.innerHTML='<div class="ad-ch"><h3>مسار المشاريع</h3><span class="ad-fp">'+esc(lbl)+'</span></div>'+(P?'<div class="ad-fn">'
+  fnl.innerHTML='<div class="ad-ch"><h3>مسار المشاريع</h3><a href="#" class="ad-dl-go" onclick="event.preventDefault();_gtGo(\'outcomes\')">وين راحت؟ التفاصيل ←</a><span class="ad-fp">'+esc(lbl)+'</span></div>'+(P?'<div class="ad-fn">'
     +steps.map(function(x){ var w=Math.max(8,Math.round(x[1]/P*100)); var cp=(x[3]!=null&&x[3]>0)?Math.round(x[1]/x[3]*100)+'%':''; return '<div class="ad-fr"><div class="ad-fb" style="width:'+w+'%;background:'+x[2]+'">'+x[0]+' '+x[1]+'</div>'+(cp?'<span class="ad-fp">'+cp+'</span>':'')+'</div>'; }).join('')
     +'</div>'+(worst&&P>=3?'<div class="ad-note">أكبر تسرّب: من «'+worst.from+'» إلى «'+worst.to+'» — '+Math.round(worst.r*100)+'% بس يكملون.</div>':''):'<div style="color:var(--muted);font-size:13px;padding:18px 0">ما نُشر مشاريع في هالفترة.</div>');
 }
@@ -6519,3 +6521,118 @@ function _dlPaint(){ var box=document.getElementById('deals-body'), d=_DL; if(!b
   new MutationObserver(apply).observe(D.documentElement,{attributes:true,attributeFilter:['data-theme']});
   if(D.readyState==='loading')D.addEventListener('DOMContentLoaded',apply); else apply();
 })();
+
+// ═══ نتائج المشاريع: خريطة المصير (وين راح كل مشروع) + وش يحتاج قرارك ═══
+var _OC=null, _OCSEL='', _OCPER='month';
+var _OC_RS={silent:['انتهت مدته — النظام قفله','#be123c'],postponed:['العميل أجّل أو ألغى','#64748b'],nosuit:['ما لقى عرض مناسب','#7c3aed'],outside:['اتفق مع مزوّد من برا','#ef4444'],price:['الأسعار أعلى من ميزانيته','#d97706'],other:['سبب آخر','#0891b2'],admin:['الإدارة قفلته','#0f766e']};
+function _ocRange(k){ var d=new Date(Date.now()+3*3600000), y=d.toISOString().slice(0,10), f=y;
+  var back=function(n){ return new Date(Date.now()+3*3600000-n*86400000).toISOString().slice(0,10); };
+  if(k==='7d')f=back(6); else if(k==='30d')f=back(29); else if(k==='month')f=y.slice(0,8)+'01'; else if(k==='year')f=y.slice(0,5)+'01-01';
+  return {from:f,to:y,lbl:{today:'اليوم','7d':'آخر 7 أيام','30d':'آخر 30 يوم',month:'هالشهر',year:'هالسنة'}[k]}; }
+function loadOutcomes(k){
+  if(k)_OCPER=k; var R=_ocRange(_OCPER), b=document.getElementById('oc-body'); if(!b)return;
+  if(!_OC)b.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>'; else b.classList.add('oc-busy');
+  fetch(API+'/api/admin/outcomes?from='+R.from+'&to='+R.to,hdr()).then(function(r){return r.json();}).then(function(d){
+    b.classList.remove('oc-busy'); if(!d||!d.projects){ b.innerHTML=emptyState('تعذّر التحميل'); return; } _OC=d; _OC.lbl=R.lbl; _ocPaint();
+  }).catch(function(){ b.classList.remove('oc-busy'); b.innerHTML=emptyState('تعذّر التحميل'); });
+}
+function _ocGroups(){
+  var P=_OC.projects, G={P:P, GB:[], NB:[], A:[], O:[], C:[], done:[], progress:[]};
+  P.forEach(function(x){ (x.bids>0?G.GB:G.NB).push(x); if(x.outcome==='done'||x.outcome==='progress'){G.A.push(x);G[x.outcome].push(x);} else if(x.outcome==='closed'){G.C.push(x); (G['r_'+x.reason]=G['r_'+x.reason]||[]).push(x);} else G.O.push(x); });
+  return G;
+}
+function _ocFlow(G){
+  var N=G.P.length; if(!N) return '<div class="oc-empty">ما فيه مشاريع انتشرت في هالفترة</div>';
+  var U=Math.max(3,Math.min(14,470/N)), BW=14, GAP=22, X={1:1066,2:810,3:555,4:290}, nodes={}, order=[];
+  var add=function(k,col,arr,label,color,sub){ if(!arr.length)return; nodes[k]={k:k,x:X[col],v:arr.length,h:arr.length*U,label:label,color:color,sub:sub||'',o:0,i:0,col:col}; order.push(k); };
+  var pc=function(a,b){ return b?Math.round(a/b*100)+'%':''; };
+  add('P',1,G.P,'انتشر','#1e3a8a','وصل للمزوّدين');
+  add('GB',2,G.GB,'جاه عرض','#1d4ed8',pc(G.GB.length,N)); add('NB',2,G.NB,'ما جاه عرض','#94a3b8',pc(G.NB.length,N));
+  add('A',3,G.A,'رسى','#16a34a','العميل اختار مزوّد'); add('O',3,G.O,'لسا مفتوح','#0891b2','يستقبل عروض'); add('C',3,G.C,'انقفل','#dc2626','بدون ترسية');
+  add('done',4,G.done,'اكتمل ✓','#15803d'); add('progress',4,G.progress,'قيد التنفيذ','#2563eb');
+  Object.keys(_OC_RS).forEach(function(r){ add('r_'+r,4,G['r_'+r]||[],_OC_RS[r][0],_OC_RS[r][1]); });
+  // ترتيب عمودي داخل كل عمود
+  [1,2,3,4].forEach(function(c){ var y=0; order.forEach(function(k){ var n=nodes[k]; if(n.col!==c)return; if(c===4&&k.indexOf('r_')===0&&nodes.C&&y<nodes.C.y0)y=nodes.C.y0; n.y0=y; y+=n.h+(c===4?10:GAP); }); });
+  var cnt=function(arr,fn){ return arr.filter(fn).length; };
+  var L=[];
+  var link=function(s,t,v){ if(v>0&&nodes[s]&&nodes[t])L.push([s,t,v]); };
+  link('P','GB',G.GB.length); link('P','NB',G.NB.length);
+  ['A','O','C'].forEach(function(t){ link('GB',t,cnt(G[t],function(x){return x.bids>0;})); link('NB',t,cnt(G[t],function(x){return x.bids===0;})); });
+  link('A','done',G.done.length); link('A','progress',G.progress.length);
+  Object.keys(_OC_RS).forEach(function(r){ link('C','r_'+r,(G['r_'+r]||[]).length); });
+  var H=0; order.forEach(function(k){ H=Math.max(H,nodes[k].y0+nodes[k].h); }); H=Math.ceil(H)+6;
+  var paths='', bars='', labs='';
+  L.forEach(function(l){ var S=nodes[l[0]],T=nodes[l[1]],h=l[2]*U, sy=S.y0+S.o, ty=T.y0+T.i; S.o+=h; T.i+=h; var sx=S.x, tx=T.x+BW, m=(sx+tx)/2;
+    paths+='<path data-k="'+l[1]+'" d="M'+sx+','+sy.toFixed(1)+' C'+m+','+sy.toFixed(1)+' '+m+','+ty.toFixed(1)+' '+tx+','+ty.toFixed(1)+' L'+tx+','+(ty+h).toFixed(1)+' C'+m+','+(ty+h).toFixed(1)+' '+m+','+(sy+h).toFixed(1)+' '+sx+','+(sy+h).toFixed(1)+' Z" fill="'+T.color+'" fill-opacity="'+(_OCSEL===l[1]?0.5:0.2)+'"/>'; });
+  order.forEach(function(k){ var n=nodes[k], on=_OCSEL===k;
+    bars+='<rect x="'+n.x+'" y="'+n.y0.toFixed(1)+'" width="'+BW+'" height="'+Math.max(n.h,3).toFixed(1)+'" rx="3" fill="'+n.color+'"/>';
+    var big=n.col<4;
+    labs+='<button type="button" class="oc-lb'+(big?' big':'')+(on?' on':'')+'" style="right:calc('+((1100-n.x)/11).toFixed(2)+'% + 8px);top:'+(n.y0+n.h/2+34).toFixed(0)+'px;--c:'+n.color+'" onclick="_ocPick(\''+k+'\')"><b>'+fmtNum(n.v)+'</b> '+esc(n.label)+(n.sub?'<small>'+esc(n.sub)+'</small>':'')+'</button>'; });
+  return '<div class="oc-flw"><div class="oc-fl" style="height:'+(H+56)+'px"><span class="oc-ch" style="right:1%">النشر</span><span class="oc-ch" style="right:24%">العروض</span><span class="oc-ch" style="right:47%">النتيجة</span><span class="oc-ch" style="right:71%">وش صار بعدها</span>'
+    +'<svg viewBox="0 0 1100 '+H+'" preserveAspectRatio="none" style="height:'+H+'px" aria-hidden="true">'+paths+bars+'</svg>'+labs+'</div></div>';
+}
+function _ocPick(k){ window._ocAll=0; _OCSEL=(_OCSEL===k?'':k); _ocPaint(); var l=document.getElementById('oc-list'); if(l&&_OCSEL)l.scrollIntoView({behavior:'smooth',block:'start'}); }
+function _ocListFor(G,k){
+  var map={P:['كل المنشورة',G.P],GB:['جاها عرض',G.GB],NB:['ما جاها ولا عرض',G.NB],A:['رست',G.A],O:['لسا مفتوحة',G.O],C:['انقفلت بدون ترسية',G.C],done:['اكتملت',G.done],progress:['قيد التنفيذ',G.progress]};
+  if(k.indexOf('r_')===0) return [_OC_RS[k.slice(2)][0],G[k]||[]];
+  return map[k]||['',[]];
+}
+function _ocRow(x){
+  var st, act='';
+  if(x.outcome==='done'||x.outcome==='progress'){
+    var w=x.won||{}, pr=w.price?fmtNum(w.price)+' ر.س'+(w.unit&&w.unit!=='total'?(w.unit==='meter'?' للمتر':' للوحدة'):''):'';
+    st='<span class="oc-pl" style="--c:'+(x.outcome==='done'?'#15803d':'#2563eb')+'">'+(x.outcome==='done'?'رسى · اكتمل ✓':'رسى · قيد التنفيذ')+'</span><small>اختار <b>'+esc(x.provider||'مزوّد')+'</b>'+(pr?' بـ '+pr:'')+'</small>';
+  } else if(x.outcome==='closed'){
+    var r=_OC_RS[x.reason]||['انقفل','#64748b'];
+    st='<span class="oc-pl" style="--c:'+r[1]+'">'+esc(r[0])+'</span><small>'+(x.note?'كتب: «'+esc(String(x.note).slice(0,70))+'»':(x.closed_at?'انقفل '+_adAgo(x.closed_at):''))+'</small>';
+    var ph=_waNorm(x.client_phone);
+    if(x.help) act=(ph?'<a class="oc-ac hot" target="_blank" rel="noopener" href="https://wa.me/'+ph+'?text='+encodeURIComponent('السلام عليكم، معك فريق منصة مناقصة 👋 شفنا إنك طلبت مساعدة تلقى مزوّد مناسب لمشروعك «'+(x.title||'')+'» — وش اللي ما ناسبك في العروض؟ نبي نساعدك.')+'">كلّم العميل</a>':'')+'<button type="button" class="oc-ac" onclick="_ocHelpDone('+x.id+')">✓ تواصلت</button>';
+    else if(x.reason==='outside'&&ph) act='<a class="oc-ac hot" target="_blank" rel="noopener" href="https://wa.me/'+ph+'?text='+encodeURIComponent('السلام عليكم، معك فريق منصة مناقصة 👋 شفنا إنك اتفقت مع مزوّد على مشروعك «'+(x.title||'')+'» — نتمنى لك التوفيق! ممكن نعرف مع مين اتفقت؟ لو كان من المزوّدين اللي قدّموا لك على المنصة نوثّق الاتفاق لحمايتك.')+'">كلّم العميل</a>';
+  } else st='<span class="oc-pl" style="--c:#0891b2">لسا مفتوح</span><small>'+(x.bids?fmtNum(x.bids)+' عرض للحين':'ما جاه عرض للحين')+'</small>';
+  if(!act&&x.outcome==='open'&&!x.bids) act='<button type="button" class="oc-ac" onclick="openInvite('+x.id+')">ادعُ مزوّدين</button>';
+  if(!act) act='<button type="button" class="oc-ac" onclick="gsOpenReq('+x.id+')">افتح</button>';
+  return '<div class="oc-it"><div class="oc-t" onclick="gsOpenReq('+x.id+')">'+esc(x.title||'مشروع')+'<small>'+esc(x.client||'')+(x.city?' · '+esc(x.city):'')+' · '+(x.bids?fmtNum(x.bids)+' عرض':'بدون عروض')+'</small></div><div class="oc-s">'+st+'</div><div class="oc-acs">'+act+'</div></div>';
+}
+function _ocPaint(){
+  var b=document.getElementById('oc-body'); if(!b||!_OC)return;
+  var G=_ocGroups(), N=G.P.length, S=_OC.saai||{}, pend=S.pending||[];
+  var over=pend.filter(function(x){return x.age>=10&&x.saai_amount>0;}), due=pend.filter(function(x){return x.age<10&&x.saai_amount>0;}), perm=pend.filter(function(x){return !(x.saai_amount>0);});
+  var sum=function(a){return a.reduce(function(s,x){return s+(x.saai_amount||0);},0);};
+  if(!_OCSEL) _OCSEL=G.C.length?'C':(G.A.length?'A':'');
+  var ks=[['today','اليوم'],['7d','7 أيام'],['month','هالشهر'],['30d','30 يوم'],['year','هالسنة']];
+  var h='<div class="oc-hd"><div><h2>وين راحت مشاريع '+esc(_OC.lbl)+'؟</h2><p>كل شريط = مشاريع. تابعه من اليمين لليسار وتعرف مصير كل مشروع — واضغط أي خانة تطلع لك مشاريعها تحت</p></div>'
+    +'<div class="oc-seg" role="tablist">'+ks.map(function(x){return '<button type="button" role="tab" aria-selected="'+(_OCPER===x[0])+'" class="'+(_OCPER===x[0]?'on':'')+'" onclick="_OCSEL=\'\';loadOutcomes(\''+x[0]+'\')">'+x[1]+'</button>';}).join('')+'</div></div>';
+  // جملة الملخص
+  if(N) h+='<div class="oc-sum">'+esc(_OC.lbl)+' انتشر <b>'+fmtNum(N)+'</b> مشروع — <span class="g">رسى <b>'+fmtNum(G.A.length)+'</b></span>، و<span class="r">انقفل <b>'+fmtNum(G.C.length)+'</b> بدون ترسية</span>، و<span class="y"><b>'+fmtNum(G.O.length)+'</b> لسا مفتوح</span>.</div>';
+  h+=_ocFlow(G);
+  // السعي
+  h+='<div class="oc-money"><div><b style="color:#15803d">'+fmtNum(_OC.saai.collected)+'</b><small>ر.س سعي انحصّل '+esc(_OC.lbl)+'<br>'+(_OC.saai.collected_n?'من '+_OC.saai.collected_n+' سداد':'ما فيه سداد بالفترة')+'</small></div>'
+    +'<div><b style="color:#92400e">'+fmtNum(sum(due))+'</b><small>ر.س مستحق (كل الفترات)<br>'+due.length+' صفقة رست قبل أقل من 10 أيام</small></div>'
+    +'<div><b style="color:#b91c1c">'+fmtNum(sum(over))+'</b><small>ر.س متأخر<br>'+over.length+' صفقة عدّت 10 أيام بدون سداد</small></div>'
+    +'<div><b style="color:#64748b">'+perm.length+'</b><small>صفقة قيمتها غير معروفة<br>سعر بالمتر/الوحدة — نحتاج قيمة العقد</small></div></div>'
+    +'<div class="oc-def">السعي = 3% من قيمة الصفقة، يدفعها المزوّد اللي رسى عليه المشروع. <b>مستحق</b> = لازم يسدّد خلال 10 أيام من الترسية · <b>متأخر</b> = عدّت الـ10 أيام.</div>';
+  // قائمة الخانة المختارة
+  if(_OCSEL){ var LS=_ocListFor(G,_OCSEL);
+    h+='<div class="oc-list" id="oc-list"><div class="oc-lh"><b>'+esc(LS[0])+' — '+fmtNum(LS[1].length)+'</b><span>اخترتها من الخريطة</span><button type="button" class="oc-x" onclick="_ocPick(\''+_OCSEL+'\')">إخفاء ✕</button></div>'
+      +(LS[1].length?LS[1].slice(0,window._ocAll?80:6).map(_ocRow).join(''):'<div class="oc-empty">ما فيه شي</div>')
+      +(LS[1].length>6&&!window._ocAll?'<button type="button" class="oc-all" onclick="window._ocAll=1;_ocPaint()">اعرض الكل ('+fmtNum(LS[1].length)+')</button>':'')+(window._ocAll&&LS[1].length>80?'<div class="oc-more">يطلع أول 80 — اختر فترة أقصر للباقي</div>':'')+'</div>'; }
+  // وش يحتاج قرارك
+  var A=[];
+  var outs=G.C.filter(function(x){return x.reason==='outside';}), helps=_OC.projects.filter(function(x){return x.help;}), nob=G.O.filter(function(x){return !x.bids&&(Date.now()-new Date(x.created_at))>2*86400000;});
+  if(over.length) A.push({c:'#dc2626',n:over.length,t:'سعي متأخر — ذكّرهم',w:'مزوّدين رست عليهم صفقات من <b>أكثر من 10 أيام</b> وما سدّدوا الـ3%.',li:over.slice(0,3).map(function(x){return '<div class="oc-li">'+esc(x.provider||'')+' <small>· '+esc(x.title||'')+' · '+x.age+' يوم</small><span class="v" style="color:#b91c1c">'+fmtNum(x.saai_amount)+'</span></div>';}).join(''),go:'<button type="button" class="oc-go" style="background:#dc2626" onclick="_ocRemind(this)">أرسل تذكير للـ'+over.length+'</button>'});
+  if(outs.length) A.push({c:'#ef4444',n:outs.length,t:'قالوا «اتفقنا مع مزوّد من برا»',w:'ممكن يكون اتفق مع واحد <b>من المزوّدين اللي قدّموا عنده</b> — يعني صفقة على المنصة وفيها سعي. اسألهم.',li:outs.slice(0,3).map(function(x){var ph=_waNorm(x.client_phone);return '<div class="oc-li">'+esc(x.title||'')+' <small>· '+esc(x.client||'')+' · '+fmtNum(x.bids)+' عرض</small>'+(ph?'<a class="v oc-wa" target="_blank" rel="noopener" href="https://wa.me/'+ph+'">واتساب</a>':'')+'</div>';}).join(''),go:''});
+  if(helps.length) A.push({c:'#7c3aed',n:helps.length,t:'عملاء طلبوا مساعدة يلقون مزوّد',w:'قفلوا «ما لقيت عرض مناسب» وضغطوا <b>«ساعدوني»</b>.',li:helps.slice(0,3).map(function(x){return '<div class="oc-li">'+esc(x.title||'')+' <small>· '+esc(x.client||'')+(x.city?' · '+esc(x.city):'')+'</small>'+(_waNorm(x.client_phone)?'<a class="v oc-wa" target="_blank" rel="noopener" href="https://wa.me/'+_waNorm(x.client_phone)+'">واتساب</a>':'')+'<button type="button" class="oc-mini" onclick="_ocHelpDone('+x.id+')">✓ تواصلت</button></div>';}).join(''),go:''});
+  if(perm.length) A.push({c:'#64748b',n:perm.length,t:'صفقة بسعر المتر — ما نعرف قيمتها',w:'العرض كان <b>بالمتر أو بالوحدة</b>، فما نقدر نحسب السعي إلا لما نعرف قيمة العقد الكاملة.',li:perm.slice(0,3).map(function(x){var ph=_waNorm(x.provider_phone);return '<div class="oc-li">'+esc(x.title||'')+' <small>· '+esc(x.provider||'')+(x.offer_price?' · '+fmtNum(x.offer_price)+(x.unit==='meter'?'/م²':'/وحدة'):'')+'</small>'+(ph?'<a class="v oc-wa" target="_blank" rel="noopener" href="https://wa.me/'+ph+'?text='+encodeURIComponent('السلام عليكم، معك فريق منصة مناقصة 👋 بخصوص مشروع «'+(x.title||'')+'» اللي رسى عليك: كم القيمة الإجمالية للعقد؟ عشان نحسب السعي بدقة.')+'">اسأله</a>':'')+'</div>';}).join(''),go:''});
+  if(nob.length) A.push({c:'#0891b2',n:nob.length,t:'مشاريع مفتوحة ما جاها ولا عرض',w:'صار لها <b>أكثر من يومين</b> بدون عرض — ادعُ مزوّدين لها.',li:nob.slice(0,3).map(function(x){return '<div class="oc-li">'+esc(x.title||'')+' <small>· '+esc(x.city||'')+' · '+_adAgo(x.created_at)+'</small><button type="button" class="v oc-mini" onclick="openInvite('+x.id+')">ادعُ مزوّدين</button></div>';}).join(''),go:''});
+  h+='<div class="oc-sec">⚡ يحتاج قرارك <span>— '+(A.length?A.length+(A.length===1?' شي':(A.length===2?' شيئين':' أشياء')):'ولا شي 👌')+'</span></div>';
+  if(A.length) h+='<div class="oc-acts">'+A.map(function(a){return '<div class="oc-a" style="--c:'+a.c+'"><div class="oc-ah"><span class="n">'+a.n+'</span><span class="t">'+a.t+'</span></div><div class="oc-w">'+a.w+'</div>'+a.li+a.go+'</div>';}).join('')+'</div>';
+  var ok=[]; if(G.O.length-nob.length>0)ok.push('✓ '+(G.O.length-nob.length)+' مشروع مفتوح وماشي'); if(G.progress.length)ok.push('✓ '+G.progress.length+' صفقة قيد التنفيذ'); if(_OC.saai.collected_n)ok.push('✓ '+_OC.saai.collected_n+' سداد سعي '+esc(_OC.lbl));
+  if(ok.length) h+='<div class="oc-ok">'+ok.join(' &nbsp;·&nbsp; ')+'</div>';
+  b.innerHTML=h;
+}
+function _ocHelpDone(id){ fetch(API+'/api/admin/requests/'+id+'/help-done',Object.assign({method:'PUT'},hdr())).then(function(r){toast(r.ok?'تم ✓':'تعذّر',r.ok?'success':'error'); if(r.ok)loadOutcomes();}).catch(function(){toast('تعذّر الاتصال','error');}); }
+function _ocRemind(btn){
+  var ids=((_OC&&_OC.saai&&_OC.saai.pending)||[]).filter(function(x){return x.age>=10&&x.saai_amount>0;}).map(function(x){return x.id;}); if(!ids.length)return;
+  askConfirm({title:'تذكير السعي',message:'يوصل '+ids.length+' مزوّد إشعار وإيميل إن السعي تجاوز مهلة الـ10 أيام.',confirmText:'أرسل'}).then(function(ok){ if(!ok)return; btn.disabled=true;
+    fetch(API+'/api/admin/saai/remind',Object.assign({method:'POST',body:JSON.stringify({ids:ids})},hdr())).then(function(r){return r.json();}).then(function(d){ toast(d&&d.ok?('أُرسل '+d.sent+' تذكير ✓'):((d&&d.message)||'تعذّر الإرسال'),d&&d.ok?'success':'error'); btn.disabled=false; }).catch(function(){ toast('تعذّر الاتصال','error'); btn.disabled=false; }); });
+}

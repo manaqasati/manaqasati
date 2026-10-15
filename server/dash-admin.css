@@ -882,3 +882,66 @@ a.cu-pv:hover{border-color:#86efac}
 [data-theme="dark"] .pr-prov.hot summary{color:#fcd34d}
 [data-theme="dark"] .pr-prov-b{color:#cbd5e1}
 [data-theme="dark"] .pr-prov-why{background:#1a1407;color:#fcd34d}
+
+/* ═══ نتائج المشاريع ═══ */
+.oc-busy{opacity:.55;pointer-events:none;transition:opacity .15s}
+.oc-hd{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.oc-hd h2{margin:0;font-size:22px;font-weight:900;color:var(--text)}
+.oc-hd p{margin:4px 0 0;font-size:13px;font-weight:600;color:var(--muted);line-height:1.7}
+.oc-seg{margin-right:auto;display:flex;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:4px;gap:2px;flex-wrap:wrap}
+.oc-seg button{border:0;background:none;padding:7px 13px;border-radius:9px;font-size:13px;font-weight:800;color:var(--muted);font-family:inherit;cursor:pointer}
+.oc-seg button.on{background:var(--p3,#172554);color:#fff}
+[data-theme="dark"] .oc-seg button.on{background:#3b82f6}
+.oc-sum{background:#0f2544;color:#fff;border-radius:16px;padding:14px 18px;font-size:15.5px;font-weight:700;line-height:1.9;margin-bottom:12px}
+.oc-sum b{font-size:18px}.oc-sum .g{color:#86efac}.oc-sum .r{color:#fca5a5}.oc-sum .y{color:#fde68a}
+.oc-flw{overflow-x:auto;background:var(--card);border:1px solid var(--border);border-radius:18px}
+.oc-fl{position:relative;min-width:820px}
+.oc-fl svg{position:absolute;left:0;right:0;top:34px;width:100%}
+.oc-ch{position:absolute;top:10px;font-size:12px;font-weight:900;color:var(--muted)}
+.oc-lb{position:absolute;transform:translateY(-50%);background:var(--card);border:1.5px solid transparent;border-radius:9px;padding:2px 8px;font-size:12.5px;font-weight:800;white-space:nowrap;line-height:1.35;color:var(--text);cursor:pointer;font-family:inherit;text-align:right;z-index:2}
+.oc-lb:hover{border-color:var(--c)}
+.oc-lb.on{border-color:var(--c);box-shadow:0 0 0 2px var(--c)}
+.oc-lb b{color:var(--c);font-size:15px}
+.oc-lb.big b{font-size:20px}
+.oc-lb small{display:block;font-size:11px;color:var(--muted);font-weight:700}
+.oc-money{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.oc-money div{background:var(--card);border:1px solid var(--border);border-radius:15px;padding:12px 14px;display:flex;align-items:center;gap:12px}
+.oc-money b{font-size:21px;font-weight:900;white-space:nowrap}
+.oc-money small{font-size:12px;font-weight:800;color:var(--muted);line-height:1.5}
+.oc-def{font-size:12.5px;font-weight:600;color:var(--muted);margin:8px 2px 0;line-height:1.8}
+.oc-def b{color:var(--text)}
+.oc-list{background:var(--card);border:1px solid var(--border);border-radius:18px;margin-top:14px;padding:14px 16px;scroll-margin-top:90px}
+.oc-lh{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.oc-lh b{font-size:16px;color:var(--text)}.oc-lh span{font-size:12.5px;color:var(--muted);font-weight:700}
+.oc-x{margin-right:auto;border:1px solid var(--border);background:none;border-radius:9px;padding:5px 10px;font-family:inherit;font-weight:800;font-size:12px;color:var(--muted);cursor:pointer}
+.oc-it{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,2.2fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--border)}
+.oc-t{font-size:13.5px;font-weight:800;color:var(--text);cursor:pointer;min-width:0}
+.oc-t small,.oc-s small{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-top:2px}
+.oc-s small b{color:var(--text)}
+.oc-pl{display:inline-block;font-size:12px;font-weight:900;border-radius:999px;padding:3px 10px;color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent)}
+.oc-acs{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.oc-ac{border:1.5px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:7px 12px;font-size:12.5px;font-weight:900;font-family:inherit;cursor:pointer;text-decoration:none;white-space:nowrap;text-align:center}
+.oc-ac.hot{background:#0f2544;color:#fff;border-color:#0f2544}
+[data-theme="dark"] .oc-ac.hot{background:#3b82f6;border-color:#3b82f6}
+.oc-sec{font-size:17px;font-weight:900;margin:18px 0 10px;color:var(--text);display:flex;align-items:center;gap:8px}
+.oc-sec span{font-size:12.5px;font-weight:700;color:var(--muted)}
+.oc-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.oc-a{background:var(--card);border:1px solid var(--border);border-right:5px solid var(--c);border-radius:16px;padding:14px 16px}
+.oc-ah{display:flex;align-items:center;gap:10px}
+.oc-ah .n{font-size:24px;font-weight:900;color:var(--c);min-width:30px}
+.oc-ah .t{font-size:15px;font-weight:900;color:var(--text)}
+.oc-w{font-size:12.5px;font-weight:600;color:var(--muted);line-height:1.7;margin:4px 0 8px}
+.oc-w b{color:var(--text)}
+.oc-li{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--border);font-size:13px;font-weight:700;color:var(--text);min-width:0}
+.oc-li small{color:var(--muted);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.oc-li .v{margin-right:auto;font-weight:900;white-space:nowrap}
+.oc-wa{color:#15803d!important;text-decoration:none;font-size:12.5px}
+.oc-mini{border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:8px;padding:4px 9px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer}
+.oc-go{display:inline-block;margin-top:8px;border:0;border-radius:11px;padding:9px 14px;font-weight:900;font-size:13px;color:#fff;font-family:inherit;cursor:pointer}
+.oc-ok{margin-top:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:14px;padding:11px 14px;font-size:13px;font-weight:800;color:#166534}
+[data-theme="dark"] .oc-ok{background:#052e16;border-color:#14532d;color:#86efac}
+.oc-empty{padding:24px;text-align:center;color:var(--muted);font-weight:700}
+.oc-more{padding:8px 0 0;font-size:12px;color:var(--muted);font-weight:700}
+@media (max-width:900px){.oc-money{grid-template-columns:repeat(2,minmax(0,1fr))}.oc-acts{grid-template-columns:minmax(0,1fr)}.oc-it{grid-template-columns:minmax(0,1fr)}.oc-ac{justify-self:start}}
+.oc-all{display:block;width:100%;margin-top:8px;border:1.5px dashed var(--border);background:none;border-radius:11px;padding:9px;font-family:inherit;font-weight:900;font-size:13px;color:var(--text);cursor:pointer}
+@media (max-width:900px){.oc-flw:before{content:'اسحب الرسمة لليسار ←';display:block;font-size:11.5px;font-weight:800;color:var(--muted);padding:8px 12px 0}}

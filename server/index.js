@@ -3943,6 +3943,46 @@ function _rangeFromQuery(q){
   const pto = new Date(Date.parse(from) - 86400000).toISOString().slice(0, 10), pfrom = new Date(Date.parse(from) - n * 86400000).toISOString().slice(0, 10);
   return { from, to, days: n, pfrom, pto, today };
 }
+// ═══ نتائج المشاريع: وين راح كل مشروع منشور في الفترة (ترسية/إغلاق/مفتوح) + السعي + اللي يحتاج قرار ═══
+app.get('/api/admin/outcomes', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const R = _rangeFromQuery(req.query);
+    const pr = (await pool.query(`SELECT r.id, r.title, r.city, r.category, r.status, r.created_at, r.assigned_provider_id, r.completed_at,
+        COALESCE(r.closed_at, r.close_at) AS closed_at, r.close_reason, r.close_reason_note, r.close_auto_kind, r.close_at, r.close_set_by,
+        COALESCE(r.close_help,FALSE) AS close_help, COALESCE(r.close_help_done,FALSE) AS close_help_done,
+        COALESCE(u.name,'عميل') AS client_name, u.phone AS client_phone,
+        (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS bids,
+        COALESCE(NULLIF(pu.business_name,''), pu.name) AS provider_name,
+        (SELECT json_build_object('price', b.price, 'unit', COALESCE(b.price_unit,'total')) FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.assigned_provider_id ORDER BY (b.status='accepted') DESC, b.id DESC LIMIT 1) AS won
+      FROM requests r JOIN users u ON u.id=r.client_id LEFT JOIN users pu ON pu.id=r.assigned_provider_id
+      WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')
+        AND (r.created_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2
+      ORDER BY r.created_at DESC LIMIT 2000`, [R.from, R.to])).rows;
+    const projects = pr.map(x => {
+      const awarded = !!x.assigned_provider_id || ['in_progress','completed'].includes(x.status);
+      const closed = !awarded && ['closed_auto','closed','cancelled','expired'].includes(x.status);
+      let reason = null;
+      if (closed) {
+        const k = x.close_reason || '';
+        reason = k === 'chose_outside' ? 'outside' : k === 'no_suitable_offers' ? 'nosuit' : k === 'price_high' ? 'price' : k === 'postponed' ? 'postponed'
+          : k === 'other' ? 'other' : k === 'admin_closed' ? 'admin' : 'silent';
+      }
+      return { id: x.id, title: x.title, city: x.city, category: x.category, client: x.client_name, client_phone: x.client_phone, bids: x.bids, created_at: x.created_at,
+        outcome: awarded ? (x.status === 'completed' ? 'done' : 'progress') : closed ? 'closed' : 'open', reason, note: x.close_reason_note || null,
+        closed_at: x.closed_at, help: x.close_help && !x.close_help_done, provider: x.provider_name || null, won: x.won || null };
+    });
+    const sa = (await pool.query(`SELECT s.id, s.request_id, s.saai_amount, s.contract_value, s.status,
+        GREATEST(0, EXTRACT(EPOCH FROM (NOW() - COALESCE(s.due_from,s.created_at)))/86400)::int AS age,
+        COALESCE(r.title, s.self_title) AS title, COALESCE(NULLIF(u.business_name,''), u.name) AS provider, u.phone AS provider_phone,
+        b.price AS offer_price, COALESCE(b.price_unit,'total') AS unit
+      FROM saai_ledger s LEFT JOIN requests r ON r.id=s.request_id JOIN users u ON u.id=s.provider_id
+      LEFT JOIN bids b ON b.id=COALESCE(s.bid_id,(SELECT id FROM bids WHERE request_id=s.request_id AND provider_id=s.provider_id LIMIT 1))
+      WHERE s.status='pending' ORDER BY age DESC LIMIT 300`)).rows.map(x => ({ ...x, saai_amount: Number(x.saai_amount)||0 }));
+    const col = (await pool.query(`SELECT COALESCE(SUM(saai_amount),0)::float AS amt, COUNT(*)::int AS n FROM saai_ledger
+      WHERE status='approved' AND (approved_at + INTERVAL '3 hours')::date BETWEEN $1 AND $2`, [R.from, R.to])).rows[0];
+    res.json({ range: R, projects, saai: { pending: sa, collected: col.amt, collected_n: col.n } });
+  } catch(e) { console.error('outcomes:', e.message); res.status(500).json({ message: 'تعذّر التحميل' }); }
+});
 app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, res) => {
   try {
     const R = _rangeFromQuery(req.query), P = [R.from, R.to];
