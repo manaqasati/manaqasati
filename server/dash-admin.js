@@ -6037,7 +6037,7 @@ function _loadVisits(){
     else if(best.length){ ins='💡 أفضل مصدر يجيب ناس يسجلون: '+(_VS_SRC[best[0].k]||[best[0].k])[0]+' ('+Math.round(best[0].r*100)+'% من زواره سجّلوا).'; }
     else if(c.visitors&&c.visitors<30){ ins='💡 الأرقام لسا قليلة — بعد كم يوم بتبان لك الصورة أوضح (أي مصدر يجيب ناس يسجلون).'; }
     var chartSer=(one||d.series.length<2)?sp:d.series;
-    box.innerHTML='<div class="vs-hd"><h3>الزيارات</h3><span class="vs-livep" id="vs-live"><i></i><b>'+d.live+'</b> متواجد الحين</span><div id="vs-seg" style="margin-inline-start:auto"></div></div><div id="vs-cust"></div>'
+    box.innerHTML='<div class="vs-hd"><h3>الزيارات</h3><button type="button" class="vs-livep vs-livebtn" id="vs-live" onclick="_lvOpen()" title="شوف مين متواجد ووش يسوي"><i></i><b>'+d.live+'</b> متواجد الحين <span class="vs-lvgo">مين؟ ‹</span></button><div id="vs-seg" style="margin-inline-start:auto"></div></div><div id="vs-cust"></div>'
       +'<div id="vs-body"><div class="vs-k4">'
         +tile(true,'الزوار',fmtNum(c.visitors),_vsDelta(c.visitors,p.visitors),_vsSpark(sp.map(function(x){return x.n;}),'#2563eb'),(p.visitors?prevLbl+' '+fmtNum(p.visitors):'كل زائر مرة وحدة باليوم'))
         +tile(false,'دخلوا حساباتهم',fmtNum(logged),_vsDelta(logged,plog),_vsSpark(sp.map(function(x){return x.l;}),'#64748b'),fmtNum(c.logged_p||0)+' مزوّد · '+fmtNum(c.logged_c||0)+' عميل')
@@ -6635,4 +6635,38 @@ function _ocRemind(btn){
   var ids=((_OC&&_OC.saai&&_OC.saai.pending)||[]).filter(function(x){return x.age>=10&&x.saai_amount>0;}).map(function(x){return x.id;}); if(!ids.length)return;
   askConfirm({title:'تذكير السعي',message:'يوصل '+ids.length+' مزوّد إشعار وإيميل إن السعي تجاوز مهلة الـ10 أيام.',confirmText:'أرسل'}).then(function(ok){ if(!ok)return; btn.disabled=true;
     fetch(API+'/api/admin/saai/remind',Object.assign({method:'POST',body:JSON.stringify({ids:ids})},hdr())).then(function(r){return r.json();}).then(function(d){ toast(d&&d.ok?('أُرسل '+d.sent+' تذكير ✓'):((d&&d.message)||'تعذّر الإرسال'),d&&d.ok?'success':'error'); btn.disabled=false; }).catch(function(){ toast('تعذّر الاتصال','error'); btn.disabled=false; }); });
+}
+
+// ═══ «متواجد الحين»: مين في الموقع ووش قاعد يسوي (يتحدّث كل 10 ثواني) ═══
+var _lvT=null;
+function _lvClose(){ clearInterval(_lvT); _lvT=null; var m=document.getElementById('lvModal'); if(m)m.remove(); document.removeEventListener('keydown',_lvEsc); }
+function _lvEsc(e){ if(e.key==='Escape')_lvClose(); }
+function _lvOpen(){
+  _lvClose();
+  var m=document.createElement('div'); m.id='lvModal'; m.className='lv-ov'; m.onclick=function(e){ if(e.target===m)_lvClose(); };
+  m.innerHTML='<div class="lv-box" role="dialog" aria-modal="true" aria-label="المتواجدين الحين"><div class="lv-hd"><span class="lv-dot"></span><b>المتواجدين الحين</b><span id="lvN" class="lv-n"></span><button type="button" class="lv-x" onclick="_lvClose()" aria-label="إغلاق">✕</button></div>'
+    +'<div class="lv-sub">يتحدّث تلقائياً كل 10 ثواني · المسجّلين يطلع اسمهم، والزوار بدون اسم (ما نخزّن IP ولا موقع جغرافي)</div><div id="lvF" class="lv-f"></div><div id="lvL" class="lv-l"><div class="loading"><div class="spinner"></div></div></div></div>';
+  document.body.appendChild(m); document.addEventListener('keydown',_lvEsc);
+  _lvLoad(); _lvT=setInterval(_lvLoad,10000);
+}
+var _lvFil='all';
+function _lvDur(s){ s=Math.max(0,s|0); if(s<60)return s+' ث'; var mi=Math.round(s/60); if(mi<60)return mi+' د'; return Math.floor(mi/60)+' س '+(mi%60)+' د'; }
+function _lvLoad(){
+  fetch(API+'/api/admin/visits/live/list',hdr()).then(function(r){return r.json();}).then(function(d){
+    var L=(d&&d.list)||[], box=document.getElementById('lvL'); if(!box)return;
+    var e=document.querySelector('#vs-live b'); if(e)e.textContent=L.length;
+    var cnt={all:L.length,user:L.filter(function(x){return x.uid;}).length,post:L.filter(function(x){return x.kind==='post'||/ينشر/.test(x.page);}).length,prov:L.filter(function(x){return x.role==='provider';}).length};
+    document.getElementById('lvN').textContent=L.length?L.length+' الحين':'';
+    document.getElementById('lvF').innerHTML=[['all','الكل'],['user','مسجّلين'],['prov','مزوّدين'],['post','ينشرون مشروع']].map(function(f){return '<button type="button" class="'+(_lvFil===f[0]?'on':'')+'" onclick="_lvFil=\''+f[0]+'\';_lvLoad()">'+f[1]+' <small>'+cnt[f[0]]+'</small></button>';}).join('');
+    var F=L.filter(function(x){ return _lvFil==='all'||(_lvFil==='user'&&x.uid)||(_lvFil==='prov'&&x.role==='provider')||(_lvFil==='post'&&(x.kind==='post'||/ينشر/.test(x.page))); });
+    if(!F.length){ box.innerHTML='<div class="lv-empty">ما فيه أحد'+(_lvFil==='all'?' الحين — يطلع هنا أي زائر فتح الموقع خلال آخر 5 دقايق':' بهالفلتر')+'</div>'; return; }
+    var DV={mobile:'📱',desktop:'💻',app:'📲'};
+    box.innerHTML=F.map(function(x){
+      var act=x.idle_s<75, src=x.src&&x.src!=='direct'?((_VS_SRC[x.src]||[x.src])[0]):(x.src==='direct'?'دخل مباشرة':'');
+      var who=x.uid?('<button type="button" class="lv-who" onclick="openUserView('+x.uid+')">'+esc(x.who||'مستخدم')+'</button><span class="lv-role '+(x.role==='provider'?'p':'c')+'">'+(x.role==='provider'?'مزوّد':'عميل')+'</span>'+(x.city?'<span class="lv-meta">· '+esc(x.city)+'</span>':'')):'<span class="lv-anon">زائر</span>';
+      return '<div class="lv-r'+(act?'':' idle')+'"><span class="lv-dev" title="'+(x.dev==='app'?'التطبيق':x.dev==='mobile'?'جوال':'كمبيوتر')+'">'+(DV[x.dev]||'•')+'</span><div class="lv-b"><div class="lv-t">'+who+'</div>'
+        +'<div class="lv-p">'+(x.ref?'<a href="#" onclick="event.preventDefault();gsOpenReq('+x.ref+')">'+esc(x.page)+'</a>':esc(x.page))+'</div>'
+        +'<div class="lv-meta">'+(act?'<b class="lv-on">● نشط الحين</b>':'آخر حركة قبل '+_lvDur(x.idle_s))+' · له '+_lvDur(x.on_s)+' في الموقع · '+x.pages+' '+(x.pages===1?'صفحة':'صفحات')+(x.src==='direct'?' · دخل مباشرة':(src?' · جا من '+esc(src):''))+'</div></div></div>';
+    }).join('');
+  }).catch(function(){ var box=document.getElementById('lvL'); if(box)box.innerHTML='<div class="lv-empty">تعذّر التحميل</div>'; });
 }

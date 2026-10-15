@@ -248,7 +248,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '11'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '12'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
@@ -3892,7 +3892,77 @@ app.get('/api/me/app-status', auth, async (req, res) => {
   catch(e){ res.json({ has_app: false }); }
 });
 // ═══ عدّاد الزيارات (يُرسل من up.js في كل صفحة) — بدون تخزين IP، والمعرّف يتغيّر كل يوم ═══
-const _liveNow = new Map();
+const _liveNow = new Map(); // في الذاكرة فقط: vkey → { t: آخر نشاط, first, p, h, src, dev, uid, role, n: عدد الصفحات }
+function _liveTouch(vkey, req, x){
+  const now = Date.now(); let e = _liveNow.get(vkey);
+  if (!e || typeof e !== 'object' || now - e.t > 1800000) e = { first: now, n: 0, src: null, dev: null };
+  const p = String(x.p || e.p || '/').slice(0, 200), h = String(x.h == null ? (e.h || '') : x.h).slice(0, 60);
+  if (p !== e.p || h !== e.h) { e.n = (e.n || 0) + 1; e.at = now; }
+  e.t = now; e.p = p; e.h = h;
+  if (x.src) e.src = x.src; if (x.dev) e.dev = x.dev;
+  if (req.user && req.user.role !== 'admin') { e.uid = req.user.id; e.role = req.user.role; }
+  _liveNow.set(vkey, e);
+  if (_liveNow.size > 5000) { const lim = now - 300000; for (const [k, v] of _liveNow) if ((v && v.t || v) < lim) _liveNow.delete(k); }
+}
+const _liveCount = () => { const lim = Date.now() - 300000; let n = 0; for (const v of _liveNow.values()) if ((v && v.t || 0) >= lim) n++; return n; };
+// نبضة من الصفحة المفتوحة (كل 40 ثانية وعند تغيير القسم) — نعرف الزائر الحين في أي صفحة
+app.post('/api/live/ping', rateLimiter(90, 60000), express.json({ limit: '1kb' }), optionalAuth, (req, res) => {
+  res.status(204).end();
+  try {
+    const ua = String(req.headers['user-agent'] || ''); if (!ua || _BOT_RE.test(ua)) return;
+    if (req.user && req.user.role === 'admin') return;
+    const b = req.body || {}; const day = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
+    const vkey = crypto.createHash('sha256').update(JWT_SECRET + '|' + day + '|' + (req.ip || '') + '|' + ua).digest('hex').slice(0, 16);
+    _liveTouch(vkey, req, { p: b.p, h: b.h, dev: b.app ? 'app' : (/Mobi|Android|iPhone|iPad/i.test(ua) ? 'mobile' : 'desktop') });
+  } catch(e) {}
+});
+// وصف بالعربي للصفحة الحالية (مع عنوان المشروع / اسم المزوّد)
+const _liveNames = new Map();
+async function _liveLabel(p, h){
+  p = String(p || '/'); h = String(h || '').replace(/^#/, '');
+  let path = p, q = ''; const qi = p.indexOf('?'); if (qi >= 0) { path = p.slice(0, qi); q = p.slice(qi + 1); }
+  try { path = decodeURIComponent(path); } catch(e) {}
+  const cached = async (k, sql, id) => { const c = _liveNames.get(k); if (c && Date.now() - c.at < 600000) return c.v; let v = ''; try { const r = (await pool.query(sql, [id])).rows[0]; v = r ? r.v : ''; } catch(e) {} _liveNames.set(k, { v, at: Date.now() }); if (_liveNames.size > 2000) _liveNames.clear(); return v; };
+  const projTitle = id => cached('r' + id, 'SELECT title AS v FROM requests WHERE id=$1', id);
+  const sec = h.split('/')[0], hid = parseInt(h.split('/')[1]) || 0;
+  if (path === '/' || path === '/index.html') return { k: 'home', t: 'الصفحة الرئيسية' };
+  let m = path.match(/^\/project(?:\/[^?]*?-?(\d+))?(?:\.html)?$/); if (m) { const id = parseInt(m[1]) || parseInt((q.match(/(?:^|&)id=(\d+)/) || [])[1]) || 0; const t = id ? await projTitle(id) : ''; return { k: 'project', t: 'يتفرّج على مشروع' + (t ? ' «' + t + '»' : ''), id }; }
+  m = path.match(/^\/pro\/(\d+)/); if (m) { const v = await cached('u' + m[1], `SELECT COALESCE(NULLIF(business_name,''),name) AS v FROM users WHERE id=$1`, parseInt(m[1])); return { k: 'pro', t: 'يتفرّج على صفحة مزوّد' + (v ? ' «' + v + '»' : '') }; }
+  if (/^\/new(\.html)?$/.test(path) || /^\/post(\.html)?$/.test(path)) return { k: 'post', t: '✍️ يعبّي نموذج نشر مشروع' };
+  if (/^\/auth/.test(path)) return { k: 'auth', t: 'في صفحة التسجيل / الدخول' };
+  if (/^\/contracts/.test(path)) return { k: 'contracts', t: 'في مكتبة العقود' };
+  if (/^\/dalil\//.test(path)) return { k: 'dalil', t: 'دليل: ' + path.split('/').slice(2).join(' · ') };
+  if (/^\/dashboard-client/.test(path)) {
+    const M = { home: 'لوحة العميل — الرئيسية', requests: 'لوحة العميل — مشاريعه', new: '✍️ ينشر مشروع جديد', chat: 'لوحة العميل — المحادثات', notifs: 'لوحة العميل — الإشعارات', profile: 'لوحة العميل — حسابه' };
+    if (sec === 'detail' && hid) { const t = await projTitle(hid); return { k: 'dash_client', t: '👀 يشوف عروض مشروعه' + (t ? ' «' + t + '»' : ''), id: hid }; }
+    return { k: 'dash_client', t: M[sec] || 'لوحة العميل' };
+  }
+  if (/^\/dashboard-provider/.test(path)) {
+    const M = { home: 'لوحة المزوّد — الرئيسية', browse: '🔎 يتصفّح المشاريع', bids: 'لوحة المزوّد — عروضه', saai: 'لوحة المزوّد — السعي', profile: 'لوحة المزوّد — ملفه', chat: 'لوحة المزوّد — المحادثات', notifs: 'لوحة المزوّد — الإشعارات' };
+    if ((sec === 'project' || sec === 'detail') && hid) { const t = await projTitle(hid); return { k: 'dash_provider', t: '👀 يشوف مشروع' + (t ? ' «' + t + '»' : ''), id: hid }; }
+    return { k: 'dash_provider', t: M[sec] || 'لوحة المزوّد' };
+  }
+  if (/^\/chat/.test(path)) return { k: 'chat', t: 'في المحادثات' };
+  if (/^\/app/.test(path)) return { k: 'app', t: 'صفحة التطبيق' };
+  if (/^\/b2b/.test(path)) return { k: 'b2b', t: 'صفحة الأعمال' };
+  return { k: 'other', t: path.slice(0, 60) };
+}
+app.get('/api/admin/visits/live/list', requirePermission('analytics.view'), async (req, res) => {
+  try {
+    const now = Date.now(), lim = now - 300000, rows = [];
+    for (const [k, v] of _liveNow) { if (!v || typeof v !== 'object' || v.t < lim) continue; rows.push(v); }
+    rows.sort((a, b) => b.t - a.t);
+    const uids = [...new Set(rows.filter(r => r.uid).map(r => r.uid))];
+    const U = {}; if (uids.length) (await pool.query(`SELECT id, COALESCE(NULLIF(business_name,''),name) AS name, role, city, COALESCE(can_provide,FALSE) cp FROM users WHERE id = ANY($1)`, [uids])).rows.forEach(u => U[u.id] = u);
+    const out = [];
+    for (const r of rows.slice(0, 80)) {
+      const L = await _liveLabel(r.p, r.h); const u = r.uid ? U[r.uid] : null;
+      out.push({ who: u ? u.name : null, uid: r.uid || null, role: u ? u.role : null, city: u ? u.city : null, dev: r.dev, src: r.src, page: L.t, kind: L.k, ref: L.id || null,
+        idle_s: Math.round((now - r.t) / 1000), on_s: Math.round((now - r.first) / 1000), here_s: Math.round((now - (r.at || r.first)) / 1000), pages: r.n || 1 });
+    }
+    res.json({ live: out.length, list: out });
+  } catch(e) { console.error('live list:', e.message); res.json({ live: 0, list: [] }); }
+});
 const _BOT_RE = /bot|crawl|spider|slurp|preview|headless|lighthouse|facebookexternalhit|whatsapp\/|telegrambot|curl|wget|python|axios|node-fetch/i;
 function _hitSrc(ref, s, m){
   s = String(s||'').toLowerCase(); m = String(m||'').toLowerCase();
@@ -3920,9 +3990,8 @@ app.post('/api/hit', rateLimiter(120, 60000), express.json({ limit: '2kb' }), op
     const b = req.body || {};
     const day = new Date(Date.now() + 3 * 3600000).toISOString().slice(0, 10);
     const vkey = crypto.createHash('sha256').update(JWT_SECRET + '|' + day + '|' + (req.ip || '') + '|' + ua).digest('hex').slice(0, 16);
-    _liveNow.set(vkey, Date.now());
-    if (_liveNow.size > 5000) { const lim = Date.now() - 300000; for (const [k, t] of _liveNow) if (t < lim) _liveNow.delete(k); }
     const dev = b.app ? 'app' : (/Mobi|Android|iPhone|iPad/i.test(ua) ? 'mobile' : 'desktop');
+    _liveTouch(vkey, req, { p: b.p, h: b.h, src: _hitSrc(b.r, b.s, b.m), dev });
     const page = _hitPage(b.p);
     const uid = req.user ? req.user.id : null, role = req.user ? String(req.user.role || '').slice(0, 10) : null;
     await pool.query(`INSERT INTO site_visits (day, vkey, src, dev, page, uid, role) VALUES ($1,$2,$3,$4,$5,$6,$7)
@@ -4039,14 +4108,14 @@ app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, re
     const acted = (await q(`SELECT COUNT(DISTINCT id)::int n FROM (
         SELECT r.client_id AS id FROM requests r JOIN users u ON u.id=r.client_id WHERE ${RD('r.created_at')} AND ${RD('u.created_at')} AND (r.category IS DISTINCT FROM 'direct') AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date)
         UNION SELECT b.provider_id FROM bids b JOIN users u ON u.id=b.provider_id WHERE ${RD('b.created_at')} AND ${RD('u.created_at')} AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date)) z`))[0].n;
-    const lim = Date.now() - 300000; let live = 0; for (const t of _liveNow.values()) if (t >= lim) live++;
+    const live = _liveCount();
     res.json({ range: R, live, cur, prev, series, monthly, spark, sources, devices, pages,
       visitors: cur.visitors, logged: { provider: cur.logged_p, client: cur.logged_c },
       funnel: { visitors: cur.visitors, signups: cur.tracked_signups, acted }, pfunnel, summary: cur });
   } catch(e) { console.error('admin visits:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/visits/live', requirePermission('analytics.view'), (req, res) => {
-  const lim = Date.now() - 300000; let live = 0; for (const t of _liveNow.values()) if (t >= lim) live++; res.json({ live });
+  res.json({ live: _liveCount() });
 });
 app.get('/api/admin/app-stats', requirePermission('analytics.view'), async (req, res) => {
   try {
