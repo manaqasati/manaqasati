@@ -3143,6 +3143,16 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_state VARCHAR(12)`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS notify_scope VARCHAR(10)`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS token_ver INTEGER DEFAULT 0`);
+      // وقت النشر الفعلي (أول ما يصير «مفتوح») — المشروع اللي انعدّل وانعتمد بعد يومين يطلع للمزوّدين كجديد
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS published_at TIMESTAMP`);
+      try { const _np = (await pool.query(`SELECT COUNT(*)::int n FROM requests WHERE published_at IS NULL`)).rows[0].n;
+        if (_np > 0) {
+          await _mig(`UPDATE requests SET published_at = created_at WHERE published_at IS NULL`);
+          await _mig(`UPDATE requests r SET published_at = l.at FROM (SELECT target_id, MAX(created_at) AS at FROM admin_logs WHERE action='review_request' AND details='الموافقة على مشروع' GROUP BY target_id) l WHERE l.target_id = r.id AND l.at > r.created_at + INTERVAL '1 hour'`);
+        } } catch(e) { console.error('published_at backfill:', e.message); }
+      await _mig(`CREATE OR REPLACE FUNCTION mnq_req_pub() RETURNS trigger AS $f$ BEGIN IF NEW.status = 'open' AND (TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM 'open') THEN NEW.published_at := NOW(); END IF; RETURN NEW; END $f$ LANGUAGE plpgsql`);
+      await _mig(`DROP TRIGGER IF EXISTS trg_req_pub ON requests`);
+      await _mig(`CREATE TRIGGER trg_req_pub BEFORE INSERT OR UPDATE OF status ON requests FOR EACH ROW EXECUTE FUNCTION mnq_req_pub()`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS login_fail_n INTEGER DEFAULT 0`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS login_fail_at TIMESTAMPTZ`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ`);
@@ -4832,7 +4842,7 @@ app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;
     // يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
-    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.extra_categories,r.category_other,r.city,r.budget_max,r.deadline,r.status,r.client_id,r.created_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
+    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.extra_categories,r.category_other,r.city,r.budget_max,r.deadline,r.status,r.client_id,COALESCE(r.published_at,r.created_at) AS created_at,r.created_at AS written_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
     const params = [];
     // المشاريع الموجّهة لمزوّد محدد ما تظهر لغيره خلال المهلة
     { let _vid = 0; try { const _t = (req.headers.authorization||'').split(' ')[1]; if (_t) { const _p = jwt.verify(_t, JWT_SECRET); if (!_p.purpose) _vid = parseInt(_p.id)||0; } } catch(e){}
@@ -4844,7 +4854,7 @@ app.get('/api/requests', async (req, res) => {
     if (category) { params.push(category); query += ` AND (r.category=$${params.length} OR $${params.length}=ANY(COALESCE(r.extra_categories,'{}')))`; }
     if (city)     { params.push(`%${city}%`); query += ` AND r.city ILIKE $${params.length}`; }
     // مشاريع صاحبها ما اطّلع على العروض (التسلسل الصامت بدأ) تنزل تحت
-    query += ' ORDER BY (COALESCE(r.silent_stage,0) BETWEEN 1 AND 3 AND NOT EXISTS (SELECT 1 FROM bids sb WHERE sb.request_id=r.id AND sb.seen_at IS NOT NULL)) ASC, r.created_at DESC LIMIT 100';
+    query += ' ORDER BY (COALESCE(r.silent_stage,0) BETWEEN 1 AND 3 AND NOT EXISTS (SELECT 1 FROM bids sb WHERE sb.request_id=r.id AND sb.seen_at IS NOT NULL)) ASC, COALESCE(r.published_at, r.created_at) DESC LIMIT 100';
     const result = await pool.query(query, params);
     res.json(result.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
   } catch(e) { console.error('/requests:', e); res.json([]); }
