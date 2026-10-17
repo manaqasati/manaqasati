@@ -6703,7 +6703,7 @@ function _loadDemoTest(){
 }
 
 // ═══ مشاريع ما اكتملت — بدأ يكتب وطلع: التذكير التلقائي + واتساب ═══
-var _DR={days:7,f:'all',sel:null,d:null};
+var _DR=window._DR||{days:7,f:'all',sel:null,d:null};
 function _drAgo(t){ if(!t)return''; var m=Math.round((Date.now()-new Date(t).getTime())/60000); if(m<1)return'الحين'; if(m<60)return'قبل '+m+' د'; var h=Math.round(m/60); if(h<24)return'قبل '+h+' س'; var d=Math.round(h/24); return d===1?'أمس':'قبل '+d+' أيام'; }
 function _drClock(t){ try{ return new Date(t).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{weekday:'short',hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; } }
 function _drSt(x){
@@ -6717,6 +6717,7 @@ function _drSt(x){
   return {k:'wait',c:'#f59e0b',t:'ينتظر تذكير'};
 }
 function loadDrafts(){
+  if(!window._DR) window._DR={days:7,f:'all',sel:null,d:null}; // الصفحة ممكن تنفتح من الرابط (#drafts) قبل ما يكمل تحميل الملف
   var el=document.getElementById('dr-body'); if(!el)return;
   if(!_DR.d) el.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>'; else el.classList.add('oc-busy');
   fetch(API+'/api/admin/drafts?days='+_DR.days,hdr()).then(function(r){return r.json();}).then(function(d){
