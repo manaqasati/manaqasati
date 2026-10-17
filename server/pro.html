@@ -368,7 +368,7 @@ function _ppShare(){
   var nm=p.business_name||p.name||'مزود';
   var refUrl='https://www.manaqasa.com/pro/'+pid+'?ref=pro'+pid;
   var msg='✨ '+nm+' على منصة مناقصة\n\nشوف الأعمال والتقييمات وتواصل مباشرة:\n'+refUrl;
-  if(navigator.share){navigator.share({title:nm+' — مناقصة',text:'✨ '+nm+' على منصة مناقصة\n\nشوف الأعمال والتقييمات وتواصل مباشرة:',url:refUrl}).catch(function(){});} // الرابط يضيفه الجوال مرة وحدة
+  if(navigator.share){navigator.share({title:nm+' — مناقصة',text:'✨ '+nm+' على منصة مناقصة\n\nشوف الأعمال والتقييمات وتواصل مباشرة:\n'+refUrl}).catch(function(){});} // الرابط داخل النص نفسه: يطلع بعد الكلام في كل التطبيقات (واتساب ينسخه ويعرض معاينته)
   else if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){_ppToast('تم نسخ رابط الصفحة');});}
 }
 function _ppToast(t){var d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 18px;border-radius:12px;font-size:13px;font-weight:800;z-index:9999';document.body.appendChild(d);setTimeout(function(){d.remove();},1800);}

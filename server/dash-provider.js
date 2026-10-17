@@ -534,7 +534,7 @@ function _shareMyPage(url){
   var msgText='✨ صفحتي على منصة مناقصة\nشوف أعمالي وتقييماتي وتواصل معي مباشرة:';
   var msg=msgText+'\n'+ref;
   if(navigator.share){
-    navigator.share({title:'مناقصة',text:msgText,url:ref}).catch(function(){ _copyText(msg); });
+    navigator.share({title:'مناقصة',text:msg}).catch(function(){ _copyText(msg); });
   } else { _copyText(msg); }
 }
 // نسخ موثوق: يجرّب الطريقة الحديثة ثم البديل القديم (يعمل في كل الحالات)
