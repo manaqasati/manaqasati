@@ -2393,10 +2393,15 @@ async function listOffsiteBackups(bucket){
   const out = []; let token, pages = 0;
   do {
     const r = await r2Client.send(new ListObjectsV2Command({ Bucket: bucket || _bkBucket(), Prefix: OFFSITE_PREFIX, ContinuationToken: token }));
-    for (const o of (r.Contents||[])) out.push({ key: o.Key, bytes: Number(o.Size)||0, at: o.LastModified });
+    for (const o of (r.Contents||[])) {
+      // التاريخ الحقيقي من اسم الملف (النسخ اللي انتقلت بين المخازن تاخذ وقت النقل كتاريخ تعديل)
+      const lm = new Date(o.LastModified), km = String(o.Key).match(/manaqasa-(\d{4}-\d{2}-\d{2})-/);
+      const at = (km && lm.toISOString().slice(0,10) !== km[1]) ? new Date(km[1] + 'T00:00:00Z') : lm;
+      out.push({ key: o.Key, bytes: Number(o.Size)||0, at, _lm: lm });
+    }
     token = r.IsTruncated ? r.NextContinuationToken : undefined; pages++;
   } while (token && pages < 20);
-  return out.sort((a,b) => new Date(b.at) - new Date(a.at));
+  return out.sort((a,b) => (new Date(b.at) - new Date(a.at)) || (b._lm - a._lm));
 }
 // الاحتفاظ: آخر 7 نسخ يومية + نسخة يوم الجمعة لآخر 4 أسابيع + أول نسخة من كل شهر لآخر 12 شهر
 async function pruneOffsiteBackups(){
