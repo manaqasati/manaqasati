@@ -189,6 +189,7 @@ app.post('/api/csp-report', rateLimiter(40, 60000), express.json({ type: ['appli
       const _src = String(r['source-file'] || r.sourceFile || '');
       if (/^(chrome|moz|safari|safari-web|ms-browser)-extension/i.test(_src)) continue; // سكربت من إضافة متصفح (مثل wasm-eval)
       if (dir.startsWith('frame-src') && /^(null|about|)$/i.test(blocked)) continue; // إطارات فاضية تسويها سكربتات التتبّع — ما تحمّل شي
+      if (dir.startsWith('script-src') && /^(wasm-)?eval$/i.test(blocked)) continue; // eval من سكربتات التتبّع (GTM/البكسلات) — مو من كود الموقع
       if (/^https:\/\/(www|translate)\.(gstatic|googleapis)\.com\/_\/translate_http/i.test(blocked)) continue; // ترجمة Google اللي يشغّلها الزائر بنفسه
       let page = strip(r['document-uri'] || r.documentURL || ''); try { page = new URL(page).pathname.slice(0, 120); } catch(e) {}
       const sample = String(r['script-sample'] || r.sample || (r['source-file'] || r.sourceFile ? 'من: ' + strip(r['source-file'] || r.sourceFile) : '')).slice(0, 80);
