@@ -1569,6 +1569,10 @@ var _reqFiles=[];
 function _mqUpAtt(f,slot,done){
   var tk=(typeof token!=='undefined'&&token)||localStorage.getItem('token')||'';
   function fb(msg){ if(f.size<=10*1024*1024){var r=new FileReader();r.onload=function(e){slot.data=e.target.result;slot.up=false;done(true);};r.onerror=function(){done(false,msg);};r.readAsDataURL(f);} else done(false,msg); }
+  if(window.PlanGate){ slot.pct=0; PlanGate.upload(f,tk,function(p){ slot.pct=p; if(_reqFiles.indexOf(slot)>-1) renderFileList(); }).then(function(x){ var d=x.d||{};
+      if(x.ok&&d.url){slot.url=d.url;slot.size=d.size||f.size;slot.up=false;done(true);}
+      else if(x.status===400||x.status===413)done(false,d.message);
+      else fb(d.message); }); return; }
   fetch(API+'/api/upload/attachment',{method:'POST',headers:{'Authorization':'Bearer '+tk,'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(f.name)},body:f})
     .then(function(r){return r.json().catch(function(){return {};}).then(function(d){
       if(r.ok&&d.url){slot.url=d.url;slot.size=d.size||f.size;slot.up=false;done(true);}
@@ -1590,7 +1594,7 @@ function previewFiles(input){
 function renderFileList(){
   var g=document.getElementById('file-list');if(!g)return;
   _mqCnt('file-list',_reqFiles.length,_MQ_ATT,'ملفات');
-  g.innerHTML=_reqFiles.map(function(f,i){return'<div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;font-size:12.5px"><span style="font-size:16px">📄</span><span style="flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(f.up?'⏳ جاري الرفع… ':'')+esc(f.name)+'</span><button onclick="removeReqFile('+i+')" style="width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;cursor:pointer;flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';}).join('');
+  g.innerHTML=_reqFiles.map(function(f,i){return'<div style="display:flex;align-items:center;gap:8px;padding:8px 11px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;font-size:12.5px"><span style="font-size:16px">📄</span><span style="flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(f.up?'⏳ ':'')+esc(f.name)+'</span>'+(f.up&&window.PlanGate?'<span style="display:flex;align-items:center;gap:6px;width:120px;flex-shrink:0">'+PlanGate.bar(f.pct||0)+'</span>':'')+'<button onclick="removeReqFile('+i+')" style="width:22px;height:22px;border-radius:50%;background:rgba(220,38,38,.85);border:none;color:#fff;cursor:pointer;flex-shrink:0"><svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';}).join('');
   if(window.updateQuality)updateQuality();
 }
 function removeReqFile(i){_reqFiles.splice(i,1);renderFileList();}

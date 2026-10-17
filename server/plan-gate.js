@@ -33,6 +33,12 @@
       +'.pg-pl b{display:block;font-size:14.5px;color:#9a3412}'
       +'.pg-pl .pg-t{font-weight:700;line-height:1.85;margin-top:4px;color:#7c2d12;font-size:13px}'
       +'.pg-pl a{color:#c2410c;font-weight:900;text-decoration:underline}'
+      +'.pg-bar{display:block;flex:1;min-width:60px;height:7px;border-radius:7px;background:#e5ecf7;overflow:hidden;position:relative}.pg-bar i{position:absolute;top:0;bottom:0;right:0;background:#1d4ed8;border-radius:7px;transition:width .2s}'
+      +'.pg-pct{font-size:11.5px;font-weight:900;color:#1d4ed8;min-width:34px;text-align:left;direction:ltr}'
+      +'.pg-up{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10070;display:flex;align-items:center;justify-content:center;padding:20px}'
+      +'.pg-up>div{background:var(--white,#fff);color:var(--text,#0f2544);border-radius:18px;padding:22px 20px;width:min(340px,100%);text-align:center;font-family:Tajawal,sans-serif;box-shadow:0 20px 50px rgba(0,0,0,.3)}'
+      +'.pg-up b{display:block;font-size:16px;margin:6px 0 12px}.pg-up .r{display:flex;align-items:center;gap:10px}'
+      +'[data-theme="dark"] .pg-bar{background:#0f172a}[data-theme="dark"] .pg-pct{color:#93c5fd}'
       +'[data-theme="dark"] .pg-note{background:#2a2210;border-color:#78350f;color:#fcd34d}'
       +'[data-theme="dark"] .pg-pl{background:#2a1a0e;border-color:#c2410c}[data-theme="dark"] .pg-pl b,[data-theme="dark"] .pg-pl .pg-t{color:#fdba74}[data-theme="dark"] .pg-pl a{color:#fb923c}[data-theme="dark"] .pg-cb{background:transparent}';
     document.head.appendChild(st);
@@ -107,5 +113,24 @@
       +'</div>');
     s.el.addEventListener('click',function(e){ var b=e.target.closest('[data-c]'); if(b){ s.close(); cb(b.getAttribute('data-c')); } });
   }
-  window.PlanGate={cats:CATS,need:function(c){ return CATS.indexOf(String(c||''))>=0; },terms:terms,pledgeHTML:pledgeHTML,pledgeBind:pledgeBind,pledged:pledged,pledgeNudge:pledgeNudge,designBody:designBody,designAsk:designAsk,ask:ask};
+  // رفع ملف مع نسبة التقدّم (XHR) — onProg(0..100)
+  var EXT=/\.(pdf|dwg|dxf|xlsx|xls|docx|doc|zip|rar|7z|csv|jpe?g|png|webp|heic)$/i;
+  function xhr(method,url,headers,body,onProg){
+    return new Promise(function(res){
+      var x=new XMLHttpRequest(); x.open(method,url,true);
+      Object.keys(headers||{}).forEach(function(k){ x.setRequestHeader(k,headers[k]); });
+      if(onProg&&x.upload) x.upload.onprogress=function(e){ if(e.lengthComputable) onProg(Math.min(99,Math.round(e.loaded*100/e.total))); };
+      x.onload=function(){ var d=null; try{ d=JSON.parse(x.responseText); }catch(e){} if(onProg) onProg(100); res({ok:x.status>=200&&x.status<300,status:x.status,d:d||{}}); };
+      x.onerror=function(){ res({ok:false,status:0,d:{}}); };
+      x.send(body);
+    });
+  }
+  function upload(file,token,onProg){
+    return xhr('POST',(window.API||'')+'/api/upload/attachment',{'Authorization':'Bearer '+token,'Content-Type':'application/octet-stream','X-File-Name':encodeURIComponent(file.name)},file,onProg);
+  }
+  // شريط التقدّم (HTML)
+  function bar(pct){ css(); pct=Math.max(0,Math.min(100,pct||0)); return '<span class="pg-bar" role="progressbar" aria-valuenow="'+pct+'" aria-valuemin="0" aria-valuemax="100"><i style="width:'+pct+'%"></i></span><span class="pg-pct">'+pct+'%</span>'; }
+  function progress(title){ css(); var o=document.createElement('div'); o.className='pg-up'; o.innerHTML='<div><div style="font-size:30px">⏫</div><b>'+esc(title||'جاري رفع الملفات…')+'</b><div class="r">'+bar(0)+'</div><div style="font-size:12px;color:var(--muted,#64748b);font-weight:700;margin-top:10px">لا تسكّر الصفحة لين يخلص</div></div>'; document.body.appendChild(o);
+    return {set:function(p){ var r=o.querySelector('.r'); if(r) r.innerHTML=bar(p); }, close:function(){ o.remove(); }}; }
+  window.PlanGate={progress:progress,ext:EXT,xhr:xhr,upload:upload,bar:bar,cats:CATS,need:function(c){ return CATS.indexOf(String(c||''))>=0; },terms:terms,pledgeHTML:pledgeHTML,pledgeBind:pledgeBind,pledged:pledged,pledgeNudge:pledgeNudge,designBody:designBody,designAsk:designAsk,ask:ask};
 })();

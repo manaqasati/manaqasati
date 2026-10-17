@@ -88,7 +88,8 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
 .pq .bx{flex:1;min-width:0}
 .pf{display:flex;flex-direction:column;gap:6px;margin-top:9px}
 .pf .f{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #dbe5f5;border-radius:10px;padding:7px 9px;font-size:12.5px;font-weight:800}
-.pf .f span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf .f .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf .f{flex-wrap:wrap}.pf .f .pb{flex-basis:100%;display:flex;align-items:center;gap:8px}
 .pf .f button{border:0;background:#fee2e2;color:#b91c1c;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:13px}
 .pf .up{border:1.5px dashed #93c5fd;border-radius:12px;padding:11px;text-align:center;color:#1d4ed8;font-weight:800;background:#fff;cursor:pointer;font-family:inherit;font-size:13.5px;width:100%}
 .pq-n{font-size:12px;font-weight:800;color:#6d28d9;margin-top:6px;line-height:1.7}
@@ -172,7 +173,7 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
           <div class="pq" data-v="design" role="radio" tabindex="0"><span class="rd"></span><span class="ic" style="background:#ede9fe">🏛️</span><div class="bx"><b>لا، أبي مكتب هندسي يسويه لي</b><small>نرسل طلبك للمكاتب الهندسية وتجيك عروضهم</small><div class="pq-n" id="pq-dn" style="display:none">📌 مشروع التنفيذ ينحفظ لك — ونذكّرك تكمّله لما يجهز المخطط</div></div></div>
           <div class="pq" data-v="none" role="radio" tabindex="0"><span class="rd"></span><span class="ic" style="background:#f1f5f9">🔧</span><div class="bx"><b>مشروع صغير ما يحتاج مخطط</b><small>مثل ترميم بسيط أو تعديل غرفة</small></div></div>
         </div>
-        <input type="file" id="n-plan" accept=".pdf,.dwg,.dxf,.zip,.rar,image/*" multiple style="display:none">
+        <input type="file" id="n-plan" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.rar,.7z,.csv,image/*" multiple style="display:none">
         <div class="err" id="e-plan"></div>
       </div>
       <div>
@@ -376,7 +377,7 @@ $('n-file').addEventListener('change',function(){
 });
 
 // ── المخطط (لتخصصات البناء والترميم والتشطيبات…) ──
-var PLAN='', PFILES=[], PF_MAX=3, PF_MB=15;
+var PLAN='', PFILES=[], PF_MAX=3, PF_MB=30, PF_MB_G=15;
 function planNeed(){ return !!(window.PlanGate&&PlanGate.need(catVal())); }
 function planPaint(){
   var w=$('plan-q'); if(!w) return;
@@ -386,7 +387,7 @@ function planPaint(){
   $('plan-sub').textContent='مشاريع «'+catVal()+'» تحتاج مخطط عشان تجيك أسعار دقيقة';
   [].forEach.call(document.querySelectorAll('#pq-w .pq'),function(el){ var on=el.getAttribute('data-v')===PLAN; el.classList.toggle('on',on); el.setAttribute('aria-checked',on?'true':'false'); });
   var pf=$('pf'); pf.style.display=PLAN==='has'?'':'none';
-  pf.innerHTML=PFILES.map(function(f,i){ return '<div class="f">📄 <span>'+esc(f.name)+'</span><button type="button" data-prm="'+i+'" aria-label="حذف">✕</button></div>'; }).join('')+(PFILES.length<PF_MAX?'<button type="button" class="up" data-pup>+ ارفع المخطط (PDF أو صورة أو DWG)</button>':'');
+  pf.innerHTML=PFILES.map(function(f,i){ return '<div class="f">'+(f.up?'⏳':'✅')+' <span class="nm">'+esc(f.name)+'</span><button type="button" data-prm="'+i+'" aria-label="حذف">✕</button>'+(f.up&&window.PlanGate?'<div class="pb">'+PlanGate.bar(f.pct||0)+'</div>':'')+'</div>'; }).join('')+(PFILES.length<PF_MAX?'<button type="button" class="up" data-pup>+ ارفع المخطط<small style="display:block;font-weight:700;color:#5b6b85;font-size:11.5px;margin-top:3px" dir="ltr">PDF · DWG · DXF · JPG · PNG · Excel · Word · ZIP · RAR</small><small style="display:block;font-weight:700;color:#5b6b85;font-size:11.5px">حتى '+(TOKEN?PF_MB:PF_MB_G)+'MB للملف</small></button>':'');
   $('pq-dn').style.display=PLAN==='design'?'':'none';
 }
 $('pq-w').addEventListener('click',function(e){
@@ -400,9 +401,22 @@ $('pq-w').addEventListener('keydown',function(e){ if((e.key==='Enter'||e.key==='
 $('n-plan').addEventListener('change',function(){
   var files=[].slice.call(this.files||[]); this.value='';
   files.slice(0,Math.max(0,PF_MAX-PFILES.length)).forEach(function(f){
-    if(!/\.(pdf|dwg|dxf|zip|rar|jpe?g|png|webp|heic)$/i.test(f.name||'')){ showToast('نوع الملف غير مدعوم — PDF أو صورة أو DWG','error'); return; }
-    if(f.size>PF_MB*1024*1024){ showToast('الملف أكبر من '+PF_MB+'MB','error'); return; }
-    var r=new FileReader(); r.onload=function(){ if(PFILES.length>=PF_MAX) return; PFILES.push({name:String(f.name).slice(0,120),data:r.result}); fErr('e-plan',null,''); planPaint(); renderStrength(); }; r.onerror=function(){ showToast('تعذّر قراءة الملف','error'); }; r.readAsDataURL(f);
+    if(!(window.PlanGate?PlanGate.ext:/\.(pdf|dwg|dxf|jpe?g|png)$/i).test(f.name||'')){ showToast('صيغة غير مدعومة — PDF أو DWG أو صورة أو Excel أو ZIP','error'); return; }
+    var mx=TOKEN?PF_MB:PF_MB_G; if(f.size>mx*1024*1024){ showToast('الملف أكبر من '+mx+'MB','error'); return; }
+    var slot={name:String(f.name).slice(0,120),up:true,pct:0}; PFILES.push(slot); fErr('e-plan',null,''); planPaint();
+    var gone=function(msg){ var i=PFILES.indexOf(slot); if(i>-1) PFILES.splice(i,1); showToast(msg||('تعذّر رفع «'+slot.name+'»'),'error'); planPaint(); };
+    if(TOKEN&&window.PlanGate){
+      // مسجّل: نرفعه على طول مع نسبة التقدّم
+      PlanGate.upload(f,TOKEN,function(p){ slot.pct=p; planPaint(); }).then(function(r){
+        if(PFILES.indexOf(slot)<0) return;
+        if(r.ok&&r.d&&r.d.url){ slot.url=r.d.url; slot.size=r.d.size||f.size; slot.up=false; planPaint(); renderStrength(); }
+        else gone(r.d&&r.d.message);
+      });
+    } else {
+      // زائر: نجهّزه هنا وينرفع مع النشر
+      var r=new FileReader(); r.onprogress=function(e){ if(e.lengthComputable){ slot.pct=Math.round(e.loaded*100/e.total); planPaint(); } };
+      r.onload=function(){ if(PFILES.indexOf(slot)<0) return; slot.data=r.result; slot.up=false; planPaint(); renderStrength(); }; r.onerror=function(){ gone('تعذّر قراءة الملف'); }; r.readAsDataURL(f);
+    }
   });
   if(files.length>PF_MAX) showToast('الحد '+PF_MAX+' ملفات','error');
 });
@@ -507,7 +521,7 @@ function validate(step,focus){
     chk(fErr('e-desc','n-desc',!d?'اكتب وصف المطلوب':(d.length<15?'الوصف قصير — اكتب 15 حرف على الأقل':'')),'n-desc');
     var bv=_dig($('n-budget').value).replace(/[,\s٬]/g,'').trim();
     chk(fErr('e-budget','n-budget',(bv&&!/^\d+(\.\d+)?$/.test(bv))?'الميزانية لازم تكون رقم':''),'n-budget');
-    if(planNeed()) chk(fErr('e-plan',null,!PLAN?'اختر: عندك مخطط، أو تبي مكتب هندسي، أو ما يحتاج':(PLAN==='has'&&!PFILES.length?'ارفع المخطط — أو اختر خيار ثاني':'')),'plan-q');
+    if(planNeed()) chk(fErr('e-plan',null,!PLAN?'اختر: عندك مخطط، أو تبي مكتب هندسي، أو ما يحتاج':(PLAN==='has'&&!PFILES.length?'ارفع المخطط — أو اختر خيار ثاني':(PLAN==='has'&&PFILES.some(function(f){return f.up;})?'انتظر لين يكتمل رفع المخطط':''))),'plan-q');
   }
   if(step===3){
     chk(fErr('e-city','n-city',!$('n-city').value?'اختر المدينة':''),'n-city');
@@ -562,7 +576,7 @@ function buildBody(){
   if(IMGS.length) body.images=IMGS.slice(0,MAX_IMGS);
   if(INVITE&&INVITE.id) body.invite_provider_id=parseInt(INVITE.id,10);
   try{ var _dd=localStorage.getItem('mnq_did'); if(_dd) body.draft_did=_dd; }catch(e){}
-  if(planNeed()&&PLAN){ body.plan_status=PLAN; if(PLAN==='has'&&PFILES.length) body.attachments=PFILES.map(function(f){return {name:f.name,data:f.data};}); }
+  if(planNeed()&&PLAN){ body.plan_status=PLAN; if(PLAN==='has'&&PFILES.length) body.attachments=PFILES.filter(function(f){return !f.up;}).map(function(f){return f.url?{name:f.name,url:f.url,size:f.size}:{name:f.name,data:f.data};}); }
   body.pledge=!!(window.PlanGate&&PlanGate.pledged(pledgeId()));
   return body;
 }
@@ -640,8 +654,10 @@ function _dupAsk(d,cb){
 var _dupCh=null;
 function postReq(tok){
   var _b=postBody(); _b.dup_check=1; if(_dupCh){ _b.dup_intent=_dupCh.intent; _b.dup_hint=_dupCh.hint; }
-  return fetch(API+'/api/requests',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify(_b)})
-    .then(jsonOf)
+  var _big=(_b.attachments||[]).some(function(a){return a&&a.data;})&&window.PlanGate, _pr=_big?PlanGate.progress('جاري رفع مشروعك والمخطط…'):null;
+  var _req=_big?PlanGate.xhr('POST',API+'/api/requests',{'Content-Type':'application/json','Authorization':'Bearer '+tok},JSON.stringify(_b),function(p){ _pr.set(p); }).then(function(x){ _pr.close(); return x; })
+    :fetch(API+'/api/requests',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify(_b)}).then(jsonOf);
+  return _req
     .then(function(r){
       var d=r.d;
       if(r.status===409&&d&&d.dup){
