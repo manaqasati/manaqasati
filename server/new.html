@@ -377,7 +377,7 @@ $('n-file').addEventListener('change',function(){
 });
 
 // ── المخطط (لتخصصات البناء والترميم والتشطيبات…) ──
-var PLAN='', PFILES=[], PF_MAX=3, PF_MB=30, PF_MB_G=15;
+var PLAN='', PFILES=[], PF_MAX=3, PF_MB=30;
 function planNeed(){ return !!(window.PlanGate&&PlanGate.need(catVal())); }
 function planPaint(){
   var w=$('plan-q'); if(!w) return;
@@ -387,7 +387,7 @@ function planPaint(){
   $('plan-sub').textContent='مشاريع «'+catVal()+'» تحتاج مخطط عشان تجيك أسعار دقيقة';
   [].forEach.call(document.querySelectorAll('#pq-w .pq'),function(el){ var on=el.getAttribute('data-v')===PLAN; el.classList.toggle('on',on); el.setAttribute('aria-checked',on?'true':'false'); });
   var pf=$('pf'); pf.style.display=PLAN==='has'?'':'none';
-  pf.innerHTML=PFILES.map(function(f,i){ return '<div class="f">'+(f.up?'⏳':'✅')+' <span class="nm">'+esc(f.name)+'</span><button type="button" data-prm="'+i+'" aria-label="حذف">✕</button>'+(f.up&&window.PlanGate?'<div class="pb">'+PlanGate.bar(f.pct||0)+'</div>':'')+'</div>'; }).join('')+(PFILES.length<PF_MAX?'<button type="button" class="up" data-pup>+ ارفع المخطط<small style="display:block;font-weight:700;color:#5b6b85;font-size:11.5px;margin-top:3px" dir="ltr">PDF · DWG · DXF · JPG · PNG · Excel · Word · ZIP · RAR</small><small style="display:block;font-weight:700;color:#5b6b85;font-size:11.5px">حتى '+(TOKEN?PF_MB:PF_MB_G)+'MB للملف</small></button>':'');
+  pf.innerHTML=PFILES.map(function(f,i){ return '<div class="f">'+(f.up?'⏳':(f.wait?'📎':'✅'))+' <span class="nm">'+esc(f.name)+(f.wait?' <small style="color:#5b6b85;font-weight:700">· ينرفع مع النشر</small>':'')+'</span><button type="button" data-prm="'+i+'" aria-label="حذف">✕</button>'+(f.up&&window.PlanGate?'<div class="pb">'+PlanGate.bar(f.pct||0)+'</div>':'')+'</div>'; }).join('')+(PFILES.length<PF_MAX?'<button type="button" class="up" data-pup>+ ارفع المخطط<small style="display:block;font-weight:700;color:#5b6b85;font-size:11.5px;margin-top:3px" dir="ltr">PDF · DWG · DXF · JPG · PNG · Excel · Word · ZIP · RAR</small><small style="display:block;font-weight:700;color:#5b6b85;font-size:11.5px">حتى '+PF_MB+'MB للملف</small></button>':'');
   $('pq-dn').style.display=PLAN==='design'?'':'none';
 }
 $('pq-w').addEventListener('click',function(e){
@@ -402,7 +402,7 @@ $('n-plan').addEventListener('change',function(){
   var files=[].slice.call(this.files||[]); this.value='';
   files.slice(0,Math.max(0,PF_MAX-PFILES.length)).forEach(function(f){
     if(!(window.PlanGate?PlanGate.ext:/\.(pdf|dwg|dxf|jpe?g|png)$/i).test(f.name||'')){ showToast('صيغة غير مدعومة — PDF أو DWG أو صورة أو Excel أو ZIP','error'); return; }
-    var mx=TOKEN?PF_MB:PF_MB_G; if(f.size>mx*1024*1024){ showToast('الملف أكبر من '+mx+'MB','error'); return; }
+    var mx=PF_MB; if(f.size>mx*1024*1024){ showToast('الملف أكبر من '+mx+'MB','error'); return; }
     var slot={name:String(f.name).slice(0,120),up:true,pct:0}; PFILES.push(slot); fErr('e-plan',null,''); planPaint();
     var gone=function(msg){ var i=PFILES.indexOf(slot); if(i>-1) PFILES.splice(i,1); showToast(msg||('تعذّر رفع «'+slot.name+'»'),'error'); planPaint(); };
     if(TOKEN&&window.PlanGate){
@@ -413,9 +413,8 @@ $('n-plan').addEventListener('change',function(){
         else gone(r.d&&r.d.message);
       });
     } else {
-      // زائر: نجهّزه هنا وينرفع مع النشر
-      var r=new FileReader(); r.onprogress=function(e){ if(e.lengthComputable){ slot.pct=Math.round(e.loaded*100/e.total); planPaint(); } };
-      r.onload=function(){ if(PFILES.indexOf(slot)<0) return; slot.data=r.result; slot.up=false; planPaint(); renderStrength(); }; r.onerror=function(){ gone('تعذّر قراءة الملف'); }; r.readAsDataURL(f);
+      // زائر: الملف ينرفع أول ما ينشئ حسابه (لحظة النشر) — نفس حد المسجّلين
+      slot.file=f; slot.up=false; slot.wait=true; planPaint(); renderStrength();
     }
   });
   if(files.length>PF_MAX) showToast('الحد '+PF_MAX+' ملفات','error');
@@ -576,7 +575,7 @@ function buildBody(){
   if(IMGS.length) body.images=IMGS.slice(0,MAX_IMGS);
   if(INVITE&&INVITE.id) body.invite_provider_id=parseInt(INVITE.id,10);
   try{ var _dd=localStorage.getItem('mnq_did'); if(_dd) body.draft_did=_dd; }catch(e){}
-  if(planNeed()&&PLAN){ body.plan_status=PLAN; if(PLAN==='has'&&PFILES.length) body.attachments=PFILES.filter(function(f){return !f.up;}).map(function(f){return f.url?{name:f.name,url:f.url,size:f.size}:{name:f.name,data:f.data};}); }
+  if(planNeed()&&PLAN){ body.plan_status=PLAN; if(PLAN==='has'&&PFILES.length) body.attachments=PFILES.filter(function(f){return f.url;}).map(function(f){return {name:f.name,url:f.url,size:f.size};}); }
   body.pledge=!!(window.PlanGate&&PlanGate.pledged(pledgeId()));
   return body;
 }
@@ -652,7 +651,18 @@ function _dupAsk(d,cb){
   document.body.appendChild(o);
 }
 var _dupCh=null;
+// ملفات الزائر: نرفعها بعد إنشاء الحساب مباشرة (مع نسبة التقدّم)
+function _upPending(tok){
+  var L=PFILES.filter(function(f){return f.wait&&f.file;}); if(!L.length||!window.PlanGate||!(planNeed()&&PLAN==='has')) return Promise.resolve();
+  var tot=L.reduce(function(a,f){return a+f.file.size;},0)||1, done=0, pr=PlanGate.progress('جاري رفع المخطط…');
+  var chain=Promise.resolve();
+  L.forEach(function(f){ chain=chain.then(function(){ return PlanGate.upload(f.file,tok,function(p){ pr.set(Math.round((done+f.file.size*p/100)*100/tot)); }).then(function(r){
+    if(!(r.ok&&r.d&&r.d.url)) throw {msg:(r.d&&r.d.message)||('تعذّر رفع «'+f.name+'» — حاول مرة ثانية')};
+    f.url=r.d.url; f.size=r.d.size||f.file.size; f.wait=false; done+=f.file.size; }); }); });
+  return chain.then(function(){ pr.close(); planPaint(); },function(e){ pr.close(); planPaint(); throw e; });
+}
 function postReq(tok){
+  if(PFILES.some(function(f){return f.wait;})&&planNeed()&&PLAN==='has') return _upPending(tok).then(function(){ return postReq(tok); });
   var _b=postBody(); _b.dup_check=1; if(_dupCh){ _b.dup_intent=_dupCh.intent; _b.dup_hint=_dupCh.hint; }
   var _big=(_b.attachments||[]).some(function(a){return a&&a.data;})&&window.PlanGate, _pr=_big?PlanGate.progress('جاري رفع مشروعك والمخطط…'):null;
   var _req=_big?PlanGate.xhr('POST',API+'/api/requests',{'Content-Type':'application/json','Authorization':'Bearer '+tok},JSON.stringify(_b),function(p){ _pr.set(p); }).then(function(x){ _pr.close(); return x; })
