@@ -1025,7 +1025,7 @@ function openDetail(id,e){
     var money='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>';
     var cal='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
     var tag='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
-    window._curReq=req; _detRender(req); _closedBanner(req); loadActions(id);
+    window._curReq=req; _detRender(req); _closedBanner(req); try{_pauseRender(req);}catch(e){} loadActions(id);
   }).catch(function(){
     // المشروع غير موجود أو ليس للعميل → ارجع للرئيسية
     showToast('المشروع غير متاح','error');
@@ -1057,6 +1057,7 @@ function loadBids(id){
       if(!bids.length){el.innerHTML=emptyH('لا يوجد عروض بعد','سيصلك إشعار عند وصول أول عرض');return;}
       window._currentBids=bids;
       window._curBids=bids;
+      setTimeout(function(){ try{ if(window._curReq&&String(window._curReq.id)===String(id)) _pauseRender(window._curReq); }catch(e){} },0);
       // زر مقارنة العروض (يظهر عند وجود عرضين فأكثر)
       var cmpSlot=document.getElementById('bids-compare');
       if(!cmpSlot){
@@ -1210,6 +1211,7 @@ function _detBanner(r){
   if(st==='pending_review'||st==='review') return '<div class="dh-ban y"><span class="e">🕒</span><div><b>مشروعك تحت المراجعة</b><p>نراجعه عادة خلال ساعات، وبعدها يُنشر ويوصل إشعار للمزوّدين'+(r.city?' في '+esc(r.city):'')+'. نبلغك أول ما يُعتمد.</p></div></div>';
   if(st==='needs_edit') return '<div class="dh-ban r"><span class="e">📝</span><div style="flex:1"><b>الإدارة طلبت تعديل قبل النشر</b><p>'+(r.review_notes?esc(r.review_notes):'أكمل التفاصيل الناقصة ليُنشر مشروعك.')+'</p><button class="dh-b red" onclick="openEditReq('+r.id+',event)">'+_DI.edit+' عدّل وأعد الإرسال</button></div></div>';
   if(st==='rejected') return '<div class="dh-ban r"><span class="e">⛔</span><div><b>ما انقبل نشر هذا المشروع</b><p>'+(r.review_notes?esc(r.review_notes):'للاستفسار تواصل مع خدمة العملاء.')+'</p></div></div>';
+  if(st==='open'&&r.paused){ return '<div class="dh-ban pz"><span class="e">⏸️</span><div><b>استقبال العروض موقوف مؤقتاً</b><p>'+(r.pause_with_name?'تتفاوض مع «'+esc(r.pause_with_name)+'»':'تتفاوض مع أحد المزوّدين')+' — التفاصيل تحت في تبويب «العروض»</p></div></div>'; }
   if(st==='open'){ var dl=_detDaysLeft(r); return '<div class="dh-ban g"><span class="e">✅</span><div><b>مشروعك منشور ويستقبل العروض</b><p>'+(nb?('وصلك '+nb+' '+(nb>=3&&nb<=10?'عروض':'عرض')+' — قارن بينها في تبويب «العروض»'):'العروض توصلك هنا، ونرسل لك إشعار مع كل عرض جديد')+(dl!=null&&dl>0?' · باقي '+dl+' يوم على إغلاق العروض':'')+'</p></div></div>'; }
   if(st==='in_progress') return '<div class="dh-ban b"><span class="e">🔨</span><div><b>قيد التنفيذ'+(r.provider_name?' مع '+esc(r.provider_name):'')+'</b><p>لما يخلص المزوّد، أكّد الإنجاز وقيّمه.</p></div></div>';
   if(st==='completed'||st==='done') return '<div class="dh-ban g"><span class="e">🎉</span><div><b>المشروع مكتمل</b><p>شكراً لاستخدامك مناقصة — تقييمك يساعد غيرك يختار صح.</p></div></div>';
@@ -3122,6 +3124,7 @@ function _nfOpenC(id){
   var k=_nfKind(n.type).g;
   if(n.type==='becomeprov'){ try{openBecomeProv();}catch(e){ location.href='/dashboard-client.html#becomeprov'; } return; }
   if(n.type==='draft'&&n.ref_id){ location.href='/new.html?did_id='+encodeURIComponent(n.ref_id); return; }
+  if(n.type==='pause_ask'&&n.ref_id){ openDetail(n.ref_id,null); return; }
   if(n.type==='verify_email'){ try{_vbShow();}catch(e){} return; }
   if(n.type==='message'){ show('chat',null,'chat'); try{loadChatPage();}catch(e){} return; }
   if(n.ref_id&&(k==='offers'||k==='projects'||n.type==='accept_ask')){ openDetail(n.ref_id,null); show('detail',null,'detail'); }
@@ -3155,3 +3158,58 @@ function _sqAns(id,a,btn){
 window.addEventListener('load',function(){setTimeout(function(){try{if(localStorage.getItem('token'))_sqLoad();}catch(e){}},800);});
 
 function _firstNm(n){var w=String(n||'').trim().split(/\s+/);if(w.length>1&&/^(ابو|أبو|ابن|بن|ام|أم|عبد|عبدال|آل|ال)$/.test(w[0]))return w[0]+' '+w[1];return w[0]||'';}
+
+// ═══ إيقاف استقبال العروض مؤقتاً (يتفاوض مع مزوّد) ═══
+function _pzFmt(d){ try{ return new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'long',day:'numeric',month:'long'}); }catch(e){ return ''; } }
+function _pzLeft(d){ var n=Math.ceil((new Date(d)-Date.now())/864e5); return n<=0?'اليوم':(n===1?'باقي يوم':(n===2?'باقي يومين':'باقي '+n+' أيام')); }
+function _pauseRender(req){
+  var tab=document.getElementById('tab-bids'); if(!tab||!req)return;
+  var old=document.getElementById('pz-banner'); if(old)old.remove();
+  var oc=document.getElementById('pz-card'); if(oc)oc.remove();
+  if(req.status!=='open'||req.assigned_provider_id)return;
+  var bids=(window._curBids||[]).filter(function(b){return b.status!=='rejected'&&!b.is_hidden;});
+  if(req.paused){
+    var wb=req.pause_with_provider?bids.filter(function(b){return String(b.provider_id)===String(req.pause_with_provider);})[0]:null;
+    var nm=req.pause_with_name||'';
+    var asked=!!req.pause_asked_at;
+    var b=document.createElement('div'); b.id='pz-banner'; b.className='pz-ban';
+    b.innerHTML=(asked?'<div class="pz-h">🤝 كيف صار التفاوض'+(nm?' مع «'+esc(nm)+'»':'')+'؟</div><div class="pz-s">خلص وقت الإيقاف المؤقت. اختر وش صار:</div>'
+        :'<div class="pz-h">⏸️ مشروعك موقوف مؤقتاً'+(nm?' — تتفاوض مع «'+esc(nm)+'»':'')+'</div><div class="pz-s">'+(req.paused_until?'يرجع يستقبل عروض <b>'+_pzFmt(req.paused_until)+'</b> ('+_pzLeft(req.paused_until)+')':'موقوف لين ترجّعه بنفسك')+'، وما ينقص من مدة مشروعك شي. المزوّدين الثانيين وصلهم إن ما يتواصلون معك.</div>')
+      +(wb?'<button type="button" class="pz-b g" onclick="acceptBid('+wb.id+','+req.id+')">✅ اتفقنا — رسّيه على '+esc(nm||'المزوّد')+'</button>':(bids.length?'<button type="button" class="pz-b g" onclick="var l=document.getElementById(\'bids-list\');if(l)l.scrollIntoView({behavior:\'smooth\'})">✅ اتفقت — اختر العرض من القائمة</button>':''))
+      +'<button type="button" class="pz-b o" onclick="_pzResume('+req.id+',this)">🔄 ما اتفقنا — رجّعه يستقبل عروض</button>'
+      +'<button type="button" class="pz-b y" onclick="_pzOpen('+req.id+',true)">⏸️ '+(asked?'أمدد الإيقاف':'غيّر مدة الإيقاف')+'</button>';
+    tab.insertBefore(b,tab.firstChild);
+    return;
+  }
+  if(bids.length<3)return;
+  var list=document.getElementById('bids-list'); if(!list||!list.parentNode)return;
+  var c=document.createElement('div'); c.id='pz-card'; c.className='pz-card';
+  c.innerHTML='<b>تتفاوض مع أحد المزوّدين؟</b><div class="pz-s">أوقف استقبال العروض مؤقتاً — المزوّدين ما يتصلون عليك، والمدة الباقية لمشروعك توقف.</div><button type="button" class="pz-b o" onclick="_pzOpen('+req.id+')">⏸️ أوقف استقبال العروض مؤقتاً</button>';
+  list.parentNode.insertBefore(c,list.nextSibling);
+}
+function _pzOpen(id,ext){
+  var req=window._curReq||{}; var bids=(window._curBids||[]).filter(function(b){return b.status!=='rejected'&&!b.is_hidden;});
+  var seen={}; bids=bids.filter(function(b){ if(seen[b.provider_id])return false; seen[b.provider_id]=1; return true; });
+  var cur=req.pause_with_provider?String(req.pause_with_provider):'';
+  var o=document.createElement('div'); o.className='pz-ov'; o.id='pz-ov';
+  o.innerHTML='<div class="pz-sh" role="dialog" aria-modal="true"><div class="pz-grab"></div><div class="pz-h">⏸️ '+(ext?'مدة الإيقاف':'إيقاف مؤقت')+'</div><div class="pz-s">مشروعك يختفي من المزوّدين الجدد، وما يوصلك عروض جديدة لين ترجّعه.</div>'
+    +'<div class="pz-l">كم المدة؟</div><div class="pz-seg" id="pz-days"><button type="button" data-d="3">3 أيام</button><button type="button" data-d="7" class="on">أسبوع</button><button type="button" data-d="0">لين أرجّعه</button></div>'
+    +(bids.length?'<div class="pz-l">مع مين تتفاوض؟ <span>(اختياري)</span></div><div id="pz-who">'+bids.map(function(b){ var on=cur?String(b.provider_id)===cur:false; return '<button type="button" class="pz-o'+(on?' on':'')+'" data-b="'+b.id+'"><i></i><span><b>'+esc(b.provider_business_name||b.provider_name||'مزوّد')+'</b><small>'+fmtN(b.price)+' ر.س'+(b.days?' · '+b.days+' يوم':'')+'</small></span></button>'; }).join('')+'<button type="button" class="pz-o'+(cur?'':' on')+'" data-b=""><i></i><span><b>ما أبي أحدد</b></span></button></div>':'')
+    +'<button type="button" class="pz-b p" id="pz-go">⏸️ '+(ext?'احفظ':'أوقف استقبال العروض')+'</button><button type="button" class="pz-x" onclick="document.getElementById(\'pz-ov\').remove()">إلغاء</button></div>';
+  document.body.appendChild(o);
+  o.addEventListener('click',function(e){ if(e.target===o){o.remove();return;} var d=e.target.closest('#pz-days button'); if(d){[].forEach.call(o.querySelectorAll('#pz-days button'),function(x){x.classList.toggle('on',x===d);});} var w=e.target.closest('.pz-o'); if(w){[].forEach.call(o.querySelectorAll('.pz-o'),function(x){x.classList.toggle('on',x===w);});} });
+  document.getElementById('pz-go').onclick=function(){
+    var btn=this; btn.disabled=true; btn.textContent='جاري…';
+    var d=(o.querySelector('#pz-days .on')||{}).getAttribute?o.querySelector('#pz-days .on').getAttribute('data-d'):'7';
+    var w=o.querySelector('.pz-o.on'); var bid=w?w.getAttribute('data-b'):'';
+    fetch(API+'/api/requests/'+id+'/pause',Object.assign({method:'POST',body:JSON.stringify({days:parseInt(d),bid_id:bid?parseInt(bid):null})},hdr())).then(function(r){return r.json().then(function(x){return {ok:r.ok,d:x};});}).then(function(res){
+      if(!res.ok){ showToast((res.d&&res.d.message)||'تعذّر','error'); btn.disabled=false; btn.textContent='⏸️ أوقف استقبال العروض'; return; }
+      o.remove(); showToast(ext?'تم ✓':'⏸️ وقّفنا استقبال العروض — وبلّغنا المزوّدين','success'); openDetail(id);
+    }).catch(function(){ showToast('تعذّر الاتصال','error'); btn.disabled=false; });
+  };
+}
+function _pzResume(id,btn){
+  if(!confirm('نرجّع مشروعك يستقبل عروض؟ يطلع للمزوّدين من جديد، ويوصل اللي قدّموا إشعار.'))return;
+  if(btn)btn.disabled=true;
+  fetch(API+'/api/requests/'+id+'/resume',Object.assign({method:'POST'},hdr())).then(function(r){return r.json();}).then(function(d){ showToast(d&&d.ok?'🔄 رجع مشروعك يستقبل عروض':'تعذّر', d&&d.ok?'success':'error'); openDetail(id); }).catch(function(){ if(btn)btn.disabled=false; showToast('تعذّر الاتصال','error'); });
+}

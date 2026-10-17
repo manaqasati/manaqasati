@@ -823,6 +823,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
     const id = parseInt(req.params.id); if (!id) return res.status(404).json({ message: 'غير موجود' });
     const r = await pool.query(`
       SELECT r.id, r.title, r.description, r.category, r.category_other, r.extra_categories, r.city, r.district, r.client_id, r.invited_provider_id, r.invite_state, r.invite_started_at,
+        r.paused_at, r.paused_until, r.pause_bid_id,
         r.budget_max, r.geo_lat, r.geo_lng,
         r.budget_max as budget, r.budget_min, r.deadline, r.status, r.created_at, r.close_at, r.attachments,
         COALESCE((SELECT json_agg(img) FROM unnest(r.images) img WHERE img LIKE 'http%'),'[]'::json) as images,
@@ -884,8 +885,12 @@ app.get('/api/requests/public/:id', async (req, res) => {
       const isAdmin=vw&&vw.role==='admin';
       const asg=(await pool.query('SELECT assigned_provider_id FROM requests WHERE id=$1',[id])).rows[0]||{};
       const isAssigned=uid&&asg.assigned_provider_id&&String(uid)===String(asg.assigned_provider_id);
+      // إيقاف مؤقت: الرقم للمزوّد المختار للتفاوض بس
+      const _pzOn = row.status==='open' && !!row.paused_at; let _pzMe=false;
+      if(_pzOn && uid && row.pause_bid_id){ try{ _pzMe=(await pool.query('SELECT 1 FROM bids WHERE id=$1 AND provider_id=$2',[row.pause_bid_id,uid])).rows.length>0; }catch(e){} }
+      row.paused=_pzOn; row.pause_chosen=_pzMe; delete row.pause_bid_id;
       let isRealBidder=false;
-      if(uid&&!isOwner&&!isAdmin){
+      if(uid&&!isOwner&&!isAdmin&&!(_pzOn&&!_pzMe)){
         const rb=await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (COALESCE(price_unit,'total')<>'total' OR price>=50) AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) AND COALESCE(hold_state,'') NOT IN ('held','rejected') ORDER BY created_at DESC LIMIT 1`,[id,uid]);
         if(rb.rows.length){ isRealBidder=true; try{ const _i=await pool.query('INSERT INTO contact_unlocks (provider_id, client_id, request_id, bid_id) VALUES ($1,$2,$3,$4) ON CONFLICT (provider_id, request_id) DO NOTHING',[uid,row.client_id,id,rb.rows[0].id]); if(_i.rowCount>0)sendCommissionReminder(uid,id); }catch(e){} }
       }
@@ -2037,6 +2042,8 @@ async function notify(userId, title, body, type, refId) {
     const url = (() => {
       if (!type) return '/';
       if (type === 'becomeprov') return '/dashboard-client.html#becomeprov';
+      if (type === 'pause' || type === 'pause_chosen') return '/dashboard-provider.html#bids';
+      if (type === 'pause_ask') return '/dashboard-client.html#detail/' + refId;
       if (type === 'message') return '/dashboard-client.html#messages';
       if (type === 'bid' || type === 'bid_accepted' || type === 'bid_rejected') return '/dashboard-provider.html#bids';
       if (type === 'new_request') return '/dashboard-provider.html';
@@ -2457,7 +2464,7 @@ async function runReminders(){
     const r1 = await pool.query(
       `SELECT r.id, r.client_id, r.title, COUNT(b.id) AS bids
        FROM requests r JOIN bids b ON b.request_id=r.id
-       WHERE r.status='open' AND r.assigned_provider_id IS NULL
+       WHERE r.status='open' AND r.assigned_provider_id IS NULL AND r.paused_at IS NULL
          AND r.created_at <= NOW() - ($1 || ' days')::interval
        GROUP BY r.id, r.client_id, r.title HAVING COUNT(b.id) > 0`, [String(dOffers)]);
     for(const x of r1.rows){
@@ -2528,8 +2535,8 @@ async function runReminders(){
       // الإغلاق الفعلي
       const cl = await pool.query(
         `UPDATE requests SET status='closed_auto', closed_at=NOW(), close_auto_kind='default', close_auto_days=$2
-         WHERE status='open' AND assigned_provider_id IS NULL AND close_at IS NULL
-           AND created_at <= NOW() - ($1 || ' days')::interval
+         WHERE status='open' AND assigned_provider_id IS NULL AND close_at IS NULL AND paused_at IS NULL
+           AND created_at + make_interval(secs => COALESCE(paused_total_sec,0)) <= NOW() - ($1 || ' days')::interval
          RETURNING id, client_id, title`, [String(closeDays), closeDays]);
       for(const x of cl.rows){
         await _notifyClosedWithOffers(x, `أُغلق "${eEsc(x.title)}" تلقائياً لعدم اختيار عرض خلال المدة`);
@@ -2542,7 +2549,7 @@ async function runReminders(){
       const clC = await pool.query(
         `UPDATE requests SET status='closed_auto', closed_at=NOW(), close_auto_kind=COALESCE(close_set_by,'client'),
              close_auto_days=GREATEST(1, ROUND(EXTRACT(EPOCH FROM (close_at - created_at))/86400))::int
-         WHERE status='open' AND assigned_provider_id IS NULL
+         WHERE status='open' AND assigned_provider_id IS NULL AND paused_at IS NULL
            AND close_at IS NOT NULL AND close_at <= NOW()
          RETURNING id, client_id, title`);
       for(const x of clC.rows){
@@ -3143,6 +3150,8 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_state VARCHAR(12)`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS notify_scope VARCHAR(10)`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS token_ver INTEGER DEFAULT 0`);
+      for (const c of ['paused_at TIMESTAMP','paused_until TIMESTAMP','pause_bid_id INTEGER','pause_asked_at TIMESTAMP','paused_total_sec INTEGER DEFAULT 0'])
+        await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS ${c}`);
       // وقت النشر الفعلي (أول ما يصير «مفتوح») — المشروع اللي انعدّل وانعتمد بعد يومين يطلع للمزوّدين كجديد
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS published_at TIMESTAMP`);
       try { const _np = (await pool.query(`SELECT COUNT(*)::int n FROM requests WHERE published_at IS NULL`)).rows[0].n;
@@ -4658,7 +4667,9 @@ app.get('/api/provider/bids', auth, async (req, res) => {
       CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
       ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted') as contact_unlocked
       , (${_REAL_BID_SQL}) AS real_bid, (${_ASKABLE_REQ_SQL}) AS askable_req, ak.id AS ask_id, ak.status AS ask_status, ak.sends AS ask_sends, ak.last_sent_at AS ask_last_at
+      , (r.status='open' AND r.paused_at IS NOT NULL) AS req_paused, (r.pause_bid_id = b.id) AS pause_chosen
       FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id LEFT JOIN bid_accept_asks ak ON ak.bid_id=b.id LEFT JOIN completion_claims cc ON cc.request_id=b.request_id AND cc.provider_id=b.provider_id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
+    r.rows.forEach(b => { if (b.req_paused && !b.pause_chosen) { b.client_phone = null; b.contact_unlocked = false; } });
     r.rows.forEach(b => { const st = _askState(b); b.ask_can = !!st.can; b.ask_why = st.why || null; b.ask_next_at = st.next_at || null; b.ask_left = Math.max(0, ASK_MAX_SENDS - (b.ask_sends||0)); delete b.real_bid; delete b.askable_req; });
     // سجل فتح التواصل (أول مرة فقط لكل مزوّد+مشروع)
     try {
@@ -4846,7 +4857,9 @@ app.get('/api/requests', async (req, res) => {
     const params = [];
     // المشاريع الموجّهة لمزوّد محدد ما تظهر لغيره خلال المهلة
     { let _vid = 0; try { const _t = (req.headers.authorization||'').split(' ')[1]; if (_t) { const _p = jwt.verify(_t, JWT_SECRET); if (!_p.purpose) _vid = parseInt(_p.id)||0; } } catch(e){}
-      params.push(_vid); query += ` AND (COALESCE(r.invite_state,'') <> 'exclusive' OR r.invited_provider_id=$${params.length} OR r.client_id=$${params.length})`; }
+      params.push(_vid); query += ` AND (COALESCE(r.invite_state,'') <> 'exclusive' OR r.invited_provider_id=$${params.length} OR r.client_id=$${params.length})`;
+      // المشاريع الموقوفة مؤقتاً (صاحبها يتفاوض) ما تطلع للمزوّدين
+      query += ` AND (r.paused_at IS NULL OR r.status <> 'open' OR r.client_id=$${params.length})`; }
     if (status && status !== 'all') {
       if (status === 'open') { query += ` AND r.status='open'`; }
       else if (status === 'done') { query += ` AND r.status IN ('completed','in_progress','done')`; }
@@ -4883,9 +4896,15 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (['pending_review','review','needs_edit','rejected'].includes(row.status) && !(isOwner || isAdmin)) {
       return res.status(404).json({ message: 'غير موجود' });
     }
+    // إيقاف مؤقت: المزوّد المختار للتفاوض فقط يشوف الرقم
+    const _paused = row.status === 'open' && !!row.paused_at; let _pChosen = false;
+    if (_paused && uid && row.pause_bid_id) { try { _pChosen = (await pool.query('SELECT 1 FROM bids WHERE id=$1 AND provider_id=$2', [row.pause_bid_id, uid])).rows.length > 0; } catch(e) {} }
+    row.paused = _paused; row.pause_chosen = _pChosen;
+    if (_paused && (isOwner || isAdmin) && row.pause_bid_id) { try { const _pn = (await pool.query('SELECT b.provider_id, COALESCE(u.business_name,u.name) AS nm FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.id=$1', [row.pause_bid_id])).rows[0]; if (_pn) { row.pause_with_name = _pn.nm; row.pause_with_provider = _pn.provider_id; } } catch(e) {} }
+    if (!(isOwner || isAdmin)) delete row.pause_bid_id;
     // فتح التواصل لمزوّد قدّم عرضاً حقيقياً (سعر + تفاصيل كافية أو ملف مرفق)
     let isRealBidder = false;
-    if (uid && !isOwner && !isAdmin) {
+    if (uid && !isOwner && !isAdmin && !(_paused && !_pChosen)) {
       try {
         const rb = await pool.query(`SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2 AND price IS NOT NULL AND price>0 AND (COALESCE(price_unit,'total')<>'total' OR price>=50) AND (char_length(COALESCE(note,''))>=25 OR attachment_url IS NOT NULL) AND COALESCE(hold_state,'') NOT IN ('held','rejected') ORDER BY created_at DESC LIMIT 1`, [id, uid]);
         if (rb.rows.length) {
@@ -5497,6 +5516,8 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       if (attUrl === null) return res.status(400).json({ message: 'تعذّر رفع الملف — تأكد أنه صورة أو PDF وأصغر من 10MB' });
     }
     price = parseInt(Math.round(parseFloat(price))); days = parseInt(days);
+    try { const _pz = (await pool.query(`SELECT r.paused_at, r.status, (SELECT 1 FROM bids WHERE request_id=r.id AND provider_id=$2 LIMIT 1) AS mine FROM requests r WHERE r.id=$1`, [requestId, req.user.id])).rows[0];
+      if (_pz && _pz.paused_at && _pz.status === 'open' && !_pz.mine) return res.status(400).json({ message: '⏸️ صاحب المشروع يتفاوض حالياً مع أحد المزوّدين — المشروع ما يستقبل عروض جديدة الحين. لو رجع يوصلك إشعار.' }); } catch(e) {}
     if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
     if (!Number.isFinite(days)||days<=0) return res.status(400).json({ message: 'المدة غير صحيحة' });
     if (priceUnit==='total' && price < BID_MIN_TOTAL) return res.status(400).json({ code:'price_too_low', message: _bidMinMsg() });
@@ -5822,7 +5843,8 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       // مفتوح، أو مغلق (تلقائياً أو من العميل) خلال مهلة ${ACCEPT_AFTER_CLOSE_DAYS} يوم من الإغلاق — العميل يقدر يختار من العروض الموجودة
       const lock = await client.query(
         `UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW(),
-             close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
+             close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL,
+             paused_at=NULL, paused_until=NULL, pause_asked_at=NULL
          WHERE id=$2 AND assigned_provider_id IS NULL
            AND ( status NOT IN ('completed','cancelled','closed_auto','expired','closed','rejected','pending_review','review','needs_edit')
               OR ( status IN ('closed_auto','expired','closed')
@@ -6142,7 +6164,7 @@ async function _unlockReviewNudge(){
 // العميل الصامت فعلاً: جاته عروض، ما فتحها، وما أحد من المزوّدين أخذ رقمه
 //   اليوم 2: إشعار + إيميل بالأرقام · اليوم 10: «بينقفل بعد 4 أيام» · اليوم 14: إقفال تلقائي (العميل ما تفاعل)
 // أي فتح للعروض أو فتح رقمه من مزوّد يوقف التسلسل تلقائياً
-const SILENT_SQL = `r.status='open' AND r.assigned_provider_id IS NULL AND (r.category IS DISTINCT FROM 'direct')
+const SILENT_SQL = `r.status='open' AND r.assigned_provider_id IS NULL AND r.paused_at IS NULL AND (r.category IS DISTINCT FROM 'direct')
   AND EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND COALESCE(b.hold_state,'') NOT IN ('held','rejected'))
   AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.seen_at IS NOT NULL)
   AND NOT EXISTS (SELECT 1 FROM contact_unlocks cu WHERE cu.request_id=r.id)`;
@@ -9654,6 +9676,91 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// ═══ إيقاف استقبال العروض مؤقتاً (صاحب المشروع يتفاوض مع مزوّد) ═══
+function _pauseDateAr(d){ try { return new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory', { weekday:'long', day:'numeric', month:'long', timeZone:'Asia/Riyadh' }); } catch(e) { return ''; } }
+async function _pauseNotifyBidders(rq, kind){
+  // kind: 'paused' | 'resumed'
+  const bs = (await pool.query(`SELECT DISTINCT ON (provider_id) id, provider_id FROM bids WHERE request_id=$1 AND COALESCE(status,'pending') NOT IN ('rejected','withdrawn') ORDER BY provider_id, id`, [rq.id])).rows;
+  for (const b of bs) {
+    try {
+      if (kind === 'paused') {
+        if (rq.pause_bid_id && b.id === rq.pause_bid_id) {
+          await notify(b.provider_id, '✅ صاحب المشروع اختارك للتفاوض!', `«${rq.title}» — وقّف استقبال العروض عشانك. تواصل معه واتفقوا على التفاصيل.`, 'pause_chosen', rq.id);
+        } else {
+          await notify(b.provider_id, '⏸️ صاحب المشروع يتفاوض حالياً مع أحد المزوّدين', `«${rq.title}» — نرجو عدم التواصل معه خلال هالفترة. لو ما تم الاتفاق يرجع المشروع ويوصلك إشعار على طول.`, 'pause', rq.id);
+        }
+      } else {
+        await notify(b.provider_id, '🔄 رجع المشروع يستقبل عروض', `«${rq.title}» — صاحب المشروع ما اتفق، والمشروع مفتوح من جديد. تقدر تتواصل معه أو تحسّن عرضك.`, 'pause', rq.id);
+      }
+    } catch(e) {}
+  }
+}
+async function _pauseResume(id, by){
+  // يرجّع المشروع: يمدّد مدته بمقدار الإيقاف، ويطلع للمزوّدين كجديد
+  const r = (await pool.query(`UPDATE requests SET
+      close_at = CASE WHEN close_at IS NOT NULL THEN close_at + (NOW() - paused_at) ELSE close_at END,
+      paused_total_sec = COALESCE(paused_total_sec,0) + CASE WHEN close_at IS NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (NOW() - paused_at)))::int ELSE 0 END,
+      paused_at = NULL, paused_until = NULL, pause_bid_id = NULL, pause_asked_at = NULL, published_at = NOW()
+    WHERE id=$1 AND paused_at IS NOT NULL RETURNING id, title, client_id`, [id])).rows[0];
+  if (!r) return null;
+  try { await _pauseNotifyBidders({ id: r.id, title: r.title }, 'resumed'); } catch(e) {}
+  console.log('[pause] رجع المشروع', id, by || '');
+  return r;
+}
+app.post('/api/requests/:id/pause', auth, rateLimiter(20, 600000), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rq = (await pool.query('SELECT id, client_id, title, status, assigned_provider_id, paused_at FROM requests WHERE id=$1', [id])).rows[0];
+    if (!rq || (rq.client_id !== req.user.id && req.user.role !== 'admin')) return res.status(404).json({ message: 'غير موجود' });
+    if (rq.status !== 'open' || rq.assigned_provider_id) return res.status(400).json({ message: 'المشروع مو مفتوح' });
+    const days = [3, 7, 0].includes(parseInt(req.body.days)) ? parseInt(req.body.days) : 7;
+    let bidId = parseInt(req.body.bid_id) || null;
+    if (bidId) { const ok = (await pool.query('SELECT 1 FROM bids WHERE id=$1 AND request_id=$2', [bidId, id])).rows.length; if (!ok) bidId = null; }
+    if (rq.paused_at) {
+      // تمديد / تغيير: نحدّث المدة والمزوّد بدون ما نعيد عدّاد الإيقاف
+      await pool.query(`UPDATE requests SET paused_until = CASE WHEN $2::int > 0 THEN NOW() + ($2 || ' days')::interval ELSE NULL END, pause_asked_at = NULL, pause_bid_id = COALESCE($3, pause_bid_id) WHERE id=$1`, [id, days, bidId]);
+      return res.json({ ok: true, extended: true });
+    }
+    const u = (await pool.query(`UPDATE requests SET paused_at = NOW(), paused_until = CASE WHEN $2::int > 0 THEN NOW() + ($2 || ' days')::interval ELSE NULL END, pause_bid_id = $3, pause_asked_at = NULL
+      WHERE id=$1 AND paused_at IS NULL RETURNING id, title, pause_bid_id, paused_until`, [id, days, bidId])).rows[0];
+    if (u) _pauseNotifyBidders(u, 'paused').catch(()=>{});
+    res.json({ ok: true, paused_until: u && u.paused_until });
+  } catch(e) { console.error('/pause:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.post('/api/requests/:id/resume', auth, rateLimiter(20, 600000), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rq = (await pool.query('SELECT client_id FROM requests WHERE id=$1', [id])).rows[0];
+    if (!rq || (rq.client_id !== req.user.id && req.user.role !== 'admin')) return res.status(404).json({ message: 'غير موجود' });
+    const r = await _pauseResume(id, req.user.role === 'admin' ? 'admin' : 'client');
+    res.json({ ok: !!r });
+  } catch(e) { console.error('/resume:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+// نهاية المدة: نسأل صاحب المشروع «كيف صار التفاوض؟» — ولو ما ردّ خلال يومين يرجع المشروع لحاله
+async function runPauseJob(){
+  try {
+    const ask = await pool.query(`SELECT r.id, r.client_id, r.title, r.pause_bid_id, COALESCE(p.business_name, p.name) AS pnm FROM requests r
+        LEFT JOIN bids b ON b.id = r.pause_bid_id LEFT JOIN users p ON p.id = b.provider_id
+      WHERE r.status='open' AND r.paused_at IS NOT NULL AND r.pause_asked_at IS NULL
+        AND ((r.paused_until IS NOT NULL AND r.paused_until <= NOW()) OR (r.paused_until IS NULL AND r.paused_at <= NOW() - INTERVAL '14 days')) LIMIT 50`);
+    for (const x of ask.rows) {
+      const c = await pool.query('UPDATE requests SET pause_asked_at=NOW() WHERE id=$1 AND pause_asked_at IS NULL RETURNING id', [x.id]); if (!c.rows.length) continue;
+      const t = 'كيف صار التفاوض' + (x.pnm ? ' مع ' + x.pnm : '') + '؟ 🤝';
+      const b = `خلص وقت الإيقاف المؤقت لمشروعك «${x.title}». اتفقتوا؟ أو نرجّع المشروع يستقبل عروض؟`;
+      await notifyWithEmail(x.client_id, t, b, 'pause_ask', x.id, t,
+        `<p>خلص وقت الإيقاف المؤقت لمشروعك «<strong>${eEsc(x.title)}</strong>».</p><p>لو اتفقت${x.pnm ? ' مع <strong>' + eEsc(x.pnm) + '</strong>' : ''}، رسّي المشروع عليه من صفحة مشروعك. ولو ما اتفقتوا، رجّع المشروع يستقبل عروض.</p><p style="color:#64748b;font-size:13px">لو ما ردّيت خلال يومين، نرجّع المشروع يستقبل عروض تلقائياً.</p>`,
+        'افتح مشروعي', await _magicUrl(x.client_id, '/dashboard-client.html#detail/' + x.id)).catch(()=>{});
+    }
+    // ما ردّ خلال يومين (للإيقاف المحدد بمدة فقط) → يرجع لحاله
+    const back = await pool.query(`SELECT id, client_id, title FROM requests WHERE status='open' AND paused_at IS NOT NULL AND paused_until IS NOT NULL AND pause_asked_at <= NOW() - INTERVAL '2 days' LIMIT 50`);
+    for (const x of back.rows) {
+      const r = await _pauseResume(x.id, 'auto');
+      if (r) await notify(x.client_id, '🔄 رجّعنا مشروعك يستقبل عروض', `«${x.title}» رجع مفتوح للمزوّدين — تقدر توقفه مرة ثانية متى ما احتجت.`, 'pause_ask', x.id).catch(()=>{});
+    }
+  } catch(e) { console.error('runPauseJob:', e.message); }
+}
+setInterval(() => _jobLock('pause', runPauseJob), 15 * 60 * 1000);
+setTimeout(() => _jobLock('pause', runPauseJob), 90000);
 app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);

@@ -1226,7 +1226,11 @@ function _renderBids(list){
     if(isHeld)h+='<div class="rp-nx"><span class="rp-ic">⏳</span><span class="rp-tx">عرضك بانتظار موافقة الإدارة — بيظهر للعميل بعدها</span></div>';
     if(isHRej)h+='<div class="rp-nx bad"><span class="rp-ic">✕</span><span class="rp-tx">عرضك ما ظهر لصاحب المشروع'+(b.hold_reason?' — '+_esc(b.hold_reason):'')+'</span></div>';
     // الخطوة الجاية
-    if(_wn&&!isAcc){ h+='<div class="rp-nx bad"><span class="rp-ic">✏️</span><span class="rp-tx"><b>العرض يحتاج تعديل</b> — اذكر تفاصيل من وصف المشروع نفسه</span><button type="button" class="rp-bt red" onclick="_editBidById('+(parseInt(b.id)||0)+')">عدّل العرض</button></div>'; }
+    if(b.req_paused&&!isAcc&&!isRej){
+      if(b.pause_chosen) h+='<div class="pz-pv ok"><b>✅ صاحب المشروع اختارك للتفاوض!</b><span>وقّف استقبال العروض عشانك — تواصل معه واتفقوا على التفاصيل.</span></div>';
+      else h+='<div class="pz-pv"><b>⏸️ صاحب المشروع يتفاوض حالياً مع أحد المزوّدين.</b><span>نرجو عدم التواصل معه خلال هالفترة. لو ما تم الاتفاق، يرجع المشروع يستقبل عروض ويوصلك إشعار على طول.</span></div>';
+    }
+    else if(_wn&&!isAcc){ h+='<div class="rp-nx bad"><span class="rp-ic">✏️</span><span class="rp-tx"><b>العرض يحتاج تعديل</b> — اذكر تفاصيل من وصف المشروع نفسه</span><button type="button" class="rp-bt red" onclick="_editBidById('+(parseInt(b.id)||0)+')">عدّل العرض</button></div>'; }
     else if(isAcc){
       h+='<div class="rp-nx"><span class="rp-ic">🔨</span><span class="rp-tx">'+(rs==='completed'?'المشروع مكتمل':'اعتمدك '+_esc(b.client_name||'العميل')+' — تواصل وابدأ')+'</span></div>';
       if(proj&&typeof _clmProjHtml==='function')h+=_clmProjHtml(proj);
@@ -1235,7 +1239,7 @@ function _renderBids(list){
       if(wa) h+='<div class="rp-nx"><span class="rp-ic">'+(b.seen_at?'👁':'📨')+'</span><span class="rp-tx">'+(b.seen_at?'العميل شاف عرضك':'العميل ما شاف عرضك للحين')+' — كلّمه واتساب من الزر تحت</span></div>';
       else h+='<div class="rp-nx"><span class="rp-ic">🔒</span><span class="rp-tx">رقم العميل يظهر لما يكون عرضك فيه سعر ووصف واضح (25 حرف أو أكثر) أو مرفق</span><button type="button" class="rp-bt ghost" onclick="_editBidById('+(parseInt(b.id)||0)+')">كمّل العرض</button></div>';
     }
-    h+=_askBlock(b);
+    if(!(b.req_paused&&!b.pause_chosen))h+=_askBlock(b);
     if(b.note)h+='<div class="wk-note"><div class="wk-nt fmt-text">'+fmtText(b.note)+'</div><button type="button" class="wk-more" onclick="var n=this.previousElementSibling;n.classList.toggle(&quot;open&quot;);this.textContent=n.classList.contains(&quot;open&quot;)?&quot;أخفِ ‹&quot;:&quot;اقرأ رسالة العرض ‹&quot;">اقرأ رسالة العرض ‹</button></div>';
     // أزرار واضحة بأيقونات: واتساب · اتصال · محادثة · المشروع · تعديل
     var I=function(p){return '<svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">'+p+'</svg>';};
@@ -2644,7 +2648,7 @@ function _nfOpenP(id){
   if(t==='message'||t==='admin_message'){ gotoPage('chat'); return; }
   if(t==='saai'){ gotoPage('saai'); return; }
   if(t==='review'||t==='review_reply'){ gotoPage('reviews'); return; }
-  if(k==='offers'||t==='accept_ask'){ gotoPage('works'); return; }
+  if(k==='offers'||t==='accept_ask'||t==='pause'||t==='pause_chosen'){ gotoPage('works'); return; }
   if(n.ref_id&&(t==='new_request'||t==='request'||t==='new_question'||t==='question_answered')&&typeof _viewProj==='function'){ _viewProj(n.ref_id); return; }
 }
 
