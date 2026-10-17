@@ -2025,6 +2025,9 @@ function _prExtras(r){
   var h=[];
   var ex=Array.isArray(r.extra_categories)?r.extra_categories.filter(function(c){return c&&c!==r.category;}):[];
   if(r.category==='أخرى'&&r.category_other) h.push('<span class="pr-tag">الخدمة: '+esc(r.category_other)+'</span>');
+  var _PS={has:['📐 عنده مخطط','#dbeafe','#1d4ed8'],none:['🔧 قال: ما يحتاج مخطط','#f1f5f9','#475569']}; if(_PS[r.plan_status]) h.push('<span class="pr-tag" style="background:'+_PS[r.plan_status][1]+';color:'+_PS[r.plan_status][2]+'">'+_PS[r.plan_status][0]+'</span>');
+  var _xd=r.exec_draft; if(typeof _xd==='string'){ try{_xd=JSON.parse(_xd);}catch(e){_xd=null;} } if(_xd&&_xd.title) h.push('<span class="pr-tag" style="background:#ede9fe;color:#6d28d9" title="ينحفظ له ونذكّره يكمّله لما يجهز المخطط">🏛️ بدأ بالمخطط — مشروع التنفيذ محفوظ: «'+esc(String(_xd.title).slice(0,60))+'»</span>');
+  if(r.pledged_at) h.push('<span class="pr-tag" style="background:#ffedd5;color:#9a3412">✓ تعهّد بالجدية</span>');
   if(r.geo_lat&&r.geo_lng) h.push('<a class="pr-tag" style="background:#ecfdf5;color:#047857;text-decoration:none" href="https://www.google.com/maps?q='+Number(r.geo_lat)+','+Number(r.geo_lng)+'" target="_blank" rel="noopener">📍 الموقع على الخريطة ↗</a>');
   else h.push('<span class="pr-tag" style="background:#fffbeb;color:#92400e">📍 ما حدّد الموقع على الخريطة</span>');
   return '<div style="display:flex;flex-wrap:wrap;gap:8px">'+h.join('')+'</div>';

@@ -188,7 +188,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/plan-gate.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -754,7 +754,7 @@ app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dash
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 // رابط الدخول القصير: /m/الرمز → صفحة الدخول السحري
 // ?n= وجهة بعد الدخول (صفحات اللوحات فقط)
-function _magicNext(n){ n = String(n||''); return (/^\/(dashboard-client|dashboard-provider)\.html(#[a-z]+(\/\d+)?)?$/.test(n) || /^\/new\.html\?draft=[a-f0-9]{32}$/.test(n)) ? n : ''; }
+function _magicNext(n){ n = String(n||''); return (/^\/(dashboard-client|dashboard-provider)\.html(#[a-z]+(\/\d+)?)?$/.test(n) || /^\/new\.html\?draft=[a-f0-9]{32}$/.test(n) || /^\/new\.html\?exec=\d{1,10}$/.test(n)) ? n : ''; }
 app.get('/m/:token',               (req, res) => { const n = _magicNext(req.query.n); res.redirect(302, '/auth.html?magic=' + encodeURIComponent(req.params.token) + (n ? '&next=' + encodeURIComponent(n) : '')); });
 // رابط دخول مباشر لصفحة محددة (للتذكيرات)
 async function _magicUrl(uid, next){ try { const t = await getMagicToken(uid); const n = _magicNext(next); return SITE_URL + '/m/' + t + (n ? '?n=' + encodeURIComponent(n) : ''); } catch(e){ return SITE_URL + (next||''); } }
@@ -2063,6 +2063,7 @@ async function notify(userId, title, body, type, refId, opts) {
       if (type === 'becomeprov') return '/dashboard-client.html#becomeprov';
       if (type === 'pause' || type === 'pause_chosen') return '/dashboard-provider.html#bids';
       if (type === 'pause_ask' || type === 'req_dup') return '/dashboard-client.html#detail/' + refId;
+      if (type === 'exec_draft') return '/new.html?exec=' + refId;
       if (type === 'req_updated') return '/dashboard-provider.html#bids';
       if (type === 'message') return '/dashboard-client.html#messages';
       if (type === 'bid' || type === 'bid_accepted' || type === 'bid_rejected') return '/dashboard-provider.html#bids';
@@ -3161,6 +3162,11 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS review_nudged_at TIMESTAMP`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS silent_stage SMALLINT DEFAULT 0`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS silent_at TIMESTAMP`);
+      // النشر الجاد: المخطط (has/design/none) + التعهّد + مشروع التنفيذ المحفوظ مع طلب المخطط
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS plan_status VARCHAR(8)`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS pledged_at TIMESTAMP`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS exec_draft JSONB`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS exec_remind_at TIMESTAMP`);
       // تتبّع الإشعارات: الإيميل (email_log) + إشعار التطبيق + الفتح
       await _mig(`CREATE TABLE IF NOT EXISTS ntrack (id SERIAL PRIMARY KEY, nid INTEGER, user_id INTEGER, kind VARCHAR(30), ref_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), email_id INTEGER, push_n SMALLINT DEFAULT 0, push_ok SMALLINT DEFAULT 0, opened_at TIMESTAMP, open_via VARCHAR(8))`);
       await _mig(`CREATE INDEX IF NOT EXISTS ntrack_kind ON ntrack(kind, created_at)`);
@@ -4883,7 +4889,7 @@ app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;
     // يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
-    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.extra_categories,r.category_other,r.city,r.budget_max,r.deadline,r.status,r.client_id,COALESCE(r.published_at,r.created_at) AS created_at,r.created_at AS written_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
+    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.extra_categories,r.category_other,r.city,r.budget_max,r.deadline,r.status,r.client_id,COALESCE(r.published_at,r.created_at) AS created_at,r.created_at AS written_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail,(r.plan_status='has' OR (jsonb_typeof(r.attachments)='array' AND jsonb_array_length(r.attachments)>0)) AS has_plan FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
     const params = [];
     // المشاريع الموجّهة لمزوّد محدد ما تظهر لغيره خلال المهلة
     { let _vid = 0; try { const _t = (req.headers.authorization||'').split(' ')[1]; if (_t) { const _p = jwt.verify(_t, JWT_SECRET); if (!_p.purpose) _vid = parseInt(_p.id)||0; } } catch(e){}
@@ -5112,6 +5118,13 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     try { const _ex = _normExtras(req.body.extra_categories, category); if (_ex && _ex.length && r.rows[0]) { await pool.query('UPDATE requests SET extra_categories=$1 WHERE id=$2', [_ex, r.rows[0].id]); r.rows[0].extra_categories = _ex; } } catch(e){}
     const newReq = r.rows[0];
     if (newReq) _draftPosted(req.user.id, req.body.draft_did, newReq.id);
+    if (newReq) { try {
+      let _ps = ['has','design','none'].includes(req.body.plan_status) ? req.body.plan_status : null;
+      if (_ps === 'has' && !(processedAttachments && processedAttachments.length)) _ps = null;   // قال عنده مخطط بس الملف ما انرفع
+      let _ex = null; const E = req.body.exec_draft;
+      if (E && typeof E === 'object' && !Array.isArray(E)) { _ex = {}; ['title','description','category','category_other','city','district','deadline'].forEach(k => { if (E[k] != null && E[k] !== '') _ex[k] = String(E[k]).slice(0, k === 'description' ? 5000 : 200); }); if (+E.budget_max > 0) _ex.budget_max = +E.budget_max; if (Array.isArray(E.extra_categories)) _ex.extra_categories = E.extra_categories.slice(0, 5).map(x => String(x).slice(0, 80)); if (+E.geo_lat && +E.geo_lng) { _ex.geo_lat = +E.geo_lat; _ex.geo_lng = +E.geo_lng; } if (!_ex.title) _ex = null; }
+      if (_ps || _ex || req.body.pledge) await pool.query('UPDATE requests SET plan_status=$1, exec_draft=$2::jsonb, pledged_at=CASE WHEN $3 THEN NOW() ELSE NULL END WHERE id=$4', [_ps, _ex ? JSON.stringify(_ex) : null, !!req.body.pledge, newReq.id]);
+    } catch(e) { console.error('plan save:', e.message); } }
     if (newReq && _dupIntent) { try { const _h = parseInt(req.body.dup_hint) || null; await pool.query('UPDATE requests SET dup_intent=$1, dup_hint=$2 WHERE id=$3', [_dupIntent, _h, newReq.id]); if (req.body.draft_did) await pool.query('UPDATE post_drafts SET request_id=$1 WHERE did=$2', [newReq.id, String(req.body.draft_did).slice(0,40)]); } catch(e){} }
     // دعوة مزوّد مباشرة (من صفحته): يوصله أول بعد اعتماد المشروع
     try {
@@ -9599,9 +9612,33 @@ app.patch('/api/admin/requests/:id/quick', requirePermission('requests.edit'), e
     res.json(Object.assign({}, r.rows[0], { _dropped: dropped }));
   } catch(e) { console.error('/quick:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
+// ═══ مشروع التنفيذ المحفوظ مع طلب المخطط ═══
+app.get('/api/requests/:id/exec-draft', auth, async (req, res) => {
+  try {
+    const r = (await pool.query('SELECT client_id, exec_draft FROM requests WHERE id=$1', [parseInt(req.params.id)])).rows[0];
+    if (!r || r.client_id !== req.user.id || !r.exec_draft) return res.status(404).json({ message: 'غير موجود' });
+    res.json({ id: parseInt(req.params.id), draft: r.exec_draft });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// لما يرسّي طلب المخطط على مكتب (أو بعد 3 أسابيع) نذكّره يكمّل مشروع التنفيذ
+async function runExecReminders(){
+  try {
+    const L = (await pool.query(`SELECT r.id, r.client_id, r.exec_draft->>'title' AS t FROM requests r
+      WHERE r.exec_draft IS NOT NULL AND r.exec_remind_at IS NULL AND r.dup_of IS NULL AND r.status NOT IN ('rejected','pending_review','review','needs_edit')
+        AND (r.assigned_provider_id IS NOT NULL OR r.status IN ('in_progress','completed') OR COALESCE(r.published_at, r.created_at) <= NOW() - INTERVAL '21 days')
+        AND NOT EXISTS (SELECT 1 FROM requests x WHERE x.client_id=r.client_id AND x.id>r.id AND x.title=(r.exec_draft->>'title')) LIMIT 30`)).rows;
+    for (const x of L) {
+      const c = await pool.query('UPDATE requests SET exec_remind_at=NOW() WHERE id=$1 AND exec_remind_at IS NULL RETURNING id', [x.id]); if (!c.rows.length) continue;
+      const t = '📐 جهز مخططك؟ كمّل مشروع التنفيذ';
+      const b = `مشروعك «${x.t || 'التنفيذ'}» محفوظ — ارفع المخطط وانشره عشان تجيك عروض التنفيذ.`;
+      await notifyWithEmail(x.client_id, t, b, 'exec_draft', x.id, t, `<p>مرحباً {name}،</p><p>مشروع التنفيذ «<strong>${eEsc(x.t || '')}</strong>» محفوظ عندك من وقت ما طلبت المخطط.</p><p>إذا جهز المخطط، ارفعه وانشر المشروع — وتجيك عروض التنفيذ بأسعار دقيقة.</p>`, 'كمّل مشروع التنفيذ', await _magicUrl(x.client_id, '/new.html?exec=' + x.id)).catch(()=>{});
+    }
+  } catch(e) { console.error('runExecReminders:', e.message); }
+}
+setInterval(() => _jobLock('exec_remind', runExecReminders), 60 * 60 * 1000);
 // ═══ إحصائيات الإشعارات: مين وصله الإيميل/الإشعار، مين فتح، مين تفاعل ═══
 const _NT_LBL = { new_project:'🆕 مشروع جديد يناسبك', new_project_rem:'⏰ تذكير: فتح وما قدّم', req_updated:'📝 صاحب المشروع حدّث التفاصيل', pause:'⏸️ إيقاف مؤقت (للمزوّدين)', pause_chosen:'✅ اختارك للتفاوض', pause_ask:'🤝 كيف صار التفاوض؟', req_dup:'📂 مشروعك مكرر',
-  bid:'💼 العروض', bid_accepted:'🎉 العرض انقبل', bid_rejected:'العرض ما انقبل', request:'📋 تحديثات المشروع', request_published:'📥 استلمنا مشروعك', request_closed:'🔒 المشروع انقفل', message:'💬 رسالة جديدة', admin_message:'📣 رسالة من الإدارة',
+  exec_draft:'📐 كمّل مشروع التنفيذ', bid:'💼 العروض', bid_accepted:'🎉 العرض انقبل', bid_rejected:'العرض ما انقبل', request:'📋 تحديثات المشروع', request_published:'📥 استلمنا مشروعك', request_closed:'🔒 المشروع انقفل', message:'💬 رسالة جديدة', admin_message:'📣 رسالة من الإدارة',
   new_request:'⭐ طلب مباشر', saai:'💰 السعي', saai_q:'💰 سؤال السعي', claim:'🧾 المطالبات', reminder:'⏰ تذكير', bidwatch:'👀 متابعة العروض', accept_ask:'🤝 هل اتفقتوا؟', new_question:'❓ سؤال جديد', question_answered:'💡 جواب سؤال',
   negotiate:'🤝 تفاوض', completed:'🏁 اكتمل المشروع', review:'⭐ تقييم', close_help:'🙋 طلب مساعدة', becomeprov:'🛠 تفعيل مزوّد', askpenalty:'⚠️ تنبيه' };
 const _NT_PROV = ['new_project','new_project_rem','req_updated','pause','pause_chosen'];

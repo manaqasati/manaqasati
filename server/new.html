@@ -78,6 +78,21 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
 .bs{border:0;background:#e7eefb;color:#1e3a8a;border-radius:13px;padding:13px 20px;font-weight:800;font-size:14px;min-height:50px;cursor:pointer}
 .lnk{background:none;border:0;color:#1d4ed8;font-weight:800;font-size:13px;cursor:pointer;padding:6px;text-align:center;text-decoration:none;display:block}
 .terms{text-align:center;font-size:12px;font-weight:700;color:#5b6b85}
+.pq-w{display:flex;flex-direction:column;gap:9px}
+.pq{display:flex;gap:11px;align-items:flex-start;background:#fff;border:1.5px solid #dbe5f5;border-radius:14px;padding:12px 13px;cursor:pointer;text-align:start;width:100%;font-family:inherit;color:inherit}
+.pq.on{border-color:#1d4ed8;background:#eff4ff;box-shadow:0 0 0 3px rgba(29,78,216,.1)}
+.pq .rd{width:18px;height:18px;border-radius:50%;border:2px solid #cbd5e1;flex-shrink:0;margin-top:9px;box-sizing:border-box}
+.pq.on .rd{border:6px solid #1d4ed8}
+.pq .ic{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.pq b{display:block;font-size:14.5px}.pq small{display:block;color:#5b6b85;font-weight:600;font-size:12.5px;line-height:1.7;margin-top:2px}
+.pq .bx{flex:1;min-width:0}
+.pf{display:flex;flex-direction:column;gap:6px;margin-top:9px}
+.pf .f{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #dbe5f5;border-radius:10px;padding:7px 9px;font-size:12.5px;font-weight:800}
+.pf .f span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf .f button{border:0;background:#fee2e2;color:#b91c1c;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:13px}
+.pf .up{border:1.5px dashed #93c5fd;border-radius:12px;padding:11px;text-align:center;color:#1d4ed8;font-weight:800;background:#fff;cursor:pointer;font-family:inherit;font-size:13.5px;width:100%}
+.pq-n{font-size:12px;font-weight:800;color:#6d28d9;margin-top:6px;line-height:1.7}
+.bp.pg-off{opacity:.45}
 .msg{display:none;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:800;line-height:1.8}
 .msg.on{display:block;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c}
 .msg button{background:none;border:0;color:#1d4ed8;font-weight:900;font-size:13px;text-decoration:underline;cursor:pointer;padding:0}
@@ -93,6 +108,7 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
 </style>
 <script src="/track.js?v=3"></script>
 <script src="/catpick.js?v=1" defer></script>
+<script src="/plan-gate.js?v=1"></script>
 </head>
 <body>
 <header class="top"><div class="in"><button type="button" class="bk" onclick="_nwBack()" aria-label="رجوع"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>رجوع</button><a class="lg" href="/">مناقصة</a><span class="tt">مشروع جديد</span></div></header>
@@ -144,9 +160,20 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
         <div class="err" id="e-desc"></div>
       </div>
       <div>
-        <span class="lbl">صور أو مخطط <small>(اختياري · حتى 5)</small></span>
+        <span class="lbl"><span id="img-lbl">صور أو مخطط</span> <small>(اختياري · حتى 5)</small></span>
         <div class="imgs" id="n-imgs"></div>
         <input type="file" id="n-file" accept="image/*" multiple style="display:none">
+      </div>
+      <div id="plan-q" style="display:none">
+        <span class="lbl big">📐 عندك مخطط للمشروع؟</span>
+        <div class="hint" id="plan-sub" style="margin:-4px 0 9px"></div>
+        <div class="pq-w" id="pq-w">
+          <div class="pq" data-v="has" role="radio" tabindex="0"><span class="rd"></span><span class="ic" style="background:#dbeafe">📐</span><div class="bx"><b>نعم، عندي مخطط</b><small>ارفعه هنا — المزوّد يسعّر أدق ومشروعك يطلع عليه «فيه مخطط»</small><div class="pf" id="pf" style="display:none"></div></div></div>
+          <div class="pq" data-v="design" role="radio" tabindex="0"><span class="rd"></span><span class="ic" style="background:#ede9fe">🏛️</span><div class="bx"><b>لا، أبي مكتب هندسي يسويه لي</b><small>نرسل طلبك للمكاتب الهندسية وتجيك عروضهم</small><div class="pq-n" id="pq-dn" style="display:none">📌 مشروع التنفيذ ينحفظ لك — ونذكّرك تكمّله لما يجهز المخطط</div></div></div>
+          <div class="pq" data-v="none" role="radio" tabindex="0"><span class="rd"></span><span class="ic" style="background:#f1f5f9">🔧</span><div class="bx"><b>مشروع صغير ما يحتاج مخطط</b><small>مثل ترميم بسيط أو تعديل غرفة</small></div></div>
+        </div>
+        <input type="file" id="n-plan" accept=".pdf,.dwg,.dxf,.zip,.rar,image/*" multiple style="display:none">
+        <div class="err" id="e-plan"></div>
       </div>
       <div>
         <label class="lbl" for="n-budget">الميزانية التقريبية (ر.س) <small>(اختياري)</small></label>
@@ -174,6 +201,7 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
         <input type="date" id="n-deadline" class="inp">
         <div class="hint">موقعك الدقيق ما يظهر إلا للمزوّد اللي تختاره.</div>
       </div>
+      <div id="pledge-3"></div>
       <div class="msg" id="msg-3"></div>
     </div>
   </section>
@@ -208,9 +236,9 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
         <input type="password" id="a-pass" class="inp" dir="ltr" style="text-align:right" placeholder="6 أحرف أو أكثر" autocomplete="new-password" maxlength="100">
         <div class="err" id="e-pass"></div>
       </div>
+      <div id="pledge-4"></div>
       <div class="msg" id="msg-4"></div>
       <button type="button" class="bp" id="btn-pub">انشر مشروعي الآن</button>
-      <div class="terms">بالضغط على النشر توافق على <a href="/terms.html" target="_blank">الشروط والأحكام</a></div>
       <button type="button" class="lnk" id="btn-login">عندي حساب — تسجيل الدخول</button>
     </div>
   </section>
@@ -347,6 +375,43 @@ $('n-file').addEventListener('change',function(){
   });
 });
 
+// ── المخطط (لتخصصات البناء والترميم والتشطيبات…) ──
+var PLAN='', PFILES=[], PF_MAX=3, PF_MB=15;
+function planNeed(){ return !!(window.PlanGate&&PlanGate.need(catVal())); }
+function planPaint(){
+  var w=$('plan-q'); if(!w) return;
+  var need=planNeed(); w.style.display=need?'':'none';
+  var il=$('img-lbl'); if(il) il.textContent=need?'صور':'صور أو مخطط';
+  if(!need) return;
+  $('plan-sub').textContent='مشاريع «'+catVal()+'» تحتاج مخطط عشان تجيك أسعار دقيقة';
+  [].forEach.call(document.querySelectorAll('#pq-w .pq'),function(el){ var on=el.getAttribute('data-v')===PLAN; el.classList.toggle('on',on); el.setAttribute('aria-checked',on?'true':'false'); });
+  var pf=$('pf'); pf.style.display=PLAN==='has'?'':'none';
+  pf.innerHTML=PFILES.map(function(f,i){ return '<div class="f">📄 <span>'+esc(f.name)+'</span><button type="button" data-prm="'+i+'" aria-label="حذف">✕</button></div>'; }).join('')+(PFILES.length<PF_MAX?'<button type="button" class="up" data-pup>+ ارفع المخطط (PDF أو صورة أو DWG)</button>':'');
+  $('pq-dn').style.display=PLAN==='design'?'':'none';
+}
+$('pq-w').addEventListener('click',function(e){
+  var rm=e.target.closest('[data-prm]'); if(rm){ e.stopPropagation(); PFILES.splice(parseInt(rm.getAttribute('data-prm'),10),1); planPaint(); return; }
+  if(e.target.closest('[data-pup]')){ e.stopPropagation(); $('n-plan').click(); return; }
+  var q=e.target.closest('.pq'); if(!q) return;
+  PLAN=q.getAttribute('data-v'); fErr('e-plan',null,''); planPaint(); saveDraft();
+  if(PLAN==='has'&&!PFILES.length) $('n-plan').click();
+});
+$('pq-w').addEventListener('keydown',function(e){ if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('pq')){ e.preventDefault(); e.target.click(); } });
+$('n-plan').addEventListener('change',function(){
+  var files=[].slice.call(this.files||[]); this.value='';
+  files.slice(0,Math.max(0,PF_MAX-PFILES.length)).forEach(function(f){
+    if(!/\.(pdf|dwg|dxf|zip|rar|jpe?g|png|webp|heic)$/i.test(f.name||'')){ showToast('نوع الملف غير مدعوم — PDF أو صورة أو DWG','error'); return; }
+    if(f.size>PF_MB*1024*1024){ showToast('الملف أكبر من '+PF_MB+'MB','error'); return; }
+    var r=new FileReader(); r.onload=function(){ if(PFILES.length>=PF_MAX) return; PFILES.push({name:String(f.name).slice(0,120),data:r.result}); fErr('e-plan',null,''); planPaint(); renderStrength(); }; r.onerror=function(){ showToast('تعذّر قراءة الملف','error'); }; r.readAsDataURL(f);
+  });
+  if(files.length>PF_MAX) showToast('الحد '+PF_MAX+' ملفات','error');
+});
+// ── التعهّد (آخر خطوة) ──
+function pledgeId(){ return GUEST_UI?'pl4':'pl3'; }
+function pledgeBtn(){ return GUEST_UI?$('btn-pub'):$('btn-next'); }
+function pledgeSync(){ var b=pledgeBtn(); if(!b) return; var last=(GUEST_UI&&CUR===4)||(!GUEST_UI&&CUR===3); b.classList.toggle('pg-off',last&&!(window.PlanGate&&PlanGate.pledged(pledgeId()))); }
+(function(){ if(!window.PlanGate) return; var h=$(GUEST_UI?'pledge-4':'pledge-3'); if(!h) return; h.innerHTML=PlanGate.pledgeHTML(pledgeId()); PlanGate.pledgeBind(pledgeId(),pledgeSync); })();
+function pledgeOk(){ if(!window.PlanGate) return true; if(PlanGate.pledged(pledgeId())) return true; PlanGate.pledgeNudge(pledgeId()); showToast('أشّر على «مشروعي حقيقي وأنوي تنفيذه» عشان تنشر','error'); return false; }
 // ── قوة الطلب ──
 function renderStrength(){
   var desc=($('n-desc').value||'').trim(), bud=parseFloat(_dig($('n-budget').value))||0;
@@ -367,6 +432,7 @@ function _saveNow(){
   try{
     var o={};Object.keys(DFIELDS).forEach(function(k){var el=$(DFIELDS[k]);if(el&&el.value)o[k]=String(el.value).slice(0,4000);});
     try{ if(window._cpExtras){ var ex=window._cpExtras(); if(ex&&ex.length) o.ex=ex; } }catch(e){}
+    if(PLAN) o.pl=PLAN;
     localStorage.setItem(DKEY,JSON.stringify(o));
     _srvQ(o);
   }catch(e){}
@@ -409,8 +475,8 @@ function go(n,noPush){
   $('btn-next').textContent=nextLabel();
   $('nav').style.display=n===4?'none':'';
   if(n===4) renderSummary();
-  if(n===2) renderStrength();
-  renderProgress();
+  if(n===2){ renderStrength(); planPaint(); }
+  renderProgress(); pledgeSync();
   if(!noPush){ try{ history.pushState({s:n},'',location.href); }catch(e){} }
   try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
 }
@@ -441,6 +507,7 @@ function validate(step,focus){
     chk(fErr('e-desc','n-desc',!d?'اكتب وصف المطلوب':(d.length<15?'الوصف قصير — اكتب 15 حرف على الأقل':'')),'n-desc');
     var bv=_dig($('n-budget').value).replace(/[,\s٬]/g,'').trim();
     chk(fErr('e-budget','n-budget',(bv&&!/^\d+(\.\d+)?$/.test(bv))?'الميزانية لازم تكون رقم':''),'n-budget');
+    if(planNeed()) chk(fErr('e-plan',null,!PLAN?'اختر: عندك مخطط، أو تبي مكتب هندسي، أو ما يحتاج':(PLAN==='has'&&!PFILES.length?'ارفع المخطط — أو اختر خيار ثاني':'')),'plan-q');
   }
   if(step===3){
     chk(fErr('e-city','n-city',!$('n-city').value?'اختر المدينة':''),'n-city');
@@ -462,7 +529,7 @@ $('btn-next').addEventListener('click',function(){
   if(!validate(CUR,true)) return;
   if(CUR===1&&!_started){ _started=true; if(window.track){ try{track('StartPost');}catch(e){} } }
   saveDraft();
-  if(CUR===3&&!GUEST_UI){ submitAll(); return; }
+  if(CUR===3&&!GUEST_UI){ if(!pledgeOk()) return; submitAll(); return; }
   go(CUR+1);
 });
 $('btn-back').addEventListener('click',function(){
@@ -478,6 +545,8 @@ function renderSummary(){
   $('sum-t').textContent=($('n-title').value||'').trim();
   var parts=[catLabel(),$('n-city').value];
   if(IMGS.length) parts.push(IMGS.length===1?'صورة':(IMGS.length===2?'صورتين':IMGS.length+' صور'));
+  if(planNeed()&&PLAN==='has'&&PFILES.length) parts.push('📐 فيه مخطط');
+  if(planNeed()&&PLAN==='design') parts.push('🏛️ بنرسله للمكاتب الهندسية');
   $('sum-m').textContent=parts.filter(Boolean).join(' · ');
 }
 
@@ -493,7 +562,11 @@ function buildBody(){
   if(IMGS.length) body.images=IMGS.slice(0,MAX_IMGS);
   if(INVITE&&INVITE.id) body.invite_provider_id=parseInt(INVITE.id,10);
   try{ var _dd=localStorage.getItem('mnq_did'); if(_dd) body.draft_did=_dd; }catch(e){}
+  if(planNeed()&&PLAN){ body.plan_status=PLAN; if(PLAN==='has'&&PFILES.length) body.attachments=PFILES.map(function(f){return {name:f.name,data:f.data};}); }
+  body.pledge=!!(window.PlanGate&&PlanGate.pledged(pledgeId()));
   return body;
+}
+function postBody(){ var b=buildBody(); return (planNeed()&&PLAN==='design'&&window.PlanGate)?PlanGate.designBody(b):b;
 }
 function msgBox(){ return $(CUR===4?'msg-4':'msg-3'); }
 function showMsg(html){ var m=msgBox(); if(!m)return; m.innerHTML=html; m.classList.toggle('on',!!html); if(html){ try{m.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){} } }
@@ -511,6 +584,10 @@ function submitAll(){
   for(var s=1;s<=nSteps();s++){ if(!validate(s,false)){ if(s!==CUR) go(s); validate(s,true); return; } }
   if(TOKEN&&!isClient()){ showMsg('حسابك الحالي مو حساب عميل — لنشر مشروع استخدم حساب عميل.'); return; }
   showMsg('');
+  if(planNeed()&&PLAN==='design'&&window.PlanGate&&!submitAll._dOk){
+    PlanGate.designAsk(buildBody()).then(function(ok){ if(ok){ submitAll._dOk=1; submitAll(); submitAll._dOk=0; } });
+    return;
+  }
   setBusy(true);
   var p=TOKEN?Promise.resolve(TOKEN):register();
   p.then(function(tok){ return postReq(tok); })
@@ -562,7 +639,7 @@ function _dupAsk(d,cb){
 }
 var _dupCh=null;
 function postReq(tok){
-  var _b=buildBody(); _b.dup_check=1; if(_dupCh){ _b.dup_intent=_dupCh.intent; _b.dup_hint=_dupCh.hint; }
+  var _b=postBody(); _b.dup_check=1; if(_dupCh){ _b.dup_intent=_dupCh.intent; _b.dup_hint=_dupCh.hint; }
   return fetch(API+'/api/requests',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},body:JSON.stringify(_b)})
     .then(jsonOf)
     .then(function(r){
@@ -588,7 +665,7 @@ function postReq(tok){
       throw {msg:(d&&d.message)||'تعذّر نشر المشروع — حاول مرة ثانية'};
     });
 }
-$('btn-pub').addEventListener('click',submitAll);
+$('btn-pub').addEventListener('click',function(){ if(!validate(4,true)) return; if(!pledgeOk()) return; submitAll(); });
 
 // ── «عندي حساب»: نحفظ المسودّة وننتقل للدخول (التدفّق موجود) ──
 function goLogin(){
@@ -659,6 +736,7 @@ function _restore(){
   if($('n-title').value){ try{ $('n-title').dispatchEvent(new Event('input')); }catch(e){} }
   renderImgs();
   renderStrength();
+  if(dr.pl&&/^(has|design|none)$/.test(dr.pl)) PLAN=dr.pl;
   if(dr.co) _catSug();
 }
 if(!GUEST_UI){ $('st-4').parentNode.removeChild($('st-4')); }
@@ -666,6 +744,18 @@ go(1,true);
 try{ history.replaceState({s:1},'',location.href); }catch(e){}
 // ── رجع من رابط التذكير (?draft=…): نجيب مسودّته من السيرفر ونفتحه على نفس الخطوة ──
 function _boot(){
+  var ex=String(QP.get('exec')||'');
+  if(/^\d{1,10}$/.test(ex)&&TOKEN){
+    try{ history.replaceState({s:1},'',location.pathname); }catch(e){}
+    fetch(API+'/api/requests/'+ex+'/exec-draft',{headers:{Authorization:'Bearer '+TOKEN}}).then(function(r){return r.ok?r.json():null;}).then(function(d){
+      var x=d&&d.draft; if(!x){ _restore(); return; }
+      var o={t:x.title||'',c:x.category||'',d:x.description||''}; if(x.category_other)o.co=x.category_other; if(x.city)o.ci=x.city; if(x.district)o.di=x.district; if(x.budget_max)o.b=String(x.budget_max); if(x.deadline)o.dl=String(x.deadline).slice(0,10); if(Array.isArray(x.extra_categories))o.ex=x.extra_categories; o.pl='has';
+      try{ localStorage.setItem(DKEY,JSON.stringify(o)); }catch(e){}
+      _restore(); go(2,true); try{ history.replaceState({s:2},'',location.href); }catch(e){}
+      showToast('رجّعنا لك مشروع التنفيذ — ارفع المخطط وانشره 📐','success');
+    }).catch(function(){ _restore(); });
+    return;
+  }
   var dk=String(QP.get('draft')||''), di=String(QP.get('did_id')||''), key=/^[a-f0-9]{32}$/.test(dk)?dk:(/^\d+$/.test(di)&&TOKEN?'id-'+di:'');
   if(!key){ _restore(); return; }
   try{ history.replaceState({s:1},'',location.pathname); }catch(e){}

@@ -1253,7 +1253,7 @@ function submitReq(){
   if(cityErr)cityErr.style.display='none';
   document.getElementById('n-city').style.borderColor='';
   // افتح اتفاقية الرسوم قبل النشر
-  var ac=document.getElementById('agreeCheck');if(ac){ac.checked=false;}
+  var ac=document.getElementById('agreeCheck');if(ac){ac.checked=false;} var _pc=document.getElementById('plA-c'); if(_pc&&_pc.checked){ _pc.checked=false; _pc.dispatchEvent(new Event('change')); }
   var ab=document.getElementById('agreeBtn');if(ab){ab.disabled=true;}
   document.getElementById('agreeOverlay').className='overlay show';
 }
@@ -1284,10 +1284,20 @@ function acceptAgree(){
   if(deadline)body.deadline=deadline;
   if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});
   if(_reqFiles.length)body.attachments=_reqFiles.map(function(f){return f.url?{name:f.name,url:f.url,size:f.size}:{name:f.name,data:f.data};});
+  // النشر الجاد: سؤال المخطط (للتخصصات اللي تحتاجه) + «ابدأ بالمخطط» + التعهّد
+  var _pn=!!(window.PlanGate&&PlanGate.need(cat)), _hasF=_reqFiles.length>0;
+  var _rb=function(){ if(btn){btn.disabled=false;btn.textContent='نشر الطلب';} };
+  if(_pn&&!_hasF&&!window._planSt){ _rb(); PlanGate.ask(cat,function(c){ if(c==='has'){ _planUp(); return; } window._planSt=c; acceptAgree(); }); return; }
+  if(_pn) body.plan_status=_hasF?'has':window._planSt;
+  body.pledge=true;
+  if(_pn&&!_hasF&&window._planSt==='design'){
+    if(!window._planDOk){ _rb(); PlanGate.designAsk(body).then(function(ok){ if(ok){ window._planDOk=1; acceptAgree(); } else window._planSt=null; }); return; }
+    body=PlanGate.designBody(body);
+  }
   fetch(API+'/api/requests',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
     .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(function(r){
-      if(r&&r.id){
+      if(r&&r.id){ window._planSt=null; window._planDOk=0;
         _reqImages=[];renderImgGrid();
         _reqFiles=[];renderFileList();
         ['n-cat','n-title','n-desc','n-budget','n-deadline','n-district'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(window._cpReset)_cpReset();
@@ -2257,3 +2267,11 @@ function _firstNm(n){var w=String(n||'').trim().split(/\s+/);if(w.length>1&&/^(�
 
 // صفحة النشر ما فيها نافذة تفعيل المزوّد — نوديه للوحة العميل وتفتح النافذة تلقائياً
 if(typeof window.openBecomeProv!=='function'){ window.openBecomeProv=function(){ location.href='/dashboard-client.html#becomeprov'; }; }
+
+function _planUp(){ var p=document.getElementById('n-plans'); if(!p) return; var bx=p.closest('.up-box'); if(bx){ try{bx.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){} bx.classList.remove('flash'); void bx.offsetWidth; bx.classList.add('flash'); } showToast('ارفع المخطط هنا ثم انشر','success'); setTimeout(function(){ try{p.click();}catch(e){} },300); }
+// التعهّد بدل مربع «أوافق» القديم في نافذة «قبل النشر»
+(function(){
+  function swap(){ var lb=document.querySelector('#agreeOverlay .agree-check'); if(!lb||!window.PlanGate) return; var w=document.createElement('div'); w.innerHTML=PlanGate.pledgeHTML('plA'); lb.parentNode.replaceChild(w.firstChild,lb);
+    PlanGate.pledgeBind('plA',function(on){ var b=document.getElementById('agreeBtn'); if(b) b.disabled=!on; }); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',swap); else swap();
+})();

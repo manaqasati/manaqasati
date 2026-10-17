@@ -842,7 +842,7 @@ function _renderBrowseList(list){
     var sv=(window._savedIds&&window._savedIds.indexOf(r.id)>=0), did=!!bidOn[r.id], ds=_tkDesc(r.description);
     return '<div class="tk" onclick="_viewProj('+r.id+')">'
       +'<div class="tk-h"><span class="tk-ic">'+catSvg(r.category,15)+'</span>'+_esc(r.category||'مشروع')+'<span class="tk-nw'+(fresh?'':' old')+'">نزل '+timeAgoP(r.created_at)+'</span></div>'
-      +'<div class="tk-b"><div class="tk-tx"><b>'+_esc(r.title||'')+'</b>'+(ds?'<p>'+_esc(ds)+'</p>':'')+'</div>'
+      +'<div class="tk-b"><div class="tk-tx"><b>'+_esc(r.title||'')+'</b>'+(r.has_plan?'<span class="tk-plan">📐 فيه مخطط</span>':'')+(ds?'<p>'+_esc(ds)+'</p>':'')+'</div>'
         +'<span class="tk-bp">'+(img?'<img src="'+_esc(img)+'" loading="lazy" alt="">':catSvg(r.category,28))+'</span></div>'
       +'<div class="tk-spec"><div><small>المدينة</small><b>'+_esc(r.city||'—')+'</b></div><div><small>العروض</small><b'+(bc<=1?' class="g"':'')+'>'+bTxt+'</b></div><div><small>الميزانية</small><b'+(r.budget_max?' class="g"':'')+'>'+(r.budget_max?fmtN(r.budget_max):'غير محددة')+'</b></div></div>'
       +'<div class="tk-perf"><i class="l"></i><i class="r"></i></div>'

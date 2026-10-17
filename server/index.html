@@ -1563,7 +1563,7 @@ function card(p){
     +imgBox
     +'<div class="hzp-body">'
       +'<div class="hzp-title">'+_esc(p.title)+'</div>'
-      +((p.category||_stPill)?'<div class="hzp-catrow">'+(p.category?'<span class="hzp-cat">'+_esc(p.category)+'</span>':'')+_stPill+'</div>':'')
+      +((p.category||_stPill||p.has_plan)?'<div class="hzp-catrow">'+(p.category?'<span class="hzp-cat">'+_esc(p.category)+'</span>':'')+(p.has_plan?'<span class="hzp-cat" style="background:#dbeafe;color:#1d4ed8">📐 فيه مخطط</span>':'')+_stPill+'</div>':'')
       +'<div class="hzp-meta">'
         +(p.city?'<span>'+_esc(p.city)+'</span>':'')
         +'<span>'+_arN(bidN,'b')+'</span>'
