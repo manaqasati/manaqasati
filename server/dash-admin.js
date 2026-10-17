@@ -2013,7 +2013,7 @@ function _prQuality(r,info){
     {t:hasPhone?'فيه رقم جوال أو إيميل':'ما فيه أرقام تواصل',s:hasPhone?'bad':'ok',fix:hasPhone?'_prStrip('+r.id+',this)':'',fixT:'شيله بضغطة'},
     {t:r.budget_max?'حدّد ميزانية تقريبية':'ما حدّد ميزانية تقريبية',s:r.budget_max?'ok':'warn'}
   ];
-  if(info&&info.duplicates) ck.push({t:info.duplicates.length?'يشبه مشروع سابق له (#'+info.duplicates[0].id+')':'مو مكرر مع مشروع سابق',s:info.duplicates.length?'warn':'ok'});
+  if(info&&info.duplicates) ck.push({t:info.duplicates.length?'يشبه مشروع سابق له (#'+info.duplicates[0].id+')':'مو مكرر مع مشروع سابق',s:info.duplicates.length?'bad':'ok'});
   var sc=Math.round(ck.reduce(function(a,c){return a+(c.s==='ok'?1:(c.s==='warn'?.5:0));},0)/ck.length*100);
   return {score:sc,checks:ck,phone:hasPhone};
 }
@@ -2060,6 +2060,7 @@ function renderProjReview(){
   host.innerHTML='<div class="pr3">'
     +'<div class="pr-q"><div class="pr-qh">الطابور<span style="color:var(--muted)">'+list.length+'</span></div>'+queue+'<div class="pr-qf" id="pr-today"></div></div>'
     +'<div class="pr-main" id="prc-'+sel.id+'">'
+      +_prDupBox(sel,info)
       +'<div style="display:flex;align-items:flex-start;gap:12px"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--muted)">#'+sel.id+' · '+_adAgo(sel.created_at)+' <span class="pr-hint">✏️ اضغط على أي شي وعدّله مكانه</span></div>'
           +(_prEdBox(sel.id,'title',sel)||'<div class="pr-ed" style="font-size:21px;font-weight:900;line-height:1.4" onclick="_prEd('+sel.id+',\'title\')" title="اضغط للتعديل">'+hl(sel.title||'مشروع')+'</div>')+'</div>'
         +'<button class="btn-g" onclick="openReqEdit('+sel.id+')" title="كل الحقول: المندوب، مدة العروض، الملاحظات…">تعديل كامل</button><a class="btn-g" style="text-decoration:none" href="/project/x-'+sel.id+'?id='+sel.id+'" target="_blank" rel="noopener">معاينة ↗</a></div>'
@@ -2079,14 +2080,95 @@ function renderProjReview(){
       +'<div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:13px;font-weight:900">لو تبي تطلب تعديل أو ترفض — اختر السبب:</div>'+reasonChips('rv-notes-'+sel.id)
         +'<textarea id="rv-notes-'+sel.id+'" placeholder="ملاحظات التعديل للعميل، أو سبب الرفض النهائي..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;min-height:54px;resize:vertical;box-sizing:border-box"></textarea></div>'
       +_prProvBox(sel)
-      +'<div class="pr-btns"><button id="pr-approve-'+sel.id+'" style="background:#16a34a;color:#fff" onclick="reviewAct('+sel.id+',\'approve\')">✓ اعتماد ونشر</button><button style="background:#d97706;color:#fff" onclick="reviewAct('+sel.id+',\'needs_edit\')">طلب تعديل</button><button style="background:#fff;color:#dc2626;border:1.5px solid #fecaca;flex:0 1 auto;min-width:100px" onclick="reviewAct('+sel.id+',\'reject\')">رفض</button></div>'
+      +'<div class="pr-btns"><button id="pr-approve-'+sel.id+'"'+(_prDupBlock(sel.id)?' class="pr-dis" title="اختر وش تسوي بالتكرار فوق أول"':'')+' style="background:#16a34a;color:#fff" onclick="reviewAct('+sel.id+',\'approve\')">✓ اعتماد ونشر</button><button style="background:#d97706;color:#fff" onclick="reviewAct('+sel.id+',\'needs_edit\')">طلب تعديل</button><button style="background:#fff;color:#dc2626;border:1.5px solid #fecaca;flex:0 1 auto;min-width:100px" onclick="reviewAct('+sel.id+',\'reject\')">رفض</button></div>'
     +'</div>'
     +'<div class="pr-side"><div class="pr-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b style="font-size:15px">فحص الجودة</b><span class="pl" style="background:'+(q.score>=80?'#e3f5e9;color:#166534':(q.score>=55?'#fef3c7;color:#92400e':'#fef2f2;color:#b91c1c'))+'">'+q.score+'%</span></div>'
       +q.checks.map(function(c){return '<div class="pr-ck"><span class="pr-dot '+c.s+'">'+(c.s==='ok'?'✓':(c.s==='warn'?'!':'×'))+'</span>'+esc(c.t)+(c.fix?'<button type="button" class="pr-fix" onclick="'+c.fix+'">'+c.fixT+'</button>':'')+'</div>';}).join('')+'</div>'
       +'<div class="pr-card" id="pr-aud-'+sel.id+'"><div class="loading" style="padding:12px"><div class="spinner"></div></div></div>'
       +'<div class="pr-card"><b style="font-size:15px">بعد الاعتماد</b><div style="font-size:13px;line-height:1.8;color:var(--text2);margin-top:6px">يوصل الإشعار للمزوّدين اللي اخترتهم فوق، ويوصل العميل «تم نشر مشروعك».</div>'
-      +(info&&info.duplicates&&info.duplicates.length?'<div style="margin-top:8px;font-size:12.5px;font-weight:700;color:#92400e;background:#fffbeb;border-radius:10px;padding:8px 10px">مشاريع مشابهة له خلال 30 يوم: '+info.duplicates.map(function(d){return '#'+d.id+' «'+esc(d.title||'')+'»';}).join('، ')+'</div>':'')+'</div></div>'
+      +'</div></div>'
   +'</div>';  if(window._prAudN[sel.id]&&window._prAudN[sel.id]._k) _prAudPaint(sel.id);
+}
+// ═══ مشروع مكرر (نموذج A): تنبيه فوق + 3 خيارات + مقارنة ═══
+window._prDupSel=window._prDupSel||{};
+function _prDupSt(id){
+  var info=window._prInfo[id], L=info&&info.duplicates; if(!L||!L.length) return null;
+  var st=window._prDupSel[id];
+  if(!st){ var d=L[0]; st=window._prDupSel[id]={i:0,act:info.dup_intent==='new'?'new':(d.can_merge?'merge':(d.can_back?'back':'new')),touched:info.dup_intent==='new'}; }
+  return st;
+}
+function _prDupBlock(id){ var st=_prDupSt(id); return !!(st&&st.act!=='new'); }
+var _PR_ST={open:['مفتوح','#dcfce7','#166534'],pending_review:['تحت المراجعة','#dbeafe','#1d4ed8'],review:['تحت المراجعة','#dbeafe','#1d4ed8'],needs_edit:['ينتظر تعديل','#fef3c7','#92400e'],in_progress:['تمت الترسية','#ede9fe','#6d28d9'],completed:['مكتمل','#f1f5f9','#334155']};
+function _prDupBox(sel,info){
+  var st=_prDupSt(sel.id); if(!st) return '';
+  var L=info.duplicates, d=L[st.i]||L[0], nb=parseInt(d.bid_count)||0;
+  var S=_PR_ST[d.raw_status]||_PR_ST[d.status]||['مغلق','#f1f5f9','#475569'];
+  var acts=[
+    {k:'merge',ic:'🔁',bg:'#dbeafe',t:'انشره كتحديث للقديم',s:d.can_merge?('نحدّث #'+d.id+' بالتفاصيل الجديدة، يطلع فوق'+(nb?'، والـ'+nb+' مزوّد يوصلهم «حدّث التفاصيل»':'')):'القديم مو مفتوح — ما ينفع نحدّثه',dis:!d.can_merge},
+    {k:'back',ic:'↩️',bg:'#ffedd5',t:'رجّعه للقديم',s:d.can_back?'ما ننشر الجديد، ونرسل للعميل رابط مشروعه'+(nb?' وعروضه':''):'القديم مقفل — ما ينفع نرجّعه له',dis:!d.can_back},
+    {k:'new',ic:'➕',bg:'#f1f5f9',t:'مشروع مختلف',s:'انشره عادي كمشروع جديد',dis:false}];
+  var go=st.act==='merge'?'تنفيذ: تحديث #'+d.id:(st.act==='back'?'تنفيذ: رجّعه لـ #'+d.id:'✓ اعتماد ونشر كمشروع جديد');
+  return '<div class="pr-dup" id="pr-dup-'+sel.id+'">'
+    +'<div class="pr-dup-h">⚠️ يشبه مشروع سابق '+(d.other_acct?'لنفس الجوال (حساب ثاني)':'لنفس العميل')
+      +(L.length>1?'<span class="pr-dup-tabs">'+L.map(function(x,i){return '<button type="button" class="'+(i===st.i?'on':'')+'" onclick="_prDupPick('+sel.id+','+i+')">#'+x.id+'</button>';}).join('')+'</span>':'')+'</div>'
+    +'<div class="pr-dup-t">'+esc(sel.client_name||'العميل')+' نشر '+_adAgo(d.pub_at||d.created_at)+': <a href="/project/x-'+d.id+'?id='+d.id+'" target="_blank" rel="noopener">#'+d.id+' '+esc(d.title||'')+'</a>'
+      +'<span class="pr-dup-pl" style="background:'+S[1]+';color:'+S[2]+'">'+S[0]+' · '+_prOffN(nb)+'</span>'+(d.paused?'<span class="pr-dup-pl" style="background:#fef3c7;color:#92400e">⏸️ موقوف مؤقتاً</span>':'')+'</div>'
+    +(info.dup_intent==='update'?'<div class="pr-dup-hint">💬 العميل نفسه اختار وقت النشر: «حدّث المشروع القديم»</div>':(info.dup_intent==='new'?'<div class="pr-dup-hint">💬 العميل قال وقت النشر: «هذا مشروع ثاني مختلف»</div>':''))
+    +'<div class="pr-dup-why">'+(d.why||[]).map(function(w){return '<span>'+esc(w)+'</span>';}).join('')+'</div>'
+    +'<div class="pr-dup-acts">'+acts.map(function(a){return '<button type="button" class="pr-dup-act'+(st.act===a.k?' on':'')+'"'+(a.dis?' disabled':'')+' onclick="_prDupAct('+sel.id+',\''+a.k+'\')"><span class="pr-dup-ic" style="background:'+a.bg+'">'+a.ic+'</span><span><b>'+a.t+'</b><small>'+esc(a.s)+'</small></span></button>';}).join('')+'</div>'
+    +'<div class="pr-dup-btns"><button type="button" class="pr-dup-go'+(st.act==='new'?' new':'')+'" onclick="_prDupGo('+sel.id+')">'+go+'</button><button type="button" class="pr-dup-cmpb" onclick="_prDupCmp('+sel.id+')">قارن الاثنين ↔</button></div>'
+  +'</div>';
+}
+function _prOffN(n){ n=parseInt(n)||0; return n===0?'بدون عروض':(n===1?'عرض واحد':(n===2?'عرضين':(n<=10?n+' عروض':n+' عرض'))); }
+function _prDupPick(id,i){ var st=_prDupSt(id); if(!st)return; st.i=i; var d=window._prInfo[id].duplicates[i]; if(st.act==='merge'&&!d.can_merge) st.act=d.can_back?'back':'new'; if(st.act==='back'&&!d.can_back) st.act='new'; renderProjReview(); }
+function _prDupAct(id,k){ var st=_prDupSt(id); if(!st)return; st.act=k; st.touched=true; renderProjReview(); }
+async function _prDupGo(id){
+  var st=_prDupSt(id); if(!st)return;
+  if(st.act==='new'){ reviewAct(id,'approve'); return; }
+  var d=window._prInfo[id].duplicates[st.i]; var nb=parseInt(d.bid_count)||0;
+  var ok=await askConfirm(st.act==='merge'
+    ?{title:'تحديث المشروع القديم',message:'بننقل التفاصيل الجديدة (العنوان، الوصف، الصور والملفات) لمشروع #'+d.id+' ويطلع فوق في القائمة'+(nb?'، ويوصل الـ'+nb+' مزوّد اللي قدّموا «صاحب المشروع حدّث التفاصيل»':'')+'. الجديد ما ينشر.',confirmText:'نعم، حدّث'}
+    :{title:'رجّعه للقديم',message:'ما ننشر هذا المشروع، ونرسل للعميل إن مشروعه #'+d.id+' موجود'+(nb?' وفيه '+_prOffN(nb):'')+'.',confirmText:'نعم، أرسل'});
+  if(!ok)return;
+  fetch(API+'/api/admin/requests/'+id+'/review',Object.assign({method:'PUT',body:JSON.stringify({action:st.act==='merge'?'dup_merge':'dup_back',dup_id:d.id})},hdr()))
+    .then(function(r){return r.json().then(function(x){return{ok:r.ok,d:x};});})
+    .then(function(res){
+      if(!res.ok){toast((res.d&&res.d.message)||'تعذّر التنفيذ','error');return;}
+      toast(st.act==='merge'?'حدّثنا #'+d.id+' وبلّغنا المزوّدين ✓':'أرسلنا للعميل رابط مشروعه ✓','success');
+      if(res.d&&res.d.wa_link)showWaFollowup(res.d.wa_link);
+      _projReview=(_projReview||[]).filter(function(x){return x.id!==id;}); delete window._prDupSel[id];
+      setProjReviewBadge(_projReview.length); window._prDone=(window._prDone||0)+1; renderProjReview(); _prHist();
+    }).catch(function(){toast('تعذّر الاتصال','error');});
+}
+function _prWords(t){ return String(t||'').split(/(\s+)/).filter(function(x){return x!=='';}); }
+function _prDiff(a,b){ // يرجّع [قديم HTML, جديد HTML] — الكلمات اللي انشالت بالأحمر واللي انضافت بالأخضر
+  var A=_prWords(a).slice(0,600), B=_prWords(b).slice(0,600), n=A.length, m=B.length, i, j;
+  var nz=function(w){ return String(w).replace(/[ً-ْـ]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي'); };
+  var dp=[]; for(i=0;i<=n;i++){ dp.push(new Uint16Array(m+1)); }
+  for(i=n-1;i>=0;i--) for(j=m-1;j>=0;j--) dp[i][j]=nz(A[i])===nz(B[j])?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
+  var o='', w=''; i=0; j=0;
+  while(i<n&&j<m){ if(nz(A[i])===nz(B[j])){ o+=esc(A[i]); w+=esc(B[j]); i++; j++; } else if(dp[i+1][j]>=dp[i][j+1]){ o+=/^\s+$/.test(A[i])?A[i]:'<del>'+esc(A[i])+'</del>'; i++; } else { w+=/^\s+$/.test(B[j])?B[j]:'<ins>'+esc(B[j])+'</ins>'; j++; } }
+  for(;i<n;i++) o+=/^\s+$/.test(A[i])?A[i]:'<del>'+esc(A[i])+'</del>';
+  for(;j<m;j++) w+=/^\s+$/.test(B[j])?B[j]:'<ins>'+esc(B[j])+'</ins>';
+  return [o,w];
+}
+function _prDupCmp(id){
+  var st=_prDupSt(id); if(!st)return; var d=window._prInfo[id].duplicates[st.i];
+  var sel=(_projReview||[]).filter(function(r){return r.id===id;})[0]; if(!sel)return;
+  var T=_prDiff(d.title,sel.title), D=_prDiff(d.description,sel.description), nb=parseInt(d.bid_count)||0;
+  var S=_PR_ST[d.raw_status]||_PR_ST[d.status]||['مغلق','#f1f5f9','#475569'];
+  var nImg=_prImgs(sel).length, nAtt=_prAtts(sel).length;
+  var meta=function(o){ return [o.category?esc(o.category):'',o.city?esc(o.city)+(o.district?' · '+esc(o.district):''):'',' الميزانية: '+(o.budget_max?fmtNum(o.budget_max):'—')].filter(Boolean).join(' · '); };
+  var ov=document.createElement('div'); ov.className='pr-cmp'; ov.setAttribute('role','dialog');
+  ov.innerHTML='<div class="pr-cmp-in"><div class="pr-cmp-hd"><b>قارن القديم والجديد</b><button type="button" class="pr-cmp-x" aria-label="إغلاق">✕</button></div>'
+    +'<div class="pr-cmp-g">'
+    +'<div class="pr-cmp-c"><h5><span style="color:#16a34a">القديم #'+d.id+' · '+_adAgo(d.pub_at||d.created_at)+'</span><span class="pr-dup-pl" style="background:'+S[1]+';color:'+S[2]+'">'+S[0]+' · '+_prOffN(nb)+'</span></h5><div class="pr-cmp-ti">'+T[0]+'</div><div class="pr-cmp-ds">'+D[0]+'</div><div class="pr-cmp-m">'+meta(d)+'<br>صور: '+(d.n_img||0)+' · ملفات: '+(d.n_att||0)+'</div></div>'
+    +'<div class="pr-cmp-c nw"><h5><span style="color:#1d4ed8">الجديد #'+sel.id+' · ينتظر المراجعة</span></h5><div class="pr-cmp-ti">'+T[1]+'</div><div class="pr-cmp-ds">'+D[1]+'</div><div class="pr-cmp-m">'+meta(sel)+'<br>صور: '+nImg+(nImg>(d.n_img||0)?' <ins>+'+(nImg-(d.n_img||0))+'</ins>':'')+' · ملفات: '+nAtt+(nAtt>(d.n_att||0)?' <ins>+'+(nAtt-(d.n_att||0))+'</ins>':'')+'</div></div>'
+    +'</div><div class="pr-cmp-lg"><ins>أخضر</ins> = جديد · <del>أحمر</del> = انشال</div></div>';
+  var close=function(){ ov.remove(); document.removeEventListener('keydown',kd,true); };
+  var kd=function(e){ if(e.key==='Escape'){ e.stopPropagation(); close(); } };
+  ov.addEventListener('click',function(e){ if(e.target===ov||e.target.closest('.pr-cmp-x')) close(); });
+  document.addEventListener('keydown',kd,true); document.body.appendChild(ov);
 }
 function _prMove(dir){ var list=(_projReview||[]).slice().sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at);}); if(!list.length)return; var i=list.findIndex(function(r){return r.id===window._prSel;}); i=Math.max(0,Math.min(list.length-1,i+dir)); window._prSel=list[i].id; renderProjReview(); }
 document.addEventListener('keydown',function(e){
@@ -2108,7 +2190,7 @@ function _prHist(){
   fetch(API+'/api/admin/review-history',hdr()).then(function(r){return r.json();}).then(function(list){
     list=Array.isArray(list)?list:[];
     if(!list.length){el.innerHTML='';return;}
-    var L={approve:['اعتمدته','#dcfce7','#15803d'],needs_edit:['طلبت تعديل','#fef3c7','#92400e'],reject:['رفضته','#fee2e2','#b91c1c']};
+    var L={dup:['مكرر','#ffedd5','#9a3412'],approve:['اعتمدته','#dcfce7','#15803d'],needs_edit:['طلبت تعديل','#fef3c7','#92400e'],reject:['رفضته','#fee2e2','#b91c1c']};
     var STT={open:'منشور',pending_review:'رجع للمراجعة',review:'رجع للمراجعة',needs_edit:'ينتظر تعديل العميل',rejected:'مرفوض',in_progress:'قيد التنفيذ',completed:'مكتمل'};
     var show=window._prHistAll?list:list.slice(0,8);
     el.innerHTML='<div class="ad-card" style="padding:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><b style="font-size:15px">🕘 آخر المراجعات</b><span style="font-size:12.5px;color:var(--muted);font-weight:700">تقدر ترسل للعميل واتساب في أي وقت</span></div>'
@@ -2162,6 +2244,7 @@ async function reviewAct(id,action){
   var ta=document.getElementById('rv-notes-'+id);
   var tip=document.getElementById('rv-tip-'+id);
   var reason=(action==='approve'?((tip&&tip.value)||''):((ta&&ta.value)||'')).trim();
+  if(action==='approve'&&_prDupBlock(id)){ toast('هذا يشبه مشروع سابق — اختر فوق: تحديث القديم، أو رجّعه، أو «مشروع مختلف»','error'); var _db=document.getElementById('pr-dup-'+id); if(_db)_db.scrollIntoView({behavior:'smooth',block:'center'}); return; }
   if(action!=='approve'&&!reason){toast(action==='needs_edit'?'اكتب ملاحظات التعديل أولاً':'اكتب سبب الرفض أولاً','error');if(ta)ta.focus();return;}
   var _aud=null, _ac=null; if(action==='approve'){ var _A=_prAudGet(id); _aud={scope:_A.scope,cities:_A.scope==='cities'?_A.cities:[],base:!!_A.base}; _ac=_prAudCount(id); if(_A.scope==='cities'&&!_A.cities.length){ toast('اختر مدينة وحدة على الأقل','error'); return; } }
   if(action==='approve'&&!await askConfirm({title:'اعتماد ونشر',message:'سيُنشر المشروع'+(_ac!=null?' ويوصل إشعار لـ '+fmtNum(_ac)+' مزوّد':' للمزوّدين مباشرة')+'.',confirmText:'نعم، انشر'}))return;

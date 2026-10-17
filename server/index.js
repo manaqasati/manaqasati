@@ -2043,7 +2043,8 @@ async function notify(userId, title, body, type, refId) {
       if (!type) return '/';
       if (type === 'becomeprov') return '/dashboard-client.html#becomeprov';
       if (type === 'pause' || type === 'pause_chosen') return '/dashboard-provider.html#bids';
-      if (type === 'pause_ask') return '/dashboard-client.html#detail/' + refId;
+      if (type === 'pause_ask' || type === 'req_dup') return '/dashboard-client.html#detail/' + refId;
+      if (type === 'req_updated') return '/dashboard-provider.html#bids';
       if (type === 'message') return '/dashboard-client.html#messages';
       if (type === 'bid' || type === 'bid_accepted' || type === 'bid_rejected') return '/dashboard-provider.html#bids';
       if (type === 'new_request') return '/dashboard-provider.html';
@@ -3140,6 +3141,10 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS review_nudged_at TIMESTAMP`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS silent_stage SMALLINT DEFAULT 0`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS silent_at TIMESTAMP`);
+      // مشروع مكرر: نفس العميل نشر نفس المشروع مرة ثانية
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dup_of INTEGER`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dup_intent VARCHAR(10)`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dup_hint INTEGER`);
       await _mig(`CREATE INDEX IF NOT EXISTS bid_warnings_bid ON bid_warnings(bid_id)`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch_at TIMESTAMP`);
@@ -4875,7 +4880,7 @@ app.get('/api/requests', async (req, res) => {
 
 app.get('/api/requests/my', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.review_notes,r.client_note,r.client_note_at,r.client_note_done_at,r.client_note_hidden,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0) as min_bid,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail,(COALESCE(array_length(r.images,1),0)>0 OR (jsonb_typeof(r.attachments)='array' AND jsonb_array_length(r.attachments)>0)) as has_att FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.created_at DESC`, [req.user.id]);
+    const r = await pool.query(`SELECT r.id,r.project_number,r.title,r.description,r.category,r.city,r.budget_max,r.deadline,r.status,r.review_notes,r.client_note,r.client_note_at,r.client_note_done_at,r.client_note_hidden,r.created_at,r.assigned_provider_id,u.name as client_name, p.name as provider_name,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT MIN(price) FROM bids WHERE request_id=r.id AND price>0) as min_bid,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail,(COALESCE(array_length(r.images,1),0)>0 OR (jsonb_typeof(r.attachments)='array' AND jsonb_array_length(r.attachments)>0)) as has_att FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id WHERE r.client_id=$1 AND (r.category IS DISTINCT FROM 'direct') AND r.dup_of IS NULL ORDER BY r.created_at DESC`, [req.user.id]);
     res.json(r.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
   } catch(e) { console.error('/requests/my:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -5048,6 +5053,12 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     const _cd = parseInt(req.body.close_days)||0;
     const closeAt = _cd>0 ? new Date(Date.now()+_cd*86400000) : null;
     if (!title || !description) return res.status(400).json({ message: 'العنوان والوصف مطلوبان' });
+    // مشروع مشابه مفتوح لنفس العميل؟ نسأله قبل لا ينشر مرة ثانية (بس للواجهات اللي تطلب الفحص)
+    const _dupIntent = ['update','new'].includes(req.body.dup_intent) ? req.body.dup_intent : null;
+    if (req.body.dup_check && !_dupIntent && !req.body.direct_provider_id) {
+      const _d = (await _dupFind({ id: 0, client_id: req.user.id, title, description, category, city, district }, { liveOnly: true })).filter(d => !d.other_acct);
+      if (_d.length) { const d = _d[0]; _draftPosted(req.user.id, req.body.draft_did, d.id); return res.status(409).json({ dup: { id: d.id, title: d.title, bid_count: d.bid_count, status: d.status, days: Math.max(0, Math.round((Date.now() - new Date(d.pub_at).getTime()) / 86400000)), can_update: d.can_merge } }); }
+    }
     const rawImages = req.body.images || [];
     const images_arr = Array.isArray(rawImages) ? rawImages.slice(0, 10) : [];
     const uploadedImages = [];
@@ -5076,6 +5087,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     try { const _ex = _normExtras(req.body.extra_categories, category); if (_ex && _ex.length && r.rows[0]) { await pool.query('UPDATE requests SET extra_categories=$1 WHERE id=$2', [_ex, r.rows[0].id]); r.rows[0].extra_categories = _ex; } } catch(e){}
     const newReq = r.rows[0];
     if (newReq) _draftPosted(req.user.id, req.body.draft_did, newReq.id);
+    if (newReq && _dupIntent) { try { const _h = parseInt(req.body.dup_hint) || null; await pool.query('UPDATE requests SET dup_intent=$1, dup_hint=$2 WHERE id=$3', [_dupIntent, _h, newReq.id]); if (req.body.draft_did) await pool.query('UPDATE post_drafts SET request_id=$1 WHERE did=$2', [newReq.id, String(req.body.draft_did).slice(0,40)]); } catch(e){} }
     // دعوة مزوّد مباشرة (من صفحته): يوصله أول بعد اعتماد المشروع
     try {
       const _inv = parseInt(req.body.invite_provider_id) || 0;
@@ -9562,20 +9574,61 @@ app.patch('/api/admin/requests/:id/quick', requirePermission('requests.edit'), e
     res.json(Object.assign({}, r.rows[0], { _dropped: dropped }));
   } catch(e) { console.error('/quick:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
+// ═══ كشف المشاريع المكررة (نفس العميل أو نفس الجوال، آخر 60 يوم) ═══
+function _arNorm(s){ return String(s||'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^\u0600-\u06FFa-z0-9\s]/g,' ').replace(/\s+/g,' ').trim(); }
+function _bigr(s){ s=_arNorm(s).replace(/\s/g,''); const m=new Map(); for(let i=0;i<s.length-1;i++){ const g=s.substr(i,2); m.set(g,(m.get(g)||0)+1); } return m; }
+function _dice(a,b){ const A=_bigr(a), B=_bigr(b); let na=0, nb=0, x=0; for(const v of A.values()) na+=v; for(const v of B.values()) nb+=v; if(!na||!nb) return 0; for(const [g,v] of A) if(B.has(g)) x+=Math.min(v,B.get(g)); return 2*x/(na+nb); }
+async function _dupFind(rq, opts){
+  opts = opts || {};
+  try {
+    const ph = ((await pool.query('SELECT phone FROM users WHERE id=$1', [rq.client_id])).rows[0] || {}).phone;
+    const p9 = String(ph||'').replace(/\D/g,'').slice(-9);
+    const c = await pool.query(`SELECT r.id, r.client_id, r.title, r.description, r.category, r.extra_categories, r.city, r.district, r.status, r.created_at, COALESCE(r.published_at,r.created_at) AS pub_at,
+        r.budget_max, r.deadline, r.images, r.attachments, r.paused_at, r.assigned_provider_id,
+        (SELECT COUNT(*)::int FROM bids b WHERE b.request_id=r.id) AS bid_count, (r.client_id<>$1) AS other_acct
+      FROM requests r WHERE r.id<>$2 AND (r.category IS DISTINCT FROM 'direct') AND r.created_at >= NOW()-INTERVAL '60 days'
+        AND r.status NOT IN ('rejected') AND r.dup_of IS NULL
+        AND (r.client_id=$1 OR (length($3)=9 AND r.client_id IN (SELECT id FROM users WHERE right(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$3)))
+      ORDER BY r.created_at DESC LIMIT 25`, [rq.client_id, rq.id||0, p9]);
+    const out = [];
+    for (const x of c.rows) {
+      if (opts.liveOnly && !['open','pending_review','review','needs_edit'].includes(x.status)) continue;
+      const simT = _dice(rq.title, x.title), simA = _dice((rq.title||'')+' '+String(rq.description||'').slice(0,400), (x.title||'')+' '+String(x.description||'').slice(0,400));
+      const pct = Math.round(Math.max(simT, simA) * 100);
+      const sameCat = !!(rq.category && rq.category === x.category), sameCity = !!(rq.city && rq.city === x.city);
+      const sameDist = !!(rq.district && x.district && _arNorm(rq.district) === _arNorm(x.district));
+      if (!(pct >= 55 || (sameCat && sameCity && (pct >= 30 || sameDist)) || (opts.forceId && x.id === opts.forceId))) continue;
+      const why = [];
+      why.push(x.other_acct ? 'نفس الجوال (حساب ثاني)' : 'نفس الحساب');
+      if (sameCat) why.push('نفس التخصص: ' + x.category);
+      if (sameDist) why.push('نفس الحي: ' + x.district); else if (sameCity) why.push('نفس المدينة: ' + x.city);
+      if (pct >= 30) why.push('الكلام متشابه ' + pct + '%');
+      const att = Array.isArray(x.attachments) ? x.attachments : [];
+      out.push({ id: x.id, title: x.title, description: x.description, category: x.category, city: x.city, district: x.district, status: normalizeStatus(x.status), raw_status: x.status,
+        created_at: x.created_at, pub_at: x.pub_at, budget_max: x.budget_max, deadline: x.deadline, n_img: Array.isArray(x.images) ? x.images.length : 0, n_att: att.length,
+        bid_count: x.bid_count, paused: !!x.paused_at, other_acct: x.other_acct, pct, why, score: pct + (sameCat?20:0) + (sameCity?10:0) + (sameDist?15:0),
+        can_merge: x.status === 'open' && !x.assigned_provider_id, can_back: ['open','pending_review','review','needs_edit'].includes(x.status) && !x.assigned_provider_id });
+    }
+    out.sort((a,b) => b.score - a.score);
+    return out.slice(0, 3);
+  } catch(e) { console.error('_dupFind:', e.message); return []; }
+}
 app.get('/api/admin/requests/:id/review-info', requirePermission('requests.view'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const rq = (await pool.query('SELECT id, client_id, title, category, city FROM requests WHERE id=$1', [id])).rows[0];
+    const rq = (await pool.query('SELECT id, client_id, title, description, category, city, district, dup_intent, dup_hint FROM requests WHERE id=$1', [id])).rows[0];
     if (!rq) return res.status(404).json({ message: 'غير موجود' });
-    const [m, prev, dup] = await Promise.all([
+    const [m, prev, dups] = await Promise.all([
       pool.query(`SELECT COUNT(*)::int AS n FROM users WHERE role='provider' AND is_active IS NOT FALSE
           AND ($1::text IS NULL OR $1 = ANY(COALESCE(specialties,'{}')) OR $1 = ANY(COALESCE(notify_categories,'{}')))
           AND ($2::text IS NULL OR COALESCE(serves_all_cities,FALSE) OR city=$2 OR $2 = ANY(COALESCE(service_cities,'{}')))`, [rq.category||null, rq.city||null]),
       pool.query(`SELECT COUNT(*)::int AS n FROM requests WHERE client_id=$1 AND id<>$2 AND (category IS DISTINCT FROM 'direct')`, [rq.client_id, id]),
-      pool.query(`SELECT id, title, status, created_at FROM requests WHERE client_id=$1 AND id<>$2 AND created_at >= NOW()-INTERVAL '30 days'
-          AND (lower(title)=lower($3) OR (category IS NOT DISTINCT FROM $4 AND city IS NOT DISTINCT FROM $5)) ORDER BY created_at DESC LIMIT 3`, [rq.client_id, id, rq.title||'', rq.category||null, rq.city||null])
+      _dupFind(rq)
     ]);
-    res.json({ matches: m.rows[0].n, client_prev: prev.rows[0].n, duplicates: dup.rows });
+    // العميل نفسه اختار وقت النشر («حدّث القديم» / «مشروع مختلف»)
+    if (rq.dup_hint && !dups.some(d => d.id === rq.dup_hint)) { const h = await _dupFind(rq, { forceId: rq.dup_hint }); const f = h.find(d => d.id === rq.dup_hint); if (f) dups.unshift(f); }
+    else if (rq.dup_hint) { const i = dups.findIndex(d => d.id === rq.dup_hint); if (i > 0) dups.unshift(dups.splice(i,1)[0]); }
+    res.json({ matches: m.rows[0].n, client_prev: prev.rows[0].n, duplicates: dups, dup_intent: rq.dup_intent || null, dup_hint: rq.dup_hint || null });
   } catch(e) { console.error('review-info:', e.message); res.json({ matches: null, client_prev: null, duplicates: [] }); }
 });
 function _reviewWa(action, title, reason, phone){
@@ -9622,6 +9675,67 @@ async function _reviewIsProvider(req, res, id){
     res.json({ ok: true, id, status: 'rejected', wa_link });
   } catch(e) { console.error('isprov:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 }
+// مشروع مكرر: «رجّعه للقديم» (ما ننشر الجديد) أو «انشره كتحديث للقديم» (ننقل التفاصيل للقديم ونطلّعه فوق ونبلغ اللي قدّموا)
+async function _reviewDup(req, res, id, action){
+  try {
+    const nw = (await pool.query('SELECT * FROM requests WHERE id=$1', [id])).rows[0];
+    if (!nw) return res.status(404).json({ message: 'غير موجود' });
+    if (!['pending_review','review','needs_edit'].includes(nw.status)) return res.status(400).json({ message: 'المشروع مو تحت المراجعة' });
+    const dupId = parseInt(req.body.dup_id) || 0;
+    const cand = (await _dupFind(nw, { forceId: dupId })).find(d => d.id === dupId);
+    if (!cand) return res.status(400).json({ message: 'المشروع القديم مو لنفس العميل أو انحذف' });
+    if (action === 'dup_merge' && !cand.can_merge) return res.status(400).json({ message: 'المشروع القديم مو مفتوح — ما نقدر نحدّثه' });
+    if (action === 'dup_back' && !cand.can_back) return res.status(400).json({ message: 'المشروع القديم مو مفتوح' });
+    const old = (await pool.query('SELECT * FROM requests WHERE id=$1', [dupId])).rows[0];
+    const cu = (await pool.query('SELECT name, phone FROM users WHERE id=$1', [nw.client_id])).rows[0] || {};
+    const nm = _drFirst(cu.name);
+    const nb = cand.bid_count || 0;
+    let changes = [];
+    if (action === 'dup_merge') {
+      const imgs = [].concat(Array.isArray(old.images) ? old.images : []); for (const u of (Array.isArray(nw.images) ? nw.images : [])) if (u && !imgs.includes(u)) imgs.push(u);
+      const oa = Array.isArray(old.attachments) ? old.attachments : [], na = Array.isArray(nw.attachments) ? nw.attachments : [];
+      const atts = oa.slice(); for (const a of na) if (a && a.url && !atts.some(x => x && x.url === a.url)) atts.push(a);
+      const nImg = imgs.length - (Array.isArray(old.images) ? old.images.length : 0), nAtt = atts.length - oa.length;
+      if (_arNorm(nw.title) !== _arNorm(old.title)) changes.push('العنوان');
+      if (_arNorm(nw.description) !== _arNorm(old.description)) changes.push('الوصف');
+      if (nAtt > 0) changes.push(nAtt === 1 ? 'أضاف مخطط/ملف' : 'أضاف ' + nAtt + ' ملفات');
+      if (nImg > 0) changes.push(nImg === 1 ? 'أضاف صورة' : 'أضاف ' + nImg + ' صور');
+      if (nw.budget_max && String(nw.budget_max) !== String(old.budget_max || '')) changes.push('الميزانية');
+      if (nw.city && nw.city !== old.city) changes.push('المدينة');
+      if (nw.district && nw.district !== old.district) changes.push('الحي');
+      await pool.query(`UPDATE requests SET title=$1, description=$2, category=COALESCE($3,category), extra_categories=COALESCE($4,extra_categories), category_other=COALESCE($5,category_other),
+          city=COALESCE($6,city), district=COALESCE($7,district), budget_max=COALESCE($8,budget_max), deadline=COALESCE($9,deadline), geo_lat=COALESCE($10,geo_lat), geo_lng=COALESCE($11,geo_lng),
+          images=$12, attachments=$13::jsonb, published_at=NOW() WHERE id=$14`,
+        [nw.title || old.title, nw.description || old.description, nw.category || null, nw.extra_categories || null, nw.category_other || null, nw.city || null, nw.district || null,
+         nw.budget_max || null, nw.deadline || null, nw.geo_lat || null, nw.geo_lng || null, imgs.slice(0, 15), JSON.stringify(atts.slice(0, 20)), dupId]);
+    }
+    const note = action === 'dup_merge' ? `دمجناه في مشروعك #${dupId} — التفاصيل الجديدة انضافت عليه وعروضك محفوظة.` : `مشروعك «${old.title}» (#${dupId}) موجود من قبل — تابع عروضك هناك.`;
+    await pool.query(`UPDATE requests SET status='rejected', review_notes=$1, dup_of=$2 WHERE id=$3`, [note, dupId, id]);
+    try { await pool.query("UPDATE post_drafts SET request_id=$1 WHERE request_id=$2", [dupId, id]); } catch(e){}
+    const link = await _magicUrl(old.client_id, '/dashboard-client.html#detail/' + dupId);
+    let t, b, eb;
+    if (action === 'dup_merge') {
+      t = '✅ حدّثنا مشروعك #' + dupId;
+      b = `أضفنا التفاصيل الجديدة على مشروعك «${old.title}» وبلّغنا المزوّدين اللي قدّموا.` + (nb ? ` عروضك الـ${nb} محفوظة.` : '');
+      eb = `<p>مرحباً${nm ? ' ' + eEsc(nm) : ''}،</p><p>لاحظنا إنك نشرت «<strong>${eEsc(nw.title)}</strong>» وهو نفس مشروعك السابق — عشان ما تتوزع العروض، <strong>أضفنا التفاصيل الجديدة على مشروعك الأول</strong> ورجّعناه فوق في القائمة.</p>` + (nb ? `<p>عروضك الـ${nb} محفوظة، وبلّغنا المزوّدين اللي قدّموا يراجعون عروضهم.</p>` : '');
+    } else {
+      t = nb ? `📂 مشروعك موجود وفيه ${_nOffers(nb)}` : '📂 مشروعك موجود من قبل';
+      b = `لاحظنا إنك نشرت «${nw.title}» مرة ثانية. مشروعك الأول لسا ${cand.status === 'open' ? 'مفتوح' : 'تحت المراجعة'}` + (nb ? ` وفيه ${_nOffers(nb)} — شوفها قبل لا تضيع.` : '.');
+      eb = `<p>مرحباً${nm ? ' ' + eEsc(nm) : ''}،</p><p>لاحظنا إنك نشرت «<strong>${eEsc(nw.title)}</strong>» مرة ثانية.</p><p>مشروعك الأول «${eEsc(old.title)}» لسا ${cand.status === 'open' ? 'مفتوح' : 'تحت المراجعة'}` + (nb ? ` وفيه <strong>${_nOffers(nb)}</strong> — شوفها قبل لا تضيع.` : '.') + `</p><p style="color:#64748b;font-size:13px">لو تبي تضيف تفاصيل (مخطط، مساحة…) عدّلها على نفس المشروع.</p>`;
+    }
+    await notifyWithEmail(old.client_id, t, b, 'req_dup', dupId, t, eb, nb ? 'شوف العروض' : 'افتح مشروعي', link).catch(()=>{});
+    if (action === 'dup_merge') {
+      const ch = changes.length ? changes.join('، ') : 'التفاصيل';
+      const bs = (await pool.query(`SELECT DISTINCT provider_id FROM bids WHERE request_id=$1 AND COALESCE(status,'pending') NOT IN ('rejected','withdrawn')`, [dupId])).rows;
+      for (const x of bs) { try { await notify(x.provider_id, '📝 صاحب المشروع حدّث التفاصيل', `«${nw.title || old.title}» — تغيّر: ${ch}. راجع عرضك إذا يحتاج تعديل.`, 'req_updated', dupId); } catch(e){} }
+      try { await addTimeline(dupId, 'updated', 'حدّث صاحب المشروع التفاصيل'); } catch(e){}
+    }
+    await logAdmin(req, 'review_request', 'request', id, action === 'dup_merge' ? `مكرر — دُمج في #${dupId}` : `مكرر — رجّعناه لـ #${dupId}`);
+    let wa_link = null; const ph = normPhone(cu.phone);
+    if (ph) wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(`السلام عليكم ${nm || ''}، معك فريق منصة مناقصة 👋\n` + (action === 'dup_merge' ? `لاحظنا إنك نشرت «${nw.title}» مرة ثانية — أضفنا التفاصيل الجديدة على مشروعك الأول عشان ما تتوزع العروض` + (nb ? ` (فيه ${_nOffers(nb)})` : '') + '.' : `لاحظنا إنك نشرت «${nw.title}» مرة ثانية — مشروعك الأول لسا موجود` + (nb ? ` وفيه ${_nOffers(nb)}` : '') + '.') + `\n\n${SITE_URL}/dashboard-client.html#detail/${dupId}`)}`;
+    res.json({ ok: true, id, status: 'rejected', dup_of: dupId, changes, wa_link });
+  } catch(e) { console.error('review dup:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+}
 // سجل آخر المراجعات (اعتماد / تعديل / رفض) مع رابط واتساب جاهز — للتواصل لاحقاً
 app.get('/api/admin/review-history', requirePermission('requests.review'), async (req, res) => {
   try {
@@ -9629,13 +9743,14 @@ app.get('/api/admin/review-history', requirePermission('requests.review'), async
       FROM admin_logs l JOIN requests r ON r.id=l.target_id LEFT JOIN users u ON u.id=r.client_id
       WHERE l.action='review_request' ORDER BY l.id DESC LIMIT 40`);
     const A = { 'الموافقة على مشروع':'approve', 'طلب تعديل مشروع':'needs_edit', 'رفض مشروع':'reject' };
-    res.json(r.rows.map(x => { const act = A[x.details] || 'approve'; return { id: x.id, rid: x.rid, action: act, at: x.created_at, admin: x.admin_name, title: x.title, status: x.status, client_name: x.client_name, note: act==='approve' ? null : x.review_notes, wa_link: _reviewWa(act, x.title, act==='approve' ? '' : x.review_notes, x.phone) }; }));
+    res.json(r.rows.map(x => { const act = A[x.details] || (/^مكرر/.test(x.details||'') ? 'dup' : 'approve'); return { id: x.id, rid: x.rid, action: act, at: x.created_at, admin: x.admin_name, title: x.title, status: x.status, client_name: x.client_name, note: act==='approve' ? null : x.review_notes, wa_link: _reviewWa(act, x.title, act==='approve' ? '' : x.review_notes, x.phone) }; }));
   } catch(e) { console.error('review-history:', e.message); res.json([]); }
 });
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
   try {
     const id = parseInt(req.params.id); const { action, reason } = req.body;
     if (action === 'is_provider') return _reviewIsProvider(req, res, id);
+    if (action === 'dup_back' || action === 'dup_merge') return _reviewDup(req, res, id, action);
     if (!['approve','needs_edit','reject'].includes(action)) return res.status(400).json({ message: 'إجراء غير صحيح' });
     // «طلب تعديل» و«رفض نهائي» يتطلّبان ملاحظة/سبباً يصل للعميل
     if (action !== 'approve' && !String(reason||'').trim()) {

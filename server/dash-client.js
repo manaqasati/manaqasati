@@ -1988,9 +1988,19 @@ function acceptAgree(){
   if(deadline)body.deadline=deadline;
   if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});
   if(_reqFiles.length)body.attachments=_reqFiles.map(function(f){return f.url?{name:f.name,url:f.url,size:f.size}:{name:f.name,data:f.data};});
+  body.dup_check=1; if(window._dupCh){ body.dup_intent=window._dupCh.intent; body.dup_hint=window._dupCh.hint; }
   fetch(API+'/api/requests',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(r){ if(r.status===409) return r.json().then(function(x){ return {_dup:x&&x.dup}; }); if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
     .then(function(r){
+      if(r&&r._dup){
+        _dupAsk(r._dup,function(c){
+          if(c==='view'){ window._dupCh=null; openDetail(r._dup.id,null); return; }
+          if(c==='x') return;
+          window._dupCh={intent:c==='update'?'update':'new',hint:r._dup.id}; acceptAgree();
+        });
+        return;
+      }
+      window._dupCh=null;
       if(r&&r.id){
         _reqImages=[];renderImgGrid();
         _reqFiles=[];renderFileList();
@@ -2007,6 +2017,26 @@ function acceptAgree(){
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='نشر المشروع';}});
 }
 
+
+// ── مشروع مشابه مفتوح؟ نسأل العميل قبل لا ينشر مرة ثانية ──
+function _dupAsk(d,cb){
+  var nb=parseInt(d.bid_count)||0, open=d.status==='open';
+  var ago=d.days<=0?'اليوم':(d.days===1?'أمس':'قبل '+d.days+' أيام');
+  var o=document.createElement('div'); o.className='dupask';
+  o.innerHTML='<div class="dupask-in" role="dialog" aria-modal="true"><button type="button" class="dupask-x" data-c="x" aria-label="إغلاق">✕</button>'
+    +'<div style="font-size:34px;text-align:center">📂</div>'
+    +'<div class="dupask-h">عندك مشروع مشابه '+(open?'مفتوح':'تحت المراجعة')+'</div>'
+    +'<div class="dupask-p">«'+String(d.title||'').replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];})+'»<br>نشرته '+ago+(nb?' وفيه <b style="color:#16a34a">'+nb+' '+(nb>10?'عرض':(nb>2?'عروض':(nb===2?'عرضين':'عرض')))+'</b> ينتظرونك':'')+'</div>'
+    +'<button type="button" class="dupask-b g" data-c="view">'+(nb?'شوف العروض':'افتح مشروعي')+'</button>'
+    +(d.can_update?'<button type="button" class="dupask-b o" data-c="update">حدّث المشروع القديم بالتفاصيل الجديدة</button>':'')
+    +'<button type="button" class="dupask-l" data-c="new">لا، هذا مشروع ثاني مختلف</button></div>';
+  if(!document.getElementById('dupask-css')){ var st=document.createElement('style'); st.id='dupask-css';
+    st.textContent='.dupask{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10050;display:flex;align-items:flex-end;justify-content:center;padding:16px}@media(min-width:600px){.dupask{align-items:center}}.dupask-in{position:relative;background:var(--white,#fff);color:var(--text,#0f2544);border-radius:20px;padding:22px 18px 16px;width:min(420px,100%);box-shadow:0 20px 60px rgba(0,0,0,.3);font-family:Tajawal,sans-serif}.dupask-x{position:absolute;top:10px;left:10px;width:36px;height:36px;border:0;border-radius:10px;background:transparent;color:var(--muted,#64748b);font-size:17px;cursor:pointer}.dupask-h{font-weight:900;font-size:18px;text-align:center;margin:6px 0}.dupask-p{text-align:center;font-weight:600;color:var(--muted,#475569);line-height:1.9;font-size:14.5px}.dupask-b{display:block;width:100%;min-height:48px;border-radius:12px;font-family:inherit;font-weight:900;font-size:15px;margin-top:10px;cursor:pointer}.dupask-b.g{background:#16a34a;color:#fff;border:0}.dupask-b.o{background:transparent;border:1.5px solid #bfd0ee;color:#1d4ed8}.dupask-l{display:block;margin:12px auto 2px;background:none;border:0;font-family:inherit;font-weight:800;color:var(--muted,#64748b);font-size:13.5px;text-decoration:underline;cursor:pointer;min-height:36px}';
+    document.head.appendChild(st); }
+  var done=function(c){ o.remove(); cb(c); };
+  o.addEventListener('click',function(e){ var b=e.target.closest('[data-c]'); if(b) done(b.getAttribute('data-c')); else if(e.target===o) done('x'); });
+  document.body.appendChild(o);
+}
 // ═══════════════════════════════════
 // EDIT REQUEST
 // ═══════════════════════════════════
@@ -3124,7 +3154,7 @@ function _nfOpenC(id){
   var k=_nfKind(n.type).g;
   if(n.type==='becomeprov'){ try{openBecomeProv();}catch(e){ location.href='/dashboard-client.html#becomeprov'; } return; }
   if(n.type==='draft'&&n.ref_id){ location.href='/new.html?did_id='+encodeURIComponent(n.ref_id); return; }
-  if(n.type==='pause_ask'&&n.ref_id){ openDetail(n.ref_id,null); return; }
+  if((n.type==='pause_ask'||n.type==='req_dup')&&n.ref_id){ openDetail(n.ref_id,null); return; }
   if(n.type==='verify_email'){ try{_vbShow();}catch(e){} return; }
   if(n.type==='message'){ show('chat',null,'chat'); try{loadChatPage();}catch(e){} return; }
   if(n.ref_id&&(k==='offers'||k==='projects'||n.type==='accept_ask')){ openDetail(n.ref_id,null); show('detail',null,'detail'); }

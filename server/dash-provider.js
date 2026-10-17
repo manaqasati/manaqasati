@@ -2648,7 +2648,7 @@ function _nfOpenP(id){
   if(t==='message'||t==='admin_message'){ gotoPage('chat'); return; }
   if(t==='saai'){ gotoPage('saai'); return; }
   if(t==='review'||t==='review_reply'){ gotoPage('reviews'); return; }
-  if(k==='offers'||t==='accept_ask'||t==='pause'||t==='pause_chosen'){ gotoPage('works'); return; }
+  if(k==='offers'||t==='accept_ask'||t==='pause'||t==='pause_chosen'||t==='req_updated'){ gotoPage('works'); return; }
   if(n.ref_id&&(t==='new_request'||t==='request'||t==='new_question'||t==='question_answered')&&typeof _viewProj==='function'){ _viewProj(n.ref_id); return; }
 }
 
