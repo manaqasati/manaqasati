@@ -377,7 +377,7 @@ $('n-file').addEventListener('change',function(){
 });
 
 // ── المخطط (لتخصصات البناء والترميم والتشطيبات…) ──
-var PLAN='', PFILES=[], PF_MAX=3, PF_MB=30;
+var PLAN='', PFILES=[], PF_MAX=12, PF_MB=30;
 function planNeed(){ return !!(window.PlanGate&&PlanGate.need(catVal())); }
 function planPaint(){
   var w=$('plan-q'); if(!w) return;
