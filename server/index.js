@@ -574,8 +574,12 @@ async function notifyMatchingProviders(request, _force){
     try { const _q = await pool.query('SELECT category, extra_categories FROM requests WHERE id=$1', [request.id]); if (_q.rows.length) _ex = _reqCats(_q.rows[0]); } catch(_e){}
     const cats = _ex.length ? _ex : (request.category ? [request.category] : []);
     const city = request.city || null;
+    // اختيار الإدارة وقت الاعتماد: المدينة / المنطقة / مدن محددة / الكل (+ «مقرّهم فيها فقط»)
+    let _aud = null;
+    try { const _q2 = (await pool.query('SELECT notify_scope, notify_cities, notify_base FROM requests WHERE id=$1', [request.id])).rows[0];
+      if (_q2 && _q2.notify_scope && (_q2.notify_scope !== 'city' || _q2.notify_base)) _aud = _audOf({ city }, _q2.notify_scope, _q2.notify_cities, _q2.notify_base); } catch(_e){}
     // مزوّد يطابق أحد تخصصات المشروع (الرئيسي أو الإضافية) ونفس المدينة إن توفّرت
-    const r = await pool.query(
+    const r = _aud ? { rows: await matchingProviders(cats, null, _aud.allCities, _aud.cities, _aud.base) } : await pool.query(
       `SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm FROM users
         WHERE role='provider' AND is_active=TRUE
           AND (cardinality($1::text[])=0 OR COALESCE(notify_categories, specialties, ARRAY[]::text[]) && $1::text[] OR COALESCE(specialties, ARRAY[]::text[]) && $1::text[])
@@ -3097,6 +3101,9 @@ async function setupDatabase() {
       // دعوة مزوّد مباشرة من صفحته: المشروع له وحده 24 ساعة (تذكير بعد 5 ساعات) ثم ينفتح للجميع
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invited_provider_id INTEGER`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_state VARCHAR(12)`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS notify_scope VARCHAR(10)`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS notify_cities TEXT[]`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS notify_base BOOLEAN`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_started_at TIMESTAMP`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_reminded BOOLEAN DEFAULT FALSE`);
     } catch(e) { console.error('bid_reports migrate:', e.message); }
@@ -9377,6 +9384,74 @@ app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), as
     res.json({ request: Object.assign({}, rq, { status: normalizeStatus(rq.status), close_time, close_info: _closeInfo(rq) }), bids, timeline, saai, saai_suggest });
   } catch(e) { console.error('req-detail:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// ═══ المراجعة: لمين يوصل إشعار المشروع (المدينة / المنطقة / مدن محددة / الكل) + «مقرّهم فيها فقط» ═══
+function _audOf(row, scope, cities, base){
+  scope = ['city','region','cities','all'].includes(scope) ? scope : 'city';
+  const city = row.city || null;
+  if (scope === 'all' || (!city && scope !== 'cities')) return { allCities: true, cities: null, base: false, scope: city ? 'all' : (scope==='cities'?'cities':'all') };
+  if (scope === 'region') { const rg = _CITY2REGION[city]; const list = rg ? _REGIONS[rg].slice() : [city]; if (!list.includes(city)) list.unshift(city); return { allCities: false, cities: list, base: !!base, scope, region: rg || null }; }
+  if (scope === 'cities') { const list = (Array.isArray(cities) ? cities : []).map(c => String(c||'').trim().slice(0,60)).filter(Boolean).slice(0, 40); if (!list.length) return { allCities: false, cities: city ? [city] : [], base: !!base, scope: 'city' }; return { allCities: false, cities: list, base: !!base, scope }; }
+  return { allCities: false, cities: [city], base: !!base, scope: 'city' };
+}
+async function _audCount(cats, a){
+  try { return (await matchingProviders(cats, null, a.allCities, a.cities, a.base)).length; } catch(e) { return null; }
+}
+app.get('/api/admin/requests/:id/audience', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const row = (await pool.query('SELECT id, category, extra_categories, city, notify_scope, notify_cities, notify_base FROM requests WHERE id=$1', [parseInt(req.params.id)])).rows[0];
+    if (!row) return res.status(404).json({ message: 'غير موجود' });
+    const cats = _reqCats(row), base = req.query.base === '1';
+    const custom = String(req.query.cities || '').split(',').map(s => s.trim()).filter(Boolean);
+    const aC = _audOf(row, 'city', null, base), aR = _audOf(row, 'region', null, base), aA = _audOf(row, 'all');
+    const out = { city: row.city || null, region: aR.region || null, region_cities: aR.cities || [], cats,
+      n: { city: row.city ? await _audCount(cats, aC) : null, region: (row.city && aR.region) ? await _audCount(cats, aR) : null, all: await _audCount(cats, aA),
+           cities: custom.length ? await _audCount(cats, _audOf(row, 'cities', custom, base)) : null },
+      saved: row.notify_scope ? { scope: row.notify_scope, cities: row.notify_cities || [], base: !!row.notify_base } : null };
+    res.json(out);
+  } catch(e) { console.error('/audience:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// تعديل سريع من صفحة المراجعة: يحدّث بس الحقول اللي انرسلت (ما يلمس المندوب ولا الملاحظات)
+app.patch('/api/admin/requests/:id/quick', requirePermission('requests.edit'), express.json({ limit: '30mb' }), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id); const b = req.body || {};
+    const cur = (await pool.query('SELECT id, category FROM requests WHERE id=$1', [id])).rows[0];
+    if (!cur) return res.status(404).json({ message: 'غير موجود' });
+    const S = [], P = []; let i = 1, dropped = 0;
+    const set = (col, v) => { S.push(col + '=$' + (i++)); P.push(v); };
+    if ('title' in b) { const t = String(b.title || '').replace(/\s+/g, ' ').trim().slice(0, 150); if (t.length < 3) return res.status(400).json({ message: 'العنوان قصير' }); set('title', t); }
+    if ('description' in b) { const d = String(b.description || '').trim().slice(0, 5000); if (!d) return res.status(400).json({ message: 'الوصف ما يصير فاضي' }); set('description', d); }
+    let prim = cur.category;
+    if ('category' in b) { const nc = _normCat(b.category, b.category_other); prim = nc.category; set('category', nc.category); set('category_other', nc.category === 'أخرى' ? nc.category_other : null); }
+    if ('extra_categories' in b) { const ex = _normExtras(b.extra_categories || [], prim) || []; set('extra_categories', ex.length ? ex : null); }
+    else if ('category' in b && prim) { S.push('extra_categories=array_remove(extra_categories,$' + (i++) + ')'); P.push(prim); }
+    if ('city' in b) set('city', String(b.city || '').trim().slice(0, 60) || null);
+    if ('district' in b) set('district', String(b.district || '').trim().slice(0, 80) || null);
+    if ('budget_max' in b) { const v = parseFloat(String(b.budget_max == null ? '' : b.budget_max).replace(/[^\d.]/g, '')); set('budget_max', v > 0 ? v : null); }
+    if ('deadline' in b) set('deadline', /^\d{4}-\d{2}-\d{2}$/.test(String(b.deadline || '')) ? b.deadline : null);
+    if (Array.isArray(b.images)) {
+      const imgs = [];
+      for (const im of b.images.slice(0, 10)) {
+        if (typeof im !== 'string' || !im) continue;
+        if (im.startsWith('data:')) { const u = await uploadToCloud(im, 'manaqasa/projects'); if (u && u.startsWith('http')) imgs.push(u); else dropped++; }
+        else if (_safeUrl(im)) imgs.push(_safeUrl(im)); else dropped++;
+      }
+      set('images', imgs);
+    }
+    if (Array.isArray(b.attachments)) {
+      const atts = [];
+      for (const a of b.attachments.slice(0, 12)) {
+        if (a && a.url && _safeUrl(a.url)) atts.push({ name: String(a.name || 'ملف').slice(0, 120), url: _safeUrl(a.url) });
+        else if (a && a.data && String(a.data).startsWith('data:')) { let u = null; try { u = await uploadToCloud(a.data, 'manaqasa/attachments', a.name); } catch(_){} if (u && String(u).startsWith('http')) atts.push({ name: String(a.name || 'ملف').slice(0, 120), url: u }); else dropped++; }
+      }
+      set('attachments', JSON.stringify(atts));
+    }
+    if (!S.length) return res.status(400).json({ message: 'ما فيه شي يتعدّل' });
+    P.push(id);
+    const r = await pool.query(`UPDATE requests SET ${S.join(', ')} WHERE id=$${i} RETURNING *`, P);
+    await logAdmin(req, 'edit_request', 'request', id, 'تعديل سريع من المراجعة: ' + Object.keys(b).join('، '));
+    res.json(Object.assign({}, r.rows[0], { _dropped: dropped }));
+  } catch(e) { console.error('/quick:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
 app.get('/api/admin/requests/:id/review-info', requirePermission('requests.view'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -9460,6 +9535,11 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
     const r = await pool.query(`UPDATE requests SET status=$1, review_notes=$2 WHERE id=$3 RETURNING id, client_id, title, category, city, status`, [newStatus, action==='approve' ? null : (reason||null), id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     const row = r.rows[0];
+    if (action === 'approve' && req.body.audience && typeof req.body.audience === 'object') {
+      try { const A = req.body.audience; const sc = ['city','region','cities','all'].includes(A.scope) ? A.scope : 'city';
+        const cl = Array.isArray(A.cities) ? A.cities.map(c => String(c||'').trim().slice(0,60)).filter(Boolean).slice(0,40) : null;
+        await pool.query('UPDATE requests SET notify_scope=$1, notify_cities=$2, notify_base=$3 WHERE id=$4', [sc, sc === 'cities' && cl && cl.length ? cl : null, !!A.base, id]); } catch(e) { console.error('audience save:', e.message); }
+    }
     if (action === 'approve' && String(reason||'').trim()) { try { await pool.query(`UPDATE requests SET client_note=$1, client_note_at=NOW(), client_note_seen_at=NULL, client_note_done_at=NULL, client_note_hidden=FALSE WHERE id=$2`, [String(reason).trim().slice(0,2000), id]); } catch(e){} }
     const clientInfo = await pool.query('SELECT name, email, phone FROM users WHERE id=$1', [row.client_id]);
     const inAppTitle = action==='approve' ? '✅ تمت الموافقة على مشروعك'

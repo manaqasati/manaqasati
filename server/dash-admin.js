@@ -2010,7 +2010,7 @@ function _prQuality(r,info){
     {t:_prAtts(r).length?'فيه مخططات/ملفات ('+_prAtts(r).length+')':(['بناء','ترميم مبانٍ','تصاميم داخلي وخارجي','تشطيبات ومقاولات عامة'].indexOf(r.category)>=0?'ما أرفق مخطط — مشاريع «'+r.category+'» تحتاجه':'ما فيه مخططات أو ملفات'),s:_prAtts(r).length?'ok':(['بناء','ترميم مبانٍ','تصاميم داخلي وخارجي','تشطيبات ومقاولات عامة'].indexOf(r.category)>=0?'bad':'warn')},
     {t:(r.geo_lat&&r.geo_lng)?'الموقع محدد على الخريطة':'ما حدّد الموقع على الخريطة',s:(r.geo_lat&&r.geo_lng)?'ok':'warn'},
     {t:r.city?'المدينة محددة'+(r.district?' والحي':''):'ما حدّد المدينة',s:r.city?'ok':'bad'},
-    {t:hasPhone?'فيه رقم جوال أو إيميل':'ما فيه أرقام تواصل',s:hasPhone?'bad':'ok'},
+    {t:hasPhone?'فيه رقم جوال أو إيميل':'ما فيه أرقام تواصل',s:hasPhone?'bad':'ok',fix:hasPhone?'_prStrip('+r.id+',this)':'',fixT:'شيله بضغطة'},
     {t:r.budget_max?'حدّد ميزانية تقريبية':'ما حدّد ميزانية تقريبية',s:r.budget_max?'ok':'warn'}
   ];
   if(info&&info.duplicates) ck.push({t:info.duplicates.length?'يشبه مشروع سابق له (#'+info.duplicates[0].id+')':'مو مكرر مع مشروع سابق',s:info.duplicates.length?'warn':'ok'});
@@ -2022,7 +2022,6 @@ function _prAtts(r){ var a=r.attachments; if(typeof a==='string'){try{a=JSON.par
 function _prExtras(r){
   var h=[];
   var ex=Array.isArray(r.extra_categories)?r.extra_categories.filter(function(c){return c&&c!==r.category;}):[];
-  if(ex.length) h.push('<span class="pr-tag">تخصصات إضافية: '+ex.map(esc).join('، ')+'</span>');
   if(r.category==='أخرى'&&r.category_other) h.push('<span class="pr-tag">الخدمة: '+esc(r.category_other)+'</span>');
   if(r.geo_lat&&r.geo_lng) h.push('<a class="pr-tag" style="background:#ecfdf5;color:#047857;text-decoration:none" href="https://www.google.com/maps?q='+Number(r.geo_lat)+','+Number(r.geo_lng)+'" target="_blank" rel="noopener">📍 الموقع على الخريطة ↗</a>');
   else h.push('<span class="pr-tag" style="background:#fffbeb;color:#92400e">📍 ما حدّد الموقع على الخريطة</span>');
@@ -2031,15 +2030,15 @@ function _prExtras(r){
 function _prZip(id,btn){ var o=btn.textContent; btn.disabled=true; btn.textContent='جاري التجهيز…';
   fetch(API+'/api/requests/'+id+'/files.zip',hdr()).then(function(r){ if(!r.ok) throw 0; return r.blob(); }).then(function(b){ var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='مشروع-'+id+'-الملفات.zip'; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000); }).catch(function(){ showToast('تعذّر تجهيز الملفات','error'); }).finally(function(){ btn.disabled=false; btn.textContent=o; }); }
 function _prFiles(r){
-  var at=_prAtts(r); if(!at.length) return '<div class="pr-sec"><div class="pr-sh">📎 المخططات والملفات <span>0</span></div><div style="font-size:13px;color:var(--muted);font-weight:700">ما أرفق العميل أي ملف أو مخطط</div></div>';
+  var at=_prAtts(r); if(!at.length) return '<div class="pr-sec"><div class="pr-sh">📎 المخططات والملفات <span>0</span></div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:13px;color:var(--muted);font-weight:700">ما أرفق العميل أي ملف أو مخطط</span><label class="pr-addf">+ أضف ملف<input type="file" multiple hidden onchange="_prAttAdd('+r.id+',this)"></label></div></div>';
   var C={pdf:['#fee2e2','#b91c1c','PDF'],dwg:['#dbeafe','#1d4ed8','DWG'],dxf:['#dbeafe','#1d4ed8','DXF'],rar:['#ede9fe','#6d28d9','RAR'],zip:['#ede9fe','#6d28d9','ZIP'],'7z':['#ede9fe','#6d28d9','7Z'],xlsx:['#dcfce7','#15803d','XLS'],xls:['#dcfce7','#15803d','XLS'],csv:['#dcfce7','#15803d','CSV'],docx:['#e0f2fe','#0369a1','DOC'],doc:['#e0f2fe','#0369a1','DOC']};
   return '<div class="pr-sec"><div class="pr-sh">📎 المخططات والملفات <span>'+at.length+'</span>'+(at.length>1?'<button type="button" onclick="_prZip('+r.id+',this)" style="margin-right:auto;border:1.5px solid var(--border);background:var(--card,#fff);color:#1d4ed8;border-radius:10px;padding:5px 11px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer">⬇ تحميل الكل</button>':'')+'</div><div class="pr-files">'+at.map(function(a){
     var u=_safeUrl(a.url), nm=String(a.name||'ملف'), ext=((nm.match(/\.([a-z0-9]+)$/i)||u.match(/\.([a-z0-9]{2,4})(?:[?#]|$)/i)||[])[1]||'').toLowerCase();
     var img=/^(jpe?g|png|webp|gif|heic)$/.test(ext), c=C[ext]||['#f1f5f9','#334766',(ext||'ملف').toUpperCase()];
     var view=(ext==='pdf'||img);
     var ic=img?'<img src="'+esc(u)+'" alt="" loading="lazy" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex-shrink:0">':'<span class="pr-fx" style="background:'+c[0]+';color:'+c[1]+'">'+esc(c[2])+'</span>';
-    return '<a class="pr-file" href="'+esc(u)+'" target="_blank" rel="noopener"'+(view?'':' download')+'>'+ic+'<span class="pr-fn" title="'+esc(nm)+'">'+esc(nm)+'</span><span class="pr-fa">'+(view?'فتح ↗':'تحميل ↓')+'</span></a>';
-  }).join('')+'</div>'+(at.some(function(a){return /\.(rar|zip|7z)$/i.test(a.name||a.url);})?'<div style="font-size:11.5px;color:var(--muted);margin-top:6px;font-weight:700">الملفات المضغوطة (RAR/ZIP) تتحمّل عندك وتفتحها من جهازك</div>':'')+'</div>';
+    return '<div class="pr-fw"><a class="pr-file" href="'+esc(u)+'" target="_blank" rel="noopener"'+(view?'':' download')+'>'+ic+'<span class="pr-fn" title="'+esc(nm)+'">'+esc(nm)+'</span><span class="pr-fa">'+(view?'فتح ↗':'تحميل ↓')+'</span></a><button type="button" class="pr-x" title="حذف الملف" onclick="_prAttDel('+r.id+','+at.indexOf(a)+')">✕</button></div>';
+  }).join('')+'<label class="pr-addf">+ أضف ملف<input type="file" multiple hidden onchange="_prAttAdd('+r.id+',this)"></label>'+'</div>'+(at.some(function(a){return /\.(rar|zip|7z)$/i.test(a.name||a.url);})?'<div style="font-size:11.5px;color:var(--muted);margin-top:6px;font-weight:700">الملفات المضغوطة (RAR/ZIP) تتحمّل عندك وتفتحها من جهازك</div>':'')+'</div>';
 }
 window._prInfo=window._prInfo||{};
 function renderProjReview(){
@@ -2051,6 +2050,7 @@ function renderProjReview(){
   var sel=list.filter(function(r){return r.id===window._prSel;})[0]||list[0]; window._prSel=sel.id;
   var info=window._prInfo[sel.id];
   if(!info){ fetch(API+'/api/admin/requests/'+sel.id+'/review-info',hdr()).then(function(r){return r.json();}).then(function(d){ window._prInfo[sel.id]=d||{}; if(window._prSel===sel.id)renderProjReview(); }).catch(function(){ window._prInfo[sel.id]={}; }); }
+  if(!window._prAudN[sel.id]||window._prAudN[sel.id]._k===undefined&&!window._prAudN[sel.id]._loading) _prAudLoad(sel.id);
   var q=_prQuality(sel,info);
   var queue=list.map(function(r){ var qq=_prQuality(r,window._prInfo[r.id]); var pill=qq.phone?'<span class="pl" style="background:#fef3c7;color:#92400e">فيه رقم تواصل</span>':'<span class="pl" style="background:'+(qq.score>=80?'#e3f5e9;color:#166534':(qq.score>=55?'#fef3c7;color:#92400e':'#fef2f2;color:#b91c1c'))+'">'+(qq.score>=80?'جاهز ':(qq.score>=55?'متوسط ':'ضعيف '))+qq.score+'%</span>';
     return '<button class="pr-qi'+(r.id===sel.id?' on':'')+'" onclick="window._prSel='+r.id+';renderProjReview()"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><b style="font-size:14px;line-height:1.4">'+esc(r.title||'مشروع')+'</b>'+pill+'</div><div style="font-size:12px;color:var(--muted);font-weight:700">'+[esc(r.client_name||'عميل'),r.city?esc(r.city):'بدون مدينة',_adAgo(r.created_at)].join(' · ')+'</div></button>'; }).join('');
@@ -2060,24 +2060,33 @@ function renderProjReview(){
   host.innerHTML='<div class="pr3">'
     +'<div class="pr-q"><div class="pr-qh">الطابور<span style="color:var(--muted)">'+list.length+'</span></div>'+queue+'<div class="pr-qf" id="pr-today"></div></div>'
     +'<div class="pr-main" id="prc-'+sel.id+'">'
-      +'<div style="display:flex;align-items:flex-start;gap:12px"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--muted)">#'+sel.id+' · '+(_catLbl(sel)||'بدون تصنيف')+' · '+(sel.city?esc(sel.city)+(sel.district?'، '+esc(sel.district):''):'بدون مدينة')+' · '+_adAgo(sel.created_at)+'</div><div style="font-size:21px;font-weight:900;line-height:1.4">'+hl(sel.title||'مشروع')+'</div></div>'
-        +'<button class="btn-g" onclick="openReqEdit('+sel.id+')">تعديل النص</button><a class="btn-g" style="text-decoration:none" href="/project/x-'+sel.id+'?id='+sel.id+'" target="_blank" rel="noopener">معاينة ↗</a></div>'
-      +'<div class="pr-desc">'+(sel.description?hl(sel.description):'<span style="color:var(--muted)">بدون وصف</span>')+'</div>'
+      +'<div style="display:flex;align-items:flex-start;gap:12px"><div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--muted)">#'+sel.id+' · '+_adAgo(sel.created_at)+' <span class="pr-hint">✏️ اضغط على أي شي وعدّله مكانه</span></div>'
+          +(_prEdBox(sel.id,'title',sel)||'<div class="pr-ed" style="font-size:21px;font-weight:900;line-height:1.4" onclick="_prEd('+sel.id+',\'title\')" title="اضغط للتعديل">'+hl(sel.title||'مشروع')+'</div>')+'</div>'
+        +'<button class="btn-g" onclick="openReqEdit('+sel.id+')" title="كل الحقول: المندوب، مدة العروض، الملاحظات…">تعديل كامل</button><a class="btn-g" style="text-decoration:none" href="/project/x-'+sel.id+'?id='+sel.id+'" target="_blank" rel="noopener">معاينة ↗</a></div>'
+      +(window._prUndo&&window._prUndo.id===sel.id?'<div class="pr-undo">✓ شلنا رقم التواصل من العنوان والوصف <button type="button" onclick="_prUndoStrip()">تراجع</button></div>':'')
+      +(_prEdBox(sel.id,'desc',sel)||'<div class="pr-desc pr-ed" onclick="_prEd('+sel.id+',\'desc\')" title="اضغط للتعديل">'+(sel.description?hl(sel.description):'<span style="color:var(--muted)">بدون وصف</span>')+'</div>')
+      +'<div class="pr-meta">'
+        +(_prEdBox(sel.id,'cat',sel)||'<div class="pr-mf"><small>التخصص</small><button type="button" class="pr-ed pr-mv" onclick="_prEd('+sel.id+',\'cat\')">'+(sel.category?'<span class="pr-chip on">'+(_catLbl(sel))+'</span>':'<span class="pr-chip warn">بدون تخصص</span>')+(Array.isArray(sel.extra_categories)?sel.extra_categories.filter(function(c){return c&&c!==sel.category;}).map(function(c){return '<span class="pr-chip">'+esc(c)+'</span>';}).join(''):'')+'<span class="pr-pen">✏️</span></button></div>')
+        +(_prEdBox(sel.id,'loc',sel)||'<div class="pr-mf"><small>المدينة والحي</small><button type="button" class="pr-ed pr-mv" onclick="_prEd('+sel.id+',\'loc\')">'+(sel.city?'<span class="pr-chip">'+esc(sel.city)+(sel.district?' · '+esc(sel.district):'')+'</span>':'<span class="pr-chip warn">بدون مدينة</span>')+'<span class="pr-pen">✏️</span></button></div>')
+      +'</div>'
       +_prExtras(sel)
-      +(imgs.length?'<div class="pr-sec"><div class="pr-sh">🖼️ الصور <span>'+imgs.length+'</span></div><div class="pr-imgs">'+imgs.map(function(u){return '<a href="'+esc(_safeUrl(u))+'" target="_blank" rel="noopener"><img src="'+esc(_safeUrl(u))+'" alt="صورة المشروع" loading="lazy"></a>';}).join('')+'</div></div>':'')
+      +'<div class="pr-sec"><div class="pr-sh">🖼️ الصور <span>'+imgs.length+'</span></div><div class="pr-imgs">'+imgs.map(function(u,i){return '<div class="pr-im"><a href="'+esc(_safeUrl(u))+'" target="_blank" rel="noopener"><img src="'+esc(_safeUrl(u))+'" alt="صورة المشروع" loading="lazy"></a><button type="button" class="pr-x" title="حذف الصورة" onclick="_prImgDel('+sel.id+','+i+')">✕</button></div>';}).join('')
+        +(imgs.length<10?'<label class="pr-add" title="أضف صور">+<small>صورة</small><input type="file" accept="image/*" multiple hidden onchange="_prImgAdd('+sel.id+',this)"></label>':'')+'</div></div>'
       +_prFiles(sel)
-      +'<div class="pr-facts"><div><small>الميزانية</small>'+(sel.budget_max?fmtNum(sel.budget_max)+' ر.س':'غير محددة')+'</div><div><small>الموعد</small>'+(sel.deadline?new Date(sel.deadline).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'}):'مرن')+'</div><div><small>المزوّدون المطابقون</small><span style="color:#1d4ed8">'+(info&&info.matches!=null?info.matches+' مزوّد':'…')+'</span></div><div><small>العميل</small>'+(info&&info.client_prev!=null?(info.client_prev?info.client_prev+' مشاريع سابقة':'أول مشروع له'):'…')+'</div></div>'
+      +(_prEdBox(sel.id,'budget',sel)||_prEdBox(sel.id,'deadline',sel)||'')
+      +'<div class="pr-facts"><div class="pr-ed" onclick="_prEd('+sel.id+',\'budget\')" title="اضغط للتعديل"><small>الميزانية ✏️</small>'+(sel.budget_max?fmtNum(sel.budget_max)+' ر.س'+(sel.budget_max<500?' <span style="color:#b45309;font-size:11.5px">⚠ غريبة</span>':''):'غير محددة')+'</div><div class="pr-ed" onclick="_prEd('+sel.id+',\'deadline\')" title="اضغط للتعديل"><small>الموعد ✏️</small>'+(sel.deadline?new Date(sel.deadline).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'}):'مرن')+'</div><div><small>يوصله الإشعار</small><span style="color:#1d4ed8" id="pr-audf-'+sel.id+'">'+(_prAudCount(sel.id)!=null?fmtNum(_prAudCount(sel.id))+' مزوّد':'…')+'</span></div><div><small>العميل</small>'+(info&&info.client_prev!=null?(info.client_prev?info.client_prev+' مشاريع سابقة':'أول مشروع له'):'…')+'</div></div>'
       +'<details style="border:1px solid #bbf7d0;background:#f0fdf4;border-radius:12px;padding:10px 12px"><summary style="cursor:pointer;font-size:12.5px;font-weight:800;color:#166534">💡 ملاحظة للعميل مع النشر (اختيارية — تظهر له في صفحة مشروعه)</summary>'+tipChips('rv-tip-'+sel.id)+'<textarea id="rv-tip-'+sel.id+'" placeholder="مثال: أرفق المخططات لتحصل على عروض أدق..." style="width:100%;padding:9px 11px;border:1.5px solid #bbf7d0;border-radius:10px;font-family:Tajawal,sans-serif;font-size:12.5px;min-height:44px;resize:vertical;background:#fff;box-sizing:border-box"></textarea></details>'
       +'<div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:13px;font-weight:900">لو تبي تطلب تعديل أو ترفض — اختر السبب:</div>'+reasonChips('rv-notes-'+sel.id)
         +'<textarea id="rv-notes-'+sel.id+'" placeholder="ملاحظات التعديل للعميل، أو سبب الرفض النهائي..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;min-height:54px;resize:vertical;box-sizing:border-box"></textarea></div>'
       +_prProvBox(sel)
-      +'<div class="pr-btns"><button style="background:#16a34a;color:#fff" onclick="reviewAct('+sel.id+',\'approve\')">اعتماد ونشر</button><button style="background:#d97706;color:#fff" onclick="reviewAct('+sel.id+',\'needs_edit\')">طلب تعديل</button><button style="background:#fff;color:#dc2626;border:1.5px solid #fecaca;flex:0 1 auto;min-width:100px" onclick="reviewAct('+sel.id+',\'reject\')">رفض</button></div>'
+      +'<div class="pr-btns"><button id="pr-approve-'+sel.id+'" style="background:#16a34a;color:#fff" onclick="reviewAct('+sel.id+',\'approve\')">✓ اعتماد ونشر</button><button style="background:#d97706;color:#fff" onclick="reviewAct('+sel.id+',\'needs_edit\')">طلب تعديل</button><button style="background:#fff;color:#dc2626;border:1.5px solid #fecaca;flex:0 1 auto;min-width:100px" onclick="reviewAct('+sel.id+',\'reject\')">رفض</button></div>'
     +'</div>'
     +'<div class="pr-side"><div class="pr-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b style="font-size:15px">فحص الجودة</b><span class="pl" style="background:'+(q.score>=80?'#e3f5e9;color:#166534':(q.score>=55?'#fef3c7;color:#92400e':'#fef2f2;color:#b91c1c'))+'">'+q.score+'%</span></div>'
-      +q.checks.map(function(c){return '<div class="pr-ck"><span class="pr-dot '+c.s+'">'+(c.s==='ok'?'✓':(c.s==='warn'?'!':'×'))+'</span>'+esc(c.t)+'</div>';}).join('')+'</div>'
-      +'<div class="pr-card"><b style="font-size:15px">بعد الاعتماد</b><div style="font-size:13px;line-height:1.8;color:var(--text2);margin-top:6px">'+(info&&info.matches!=null?'يوصل إشعار لـ <b>'+info.matches+' مزوّد</b>'+(sel.category?' في «'+esc(sel.category)+'»':' (بدون تصنيف — يوصل لكل التخصصات)')+(sel.city?' بـ'+esc(sel.city)+' والمدن اللي يخدمونها':'')+'، ويوصل العميل «تم نشر مشروعك».':'…')+'</div>'
+      +q.checks.map(function(c){return '<div class="pr-ck"><span class="pr-dot '+c.s+'">'+(c.s==='ok'?'✓':(c.s==='warn'?'!':'×'))+'</span>'+esc(c.t)+(c.fix?'<button type="button" class="pr-fix" onclick="'+c.fix+'">'+c.fixT+'</button>':'')+'</div>';}).join('')+'</div>'
+      +'<div class="pr-card" id="pr-aud-'+sel.id+'"><div class="loading" style="padding:12px"><div class="spinner"></div></div></div>'
+      +'<div class="pr-card"><b style="font-size:15px">بعد الاعتماد</b><div style="font-size:13px;line-height:1.8;color:var(--text2);margin-top:6px">يوصل الإشعار للمزوّدين اللي اخترتهم فوق، ويوصل العميل «تم نشر مشروعك».</div>'
       +(info&&info.duplicates&&info.duplicates.length?'<div style="margin-top:8px;font-size:12.5px;font-weight:700;color:#92400e;background:#fffbeb;border-radius:10px;padding:8px 10px">مشاريع مشابهة له خلال 30 يوم: '+info.duplicates.map(function(d){return '#'+d.id+' «'+esc(d.title||'')+'»';}).join('، ')+'</div>':'')+'</div></div>'
-  +'</div>';
+  +'</div>';  if(window._prAudN[sel.id]&&window._prAudN[sel.id]._k) _prAudPaint(sel.id);
 }
 function _prMove(dir){ var list=(_projReview||[]).slice().sort(function(a,b){return new Date(a.created_at)-new Date(b.created_at);}); if(!list.length)return; var i=list.findIndex(function(r){return r.id===window._prSel;}); i=Math.max(0,Math.min(list.length-1,i+dir)); window._prSel=list[i].id; renderProjReview(); }
 document.addEventListener('keydown',function(e){
@@ -2154,10 +2163,11 @@ async function reviewAct(id,action){
   var tip=document.getElementById('rv-tip-'+id);
   var reason=(action==='approve'?((tip&&tip.value)||''):((ta&&ta.value)||'')).trim();
   if(action!=='approve'&&!reason){toast(action==='needs_edit'?'اكتب ملاحظات التعديل أولاً':'اكتب سبب الرفض أولاً','error');if(ta)ta.focus();return;}
-  if(action==='approve'&&!await askConfirm({title:'اعتماد ونشر',message:'سيُنشر المشروع للمزوّدين مباشرة.',confirmText:'نعم، انشر'}))return;
+  var _aud=null, _ac=null; if(action==='approve'){ var _A=_prAudGet(id); _aud={scope:_A.scope,cities:_A.scope==='cities'?_A.cities:[],base:!!_A.base}; _ac=_prAudCount(id); if(_A.scope==='cities'&&!_A.cities.length){ toast('اختر مدينة وحدة على الأقل','error'); return; } }
+  if(action==='approve'&&!await askConfirm({title:'اعتماد ونشر',message:'سيُنشر المشروع'+(_ac!=null?' ويوصل إشعار لـ '+fmtNum(_ac)+' مزوّد':' للمزوّدين مباشرة')+'.',confirmText:'نعم، انشر'}))return;
   if(action==='reject'&&!await askConfirm({title:'رفض نهائي',message:'الرفض النهائي لا يُعاد، وسيُبلَّغ العميل بالسبب. متأكد؟',confirmText:'نعم، ارفض'}))return;
   var card=document.getElementById('prc-'+id);
-  fetch(API+'/api/admin/requests/'+id+'/review',Object.assign({method:'PUT',body:JSON.stringify({action:action,reason:reason||null})},hdr()))
+  fetch(API+'/api/admin/requests/'+id+'/review',Object.assign({method:'PUT',body:JSON.stringify({action:action,reason:reason||null,audience:_aud})},hdr()))
     .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
     .then(function(res){
       if(!res.ok){toast((res.d&&res.d.message)||'تعذّر التنفيذ','error');return;}
@@ -6795,4 +6805,114 @@ function _drRemind(id,btn){
 }
 function _drStop(id){
   fetch(API+'/api/admin/drafts/'+id+'/stop',Object.assign({method:'POST'},hdr())).then(function(r){ if(r.ok){ loadDrafts(); } else toast('تعذّر','error'); }).catch(function(){ toast('تعذّر الاتصال','error'); });
+}
+
+// ═══ المراجعة: تعديل مكانه + «يوصل إشعار لمين؟» ═══
+window._prEdit=window._prEdit||null; window._prAud=window._prAud||{}; window._prAudN=window._prAudN||{};
+function _prAudGet(id){ return window._prAud[id]||(window._prAud[id]={scope:'city',cities:[],base:false}); }
+function _prAudLoad(id,force){
+  var A=_prAudGet(id), k=id+'|'+(A.base?1:0)+'|'+A.cities.join(',');
+  var cur=window._prAudN[id]; if(cur&&cur._k===k&&!force)return; if(cur&&cur._loading===k)return;
+  window._prAudN[id]=Object.assign({},cur||{},{_loading:k});
+  fetch(API+'/api/admin/requests/'+id+'/audience?base='+(A.base?1:0)+(A.cities.length?'&cities='+encodeURIComponent(A.cities.join(',')):''),hdr()).then(function(r){return r.json();}).then(function(d){
+    d=d||{}; d._k=k;
+    if(d.saved&&!A._init){ A.scope=d.saved.scope||'city'; A.cities=d.saved.cities||[]; A.base=!!d.saved.base; }
+    if(!d.city&&A.scope!=='cities') A.scope='all';
+    A._init=true; window._prAudN[id]=d;
+    if(window._prSel===id) _prAudPaint(id);
+    if(d.saved&&(A.cities.length||A.base)&&k!==id+'|'+(A.base?1:0)+'|'+A.cities.join(',')) _prAudLoad(id);
+  }).catch(function(){ window._prAudN[id]={_k:k,n:{}}; if(window._prSel===id)_prAudPaint(id); });
+}
+function _prAudCount(id){ var d=window._prAudN[id], A=_prAudGet(id); if(!d||!d.n)return null; return d.n[A.scope]; }
+function _prAudSet(id,k,v){ var A=_prAudGet(id); A[k]=v; if(k==='scope'&&v==='cities'&&!A.cities.length){ var d=window._prAudN[id]; if(d&&d.city)A.cities=[d.city]; } _prAudPaint(id); _prAudLoad(id); }
+function _prAudCity(id,c,add){ var A=_prAudGet(id); c=String(c||'').trim(); if(!c)return; var i=A.cities.indexOf(c); if(add&&i<0)A.cities.push(c); if(!add&&i>=0)A.cities.splice(i,1); A.scope='cities'; _prAudPaint(id); _prAudLoad(id); }
+function _prCityOpts(sel){ return _regionsList().map(function(rg){ return '<optgroup label="'+esc(rg.n)+'">'+rg.c.map(function(c){return '<option'+(c===sel?' selected':'')+'>'+esc(c)+'</option>';}).join('')+'</optgroup>'; }).join(''); }
+function _prAudPaint(id){
+  var el=document.getElementById('pr-aud-'+id); if(!el)return;
+  var d=window._prAudN[id]||{}, A=_prAudGet(id), n=d.n||{}, ld=d._loading&&d._loading!==d._k;
+  var num=function(v){ return v==null?(ld||!d._k?'<i class="pr-aud-ld"></i>':'—'):fmtNum(v); };
+  var rc=(d.region_cities||[]).filter(function(c){return c!==d.city;});
+  var O=[];
+  if(d.city) O.push(['city',esc(d.city)+' بس',A.base?'اللي مقرّهم فيها':'اللي مقرّهم فيها أو يخدمونها',n.city]);
+  if(d.city&&d.region) O.push(['region','منطقة '+esc(d.region)+' كاملة',rc.length?esc(rc.slice(0,3).join(' · '))+(rc.length>3?'…':''):'',n.region]);
+  O.push(['cities','مدن أختارها',A.scope==='cities'&&A.cities.length?A.cities.length+(A.cities.length===1?' مدينة':' مدن'):'اختر المدن من القائمة',A.scope==='cities'?n.cities:null]);
+  O.push(['all','كل المملكة','لكل مزوّدي '+(d.cats&&d.cats.length?'«'+esc(d.cats.join('، '))+'»':'كل التخصصات'),n.all]);
+  el.innerHTML='<div style="font-weight:900;font-size:15px;margin-bottom:10px">🔔 يوصل إشعار لمين؟</div>'
+    +O.map(function(o){ return '<button type="button" class="pr-aud-o'+(A.scope===o[0]?' on':'')+'" onclick="_prAudSet('+id+',\'scope\',\''+o[0]+'\')"><i></i><span class="t"><b>'+o[1]+'</b><small>'+o[2]+'</small></span><span class="n">'+(o[0]==='cities'&&A.scope!=='cities'?'':num(o[3]))+'</span></button>'; }).join('')
+    +(A.scope==='cities'?'<div class="pr-aud-cs">'+A.cities.map(function(c){return '<span class="pr-chip">'+esc(c)+'<button type="button" onclick="_prAudCity('+id+',\''+esc(c).replace(/'/g,"\\'")+'\',false)" aria-label="حذف">✕</button></span>';}).join('')
+      +'<select class="pr-mini" onchange="_prAudCity('+id+',this.value,true);this.value=\'\'"><option value="">+ أضف مدينة</option>'+_prCityOpts('')+'</select></div>':'')
+    +(A.scope!=='all'?'<label class="pr-aud-b"><input type="checkbox"'+(A.base?' checked':'')+' onchange="_prAudSet('+id+',\'base\',this.checked)"> مقرّهم فيها فقط <span>(بدون اللي «يخدمونها» من مدن ثانية)</span></label>':'')
+    +'<div class="pr-aud-ft">الإشعار يطلع لما تضغط «اعتماد» بس، والاختيار ينحفظ مع المشروع.</div>';
+  var b=document.getElementById('pr-approve-'+id); var c=_prAudCount(id);
+  if(b) b.textContent=c!=null?('✓ اعتماد وإرسال لـ '+fmtNum(c)+' مزوّد'):'✓ اعتماد ونشر';
+  var f=document.getElementById('pr-audf-'+id); if(f) f.textContent=c!=null?fmtNum(c)+' مزوّد':'…';
+}
+// ── التعديل مكانه ──
+function _prEd(id,f){ window._prEdit={id:id,f:f}; renderProjReview(); setTimeout(function(){ var e=document.querySelector('#pr-ed-box [data-focus]'); if(e){ e.focus(); if(e.select&&e.tagName==='INPUT')e.select(); } },30); }
+function _prEdCancel(){ window._prEdit=null; renderProjReview(); }
+function _prRow(id){ return (_projReview||[]).filter(function(r){return r.id===id;})[0]; }
+function _prQuick(id,body,okMsg,btn){
+  if(btn){ btn.disabled=true; btn.dataset.t=btn.textContent; btn.textContent='جاري الحفظ…'; }
+  return fetch(API+'/api/admin/requests/'+id+'/quick',Object.assign({method:'PATCH',body:JSON.stringify(body)},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
+    if(!res.ok){ toast((res.d&&res.d.message)||'تعذّر الحفظ','error'); if(btn){btn.disabled=false;btn.textContent=btn.dataset.t;} return false; }
+    var row=_prRow(id); if(row){ Object.keys(res.d).forEach(function(k){ if(k.charAt(0)!=='_') row[k]=res.d[k]; }); }
+    try{ var ar=(_allReq||[]).filter(function(x){return x.id===id;})[0]; if(ar&&ar!==row) Object.keys(res.d).forEach(function(k){ if(k.charAt(0)!=='_') ar[k]=res.d[k]; }); }catch(e){}
+    if(res.d._dropped) toast('تعذّر رفع '+res.d._dropped+' ملف','error'); else toast(okMsg||'انحفظ ✓','success');
+    if('category' in body||'extra_categories' in body||'city' in body){ delete window._prAudN[id]; delete window._prInfo[id]; var A=_prAudGet(id); if('city' in body){ A.cities=[]; if(A.scope==='cities')A.scope='city'; } }
+    window._prEdit=null; renderProjReview(); return true;
+  }).catch(function(){ toast('تعذّر الاتصال','error'); if(btn){btn.disabled=false;btn.textContent=btn.dataset.t;} return false; });
+}
+function _prEdSave(id,btn){
+  var E=window._prEdit; if(!E||E.id!==id)return; var g=function(x){var e=document.getElementById(x);return e?e.value:'';}; var b={};
+  if(E.f==='title') b.title=g('pr-e-title').trim();
+  else if(E.f==='desc') b.description=g('pr-e-desc').trim();
+  else if(E.f==='cat'){ b.category=g('pr-e-cat'); if(b.category==='أخرى') b.category_other=g('pr-e-cato').trim(); b.extra_categories=[g('pr-e-ex1'),g('pr-e-ex2')].filter(Boolean); }
+  else if(E.f==='loc'){ b.city=g('pr-e-city'); b.district=g('pr-e-dist').trim(); }
+  else if(E.f==='budget'){ b.budget_max=g('pr-e-budget'); }
+  else if(E.f==='deadline'){ b.deadline=g('pr-e-dl'); }
+  _prQuick(id,b,null,btn);
+}
+function _prEdKey(e,id){ if(e.key==='Escape'){e.preventDefault();_prEdCancel();} else if(e.key==='Enter'&&(e.target.tagName!=='TEXTAREA'||e.metaKey||e.ctrlKey)){e.preventDefault();_prEdSave(id);} }
+function _prEdBtns(id){ return '<div class="pr-eb"><button type="button" class="s" onclick="_prEdSave('+id+',this)">حفظ</button><button type="button" onclick="_prEdCancel()">إلغاء</button><span>Enter للحفظ · Esc للإلغاء</span></div>'; }
+function _prEdBox(id,f,sel){
+  var E=window._prEdit; if(!E||E.id!==id||E.f!==f)return null;
+  var cats=(window._CATS&&window._CATS.length)?window._CATS:[];
+  var co=function(v,blank){ return (blank?'<option value="">'+blank+'</option>':'')+cats.map(function(c){return '<option'+(c===v?' selected':'')+'>'+esc(c)+'</option>';}).join('')+(v&&cats.indexOf(v)<0?'<option selected>'+esc(v)+'</option>':''); };
+  var h='';
+  if(f==='title') h='<input id="pr-e-title" data-focus class="pr-ei" style="font-size:19px;font-weight:900" maxlength="150" value="'+esc(sel.title||'')+'">';
+  else if(f==='desc') h='<textarea id="pr-e-desc" data-focus class="pr-ei" style="min-height:150px;line-height:1.9">'+esc(sel.description||'')+'</textarea>';
+  else if(f==='cat'){ var ex=Array.isArray(sel.extra_categories)?sel.extra_categories:[];
+    h='<div class="pr-eg"><label>التخصص الرئيسي<select id="pr-e-cat" data-focus class="pr-ei" onchange="document.getElementById(\'pr-e-catow\').style.display=this.value===\'أخرى\'?\'\':\'none\'">'+co(sel.category,'— بدون —')+'</select></label>'
+      +'<label>إضافي 1<select id="pr-e-ex1" class="pr-ei">'+co(ex[0]||'','— بدون —')+'</select></label><label>إضافي 2<select id="pr-e-ex2" class="pr-ei">'+co(ex[1]||'','— بدون —')+'</select></label></div>'
+      +'<label id="pr-e-catow" style="display:'+(sel.category==='أخرى'?'':'none')+'">نوع الخدمة<input id="pr-e-cato" class="pr-ei" value="'+esc(sel.category_other||'')+'"></label>'; }
+  else if(f==='loc') h='<div class="pr-eg"><label>المدينة<select id="pr-e-city" data-focus class="pr-ei"><option value="">— بدون مدينة —</option>'+_prCityOpts(sel.city||'')+(sel.city&&!_regionsList().some(function(r){return r.c.indexOf(sel.city)>=0;})?'<option selected>'+esc(sel.city)+'</option>':'')+'</select></label><label>الحي<input id="pr-e-dist" class="pr-ei" maxlength="80" value="'+esc(sel.district||'')+'"></label></div>';
+  else if(f==='budget') h='<input id="pr-e-budget" data-focus class="pr-ei" inputmode="numeric" placeholder="فاضي = غير محددة" value="'+(sel.budget_max?Math.round(sel.budget_max):'')+'">';
+  else if(f==='deadline') h='<input id="pr-e-dl" data-focus class="pr-ei" type="date" value="'+(sel.deadline?String(sel.deadline).slice(0,10):'')+'">';
+  return '<div id="pr-ed-box" class="pr-edbox" onkeydown="_prEdKey(event,'+id+')">'+h+_prEdBtns(id)+'</div>';
+}
+// ── رقم الجوال/الإيميل: شيله بضغطة (مع تراجع) ──
+function _prStrip(id,btn){
+  var r=_prRow(id); if(!r)return;
+  var rx=new RegExp(_PR_PHONE.source,'gi'), tidy=function(s){ return String(s||'').replace(rx,' ').replace(/[ \t]{2,}/g,' ').replace(/\s+([.،,])/g,'$1').trim(); };
+  var old={title:r.title,description:r.description}, nt=tidy(r.title), nd=tidy(r.description);
+  if(nt===r.title&&nd===r.description){ toast('ما لقيت رقم أشيله'); return; }
+  _prQuick(id,{title:nt.length>=3?nt:r.title,description:nd||r.description},'شلنا الرقم ✓',btn).then(function(ok){ if(ok) window._prUndo={id:id,b:old}; if(ok) renderProjReview(); });
+}
+function _prUndoStrip(){ var u=window._prUndo; if(!u)return; window._prUndo=null; _prQuick(u.id,u.b,'رجّعنا النص زي ما كان'); }
+// ── الصور والملفات ──
+async function _prImgDel(id,i){ var r=_prRow(id); if(!r)return; if(!await askConfirm({title:'حذف الصورة',message:'الصورة تنحذف من المشروع.',confirmText:'احذفها'}))return; var im=_prImgs(r).slice(); im.splice(i,1); _prQuick(id,{images:im},'انحذفت الصورة'); }
+async function _prImgAdd(id,inp){
+  var r=_prRow(id); var fs=[].slice.call(inp.files||[]); inp.value=''; if(!r||!fs.length)return;
+  var im=_prImgs(r).slice(); for(var i=0;i<fs.length&&im.length<10;i++){ var d=await _reShrink(fs[i]); if(d) im.push(d); }
+  toast('جاري رفع الصور…'); _prQuick(id,{images:im},'انضافت الصور ✓');
+}
+async function _prAttDel(id,i){ var r=_prRow(id); if(!r)return; if(!await askConfirm({title:'حذف الملف',message:'الملف ينحذف من المشروع.',confirmText:'احذفه'}))return; var at=_prAtts(r).map(function(a){return {name:a.name,url:a.url};}); at.splice(i,1); _prQuick(id,{attachments:at},'انحذف الملف'); }
+function _prAttAdd(id,inp){
+  var r=_prRow(id); var fs=[].slice.call(inp.files||[]); inp.value=''; if(!r||!fs.length)return;
+  var at=_prAtts(r).map(function(a){return {name:a.name,url:a.url};}), left=fs.length; toast('جاري رفع الملفات…');
+  fs.forEach(function(f){
+    if(f.size>30*1024*1024){ toast('«'+f.name+'» أكبر من 30MB','error'); if(--left===0)_prQuick(id,{attachments:at},'انضافت الملفات ✓'); return; }
+    var slot={name:f.name,up:true}; at.push(slot);
+    _mqUpAtt(f,slot,function(ok,msg){ if(!ok){ at.splice(at.indexOf(slot),1); toast(msg||('تعذّر رفع «'+f.name+'»'),'error'); } else delete slot.up; if(--left===0)_prQuick(id,{attachments:at},'انضافت الملفات ✓'); });
+  });
 }
