@@ -715,7 +715,7 @@ app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dash
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 // رابط الدخول القصير: /m/الرمز → صفحة الدخول السحري
 // ?n= وجهة بعد الدخول (صفحات اللوحات فقط)
-function _magicNext(n){ n = String(n||''); return /^\/(dashboard-client|dashboard-provider)\.html(#[a-z]+(\/\d+)?)?$/.test(n) ? n : ''; }
+function _magicNext(n){ n = String(n||''); return (/^\/(dashboard-client|dashboard-provider)\.html(#[a-z]+(\/\d+)?)?$/.test(n) || /^\/new\.html\?draft=[a-f0-9]{32}$/.test(n)) ? n : ''; }
 app.get('/m/:token',               (req, res) => { const n = _magicNext(req.query.n); res.redirect(302, '/auth.html?magic=' + encodeURIComponent(req.params.token) + (n ? '&next=' + encodeURIComponent(n) : '')); });
 // رابط دخول مباشر لصفحة محددة (للتذكيرات)
 async function _magicUrl(uid, next){ try { const t = await getMagicToken(uid); const n = _magicNext(next); return SITE_URL + '/m/' + t + (n ? '?n=' + encodeURIComponent(n) : ''); } catch(e){ return SITE_URL + (next||''); } }
@@ -1698,7 +1698,7 @@ function emailTpl(title, body, btnText, btnUrl, opts) {
             <div style="font-size:19px;font-weight:800;color:#0F172A;margin-bottom:6px">${title}</div>
             <div style="width:46px;height:3px;background:#1d4ed8;border-radius:2px;margin-bottom:20px"></div>
             <div style="font-size:14.5px;color:#374151;line-height:1.95">${body}</div>
-            ${btnText && btnUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td bgcolor="#1d4ed8" style="border-radius:11px;background-color:#1d4ed8;background:linear-gradient(135deg,#1d4ed8,#1e3a8a)"><a href="${btnUrl}" style="display:inline-block;background-color:#1d4ed8;color:#ffffff;padding:15px 46px;border-radius:11px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:.3px">${btnText}</a></td></tr></table>` : ''}
+            ${btnText && btnUrl ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:30px auto 6px"><tr><td bgcolor="#1d4ed8" style="border-radius:11px;background-color:#1d4ed8;background:linear-gradient(135deg,#1d4ed8,#1e3a8a)"><a href="${btnUrl}" style="display:inline-block;background-color:#1d4ed8;color:#ffffff;padding:15px 46px;border-radius:11px;text-decoration:none;font-size:15px;font-weight:800;letter-spacing:.3px">${btnText}</a></td></tr></table>` : ''}${opts && opts.after ? opts.after : ''}
           </td></tr></table>
         </td></tr>
         <!-- App -->
@@ -2950,6 +2950,9 @@ async function setupDatabase() {
     await _mig(`CREATE TABLE IF NOT EXISTS site_visits (day DATE NOT NULL, vkey VARCHAR(16) NOT NULL, src VARCHAR(16) NOT NULL DEFAULT 'direct', dev VARCHAR(8) NOT NULL DEFAULT 'mobile', page VARCHAR(24), uid INTEGER, role VARCHAR(10), hits INTEGER NOT NULL DEFAULT 1, first_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (day, vkey))`);
     await _mig(`CREATE INDEX IF NOT EXISTS site_visits_uid ON site_visits(uid, day) WHERE uid IS NOT NULL`);
     await _mig(`ALTER TABLE site_visits ADD COLUMN IF NOT EXISTS dg VARCHAR(2)`);
+    await _mig(`CREATE TABLE IF NOT EXISTS post_drafts (id SERIAL PRIMARY KEY, did VARCHAR(40) UNIQUE NOT NULL, token VARCHAR(40) UNIQUE NOT NULL, user_id INTEGER, name VARCHAR(80), phone VARCHAR(20), email VARCHAR(120), title VARCHAR(200), category VARCHAR(80), city VARCHAR(60), district VARCHAR(80), description TEXT, budget NUMERIC, step SMALLINT DEFAULT 1, steps SMALLINT DEFAULT 4, src VARCHAR(8) DEFAULT 'new', data JSONB, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW(), rem1_at TIMESTAMPTZ, rem1_ch VARCHAR(20), rem2_at TIMESTAMPTZ, rem2_ch VARCHAR(20), clicked_at TIMESTAMPTZ, clicks INTEGER DEFAULT 0, posted_at TIMESTAMPTZ, request_id INTEGER, stopped_at TIMESTAMPTZ, stopped_by VARCHAR(10), wa_at TIMESTAMPTZ)`);
+    await _mig(`CREATE INDEX IF NOT EXISTS idx_post_drafts_user ON post_drafts(user_id)`);
+    await _mig(`CREATE INDEX IF NOT EXISTS idx_post_drafts_open ON post_drafts(updated_at) WHERE posted_at IS NULL`);
     await _mig(`CREATE TABLE IF NOT EXISTS demo_events (day DATE NOT NULL, grp VARCHAR(2) NOT NULL, ev VARCHAR(12) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, grp, ev))`);
     await _mig(`CREATE TABLE IF NOT EXISTS site_pages (day DATE NOT NULL, page VARCHAR(24) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, page))`);
     await _mig(`CREATE TABLE IF NOT EXISTS app_page_hits (day DATE NOT NULL, kind VARCHAR(8) NOT NULL, src VARCHAR(30) NOT NULL, os VARCHAR(10) NOT NULL, n INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (day, kind, src, os))`);
@@ -3919,6 +3922,188 @@ app.post('/api/live/ping', rateLimiter(90, 60000), express.json({ limit: '1kb' }
     _liveTouch(vkey, req, { p: b.p, h: b.h, dev: b.app ? 'app' : (/Mobi|Android|iPhone|iPad/i.test(ua) ? 'mobile' : 'desktop') });
   } catch(e) {}
 });
+// ═══════════ مشاريع ما اكتملت: نحفظ المسودّة في السيرفر + تذكير تلقائي (إيميل + إشعار) بعد ساعة، وأخير بعد 24 ساعة ═══════════
+const _DR_F = { t: 200, c: 80, co: 80, d: 4000, b: 20, ci: 60, di: 80, dl: 12, nm: 80, ph: 20, em: 120 };
+function _drClean(f){
+  const o = {}; f = (f && typeof f === 'object') ? f : {};
+  for (const k of Object.keys(_DR_F)) { if (f[k] != null && String(f[k]).trim()) o[k] = String(f[k]).trim().slice(0, _DR_F[k]); }
+  if (Array.isArray(f.ex)) o.ex = f.ex.filter(x => typeof x === 'string').slice(0, 2).map(x => x.slice(0, 80));
+  if (o.ph) { o.ph = o.ph.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[^\d+]/g, ''); if (!/^(05\d{8}|\+?9665\d{8})$/.test(o.ph)) delete o.ph; }
+  if (o.em && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(o.em)) delete o.em;
+  return o;
+}
+app.post('/api/drafts/save', rateLimiter(60, 60000), express.json({ limit: '24kb' }), optionalAuth, async (req, res) => {
+  try {
+    const b = req.body || {}; const did = String(b.did || '');
+    if (!/^[a-z0-9]{12,40}$/.test(did)) return res.status(400).json({ ok: false });
+    if (req.user && req.user.role !== 'client') return res.json({ ok: true, skip: 1 });
+    const ua = String(req.headers['user-agent'] || ''); if (!ua || _BOT_RE.test(ua)) return res.json({ ok: true, skip: 1 });
+    const f = _drClean(b.f);
+    if (!f.t && !f.d) return res.json({ ok: true, skip: 1 });
+    const step = Math.max(1, Math.min(9, parseInt(b.step) || 1)), steps = Math.max(1, Math.min(9, parseInt(b.steps) || 4));
+    const src = b.src === 'dash' ? 'dash' : 'new';
+    const uid = req.user ? req.user.id : null;
+    const bud = parseFloat(String(f.b || '').replace(/[^\d.]/g, '')) || null;
+    const cat = f.c === 'أخرى' && f.co ? f.co : (f.c || null);
+    const r = await pool.query(
+      `INSERT INTO post_drafts (did, token, user_id, name, phone, email, title, category, city, district, description, budget, step, steps, src, data)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       ON CONFLICT (did) DO UPDATE SET user_id=COALESCE(post_drafts.user_id,EXCLUDED.user_id), name=COALESCE(EXCLUDED.name,post_drafts.name), phone=COALESCE(EXCLUDED.phone,post_drafts.phone), email=COALESCE(EXCLUDED.email,post_drafts.email),
+         title=EXCLUDED.title, category=EXCLUDED.category, city=EXCLUDED.city, district=EXCLUDED.district, description=EXCLUDED.description, budget=EXCLUDED.budget,
+         step=GREATEST(post_drafts.step,EXCLUDED.step), steps=EXCLUDED.steps, src=EXCLUDED.src, data=EXCLUDED.data, updated_at=NOW()
+       WHERE post_drafts.posted_at IS NULL AND (post_drafts.user_id IS NULL OR $3::int IS NULL OR post_drafts.user_id=$3::int)
+       RETURNING id`,
+      [did, crypto.randomBytes(16).toString('hex'), uid, f.nm || null, f.ph || null, f.em || null, f.t || null, cat, f.ci || null, f.di || null, f.d || null, bud, step, steps, src, JSON.stringify(f)]);
+    res.json({ ok: true, id: r.rows[0] ? r.rows[0].id : null });
+  } catch(e) { console.error('/api/drafts/save:', e.message); res.status(500).json({ ok: false }); }
+});
+// يكمّل من رابط التذكير: ?draft=TOKEN (أو id-123 لصاحب الحساب من الإشعار داخل اللوحة)
+app.get('/api/drafts/resume/:key', rateLimiter(30, 60000), optionalAuth, async (req, res) => {
+  try {
+    const k = String(req.params.key || ''); let r;
+    if (/^[a-f0-9]{32}$/.test(k)) r = await pool.query('SELECT * FROM post_drafts WHERE token=$1', [k]);
+    else if (/^id-\d+$/.test(k) && req.user) r = await pool.query('SELECT * FROM post_drafts WHERE id=$1 AND user_id=$2', [parseInt(k.slice(3)), req.user.id]);
+    else return res.status(404).json({ message: 'الرابط غير صالح' });
+    const d = r.rows[0]; if (!d) return res.status(404).json({ message: 'ما لقينا المسودّة' });
+    if (d.posted_at) return res.json({ posted: true, request_id: d.request_id });
+    pool.query('UPDATE post_drafts SET clicked_at=COALESCE(clicked_at,NOW()), clicks=clicks+1 WHERE id=$1', [d.id]).catch(()=>{});
+    let f = d.data || {}; if (typeof f === 'string') { try { f = JSON.parse(f); } catch(e) { f = {}; } }
+    res.json({ did: d.did, step: d.step, f });
+  } catch(e) { console.error('/api/drafts/resume:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// «لا تذكّرني» من الإيميل
+app.get('/api/drafts/stop/:token', async (req, res) => {
+  try { if (/^[a-f0-9]{32}$/.test(req.params.token)) await pool.query("UPDATE post_drafts SET stopped_at=COALESCE(stopped_at,NOW()), stopped_by='self' WHERE token=$1", [req.params.token]); } catch(e) {}
+  res.type('html').send('<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>مناقصة</title></head><body style="font-family:Tahoma,Arial,sans-serif;background:#f0f5ff;display:flex;align-items:center;justify-content:center;min-height:90vh;margin:0"><div style="background:#fff;border-radius:16px;padding:28px 24px;max-width:360px;text-align:center;box-shadow:0 10px 30px -14px rgba(15,37,68,.35)"><div style="font-size:34px">👍</div><h2 style="color:#0f2544;margin:8px 0">تمام، ما راح نذكّرك</h2><p style="color:#64748b;line-height:1.8">ولو احتجت شي في أي وقت، مشروعك ينتظرك.</p><a href="/" style="display:inline-block;margin-top:8px;background:#1d4ed8;color:#fff;padding:11px 26px;border-radius:11px;text-decoration:none;font-weight:bold">مناقصة</a></div></body></html>');
+});
+// لما ينشر: تنقفل مسودّته
+async function _draftPosted(uid, did, reqId){
+  try {
+    await pool.query(`UPDATE post_drafts SET posted_at=NOW(), request_id=$3 WHERE posted_at IS NULL AND ((did=$1 AND $1<>'') OR (user_id=$2 AND updated_at > NOW() - INTERVAL '7 days'))`, [String(did || ''), uid, reqId]);
+  } catch(e) { console.error('_draftPosted:', e.message); }
+}
+function _drFirst(n){ const w = String(n || '').trim().split(/\s+/); return /^(أبو|ابو|أم|ام|بو)$/.test(w[0] || '') && w[1] ? w[0] + ' ' + w[1] : (w[0] || ''); }
+function _drStepTxt(d){
+  const s = d.step || 1, n = d.steps || 4;
+  if (d.src === 'dash') return 'باقي عليه شوي';
+  const left = Math.max(1, n - s + 1);
+  const L = n >= 4 ? ['العنوان والتخصص', 'الوصف والميزانية', 'المدينة', 'النشر'] : ['العنوان والتخصص', 'الوصف والميزانية', 'المدينة والنشر'];
+  const rest = L.slice(Math.min(s, n) - 1);
+  return (left === 1 ? 'باقي خطوة وحدة' : left === 2 ? 'باقي خطوتين' : 'باقي ' + left + ' خطوات') + ' (' + rest.join(' + ') + ')';
+}
+async function _draftSend(d, stage){
+  // stage: 1 = بعد ساعة · 2 = الأخير بعد 24 ساعة · 'manual' = من الإدارة
+  const ch = [];
+  const title = String(d.title || 'مشروعك').slice(0, 80);
+  const name = _drFirst(d.uname || d.name);
+  let nProv = 0;
+  try { if (d.category) nProv = (await matchingProviders([d.category], d.city || null, !d.city)).length; } catch(e) {}
+  const resumePath = '/new.html?draft=' + d.token;
+  const fin = stage === 2;
+  // الإيميل
+  const to = d.user_id ? d.uemail : d.email;
+  if (to) {
+    const subj = fin ? `${nProv >= 3 ? nProv + ' مزوّد ' + (d.category || '') + ' ينتظرون' : 'مشروعك «' + title + '» ينتظر'} — آخر تذكير` : `مشروعك «${title}» ينتظرك ✍️`;
+    const h = fin ? 'مشروعك محفوظ — انشره الحين وخلهم يتنافسون' : `أهلاً${name ? ' ' + eEsc(name) : ''}، وقفت في نص الطريق 👋`;
+    const steps = Math.min(d.step || 1, d.steps || 4), tot = d.steps || 4;
+    const bars = d.src === 'dash' ? '' : '<div style="margin-top:10px;font-size:0">' + Array.from({ length: tot }, (_, i) => `<span style="display:inline-block;width:${Math.floor(92 / tot)}%;height:6px;border-radius:4px;margin-left:2%;background:${i < steps - 1 ? '#2563eb' : '#e2e8f0'}"></span>`).join('') + '</div>';
+    const box = `<div style="border:1.5px dashed #c7d6f0;border-radius:13px;padding:13px 14px;background:#f8fbff;margin:12px 0"><div style="font-weight:bold;font-size:15px;color:#0f2544">${eEsc(title)}</div><div style="font-size:12.5px;color:#64748b;margin-top:3px">${eEsc([d.category, d.city, d.district].filter(Boolean).join(' · '))}</div>${bars}<div style="font-size:12px;color:#1d4ed8;font-weight:bold;margin-top:7px">${eEsc(_drStepTxt(d))}</div></div>`;
+    const why = nProv >= 3 ? `<p>في ${eEsc(d.city || 'منطقتك')} فيه <strong>${nProv} مزوّد ${eEsc(d.category || '')}</strong> يوصلهم مشروعك أول ما ينزل، ويقدّمون لك عروضهم وتختار الأنسب.</p>` : `<p>حفظنا لك كل اللي كتبته — كمّله بضغطة، وتبدأ توصلك عروض الأسعار من المزوّدين.</p>`;
+    const stop = `<p style="font-size:11.5px;color:#94a3b8;text-align:center;margin-top:16px">وصلك هالإيميل لأنك بديت طلب في مناقصة · <a href="${SITE_URL}/api/drafts/stop/${d.token}" style="color:#94a3b8">لا تذكّرني</a></p>`;
+    const url = d.user_id ? await _magicUrl(d.user_id, resumePath) : SITE_URL + resumePath;
+    const ok = await sendEmail(to, subj, emailTpl(h, box + why, 'كمّل مشروعي', url, { after: stop }), { uid: d.user_id || null, kind: 'draft_reminder' }).catch(() => false);
+    if (ok) ch.push('email');
+  }
+  // الإشعار (لصاحب الحساب)
+  if (d.user_id) {
+    try {
+      const nt = fin ? (nProv >= 3 ? `${nProv} مزوّد ${d.category || ''} ينتظرون مشروعك 👷` : `مشروعك «${title}» ما زال محفوظ`) : `مشروعك «${title}» ما انتشر ✍️`;
+      const nb = fin ? 'انشره الحين وخلهم يتنافسون على أفضل سعر.' : 'حفظنا لك كل اللي كتبته — ' + _drStepTxt(d).replace(/ \(.*\)$/, '') + ' وتبدأ توصلك العروض.';
+      await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [d.user_id, nt, nb, 'draft', d.id]);
+      sendPush(d.user_id, nt, nb, resumePath, 'draft', d.id).catch(() => {});
+      try { wsBroadcast(d.user_id, { type: 'notification', notif: { title: nt, body: nb, ntype: 'draft', ref_id: d.id, url: resumePath, created_at: new Date().toISOString() } }); } catch(e) {}
+      ch.push('push');
+    } catch(e) { console.error('_draftSend push:', e.message); }
+  }
+  return ch.join(',');
+}
+async function runDraftReminders(){
+  try {
+    // اللي نشر بعدين (حتى من جهاز ثاني) نقفل مسودّته
+    await pool.query(`UPDATE post_drafts d SET posted_at=r.created_at, request_id=r.id FROM requests r
+      WHERE d.posted_at IS NULL AND d.user_id IS NOT NULL AND r.client_id=d.user_id AND r.created_at >= d.created_at - INTERVAL '10 minutes'`);
+    await pool.query(`UPDATE post_drafts d SET posted_at=r.created_at, request_id=r.id, user_id=COALESCE(d.user_id,u.id) FROM users u JOIN requests r ON r.client_id=u.id
+      WHERE d.posted_at IS NULL AND d.user_id IS NULL AND d.email IS NOT NULL AND LOWER(u.email)=LOWER(d.email) AND r.created_at >= d.created_at - INTERVAL '10 minutes'`);
+    const base = `SELECT d.*, u.email AS uemail, u.name AS uname FROM post_drafts d LEFT JOIN users u ON u.id=d.user_id
+      WHERE d.posted_at IS NULL AND d.stopped_at IS NULL AND (d.user_id IS NOT NULL OR d.email IS NOT NULL) AND LENGTH(COALESCE(d.title,''))>=3 AND COALESCE(u.role,'client')='client'`;
+    const r1 = await pool.query(base + ` AND d.rem1_at IS NULL AND d.updated_at < NOW() - INTERVAL '1 hour' AND d.created_at > NOW() - INTERVAL '3 days' ORDER BY d.id LIMIT 40`);
+    for (const d of r1.rows) {
+      const c = await pool.query('UPDATE post_drafts SET rem1_at=NOW() WHERE id=$1 AND rem1_at IS NULL RETURNING id', [d.id]); if (!c.rows.length) continue;
+      // نفس الشخص ذكّرناه بمسودّة ثانية خلال 20 ساعة؟ ما نكرر
+      const dup = await pool.query(`SELECT 1 FROM post_drafts WHERE id<>$1 AND rem1_ch IN ('email','push','email,push') AND rem1_at > NOW() - INTERVAL '20 hours' AND ((user_id=$2 AND $2::int IS NOT NULL) OR (LOWER(email)=LOWER($3) AND $3::text IS NOT NULL)) LIMIT 1`, [d.id, d.user_id, d.email]);
+      const ch = dup.rows.length ? 'dup' : ((await _draftSend(d, 1)) || 'fail');
+      await pool.query('UPDATE post_drafts SET rem1_ch=$2 WHERE id=$1', [d.id, ch]);
+    }
+    const r2 = await pool.query(base + ` AND d.rem1_at IS NOT NULL AND COALESCE(d.rem1_ch,'')<>'dup' AND d.rem2_at IS NULL AND d.rem1_at < NOW() - INTERVAL '23 hours' AND d.updated_at < NOW() - INTERVAL '24 hours' AND d.rem1_at > NOW() - INTERVAL '4 days' ORDER BY d.id LIMIT 40`);
+    for (const d of r2.rows) {
+      const c = await pool.query('UPDATE post_drafts SET rem2_at=NOW() WHERE id=$1 AND rem2_at IS NULL RETURNING id', [d.id]); if (!c.rows.length) continue;
+      const ch = await _draftSend(d, 2);
+      await pool.query('UPDATE post_drafts SET rem2_ch=$2 WHERE id=$1', [d.id, ch || 'fail']);
+    }
+  } catch(e) { console.error('runDraftReminders:', e.message); }
+}
+setInterval(() => _jobLock('drafts', runDraftReminders), 10 * 60 * 1000);
+// ── لوحة الإدارة: «ما اكتملت» ──
+app.get('/api/admin/drafts', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const days = Math.max(1, Math.min(90, parseInt(req.query.days) || 7));
+    const r = await pool.query(`SELECT d.id, d.title, d.category, d.city, d.district, LEFT(d.description,600) AS description, d.budget, d.step, d.steps, d.src,
+        d.user_id, COALESCE(u.name, d.name) AS name, COALESCE(d.phone, u.phone) AS phone, COALESCE(u.email, d.email) AS email,
+        d.created_at, d.updated_at, d.rem1_at, d.rem1_ch, d.rem2_at, d.rem2_ch, d.clicked_at, d.clicks, d.posted_at, d.request_id, d.stopped_at, d.stopped_by, d.wa_at,
+        (d.data->>'dl') AS deadline
+      FROM post_drafts d LEFT JOIN users u ON u.id=d.user_id
+      WHERE d.created_at > NOW() - ($1 || ' days')::interval AND (d.posted_at IS NULL OR d.rem1_at IS NOT NULL OR d.wa_at IS NOT NULL)
+      ORDER BY COALESCE(d.posted_at, d.updated_at) DESC LIMIT 300`, [String(days)]);
+    const rows = r.rows;
+    const k = { total: rows.length, reach: 0, reminded: 0, clicked: 0, back: 0, waiting: 0 };
+    for (const x of rows) {
+      const reach = !!(x.user_id || x.email || x.phone); if (reach) k.reach++;
+      if (/email|push/.test(x.rem1_ch || '') || x.wa_at) k.reminded++;
+      if (x.clicked_at) k.clicked++;
+      if (x.posted_at && (x.rem1_at || x.wa_at)) k.back++;
+      if (!x.posted_at && !x.stopped_at && !x.rem1_at && (x.user_id || x.email)) k.waiting++;
+    }
+    res.json({ days, k, rows });
+  } catch(e) { console.error('/api/admin/drafts:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/drafts/:id/stop', requirePermission('requests.view'), async (req, res) => {
+  try { await pool.query("UPDATE post_drafts SET stopped_at=CASE WHEN stopped_at IS NULL THEN NOW() ELSE NULL END, stopped_by='admin' WHERE id=$1", [parseInt(req.params.id)]); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/drafts/:id/remind', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const d = (await pool.query('SELECT d.*, u.email AS uemail, u.name AS uname FROM post_drafts d LEFT JOIN users u ON u.id=d.user_id WHERE d.id=$1', [parseInt(req.params.id)])).rows[0];
+    if (!d) return res.status(404).json({ message: 'غير موجود' });
+    if (d.posted_at) return res.status(400).json({ message: 'نشر مشروعه خلاص' });
+    if (!d.user_id && !d.email) return res.status(400).json({ message: 'ما عنده إيميل ولا حساب' });
+    const ch = await _draftSend(d, 'manual');
+    if (!d.rem1_at) await pool.query('UPDATE post_drafts SET rem1_at=NOW(), rem1_ch=$2 WHERE id=$1', [d.id, ch || 'fail']);
+    else if (!d.rem2_at) await pool.query('UPDATE post_drafts SET rem2_at=NOW(), rem2_ch=$2 WHERE id=$1', [d.id, ch || 'fail']);
+    res.json({ ok: true, ch });
+  } catch(e) { console.error('/api/admin/drafts/remind:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/drafts/:id/wa', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const d = (await pool.query('SELECT d.*, u.name AS uname, u.phone AS uphone FROM post_drafts d LEFT JOIN users u ON u.id=d.user_id WHERE d.id=$1', [parseInt(req.params.id)])).rows[0];
+    if (!d) return res.status(404).json({ message: 'غير موجود' });
+    const ph = String(d.phone || d.uphone || '').replace(/\D/g, '').replace(/^0/, '966');
+    if (!/^9665\d{8}$/.test(ph)) return res.status(400).json({ message: 'ما عنده رقم جوال' });
+    await pool.query('UPDATE post_drafts SET wa_at=NOW() WHERE id=$1', [d.id]);
+    const nm = _drFirst(d.uname || d.name);
+    const txt = `السلام عليكم${nm ? ' ' + nm : ''} 👋\nمعك فريق منصة مناقصة.\n\nلاحظنا إنك بديت تكتب مشروعك «${String(d.title || '').slice(0, 80)}» وما كمّلته — حفظنا لك كل اللي كتبته.\n\nتقدر تكمّله من هنا بضغطة:\n${SITE_URL}/new.html?draft=${d.token}\n\nلو واجهتك أي مشكلة أو عندك سؤال، رد علينا هنا ونساعدك 🌷`;
+    res.json({ url: 'https://wa.me/' + ph + '?text=' + encodeURIComponent(txt) });
+  } catch(e) { console.error('/api/admin/drafts/wa:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 // وصف بالعربي للصفحة الحالية (مع عنوان المشروع / اسم المزوّد)
 const _liveNames = new Map();
 async function _liveLabel(p, h){
@@ -4778,6 +4963,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
     try { if (_nc.category_other && r.rows[0]) { await pool.query('UPDATE requests SET category_other=$1 WHERE id=$2', [_nc.category_other, r.rows[0].id]); r.rows[0].category_other = _nc.category_other; } } catch(e){}
     try { const _ex = _normExtras(req.body.extra_categories, category); if (_ex && _ex.length && r.rows[0]) { await pool.query('UPDATE requests SET extra_categories=$1 WHERE id=$2', [_ex, r.rows[0].id]); r.rows[0].extra_categories = _ex; } } catch(e){}
     const newReq = r.rows[0];
+    if (newReq) _draftPosted(req.user.id, req.body.draft_did, newReq.id);
     // دعوة مزوّد مباشرة (من صفحته): يوصله أول بعد اعتماد المشروع
     try {
       const _inv = parseInt(req.body.invite_provider_id) || 0;

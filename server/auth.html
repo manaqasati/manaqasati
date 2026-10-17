@@ -534,7 +534,7 @@ function _getSelectedSpecs(){ return (window._specSel||[]).slice(); }
         var _rl=(d.user&&d.user.role)||'client';
         try{localStorage.setItem('activeMode',_rl==='provider'?'provider':'client');}catch(e){}
         var _nx=new URLSearchParams(location.search).get('next')||'';
-        var _ok=_rl==='provider'?/^\/dashboard-provider\.html(#[a-z]+(\/\d+)?)?$/:/^\/dashboard-client\.html(#[a-z]+(\/\d+)?)?$/;
+        var _ok=_rl==='provider'?/^\/dashboard-provider\.html(#[a-z]+(\/\d+)?)?$/:/^\/(dashboard-client\.html(#[a-z]+(\/\d+)?)?|new\.html\?draft=[a-f0-9]{32})$/;
         location.replace(_ok.test(_nx)?_nx:(_rl==='provider'?'dashboard-provider.html':'dashboard-client.html'));
       } else {
         document.documentElement.style.visibility='';

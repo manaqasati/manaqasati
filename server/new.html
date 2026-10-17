@@ -368,8 +368,21 @@ function _saveNow(){
     var o={};Object.keys(DFIELDS).forEach(function(k){var el=$(DFIELDS[k]);if(el&&el.value)o[k]=String(el.value).slice(0,4000);});
     try{ if(window._cpExtras){ var ex=window._cpExtras(); if(ex&&ex.length) o.ex=ex; } }catch(e){}
     localStorage.setItem(DKEY,JSON.stringify(o));
+    _srvQ(o);
   }catch(e){}
 }
+// ── نحفظ نسخة في السيرفر (عشان لو طلع بدون ما ينشر نذكّره ونرجّعه لمسودّته) ──
+var _srvTmr,_srvLast='',_srvPend=null;
+function _did(){ var d=''; try{ d=localStorage.getItem('mnq_did')||''; }catch(e){} if(!/^[a-z0-9]{12,40}$/.test(d)){ d=''; var c='abcdefghijklmnopqrstuvwxyz0123456789'; for(var i=0;i<22;i++) d+=c[Math.floor(Math.random()*36)]; try{ localStorage.setItem('mnq_did',d); }catch(e){} } return d; }
+function _srvQ(o){ if(TOKEN&&!isClient()) return; if(!(o.t||o.d)) return; _srvPend=o; clearTimeout(_srvTmr); _srvTmr=setTimeout(_srvFlush,2500); }
+function _srvFlush(){
+  clearTimeout(_srvTmr); var o=_srvPend; if(!o) return; _srvPend=null;
+  var b=JSON.stringify({did:_did(),step:CUR,steps:nSteps(),src:'new',f:o}); if(b===_srvLast) return; _srvLast=b;
+  var h={'Content-Type':'application/json'}; if(TOKEN) h.Authorization='Bearer '+TOKEN;
+  try{ fetch(API+'/api/drafts/save',{method:'POST',headers:h,body:b,keepalive:true}).catch(function(){}); }catch(e){}
+}
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='hidden') _srvFlush(); });
+window.addEventListener('pagehide',_srvFlush);
 function saveDraft(){ clearTimeout(_dTmr); _dTmr=setTimeout(_saveNow,300); }
 function clearDraft(){ try{localStorage.removeItem(DKEY);}catch(e){} }
 function loadDraft(){ try{ return JSON.parse(localStorage.getItem(DKEY)||'null')||{}; }catch(e){ return {}; } }
@@ -479,6 +492,7 @@ function buildBody(){
   var dl=$('n-deadline').value; if(dl) body.deadline=dl;
   if(IMGS.length) body.images=IMGS.slice(0,MAX_IMGS);
   if(INVITE&&INVITE.id) body.invite_provider_id=parseInt(INVITE.id,10);
+  try{ var _dd=localStorage.getItem('mnq_did'); if(_dd) body.draft_did=_dd; }catch(e){}
   return body;
 }
 function msgBox(){ return $(CUR===4?'msg-4':'msg-3'); }
@@ -533,7 +547,8 @@ function postReq(tok){
       var d=r.d;
       if(r.ok&&d&&d.id){
         try{ if(window.track) track('Lead'); }catch(e){}
-        clearDraft();
+        clearDraft(); _srvPend=null; clearTimeout(_srvTmr);
+        try{ localStorage.removeItem('mnq_did'); }catch(e){}
         try{ localStorage.setItem('mnq_app_moment','posted'); }catch(e){}
         location.href='/dashboard-client.html?posted='+encodeURIComponent(d.id);
         return;
@@ -549,6 +564,7 @@ $('btn-pub').addEventListener('click',submitAll);
 function goLogin(){
   var bv=parseFloat(_dig($('n-budget').value).replace(/[,\s٬]/g,''));
   var dr={title:($('n-title').value||'').trim().slice(0,200),category:catVal(),description:($('n-desc').value||'').trim(),city:$('n-city').value,budget_max:bv>0?bv:'',deadline:$('n-deadline').value||'',open:1};
+  try{ var _dd=localStorage.getItem('mnq_did'); if(_dd) dr.did=_dd; }catch(e){}
   try{ sessionStorage.setItem('mnq_req_draft',JSON.stringify(dr)); sessionStorage.setItem('auth_mode','login'); sessionStorage.setItem('auth_role','client'); }catch(e){}
   _saveNow();
   location.href='/auth.html?redirect=postdraft';
@@ -618,7 +634,24 @@ function _restore(){
 if(!GUEST_UI){ $('st-4').parentNode.removeChild($('st-4')); }
 go(1,true);
 try{ history.replaceState({s:1},'',location.href); }catch(e){}
-if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_restore); else _restore();
+// ── رجع من رابط التذكير (?draft=…): نجيب مسودّته من السيرفر ونفتحه على نفس الخطوة ──
+function _boot(){
+  var dk=String(QP.get('draft')||''), di=String(QP.get('did_id')||''), key=/^[a-f0-9]{32}$/.test(dk)?dk:(/^\d+$/.test(di)&&TOKEN?'id-'+di:'');
+  if(!key){ _restore(); return; }
+  try{ history.replaceState({s:1},'',location.pathname); }catch(e){}
+  var h={}; if(TOKEN) h.Authorization='Bearer '+TOKEN;
+  fetch(API+'/api/drafts/resume/'+key,{headers:h}).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(d&&d.posted){ showToast('مشروعك منشور خلاص ✓','success'); setTimeout(function(){ location.href=TOKEN?'/dashboard-client.html':'/'; },1400); return; }
+    if(d&&d.f&&d.did){
+      try{ localStorage.setItem(DKEY,JSON.stringify(d.f)); localStorage.setItem('mnq_did',d.did); }catch(e){}
+      _restore();
+      var st=Math.max(1,Math.min(nSteps(),parseInt(d.step)||1));
+      if(st>1){ go(st,true); try{ history.replaceState({s:st},'',location.href); }catch(e){} }
+      showToast('رجّعنا لك مشروعك زي ما تركته ✍️','success');
+    } else _restore();
+  }).catch(function(){ _restore(); });
+}
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_boot); else _boot();
 </script>
 </body>
 </html>

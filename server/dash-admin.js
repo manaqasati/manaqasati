@@ -69,7 +69,7 @@ function _navGroupsVis(){
   try{var mo=new MutationObserver(function(){_navSums();});document.querySelectorAll('.nav .ni-badge').forEach(function(b){mo.observe(b,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});});}catch(e){setInterval(_navSums,3000);}
 })();
 // ═══ الصفحات المدموجة: كل مجموعة صفحة وحدة بتبويبات فوق ═══
-var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
+var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','drafts','requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
 var _PG2GRP={};Object.keys(GRPS).forEach(function(g){GRPS[g].t.forEach(function(t){var b=t.split('@')[0];if(!_PG2GRP[b])_PG2GRP[b]=g;});});
 function _gtVisible(g){var bar=document.querySelector('#gtabsHost .gtabs[data-grp="'+g+'"]');if(!bar)return [];return [].filter.call(bar.querySelectorAll('.gt'),function(b){return b.style.display!=='none';}).map(function(b){return b.getAttribute('data-tab');});}
 function showGroup(g){
@@ -118,6 +118,7 @@ function showPage(pg,el){
   if(el)_navOpenFor(el);
   var meta={vstats:['التسجيل والتفعيل','كيف سجّلوا (البريد · Google · Apple) — مين فعّل ومين علق'],appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],deals:['متابعة الصفقات','مين اختار · مين ألغى · مين خلّص · مين سدّد'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   meta.outcomes=['نتائج المشاريع','وين راح كل مشروع — الترسية والإغلاق والسعي، ووش يحتاج قرارك'];
+  meta.drafts=['مشاريع ما اكتملت','ناس بدأوا يكتبون مشروع وطلعوا — نذكّرهم تلقائياً ونرجّعهم لمسودّتهم'];
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
   _gtSync(pg);
   document.getElementById('pageSub').textContent=meta[pg][1];
@@ -137,6 +138,7 @@ function showPage(pg,el){
   if(pg==='followup')loadFollowups();
   if(pg==='closereasons')loadCloseReasons();
   if(pg==='outcomes')loadOutcomes();
+  if(pg==='drafts')loadDrafts();
   if(pg==='deals')setTimeout(loadDeals,0);
   if(pg==='bidreasons')loadBidReasons();
   if(pg==='claims')loadClaims();
@@ -6698,4 +6700,98 @@ function _loadDemoTest(){
       +'<div class="dt-g">'+col('A — شافوا الزر','#1d4ed8',A,ra,pa,'نص الزوار')+col('B — ما شافوه','#64748b',B,rb,pb,'للمقارنة')+'</div>'
       +'<div class="dt-f"><div class="dt-ft">وش سوّت مجموعة A مع الزر:</div><div class="dt-ss">'+st('طلع لهم الزر',A.shown)+st('ضغطوه',A.open,A.shown)+st('كمّلوها لآخرها',A.done,A.open)+st('ضغطوا «انشر مشروعك»',A.cta,A.open)+st('سكّروا الزر',A.x,A.shown)+'</div></div>';
   }).catch(function(){ box.style.display='none'; });
+}
+
+// ═══ مشاريع ما اكتملت — بدأ يكتب وطلع: التذكير التلقائي + واتساب ═══
+var _DR={days:7,f:'all',sel:null,d:null};
+function _drAgo(t){ if(!t)return''; var m=Math.round((Date.now()-new Date(t).getTime())/60000); if(m<1)return'الحين'; if(m<60)return'قبل '+m+' د'; var h=Math.round(m/60); if(h<24)return'قبل '+h+' س'; var d=Math.round(h/24); return d===1?'أمس':'قبل '+d+' أيام'; }
+function _drClock(t){ try{ return new Date(t).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{weekday:'short',hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; } }
+function _drSt(x){
+  var reach=!!(x.user_id||x.email), live=(Date.now()-new Date(x.updated_at).getTime())<10*60000;
+  if(x.posted_at) return {k:'back',c:'#16a34a',t:'رجع ونشر 🎉'};
+  if(x.stopped_at) return {k:'stop',c:'#94a3b8',t:x.stopped_by==='self'?'طلب ما نذكّره':'أوقفت تذكيره'};
+  if(live) return {k:'live',c:'#8b5cf6',t:'✍️ يكتب الحين'};
+  if(!reach&&!x.phone) return {k:'none',c:'#94a3b8',t:'ما نقدر نوصله'};
+  if(/email|push/.test(x.rem1_ch||'')||x.wa_at) return {k:'done',c:'#3b82f6',t:'ذكّرناه'};
+  if(!reach) return {k:'wait',c:'#f59e0b',t:'واتساب بس'};
+  return {k:'wait',c:'#f59e0b',t:'ينتظر تذكير'};
+}
+function loadDrafts(){
+  var el=document.getElementById('dr-body'); if(!el)return;
+  if(!_DR.d) el.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>'; else el.classList.add('oc-busy');
+  fetch(API+'/api/admin/drafts?days='+_DR.days,hdr()).then(function(r){return r.json();}).then(function(d){
+    el.classList.remove('oc-busy'); if(!d||!d.rows){ el.innerHTML='<div class="empty">تعذّر التحميل</div>'; return; }
+    _DR.d=d; _drPaint();
+    var w=d.rows.filter(function(x){return _drSt(x).k==='wait';}).length, b=document.getElementById('drafts-badge'); if(b){ b.style.display=w?'':'none'; b.textContent=w; }
+  }).catch(function(){ el.classList.remove('oc-busy'); el.innerHTML='<div class="empty">تعذّر التحميل — <a href="#" onclick="event.preventDefault();loadDrafts()">حاول مرة ثانية</a></div>'; });
+}
+function _drSet(k,v){ _DR[k]=v; if(k==='days'){ _DR.sel=null; loadDrafts(); } else _drPaint(); }
+function _drPaint(){
+  var el=document.getElementById('dr-body'), d=_DR.d; if(!el||!d)return;
+  var rows=d.rows, K=d.k, cnt={all:rows.length,wait:0,done:0,back:0,none:0};
+  rows.forEach(function(x){ var k=_drSt(x).k; if(k==='wait')cnt.wait++; else if(k==='done')cnt.done++; else if(k==='back')cnt.back++; else if(k==='none'||k==='stop')cnt.none++; });
+  var F=[['all','الكل'],['wait','تنتظر تذكير'],['done','ذكّرناهم'],['back','رجعوا ونشروا'],['none','ما نقدر نوصلهم']];
+  var list=rows.filter(function(x){ var k=_drSt(x).k; return _DR.f==='all'||(_DR.f==='none'?(k==='none'||k==='stop'):k===_DR.f); });
+  if(_DR.sel==null||!list.some(function(x){return x.id===_DR.sel;})) _DR.sel=list.length&&window.innerWidth>900?list[0].id:null;
+  var h='<div class="dr-hd"><div class="dr-seg">'+F.map(function(f){return '<button class="'+(_DR.f===f[0]?'on':'')+'" onclick="_drSet(\'f\',\''+f[0]+'\')">'+f[1]+' <b>'+cnt[f[0]]+'</b></button>';}).join('')+'</div>'
+   +'<select class="dr-days" onchange="_drSet(\'days\',+this.value)">'+[[7,'آخر 7 أيام'],[30,'آخر 30 يوم'],[90,'آخر 90 يوم']].map(function(o){return '<option value="'+o[0]+'"'+(_DR.days===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')+'</select></div>'
+   +'<div class="dr-k"><div><b>'+K.total+'</b><small>بدأوا وما كمّلوا</small></div><div><b>'+K.reach+'</b><small>نقدر نوصلهم</small></div><div><b>'+K.clicked+'</b><small>ضغطوا رابط التذكير</small></div><div class="g"><b>'+K.back+'</b><small>رجعوا ونشروا بعد التذكير</small></div></div>'
+   +'<div class="dr-how">💡 أي أحد يبدأ يكتب مشروع ويطلع: بعد <b>ساعة</b> يوصله إيميل + إشعار تلقائي، وبعد <b>24 ساعة</b> تذكير أخير — ولو نشر يوقف كل شي. اللي ما عنده حساب ولا كتب إيميله يوصله واتساب منك بس.</div>';
+  if(!list.length){ el.innerHTML=h+'<div class="empty" style="padding:40px">'+(rows.length?'ما فيه شي في هالفلتر':'ما فيه أحد طلع بدون ما يكمّل — كل اللي بدأوا نشروا 👌')+'</div>'; return; }
+  h+='<div class="dr-wrap"><div class="dr-ls">'+list.map(function(x){ var s=_drSt(x), who=x.user_id?(x.name||'عميل'):(x.email||x.phone?'زائر'+(x.name?' ('+x.name+')':''):'زائر بدون تواصل');
+      var stp=x.src==='dash'?'من لوحة العميل':'خطوة '+Math.min(x.step,x.steps)+'/'+x.steps;
+      return '<div class="dr-c'+(x.id===_DR.sel?' on':'')+'" onclick="_drPick('+x.id+')"><span class="dot" style="background:'+s.c+'"></span><div class="tx"><b>'+esc(x.title||'(بدون عنوان)')+'</b><small>'+esc(who)+' · '+esc(x.city||'—')+' · '+stp+'</small><em style="color:'+s.c+'">'+s.t+'</em></div><span class="tm">'+_drAgo(x.posted_at||x.updated_at)+'</span></div>'+(x.id===_DR.sel?'<div class="dr-dt dr-in">'+_drDetail(x)+'</div>':'');
+    }).join('')+'</div><div class="dr-dt dr-side">'+(function(){ var x=list.find(function(r){return r.id===_DR.sel;}); return x?_drDetail(x):'<div class="empty" style="padding:50px 10px">اختر واحد من القائمة</div>'; })()+'</div></div>';
+  el.innerHTML=h;
+}
+function _drPick(id){ _DR.sel=(_DR.sel===id&&window.innerWidth<=900)?null:id; _drPaint(); }
+function _drDetail(x){
+  var s=_drSt(x), reach=!!(x.user_id||x.email), live=s.k==='live';
+  var who=x.user_id?'<b>'+esc(x.name||'عميل')+'</b> · عميل مسجّل':(x.name?'<b>'+esc(x.name)+'</b> · ':'')+'زائر';
+  var ct=[]; if(x.phone)ct.push('<span dir="ltr">'+esc(x.phone)+'</span>'); if(x.email)ct.push('<span dir="ltr">'+esc(x.email)+'</span>');
+  var em='<i class="dr-em">ما وصلها</i>';
+  var fl='<span>التصنيف</span><div>'+(x.category?esc(x.category):em)+'</div><span>المدينة</span><div>'+(x.city?esc(x.city)+(x.district?' — '+esc(x.district):''):em)+'</div><span>الوصف</span><div class="dr-desc">'+(x.description?esc(x.description):em)+'</div><span>الميزانية</span><div>'+(x.budget?fmtNum(x.budget)+' ر.س':em)+'</div>'+(x.deadline?'<span>الموعد</span><div>'+esc(x.deadline)+'</div>':'');
+  var due=new Date(new Date(x.updated_at).getTime()+3600000);
+  var T=[['ok','بدأ يكتب',_drClock(x.created_at)],[x.posted_at?'ok':'ok','آخر نشاط',_drClock(x.updated_at)+(x.src==='dash'?' — من لوحة العميل':' — وقف عند خطوة '+Math.min(x.step,x.steps)+' من '+x.steps)]];
+  var chT=function(c){ return c==='dup'?'ما انرسل — وصله تذكير لمسودة ثانية قبل شوي':(!c||c==='fail')?'⚠️ ما وصل — فشل الإرسال':c.split(',').map(function(k){return k==='email'?'إيميل ✓':'إشعار ✓';}).join(' · '); };
+  if(x.rem1_at) T.push(['ok','التذكير الأول',_drClock(x.rem1_at)+' — '+chT(x.rem1_ch)]);
+  else if(x.posted_at) {}
+  else if(x.stopped_at) T.push(['no','التذكير','موقوف']);
+  else if(!reach) T.push(['no','التذكير التلقائي','ما يوصله — ما عنده حساب ولا إيميل'+(x.phone?' (واتساب بس)':'')]);
+  else T.push(['w','إيميل + إشعار','⏳ '+(due>new Date()?'يطلع '+_drClock(due)+' (بعد '+Math.max(1,Math.round((due-Date.now())/60000))+' د)':'خلال دقايق')]);
+  if(x.rem2_at) T.push(['ok','التذكير الأخير',_drClock(x.rem2_at)+' — '+chT(x.rem2_ch)]);
+  else if(x.rem1_at&&!x.posted_at&&!x.stopped_at&&x.rem1_ch!=='dup') T.push(['w','التذكير الأخير','بعد 24 ساعة لو ما نشر']);
+  if(x.wa_at) T.push(['ok','واتساب منك',_drClock(x.wa_at)]);
+  if(x.clicked_at) T.push(['ok','ضغط رابط التذكير 👀',_drClock(x.clicked_at)+(x.clicks>1?' · '+x.clicks+' مرات':'')]);
+  if(x.posted_at) T.push(['ok','نشر المشروع 🎉',_drClock(x.posted_at)]);
+  else if(!x.stopped_at) T.push(['w','لو نشر','تتوقف التذكيرات ويطلع 🟢']);
+  var tl='<div class="dr-tl">'+T.map(function(t){return '<div class="'+t[0]+'">'+t[1]+'<small>'+t[2]+'</small></div>';}).join('')+'</div>';
+  var act='';
+  if(x.posted_at){ if(x.request_id) act+='<button class="b" onclick="openReqEdit('+x.request_id+')">افتح المشروع ←</button>'; }
+  else {
+    if(x.phone) act+='<button class="g" onclick="_drWa('+x.id+')">💬 ذكّره واتساب'+(x.wa_at?' مرة ثانية':'')+'</button>';
+    if(reach&&!x.stopped_at) act+='<button class="b" onclick="_drRemind('+x.id+',this)">'+(x.user_id?'📧 أرسل الإيميل والإشعار الحين':'📧 أرسل الإيميل الحين')+'</button>';
+    if(reach) act+='<button class="x" onclick="_drStop('+x.id+')">'+(x.stopped_at?'رجّع التذكير':'لا تذكّره')+'</button>';
+  }
+  return '<div class="dr-h2">'+esc(x.title||'(بدون عنوان)')+'</div><div class="dr-m">'+who+(ct.length?' · '+ct.join(' · '):'')+' · '+(live?'<b style="color:#8b5cf6">يكتب الحين</b>':(x.posted_at?'نشر '+_drAgo(x.posted_at):'طلع '+_drAgo(x.updated_at)))+'</div>'
+    +'<div class="dr-two"><div class="dr-bx"><h3>📝 وش كتب قبل ما يطلع</h3><div class="dr-fl">'+fl+'</div></div><div class="dr-bx"><h3>🔔 التذكيرات (تلقائية)</h3>'+tl+'</div></div>'
+    +(act?'<div class="dr-act">'+act+'</div>':'');
+}
+function _drWa(id){
+  var w=window.open('about:blank','_blank');
+  fetch(API+'/api/admin/drafts/'+id+'/wa',Object.assign({method:'POST'},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(r){
+    if(!r.ok||!r.d.url){ if(w)w.close(); toast((r.d&&r.d.message)||'تعذّر','error'); return; }
+    if(w) w.location.href=r.d.url; else location.href=r.d.url;
+    var x=_DR.d&&_DR.d.rows.find(function(z){return z.id===id;}); if(x){ x.wa_at=new Date().toISOString(); _drPaint(); }
+  }).catch(function(){ if(w)w.close(); toast('تعذّر الاتصال','error'); });
+}
+function _drRemind(id,btn){
+  if(btn){ btn.disabled=true; btn.textContent='جاري الإرسال...'; }
+  fetch(API+'/api/admin/drafts/'+id+'/remind',Object.assign({method:'POST'},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(r){
+    if(!r.ok){ toast((r.d&&r.d.message)||'تعذّر','error'); if(btn){btn.disabled=false;btn.textContent='📧 أرسل الحين';} return; }
+    toast(r.d.ch?'انرسل ✓':'ما انرسل — تأكد من الإيميل',r.d.ch?'success':'error'); loadDrafts();
+  }).catch(function(){ toast('تعذّر الاتصال','error'); if(btn){btn.disabled=false;} });
+}
+function _drStop(id){
+  fetch(API+'/api/admin/drafts/'+id+'/stop',Object.assign({method:'POST'},hdr())).then(function(r){ if(r.ok){ loadDrafts(); } else toast('تعذّر','error'); }).catch(function(){ toast('تعذّر الاتصال','error'); });
 }

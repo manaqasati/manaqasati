@@ -3111,6 +3111,7 @@ function _nfOpenC(id){
   if(!n.is_read){ n.is_read=true; fetch(API+'/api/notifications/'+id+'/read',Object.assign({method:'PUT'},hdr())).catch(function(){}); _nfPaintC(); try{_notifRecount();}catch(e){} try{loadNotifCount();}catch(e){} }
   var k=_nfKind(n.type).g;
   if(n.type==='becomeprov'){ try{openBecomeProv();}catch(e){ location.href='/dashboard-client.html#becomeprov'; } return; }
+  if(n.type==='draft'&&n.ref_id){ location.href='/new.html?did_id='+encodeURIComponent(n.ref_id); return; }
   if(n.type==='verify_email'){ try{_vbShow();}catch(e){} return; }
   if(n.type==='message'){ show('chat',null,'chat'); try{loadChatPage();}catch(e){} return; }
   if(n.ref_id&&(k==='offers'||k==='projects'||n.type==='accept_ask')){ openDetail(n.ref_id,null); show('detail',null,'detail'); }
