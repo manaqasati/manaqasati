@@ -1482,7 +1482,7 @@ async function loadProfile(){
   pg.appendChild(dangerZone);
 
   var pwCard=document.createElement('div');pwCard.className='card';pwCard.style.cssText='margin-bottom:14px';
-  pwCard.innerHTML='<div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:14px">تغيير كلمة المرور</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="fg"><label>الحالية</label><input type="password" id="pw-old"></div><div class="fg"><label>الجديدة</label><input type="password" id="pw-new"></div></div><button class="btn-sm bs-p" onclick="_changePw()">تغيير كلمة المرور</button>';
+  pwCard.innerHTML='<div style="font-size:14px;font-weight:900;color:var(--text);margin-bottom:14px">تغيير كلمة المرور</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="fg"><label>الحالية</label><input type="password" id="pw-old"></div><div class="fg"><label>الجديدة</label><input type="password" id="pw-new"></div></div><button class="btn-sm bs-p" onclick="_changePw()">تغيير كلمة المرور</button><button type="button" onclick="logoutAllDevices(this)" style="margin-top:10px;background:none;border:0;color:#dc2626;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;text-decoration:underline">اطلع من كل الأجهزة الثانية</button>';
   pg.appendChild(pwCard);
 
   var saveWrap=document.createElement('div');saveWrap.style.cssText='padding:14px 0 20px';
@@ -1665,11 +1665,21 @@ async function _saveProfile(){
   else{showToast((r&&r.message)||'حدث خطأ','error');}
 }
 
+function _newSess(d){ if(!d||!d.token)return; try{ localStorage.setItem('token',d.token); }catch(e){} try{ token=d.token; }catch(e){} try{ _token=d.token; }catch(e){} try{ if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_SAVE',token:d.token,user:localStorage.getItem('user')||''})); }catch(e){} }
+function logoutAllDevices(btn){
+  if(!confirm('نطلّع حسابك من كل الأجهزة الثانية (الجوالات والمتصفحات)؟ هذا الجهاز يبقى داخل.'))return;
+  if(btn){btn.disabled=true;}
+  var tk=localStorage.getItem('token')||'';
+  fetch(API+'/api/auth/logout-all',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk}}).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
+    if(btn)btn.disabled=false; if(!res.ok){ showToast((res.d&&res.d.message)||'تعذّر','error'); return; }
+    _newSess(res.d); showToast(res.d.message||'تم ✓','success');
+  }).catch(function(){ if(btn)btn.disabled=false; showToast('تعذّر الاتصال','error'); });
+}
 async function _changePw(){
   var o=(_el('pw-old')||{}).value;var n=(_el('pw-new')||{}).value;
   if(!o||!n){showToast('اكمل الحقلين','error');return;}if(n.length<6){showToast('كلمة المرور 6 أحرف على الأقل','error');return;}
   var r=await _api('/api/auth/change-password',{method:'PUT',body:JSON.stringify({old_password:o,new_password:n})});
-  if(r&&r.ok){showToast('تم تغيير كلمة المرور','success');_el('pw-old').value='';_el('pw-new').value='';}
+  if(r&&r.ok){_newSess(r);showToast(r.message||'تم تغيير كلمة المرور','success');_el('pw-old').value='';_el('pw-new').value='';}
   else{showToast((r&&r.message)||'كلمة المرور الحالية غير صحيحة','error');}
 }
 

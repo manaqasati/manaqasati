@@ -36,6 +36,32 @@ const UPLOAD_TYPES = {
 const UPLOAD_EXT_TYPES = { dwg:1, dxf:1, xlsx:1, xls:1, docx:1, doc:1, zip:1, rar:1, '7z':1, csv:1, rvt:1, pptx:1, ppt:1 };
 const UPLOAD_MAX_BYTES = 30 * 1024 * 1024; // 30MB
 
+// بصمة الملف: نتأكد من نوعه من أول بايتاته (مو من الاسم أو اللي يقوله المتصفح)
+function _sniffOk(buf, ext){
+  if (!buf || !buf.length) return false;
+  const h = buf.slice(0, 16), a = h.toString('latin1'), hex = h.toString('hex');
+  const txtHead = buf.slice(0, 512).toString('utf8').replace(/^﻿/, '').trimStart().slice(0, 20).toLowerCase();
+  const looksMarkup = /^<(\?xml|!doctype|html|svg|script|head|body|iframe|\w)/.test(txtHead);
+  switch (ext) {
+    case 'jpg': case 'jpeg': return hex.startsWith('ffd8ff');
+    case 'png': return hex.startsWith('89504e47');
+    case 'gif': return a.startsWith('GIF8');
+    case 'webp': return a.startsWith('RIFF') && a.slice(8, 12) === 'WEBP';
+    case 'heic': return a.slice(4, 8) === 'ftyp';
+    case 'pdf': return buf.slice(0, 1024).toString('latin1').includes('%PDF-');
+    case 'docx': case 'xlsx': case 'pptx': case 'zip': return a.startsWith('PK');
+    case 'doc': case 'xls': case 'ppt': case 'rvt': return hex.startsWith('d0cf11e0');
+    case 'rar': return a.startsWith('Rar!');
+    case '7z': return hex.startsWith('377abcaf271c');
+    case 'dwg': return a.startsWith('AC10');
+    case 'webm': return hex.startsWith('1a45dfa3');
+    case 'ogg': return a.startsWith('OggS');
+    case 'wav': return a.startsWith('RIFF');
+    case 'mp3': return a.startsWith('ID3') || /^ff[ef]/.test(hex);
+    case 'm4a': case 'aac': return a.slice(4, 8) === 'ftyp' || /^ff[ef]/.test(hex);
+    default: return !looksMarkup; // csv / dxf وغيرها: نصوص — بس مو صفحات ويب أو سكربتات
+  }
+}
 async function uploadToR2(base64Data, folder, filename) {
   if (!r2Client || !base64Data) return base64Data; // fallback
   if (!base64Data.startsWith('data:')) return base64Data; // already a URL
@@ -52,6 +78,7 @@ async function uploadToR2(base64Data, folder, filename) {
     if (!ext) { console.warn('رفض رفع نوع غير مسموح:', contentType, filename||''); return null; }
     const buffer = Buffer.from(matches[2], 'base64');
     if (!buffer.length || buffer.length > UPLOAD_MAX_BYTES) { console.warn('رفض رفع لحجم غير صالح:', buffer.length); return null; }
+    if (!_sniffOk(buffer, ext)) { console.warn('رفض رفع: محتوى الملف ما يطابق نوعه', ext, filename||''); return null; }
     const key = (folder || 'img').replace(/[^a-zA-Z0-9/_-]/g,'') + '/' + crypto.randomBytes(16).toString('hex') + '.' + ext;
     await r2Client.send(new PutObjectCommand({
       Bucket: R2_BUCKET,
@@ -2223,13 +2250,13 @@ async function runOffsiteBackup(force){
     let bytes = 0;
     const counter = new Transform({ transform(chunk, enc, cb){ bytes += chunk.length; cb(null, chunk); } });
     gz.pipe(counter);
-    const up = new Upload({ client: r2Client, params: { Bucket: R2_BUCKET, Key: key, Body: counter, ContentType: 'application/gzip', ContentDisposition: 'attachment' }, queueSize: 2, partSize: 10*1024*1024 });
+    const up = new Upload({ client: r2Client, params: { Bucket: _bkBucket(), Key: key, Body: counter, ContentType: 'application/gzip', ContentDisposition: 'attachment' }, queueSize: 2, partSize: 10*1024*1024 });
     const upDone = up.done();
     let stats;
     try { stats = await dumpDatabaseTo(gz); gz.end(); } catch(e){ gz.destroy(e); try { await up.abort(); } catch(_){} throw e; }
     await upDone;
     await setSetting('offsite_backup_at', String(Date.now()));
-    await setSetting('offsite_backup_last', JSON.stringify({ key, bytes, at: new Date().toISOString(), tables: stats.tables, rows: stats.rows, sec: Math.round((Date.now()-t0)/1000) }));
+    await setSetting('offsite_backup_last', JSON.stringify({ key, bytes, at: new Date().toISOString(), tables: stats.tables, rows: stats.rows, sec: Math.round((Date.now()-t0)/1000), bucket: _bkBucket() === R2_BUCKET ? 'public' : 'private' }));
     await pruneOffsiteBackups();
     console.log('✅ offsite backup:', key, Math.round(bytes/1e6)+'MB', stats.rows+' rows');
     return { ok:true, key, bytes, ...stats };
@@ -2251,7 +2278,7 @@ async function _listKeys(bucket, prefix){
   } while (token && pages < 500);
   return out;
 }
-async function syncFilesBackup(force){
+async function syncFilesBackup(force){ /* نسخ قاعدة البيانات لها مسارها الخاص — ما تنسخ هنا */
   if (!r2Client || !R2_BACKUP_BUCKET) return { ok:false, skipped:true, message: R2_BACKUP_BUCKET ? 'R2 غير متصل' : 'المخزن الاحتياطي غير مضبوط' };
   if (global._filesSyncRunning) return { ok:false, message:'مزامنة قيد التنفيذ' };
   if (!force) { const last = parseInt(await getSetting('files_backup_at','0'))||0; if (Date.now()-last < 20*3600*1000) return { ok:false, skipped:true }; }
@@ -2360,29 +2387,33 @@ async function migrateInlineMedia(){
   finally { M.running = false; M.current = null; M.finishedAt = new Date().toISOString(); try { await setSetting('inline_count_last', ''); } catch(_){} }
 }
 async function logAdminSystem(){ /* تسجيل اختياري */ }
-async function listOffsiteBackups(){
+function _bkBucket(){ return R2_BACKUP_BUCKET || R2_BUCKET; }
+async function listOffsiteBackups(bucket){
   if (!r2Client) return [];
   const out = []; let token, pages = 0;
   do {
-    const r = await r2Client.send(new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: OFFSITE_PREFIX, ContinuationToken: token }));
+    const r = await r2Client.send(new ListObjectsV2Command({ Bucket: bucket || _bkBucket(), Prefix: OFFSITE_PREFIX, ContinuationToken: token }));
     for (const o of (r.Contents||[])) out.push({ key: o.Key, bytes: Number(o.Size)||0, at: o.LastModified });
     token = r.IsTruncated ? r.NextContinuationToken : undefined; pages++;
   } while (token && pages < 20);
   return out.sort((a,b) => new Date(b.at) - new Date(a.at));
 }
-// الاحتفاظ: آخر 7 نسخ يومية + نسخة يوم الجمعة لآخر 4 أسابيع
+// الاحتفاظ: آخر 7 نسخ يومية + نسخة يوم الجمعة لآخر 4 أسابيع + أول نسخة من كل شهر لآخر 12 شهر
 async function pruneOffsiteBackups(){
   try {
     const list = await listOffsiteBackups();
     const keep = new Set(list.slice(0,7).map(b => b.key));
     for (const b of list) { const dt = new Date(b.at); if (dt.getUTCDay() === 5 && Date.now()-dt.getTime() < 29*864e5) keep.add(b.key); }
-    for (const b of list) { if (!keep.has(b.key)) { try { await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: b.key })); } catch(e){} } }
+    const firstOfMonth = {};
+    for (const b of list.slice().reverse()) { const m = new Date(b.at).toISOString().slice(0,7); if (!firstOfMonth[m]) firstOfMonth[m] = b; }
+    for (const m in firstOfMonth) { const b = firstOfMonth[m]; if (Date.now() - new Date(b.at).getTime() < 366*864e5) keep.add(b.key); }
+    for (const b of list) { if (!keep.has(b.key)) { try { await r2Client.send(new DeleteObjectCommand({ Bucket: _bkBucket(), Key: b.key })); } catch(e){} } }
   } catch(e){ console.error('pruneOffsite:', e.message); }
 }
 async function checkStorageAlert(){
   try { await checkUploadGuards(); } catch(e){}
   // النسخ الاحتياطي يشتغل بالخلفية بقفل خاص (ما يأخّر التذكيرات لين يخلص)
-  _jobLock('backup', async () => { try { await runOffsiteBackup(false); } catch(e){} try { await syncFilesBackup(false); } catch(e){} }).catch(()=>{});
+  _jobLock('backup', async () => { try { await _migrateLegacyBackups(); } catch(e){} try { await runOffsiteBackup(false); } catch(e){} try { await syncFilesBackup(false); } catch(e){} try { await runRestoreTest(false); } catch(e){} }).catch(()=>{});
   try { await syncR2Size(); } catch(e){}
   try { await recordStorageSnapshot(); } catch(e){}
   try {
@@ -2869,11 +2900,11 @@ async function _userStateOf(id){
   const hit = _userState.get(id);
   if (hit && Date.now() < hit.exp) return hit;
   try {
-    const r = await pool.query('SELECT is_active, role FROM users WHERE id=$1', [id]);
-    const st = { ok: !!(r.rows.length && r.rows[0].is_active !== false), role: r.rows.length ? r.rows[0].role : null, exp: Date.now() + 60000 };
+    const r = await pool.query('SELECT is_active, role, COALESCE(token_ver,0) AS tv FROM users WHERE id=$1', [id]);
+    const st = { ok: !!(r.rows.length && r.rows[0].is_active !== false), role: r.rows.length ? r.rows[0].role : null, tv: r.rows.length ? r.rows[0].tv : 0, exp: Date.now() + 60000 };
     _userState.set(id, st);
     return st;
-  } catch(e) { return { ok: true, role: null }; } // لا نمنع الخدمة عند عطل قاعدة البيانات
+  } catch(e) { return { ok: true, role: null, err: true }; } // لا نمنع الخدمة عند عطل قاعدة البيانات (إلا الإدارة — تحت)
 }
 async function isUserUsable(id){ return (await _userStateOf(id)).ok; }
 function auth(req, res, next) {
@@ -2886,18 +2917,22 @@ function auth(req, res, next) {
   if (!payload || payload.purpose || !payload.id) return res.status(401).json({ message: 'جلسة منتهية' });
   req.user = payload;
   _userStateOf(payload.id).then(st => {
+    // تعذّر التحقق من قاعدة البيانات: الإدارة ترفض (ما ندخّل أحد على لوحة الإدارة بدون تحقق)
+    if (st.err) { if (payload.role === 'admin') return res.status(503).json({ message: 'تعذّر التحقق من الحساب — حاول بعد لحظة' }); return next(); }
     if (!st.ok) return res.status(403).json({ message: 'الحساب موقوف أو غير موجود' });
+    // الجلسة انلغت (تغيّرت كلمة المرور أو «اطلع من كل الأجهزة»)
+    if ((payload.tv || 0) !== (st.tv || 0)) return res.status(401).json({ message: 'انتهت الجلسة — سجّل دخولك من جديد', code: 'session_revoked' });
     // الدور من قاعدة البيانات (مو من التوكن): مشرف انشال من الإدارة يفقد صلاحياته فوراً
     if (st.role) req.user.role = st.role;
     next();
-  }).catch(() => next());
+  }).catch(() => { if (payload.role === 'admin') return res.status(503).json({ message: 'تعذّر التحقق من الحساب — حاول بعد لحظة' }); next(); });
 }
 // مصادقة اختيارية: تقرأ المستخدم إن وُجد التوكن، بدون رفض المشروع
 function optionalAuth(req, res, next) {
   const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
   if (token) { try { const _p = jwt.verify(token, JWT_SECRET); if (_p && !_p.purpose && _p.id) req.user = _p; } catch(e) {} }
   if (!req.user) return next();
-  _userStateOf(req.user.id).then(st => { if (!st.ok) req.user = undefined; else if (st.role) req.user.role = st.role; next(); }).catch(() => next());
+  _userStateOf(req.user.id).then(st => { if (!st.ok || (!st.err && (req.user.tv || 0) !== (st.tv || 0))) req.user = undefined; else if (st.role) req.user.role = st.role; next(); }).catch(() => next());
 }
 function adminOnly(req, res, next) { if (req.user.role !== 'admin') return res.status(403).json({ message: 'للمدير فقط' }); next(); }
 async function clientOnly(req, res, next) {
@@ -3102,6 +3137,11 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invited_provider_id INTEGER`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_state VARCHAR(12)`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS notify_scope VARCHAR(10)`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS token_ver INTEGER DEFAULT 0`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS login_fail_n INTEGER DEFAULT 0`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS login_fail_at TIMESTAMPTZ`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lock_mail_at TIMESTAMPTZ`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS notify_cities TEXT[]`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS notify_base BOOLEAN`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_started_at TIMESTAMP`);
@@ -3319,6 +3359,26 @@ async function setupDatabase() {
 setupDatabase();
 
 // ═══ AUTH ═══
+function _sessSign(user){ return jwt.sign({ id: user.id, role: user.role, tv: parseInt(user.token_ver) || 0 }, JWT_SECRET, { expiresIn: '30d' }); }
+async function _loginFail(user){
+  const r = (await pool.query(`UPDATE users SET login_fail_n = CASE WHEN login_fail_at > NOW() - INTERVAL '15 minutes' THEN COALESCE(login_fail_n,0) + 1 ELSE 1 END, login_fail_at = NOW() WHERE id=$1 RETURNING login_fail_n, lock_mail_at`, [user.id])).rows[0];
+  if (!r || r.login_fail_n < 10) return;
+  await pool.query(`UPDATE users SET locked_until = NOW() + INTERVAL '15 minutes', login_fail_n = 0 WHERE id=$1`, [user.id]);
+  console.warn('[login] قفل مؤقت للحساب', user.id);
+  if (user.email && !/@manaqasa\.local$/i.test(user.email) && (!r.lock_mail_at || Date.now() - new Date(r.lock_mail_at) > 3600000)) {
+    await pool.query('UPDATE users SET lock_mail_at=NOW() WHERE id=$1', [user.id]);
+    const t = '🔒 محاولات دخول كثيرة على حسابك';
+    sendEmail(user.email, t, emailTpl(t, `<p>عزيزي <strong>${eEsc(user.name || '')}</strong>،</p><p>صار فيه 10 محاولات دخول بكلمة مرور غلط على حسابك في مناقصة، فقفلنا الدخول 15 دقيقة لحمايتك.</p><p>لو كنت أنت، انتظر شوي وجرّب مرة ثانية. ولو ما كنت أنت، ننصحك تغيّر كلمة المرور الحين.</p>`, 'تغيير كلمة المرور', SITE_URL + '/auth.html'), { uid: user.id, kind: 'security' }).catch(()=>{});
+  }
+}
+// «اطلع من كل الأجهزة»: يلغي كل الجلسات، ويرجّع جلسة جديدة للجهاز الحالي
+app.post('/api/auth/logout-all', rateLimiter(10, 600000), auth, async (req, res) => {
+  try {
+    const u = (await pool.query('UPDATE users SET token_ver=COALESCE(token_ver,0)+1 WHERE id=$1 RETURNING id, role, token_ver', [req.user.id])).rows[0];
+    _userState.delete(req.user.id);
+    res.json({ ok: true, token: _sessSign(u), message: 'طلّعنا كل الأجهزة الثانية ✓' });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
 app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
   try {
     const { email, phone, password } = req.body;
@@ -3328,13 +3388,19 @@ app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
     const result = await pool.query(query, [String(email || phone).trim()]);
     if (!result.rows.length) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const user = result.rows[0];
+    // قفل مؤقت للحساب نفسه بعد 10 محاولات غلط خلال 15 دقيقة (مهما تغيّر الجهاز)
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      const mins = Math.max(1, Math.ceil((new Date(user.locked_until) - Date.now()) / 60000));
+      return res.status(429).json({ message: `الحساب مقفل مؤقتاً بسبب محاولات دخول كثيرة — جرّب بعد ${mins} دقيقة، أو اضغط «نسيت كلمة المرور»`, code: 'locked' });
+    }
     const storedHash = user.password || user.password_hash || '';
     const ok = storedHash ? await bcrypt.compare(password, storedHash) : false;
-    if (!ok) return res.status(400).json({ message: 'البيانات غير صحيحة' });
+    if (!ok) { _loginFail(user).catch(()=>{}); return res.status(400).json({ message: 'البيانات غير صحيحة' }); }
+    if (user.login_fail_n || user.locked_until) pool.query('UPDATE users SET login_fail_n=0, login_fail_at=NULL, locked_until=NULL WHERE id=$1', [user.id]).catch(()=>{});
     if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+    const token = _sessSign(user);
     pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
-    delete user.password; delete user.password_hash;
+    delete user.password; delete user.password_hash; delete user.login_fail_n; delete user.login_fail_at; delete user.locked_until; delete user.lock_mail_at; delete user.token_ver;
     delete user.reset_token; delete user.reset_expires; delete user.magic_token; delete user.magic_expires;
     res.json({ user, token });
   } catch(e) { console.error('Login:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -3434,8 +3500,8 @@ async function _verifyGoogleToken(idToken){
   } catch(e) { console.error('google verify:', e.message); return null; }
 }
 function _loginPayload(user){
-  const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
-  ['password','password_hash','reset_token','reset_expires','magic_token','magic_expires','verify_code','verify_code_exp','google_sub','apple_sub'].forEach(k => delete user[k]);
+  const token = _sessSign(user);
+  ['password','password_hash','reset_token','reset_expires','magic_token','magic_expires','verify_code','verify_code_exp','google_sub','apple_sub','token_ver','login_fail_n','login_fail_at','locked_until','lock_mail_at'].forEach(k => delete user[k]);
   return { user, token };
 }
 app.get('/api/auth/google/config', (req, res) => res.json({ client_id: GOOGLE_CLIENT_ID, apple_web_id: APPLE_WEB_ID }));
@@ -3601,7 +3667,7 @@ async function _registerHandler(req, res) {
       }
     }catch(e){ console.error('lead match:', e.message); }
     const user = result.rows[0];
-    const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+    const token = _sessSign(user);
     if (req._g) { const _pv = req._g.provider === 'apple' ? 'apple' : 'google'; try { await pool.query(`UPDATE users SET email_verified=true, email_verified_at=NOW(), email_verified_via=$3, ${_pv}_sub=$2 WHERE id=$1`, [user.id, req._g.sub, _pv]); user.email_verified = true; } catch(ge) { console.error('social link:', ge.message); } }
     try { await pool.query('UPDATE users SET signup_via=$2, signup_dev=$3 WHERE id=$1', [user.id, req._g ? (req._g.provider === 'apple' ? 'apple' : 'google') : 'email', _signupDev(req)]); } catch(_) {}
     try {
@@ -3636,7 +3702,9 @@ app.put('/api/auth/change-password', rateLimiter(10, 600000), auth, async (req, 
     const ok = await bcrypt.compare(old_password, storedHash);
     if (!ok) return res.status(400).json({ message: 'كلمة المرور الحالية غير صحيحة' });
     const hash = await bcrypt.hash(new_password, 10);
-    await pool.query('UPDATE users SET password=$1, password_hash=$2 WHERE id=$3', [hash, hash, req.user.id]);
+    const _tv = (await pool.query('UPDATE users SET password=$1, password_hash=$2, token_ver=COALESCE(token_ver,0)+1 WHERE id=$3 RETURNING id, role, token_ver', [hash, hash, req.user.id])).rows[0];
+    _userState.delete(req.user.id);
+    const newToken = _sessSign(_tv);
     try {
       const u = r.rows[0];
       if (u.email) {
@@ -3645,7 +3713,7 @@ app.put('/api/auth/change-password', rateLimiter(10, 600000), auth, async (req, 
         sendEmail(u.email, title, emailTpl(title, body, null, null)).catch(()=>{});
       }
     } catch(e) {}
-    res.json({ ok: true });
+    res.json({ ok: true, token: newToken, message: 'تم تغيير كلمة المرور — وطلّعنا كل الأجهزة الثانية' });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -3687,7 +3755,8 @@ app.post('/api/auth/reset-password', rateLimiter(10, 600000), async (req, res) =
     if (!r.rows.length) return res.status(400).json({ message: 'الرابط منتهي أو غير صالح — اطلب رابطاً جديداً' });
     const u = r.rows[0];
     const hash = await bcrypt.hash(new_password, 10);
-    await pool.query('UPDATE users SET password=$1, password_hash=$2, reset_token=NULL, reset_expires=NULL WHERE id=$3', [hash, hash, u.id]);
+    await pool.query('UPDATE users SET password=$1, password_hash=$2, reset_token=NULL, reset_expires=NULL, token_ver=COALESCE(token_ver,0)+1, login_fail_n=0, login_fail_at=NULL, locked_until=NULL WHERE id=$3', [hash, hash, u.id]);
+    _userState.delete(u.id);
     try {
       if (u.email && !/@manaqasa\.local$/i.test(u.email)) {
         const title = '✅ تم تغيير كلمة المرور';
@@ -3706,9 +3775,11 @@ async function getMagicToken(clientId) {
   if (!cur.rows.length) return null;
   let tok = cur.rows[0].magic_token;
   const exp = cur.rows[0].magic_expires;
-  const stillValid = tok && exp && new Date(exp) > new Date();
-  if (!stillValid) tok = crypto.randomBytes(8).toString('hex'); // 16 حرفاً
-  await pool.query("UPDATE users SET magic_token=$1, magic_expires=NOW()+INTERVAL '60 days' WHERE id=$2", [tok, clientId]);
+  // الرابط يعيش 14 يوم وما يتمدّد: نعيد استخدام الحالي لو باقي له أسبوع أو أكثر، وإلا نسوي جديد
+  const stillValid = tok && exp && (new Date(exp) - Date.now()) > 7 * 864e5;
+  if (stillValid) return tok;
+  tok = crypto.randomBytes(12).toString('hex'); // 24 حرفاً
+  await pool.query("UPDATE users SET magic_token=$1, magic_expires=NOW()+INTERVAL '14 days' WHERE id=$2", [tok, clientId]);
   return tok;
 }
 
@@ -3728,7 +3799,7 @@ app.post('/api/auth/magic-login', rateLimiter(10, 300000), async (req, res) => {
     if (r.rows[0].role === 'admin') return res.status(403).json({ message: 'حسابات الإدارة تدخل بكلمة المرور فقط' });
     const user = r.rows[0];
     if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
-    const sessionToken = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '30d' });
+    const sessionToken = _sessSign(user);
     pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
     delete user.password; delete user.password_hash; delete user.reset_token; delete user.reset_expires; delete user.magic_token; delete user.magic_expires;
     res.json({ user, token: sessionToken });
@@ -5197,6 +5268,7 @@ app.post('/api/upload/attachment', auth, rateLimiter(40, 600000), (req, res, nex
     } else if (IMG[fe]) { ext = fe === 'jpeg' ? 'jpg' : fe; ctype = IMG[fe]; }
     else if (UPLOAD_EXT_TYPES[fe]) { ext = fe; ctype = 'application/octet-stream'; dl = true; }
     if (!ext) return res.status(400).json({ message: 'نوع الملف غير مسموح (PDF أو صورة أو مخطط)' });
+    if (!_sniffOk(buf, ext)) return res.status(400).json({ message: 'الملف تالف أو نوعه ما يطابق امتداده' });
     // بيئة بلا R2 (تطوير): الواجهة ترجع للطريقة القديمة تلقائياً
     if (!r2Client) return res.status(503).json({ message: 'التخزين غير متاح' });
     const key = 'manaqasa/attachments/' + crypto.randomBytes(16).toString('hex') + '.' + ext;
@@ -8508,7 +8580,8 @@ app.put('/api/admin/users/:id/reset-password', requirePermission('users.edit'), 
     if (!tgt.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (tgt.rows[0].role === 'admin') return res.status(403).json({ message: 'لا يمكن تغيير كلمة مرور مشرف من هنا' });
     const hash = await bcrypt.hash(np, 10);
-    await pool.query('UPDATE users SET password=$1, password_hash=$1 WHERE id=$2', [hash, uid]);
+    await pool.query('UPDATE users SET password=$1, password_hash=$1, token_ver=COALESCE(token_ver,0)+1, login_fail_n=0, locked_until=NULL WHERE id=$2', [hash, uid]);
+    _userState.delete(uid);
     try { await logAdmin(req, 'reset_password', 'user', uid, 'إعادة تعيين كلمة مرور'); } catch(e){}
     res.json({ ok: true });
   } catch(e) { console.error('reset-password admin:', e.message); res.status(500).json({ message: 'خطأ: '+e.message }); }
@@ -9893,8 +9966,110 @@ app.get('/api/admin/offsite-backups', requirePermission('settings.manage'), asyn
     try { fLast = JSON.parse(await getSetting('files_backup_last','null')); } catch(e){}
     try { fErr = JSON.parse(await getSetting('files_backup_error','null')); } catch(e){}
     const files = { configured: !!R2_BACKUP_BUCKET, bucket: R2_BACKUP_BUCKET || null, running: !!global._filesSyncRunning, last: fLast, error: fErr };
-    res.json({ files, r2: !!r2Client, running: !!global._offsiteRunning, last, error: err, backups: list.map(b => ({ key: b.key, bytes: b.bytes, at: b.at, url: R2_PUBLIC_URL ? (R2_PUBLIC_URL + '/' + b.key) : null })) });
+    let rt = null; try { rt = JSON.parse(await getSetting('restore_test_last','null')); } catch(e){}
+    res.json({ files, r2: !!r2Client, running: !!global._offsiteRunning, last, error: err, private: !!R2_BACKUP_BUCKET, restore: rt, restoreRunning: !!global._restoreRunning,
+      backups: list.map(b => ({ key: b.key, bytes: b.bytes, at: b.at })) });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ نقل النسخ القديمة من مخزن الصور العام إلى المخزن الخاص (مرة وحدة — بعدها ما يلقى شي) ═══
+async function _migrateLegacyBackups(){
+  if (!r2Client || !R2_BACKUP_BUCKET || R2_BACKUP_BUCKET === R2_BUCKET) return;
+  const old = await listOffsiteBackups(R2_BUCKET); if (!old.length) return;
+  const have = await _listKeys(R2_BACKUP_BUCKET, OFFSITE_PREFIX);
+  let moved = 0;
+  for (const b of old) {
+    try {
+      if (!have.has(b.key) || have.get(b.key) !== b.bytes) {
+        const g = await r2Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: b.key }));
+        await r2Client.send(new PutObjectCommand({ Bucket: R2_BACKUP_BUCKET, Key: b.key, Body: g.Body, ContentLength: g.ContentLength, ContentType: 'application/gzip', ContentDisposition: 'attachment' }));
+      }
+      await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: b.key }));
+      moved++;
+    } catch(e) { console.error('migrate backup', b.key, e.message); }
+  }
+  if (moved) console.log('✅ نقلنا', moved, 'نسخة قاعدة بيانات من المخزن العام إلى الخاص');
+}
+// ═══ رابط تحميل مؤقت (10 دقايق) للنسخة — بدل الرابط العام ═══
+function _bkSign(key, exp){ return crypto.createHmac('sha256', JWT_SECRET + '|bkdl').update(key + '|' + exp).digest('base64url'); }
+app.post('/api/admin/offsite-backups/link', requirePermission('settings.manage'), async (req, res) => {
+  const key = String(req.body.key || '');
+  if (key.indexOf(OFFSITE_PREFIX) !== 0 || /\.\.|[^\w\/.-]/.test(key)) return res.status(400).json({ message: 'نسخة غير صحيحة' });
+  const exp = Date.now() + 10 * 60000;
+  try { await logAdmin(req, 'backup_download', 'system', null, 'تحميل نسخة احتياطية: ' + key.slice(-40)); } catch(e){}
+  res.json({ url: '/api/backup-dl/' + Buffer.from(key).toString('base64url') + '.' + exp + '.' + _bkSign(key, exp), expires_in: 600 });
+});
+app.get('/api/backup-dl/:tok', rateLimiter(20, 600000), async (req, res) => {
+  try {
+    const [k64, expS, sig] = String(req.params.tok || '').split('.');
+    const key = Buffer.from(k64 || '', 'base64url').toString(); const exp = parseInt(expS) || 0;
+    const want = _bkSign(key, exp);
+    const good = !!sig && sig.length === want.length && key.indexOf(OFFSITE_PREFIX) === 0 && exp > Date.now() && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(want));
+    if (!good) return res.status(403).type('text/plain; charset=utf-8').send('الرابط منتهي — ارجع للوحة الإدارة واطلب رابط جديد');
+    const g = await r2Client.send(new GetObjectCommand({ Bucket: _bkBucket(), Key: key }));
+    res.setHeader('Content-Type', 'application/gzip');
+    res.setHeader('Content-Disposition', 'attachment; filename="' + key.split('/').pop().replace(/[^\w.-]/g, '') + '"');
+    res.setHeader('Cache-Control', 'no-store');
+    if (g.ContentLength) res.setHeader('Content-Length', g.ContentLength);
+    g.Body.pipe(res);
+  } catch(e) { console.error('backup-dl:', e.message); if (!res.headersSent) res.status(404).send('غير موجود'); }
+});
+// ═══ فحص الاسترجاع: نرجّع آخر نسخة فعلياً في مكان مؤقت ونعدّ الصفوف — أسبوعياً ═══
+async function runRestoreTest(force){
+  if (!r2Client || global._restoreRunning) return { ok:false, skipped:true };
+  if (!force) { let l = null; try { l = JSON.parse(await getSetting('restore_test_last','null')); } catch(e){} if (l && l.at && Date.now() - new Date(l.at).getTime() < 7*864e5) return { ok:false, skipped:true }; }
+  const list = await listOffsiteBackups(); if (!list.length) return { ok:false, message:'ما فيه نسخ' };
+  const b = list[0]; global._restoreRunning = true;
+  const t0 = Date.now(), SC = '_bk_restore_test';
+  const out = { at: new Date().toISOString(), key: b.key, backup_at: b.at, tables: 0, rows: 0, mismatches: [], ok: false };
+  const { from: copyFrom } = require('pg-copy-streams'); const zlib = require('zlib'); const readline = require('readline'); const { once } = require('events');
+  const client = await pool.connect();
+  try {
+    await client.query(`DROP SCHEMA IF EXISTS ${SC} CASCADE`); await client.query(`CREATE SCHEMA ${SC}`);
+    const g = await r2Client.send(new GetObjectCommand({ Bucket: _bkBucket(), Key: b.key }));
+    const rl = readline.createInterface({ input: g.Body.pipe(zlib.createGunzip()), crlfDelay: Infinity });
+    let expect = null, cur = null, cs = null, n = 0, ended = false;
+    for await (const line of rl) {
+      if (cs) {
+        if (line === '\\.') {
+          cs.end(); await once(cs, 'finish');
+          const got = (await client.query(`SELECT COUNT(*)::bigint c FROM ${SC}."${cur}"`)).rows[0].c;
+          out.tables++; out.rows += Number(got);
+          if (expect != null && Number(got) !== expect) out.mismatches.push({ table: cur, expected: expect, got: Number(got) });
+          cs = null; cur = null; expect = null; continue;
+        }
+        if (!cs.write(line + '\n')) await once(cs, 'drain');
+        continue;
+      }
+      let m = line.match(/^-- (\S+): (\d+) rows$/); if (m) { expect = parseInt(m[2]); continue; }
+      m = line.match(/^COPY public\."([^"]+)" \((.*)\) FROM stdin;$/);
+      if (m) {
+        cur = m[1].replace(/""/g, '"');
+        await client.query(`CREATE TABLE ${SC}."${cur.replace(/"/g,'""')}" (LIKE public."${cur.replace(/"/g,'""')}")`);
+        // الأعمدة اللي ما عادت موجودة بالجدول الحالي ما نقدر نرجّعها هنا — نعدّها بس
+        cs = client.query(copyFrom(`COPY ${SC}."${cur.replace(/"/g,'""')}" (${m[2]}) FROM STDIN`));
+        continue;
+      }
+      if (line.indexOf('-- END OF BACKUP') === 0) ended = true;
+    }
+    if (!ended) out.mismatches.push({ table: '(نهاية الملف)', expected: 1, got: 0 });
+    out.ok = out.tables > 0 && !out.mismatches.length;
+  } catch(e) { out.error = String(e.message || '').slice(0, 200); }
+  finally {
+    let _bad = !!out.error;
+    if (!_bad) { try { await client.query(`DROP SCHEMA IF EXISTS ${SC} CASCADE`); } catch(e){ _bad = true; } }
+    client.release(_bad); global._restoreRunning = false;
+    if (_bad) { try { await pool.query(`DROP SCHEMA IF EXISTS ${SC} CASCADE`); } catch(e){} }
+  }
+  out.sec = Math.round((Date.now() - t0) / 1000);
+  await setSetting('restore_test_last', JSON.stringify(out)).catch(()=>{});
+  if (!out.ok) { try { await _alertAdmins('alert_restore_fail_at', '🚨 فحص استرجاع النسخة الاحتياطية فشل', (out.error || (out.mismatches.length + ' جدول ما تطابق')).slice(0,180)); } catch(_){} }
+  console.log(out.ok ? '✅ فحص الاسترجاع نجح' : '⚠️ فحص الاسترجاع فشل', out.tables, 'جدول', out.rows, 'سجل', out.sec + 'ث');
+  return out;
+}
+app.post('/api/admin/offsite-backups/restore-test', requirePermission('settings.manage'), async (req, res) => {
+  if (global._restoreRunning) return res.status(409).json({ message: 'فحص قيد التنفيذ' });
+  runRestoreTest(true).catch(()=>{});
+  res.json({ ok: true, started: true });
 });
 app.post('/api/admin/offsite-backups/run', requirePermission('settings.manage'), async (req, res) => {
   if (global._offsiteRunning) return res.status(409).json({ message: 'نسخة قيد التنفيذ الآن' });

@@ -5368,9 +5368,13 @@ function loadOffsite(){
       +'<h3 style="margin:0;font-size:15px;color:var(--text2);font-weight:800">💾 نسخ احتياطية خارج Railway (R2)</h3>'
       +'<button class="act-btn ab-default" style="margin-inline-start:auto;padding:6px 12px;font-size:12px" id="offsite-run" onclick="runOffsiteNow()"'+(d.running||!d.r2?' disabled':'')+'>💾 نسخة الآن</button></div>'
       +'<div style="font-size:13px;font-weight:800;color:'+col+';margin-bottom:6px">'+status+'</div>'
-      +'<div style="font-size:11.5px;color:var(--muted);line-height:1.8;margin-bottom:10px">نسخة كاملة من القاعدة يومياً إلى Cloudflare — لو صار شي لحساب Railway نفسه، بياناتك موجودة هنا. يحتفظ بآخر 7 أيام + نسخة كل جمعة لآخر 4 أسابيع.'+(last&&last.rows?' آخر نسخة فيها '+last.tables+' جدول و'+Number(last.rows).toLocaleString('en-US')+' سجل.':'')+'</div>'
+      +'<div style="font-size:11.5px;color:var(--muted);line-height:1.8;margin-bottom:10px">نسخة كاملة من القاعدة يومياً إلى Cloudflare — لو صار شي لحساب Railway نفسه، بياناتك موجودة هنا. يحتفظ بآخر 7 أيام + نسخة كل جمعة لآخر 4 أسابيع + نسخة من كل شهر لسنة كاملة. محفوظة في المخزن الخاص، والتحميل برابط يموت بعد 10 دقايق.'+(last&&last.rows?' آخر نسخة فيها '+last.tables+' جدول و'+Number(last.rows).toLocaleString('en-US')+' سجل.':'')+'</div>'
       +(err&&(!newest||new Date(err.at)>new Date(newest.at))?'<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:9px 11px;font-size:12px;color:#991b1b;margin-bottom:10px">⚠️ آخر محاولة فشلت ('+ago(err.at)+'): '+esc(err.msg||'')+'</div>':'')
-      +(bl.length?'<div style="display:flex;flex-direction:column;gap:6px">'+bl.slice(0,12).map(function(b){var dt=new Date(b.at);return '<div style="display:flex;align-items:center;gap:10px;font-size:12px;background:var(--bg,#f8fafc);border:1px solid var(--border);border-radius:9px;padding:8px 11px"><span style="font-weight:800">'+dt.toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'short',day:'numeric',month:'short'})+'</span><span style="color:var(--muted)">'+dt.toLocaleTimeString('ar-SA-u-nu-latn-ca-gregory',{hour:'2-digit',minute:'2-digit'})+'</span><span dir="ltr" style="margin-inline-start:auto;color:var(--muted)">'+_fmtBytes(b.bytes)+'</span>'+(b.url?'<a href="'+esc(_safeUrl(b.url))+'" download style="color:#1d4ed8;font-weight:800;text-decoration:none">⬇ تحميل</a>':'')+'</div>';}).join('')+'</div>':'')
+      +(bl.length?'<div style="display:flex;flex-direction:column;gap:6px">'+bl.slice(0,12).map(function(b){var dt=new Date(b.at);return '<div style="display:flex;align-items:center;gap:10px;font-size:12px;background:var(--bg,#f8fafc);border:1px solid var(--border);border-radius:9px;padding:8px 11px"><span style="font-weight:800">'+dt.toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'short',day:'numeric',month:'short'})+'</span><span style="color:var(--muted)">'+dt.toLocaleTimeString('ar-SA-u-nu-latn-ca-gregory',{hour:'2-digit',minute:'2-digit'})+'</span><span dir="ltr" style="margin-inline-start:auto;color:var(--muted)">'+_fmtBytes(b.bytes)+'</span>'+'<button type="button" onclick="_bkDl(\''+esc(b.key)+'\',this)" style="border:0;background:none;color:#1d4ed8;font-weight:800;cursor:pointer;font-family:inherit;font-size:12px">⬇ تحميل</button></div>';}).join('')+'</div>':'')
+      +(function(rt){ var run=d.restoreRunning; var bad=rt&&!rt.ok; var old=rt&&(Date.now()-new Date(rt.at).getTime()>8*864e5);
+        var txt=run?'⏳ جاري فحص الاسترجاع…':(!rt?'🧪 فحص الاسترجاع: ما انفحص بعد — يشتغل تلقائياً كل أسبوع':(rt.ok?'🧪 آخر فحص استرجاع ناجح: '+ago(rt.at)+' — رجّعنا '+rt.tables+' جدول و'+Number(rt.rows).toLocaleString('en-US')+' سجل كاملة ('+rt.sec+' ث)':'⚠️ فحص الاسترجاع فشل '+ago(rt.at)+': '+esc(rt.error||(rt.mismatches&&rt.mismatches.length?rt.mismatches.length+' جدول ما تطابق: '+rt.mismatches.slice(0,3).map(function(m){return m.table;}).join('، '):''))));
+        return '<div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:'+(bad?'#fef2f2':(old||!rt?'#fffbeb':'#f0fdf4'))+';border:1px solid '+(bad?'#fecaca':(old||!rt?'#fde68a':'#bbf7d0'))+';border-radius:10px;padding:10px 12px;font-size:12px;font-weight:700;color:'+(bad?'#991b1b':(old||!rt?'#92400e':'#166534'))+';line-height:1.8"><span style="flex:1;min-width:200px">'+txt+'</span><button type="button" class="act-btn ab-default" style="padding:5px 11px;font-size:12px" onclick="_bkTest(this)"'+(run?' disabled':'')+'>افحص الحين</button></div>'; })(d.restore)
+      +(d.private?'':'<div style="margin-top:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;font-size:12px;color:#991b1b;font-weight:700">⚠️ النسخ محفوظة في مخزن الصور العام — اضبط <span dir="ltr">R2_BACKUP_BUCKET</span> في Railway عشان تنتقل للمخزن الخاص.</div>')
       +(function(f){f=f||{};var L=f.last,E=f.error;
         if(!f.configured)return '<div style="margin-top:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 12px;font-size:12px;color:#92400e;line-height:1.8">📁 <b>نسخة الصور والمرفقات: غير مفعّلة.</b> تحتاج مخزن ثاني في Cloudflare + متغيّر <span dir="ltr">R2_BACKUP_BUCKET</span> في Railway.</div>';
         var bad=E&&(!L||new Date(E.at)>new Date(L.at));
@@ -5382,6 +5386,22 @@ function loadOffsite(){
     el.innerHTML=h;
     if(d.running)setTimeout(loadOffsite,8000);
   }).catch(function(){el.innerHTML='';});
+}
+function _bkDl(key,btn){
+  if(btn){btn.disabled=true;btn.textContent='⏳';}
+  fetch(API+'/api/admin/offsite-backups/link',Object.assign({method:'POST',body:JSON.stringify({key:key})},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
+    if(btn){btn.disabled=false;btn.textContent='⬇ تحميل';}
+    if(!res.ok||!res.d.url){toast((res.d&&res.d.message)||'تعذّر','error');return;}
+    var a=document.createElement('a'); a.href=API+res.d.url; a.rel='noopener'; document.body.appendChild(a); a.click(); a.remove();
+    toast('بدأ التحميل — الرابط يموت بعد 10 دقايق','success');
+  }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='⬇ تحميل';} toast('تعذّر الاتصال','error'); });
+}
+function _bkTest(btn){
+  if(btn){btn.disabled=true;btn.textContent='⏳ جاري…';}
+  fetch(API+'/api/admin/offsite-backups/restore-test',Object.assign({method:'POST'},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
+    toast(res.ok?'بدأ الفحص — ياخذ دقيقة أو دقيقتين':((res.d&&res.d.message)||'تعذّر'),res.ok?'success':'error');
+    var n=0, t=setInterval(function(){ n++; loadOffsite(); if(n>20)clearInterval(t); fetch(API+'/api/admin/offsite-backups',hdr()).then(function(r){return r.json();}).then(function(d){ if(!d.restoreRunning){clearInterval(t);loadOffsite();} }).catch(function(){}); },6000);
+  }).catch(function(){ toast('تعذّر الاتصال','error'); if(btn){btn.disabled=false;btn.textContent='افحص الحين';} });
 }
 function runOffsiteNow(){
   var b=document.getElementById('offsite-run');if(b){b.disabled=true;b.textContent='⏳ جاري...';}

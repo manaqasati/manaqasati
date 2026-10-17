@@ -1407,6 +1407,16 @@ function saveClientProfile(btn){
     .catch(function(){showToast('تعذّر الحفظ — تحقّق من اتصالك','error');})
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='حفظ التغييرات';}});
 }
+function _newSess(d){ if(!d||!d.token)return; try{ localStorage.setItem('token',d.token); }catch(e){} try{ token=d.token; }catch(e){} try{ _token=d.token; }catch(e){} try{ if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_SAVE',token:d.token,user:localStorage.getItem('user')||''})); }catch(e){} }
+function logoutAllDevices(btn){
+  if(!confirm('نطلّع حسابك من كل الأجهزة الثانية (الجوالات والمتصفحات)؟ هذا الجهاز يبقى داخل.'))return;
+  if(btn){btn.disabled=true;}
+  var tk=localStorage.getItem('token')||'';
+  fetch(API+'/api/auth/logout-all',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk}}).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
+    if(btn)btn.disabled=false; if(!res.ok){ showToast((res.d&&res.d.message)||'تعذّر','error'); return; }
+    _newSess(res.d); showToast(res.d.message||'تم ✓','success');
+  }).catch(function(){ if(btn)btn.disabled=false; showToast('تعذّر الاتصال','error'); });
+}
 function changeClientPw(){
   var oldEl=document.getElementById('old-pw');
   var oldPw=oldEl?(oldEl.value||''):'';
@@ -1416,7 +1426,7 @@ function changeClientPw(){
   // المسار الصحيح لتغيير كلمة المرور (يتحقق من الحالية)
   fetch(API+'/api/auth/change-password',Object.assign({method:'PUT',body:JSON.stringify({old_password:oldPw,new_password:pw})},hdr()))
     .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok){var e=new Error(d.message||'');e.srv=1;throw e;} return d; }); })
-    .then(function(){showToast('تم تغيير كلمة المرور','success');document.getElementById('new-pw').value='';if(oldEl)oldEl.value='';})
+    .then(function(d){_newSess(d);showToast((d&&d.message)||'تم تغيير كلمة المرور','success');document.getElementById('new-pw').value='';if(oldEl)oldEl.value='';})
     .catch(function(err){showToast((err&&err.srv&&err.message)?err.message:'تعذّر التغيير — تحقّق من اتصالك','error');});
 }
 
