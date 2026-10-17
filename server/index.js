@@ -427,6 +427,14 @@ app.get('/contracts/dl/:f', (req, res) => {
   res.setHeader('X-Robots-Tag', 'noindex');
   res.sendFile(fp);
 });
+// فتح من إشعار التطبيق أو من رابط الإيميل (?_n=رقم التتبّع)
+app.use(function(req, res, next){
+  if (req.method === 'GET' && req.query && req.query._n && !req.path.startsWith('/api/')) {
+    const t = parseInt(req.query._n);
+    if (t > 0) pool.query('UPDATE ntrack SET opened_at=COALESCE(opened_at,NOW()), open_via=COALESCE(open_via,$2) WHERE id=$1', [t, req.query._v === 'e' ? 'email' : 'push']).catch(()=>{});
+  }
+  next();
+});
 // الصفحات الثابتة (.html و /) تمر من هنا قبل express.static عشان يوصلها الحقن
 app.use(function(req, res, next){
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
@@ -616,8 +624,8 @@ async function notifyMatchingProviders(request, _force){
     const link = SITE_URL + '/project/x-' + request.id + '?id=' + request.id;
     for(const p of r.rows){
       try{
-        await notify(p.id, '🆕 مشروع جديد يناسبك', `"${request.title}"${city?(' · '+city):''} — بادر بتقديم عرضك`, 'request', request.id);
-        if(p.email){ const eBody=`<p>مرحباً${p.nm?' '+eEsc(p.nm):''}،</p><p>نُشر مشروع جديد يناسب تخصصك على منصة مناقصة:</p><p><strong>${eEsc(request.title)}</strong>${city?' · '+eEsc(city):''}</p><p>ادخل وقدّم عرضك قبل غيرك.</p>`; sendEmail(p.email, '🆕 مشروع جديد يناسبك', emailTpl('🆕 مشروع جديد يناسبك', eBody, 'تقديم عرض', link)).catch(()=>{}); }
+        const _tid = await notify(p.id, '🆕 مشروع جديد يناسبك', `"${request.title}"${city?(' · '+city):''} — بادر بتقديم عرضك`, 'request', request.id, { kind: 'new_project', url: '/project/x-' + request.id + '?id=' + request.id });
+        if(p.email){ const eBody=`<p>مرحباً${p.nm?' '+eEsc(p.nm):''}،</p><p>نُشر مشروع جديد يناسب تخصصك على منصة مناقصة:</p><p><strong>${eEsc(request.title)}</strong>${city?' · '+eEsc(city):''}</p><p>ادخل وقدّم عرضك قبل غيرك.</p>`; sendEmail(p.email, '🆕 مشروع جديد يناسبك', emailTpl('🆕 مشروع جديد يناسبك', eBody, 'تقديم عرض', _withN(link, _tid, 'e')), { uid: p.id, kind: 'new_project', tid: _tid }).catch(()=>{}); }
         sent++;
       }catch(e){}
     }
@@ -1669,6 +1677,7 @@ async function sendEmail(to, subject, html, meta) {
   if (!to || /@manaqasa\.local$/i.test(String(to))) return false;
   let logId = null;
   try { logId = (await pool.query('INSERT INTO email_log (user_id, to_email, subject, kind, status) VALUES ($1,$2,$3,$4,$5) RETURNING id', [meta.uid || null, String(to).slice(0,200), String(subject||'').slice(0,200), meta.kind || 'other', 'sending'])).rows[0].id; } catch(e) {}
+  if (logId && meta.tid) pool.query('UPDATE ntrack SET email_id=$1 WHERE id=$2', [logId, meta.tid]).catch(()=>{});
   const _fail = (msg) => { if (logId) pool.query("UPDATE email_log SET status='failed', error=$1, updated_at=NOW() WHERE id=$2", [String(msg||'').slice(0,500), logId]).catch(()=>{}); };
   try {
     const r = await fetch('https://api.resend.com/emails', {
@@ -1773,9 +1782,10 @@ function emailTpl(title, body, btnText, btnUrl, opts) {
 
 // ═══ PUSH ═══
 async function sendPush(userId, title, body, url, refType, refId) {
+  const _st = { n: 0, ok: 0 };
   try {
     const r = await pool.query(`SELECT token, platform FROM push_tokens WHERE user_id=$1`, [userId]);
-    if (!r.rows.length) return;
+    if (!r.rows.length) return _st;
     let badgeCount = 1;
     try {
       const badgeRes = await pool.query(`
@@ -1793,8 +1803,9 @@ async function sendPush(userId, title, body, url, refType, refId) {
         if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) continue;
         let subscription;
         try { subscription = JSON.parse(row.token); } catch(e) { continue; }
+        _st.n++;
         try {
-          await webpush.sendNotification(subscription, webPayload);
+          await webpush.sendNotification(subscription, webPayload); _st.ok++;
         } catch(err) {
           if (err.statusCode === 410 || err.statusCode === 404) {
             try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2', [userId, row.token]); } catch(e) {}
@@ -1807,12 +1818,14 @@ async function sendPush(userId, title, body, url, refType, refId) {
       }
     }
     if (expoMessages.length > 0) {
+      _st.n += expoMessages.length;
       try {
         const expoResp = await fetch('https://exp.host/--/api/v2/push/send', { method: 'POST', headers: { 'Accept': 'application/json', 'Accept-encoding': 'gzip, deflate', 'Content-Type': 'application/json' }, body: JSON.stringify(expoMessages) });
         const expoResult = await expoResp.json();
         if (expoResult && expoResult.data && Array.isArray(expoResult.data)) {
           for (let i = 0; i < expoResult.data.length; i++) {
             const ticket = expoResult.data[i];
+            if (ticket && ticket.status === 'ok') _st.ok++;
             if (ticket.status === 'error') {
               const errCode = ticket.details && ticket.details.error;
               if (errCode === 'DeviceNotRegistered') {
@@ -1824,6 +1837,7 @@ async function sendPush(userId, title, body, url, refType, refId) {
       } catch(expoErr) { console.error('Expo push API error:', expoErr.message); }
     }
   } catch(e) { console.error('sendPush helper error:', e.message); }
+  return _st;
 }
 
 async function remindClosedContacts(requestId, title){
@@ -2036,10 +2050,15 @@ async function guardUserTarget(req, targetId){
   return null;
 }
 
-async function notify(userId, title, body, type, refId) {
+// تتبّع الإشعار: وصل للتطبيق؟ فتحه؟ (ntrack) — يرجع رقم التتبّع عشان نربط فيه الإيميل
+function _withN(url, tid, v){ if (!tid) return url; const u = String(url||'/'), h = u.indexOf('#'), base = h >= 0 ? u.slice(0, h) : u, hash = h >= 0 ? u.slice(h) : ''; return base + (base.indexOf('?') >= 0 ? '&' : '?') + '_n=' + tid + (v ? '&_v=' + v : '') + hash; }
+async function notify(userId, title, body, type, refId, opts) {
+  opts = opts || {};
+  let tid = null;
   try {
-    await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [userId, title, body, type, refId]);
-    const url = (() => {
+    const _ni = await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5) RETURNING id', [userId, title, body, type, refId]);
+    try { tid = (await pool.query('INSERT INTO ntrack (nid, user_id, kind, ref_id) VALUES ($1,$2,$3,$4) RETURNING id', [_ni.rows[0].id, userId, String(opts.kind || type || 'other').slice(0,30), refId || null])).rows[0].id; } catch(e) {}
+    const url = opts.url || (() => {
       if (!type) return '/';
       if (type === 'becomeprov') return '/dashboard-client.html#becomeprov';
       if (type === 'pause' || type === 'pause_chosen') return '/dashboard-provider.html#bids';
@@ -2054,17 +2073,18 @@ async function notify(userId, title, body, type, refId) {
       if (type === 'question_answered') return '/';
       return '/';
     })();
-    sendPush(userId, title, body, url, type, refId).catch(() => {});
+    sendPush(userId, title, body, _withN(url, tid), type, refId).then(r => { if (tid && r) pool.query('UPDATE ntrack SET push_n=$1, push_ok=$2 WHERE id=$3', [r.n, r.ok, tid]).catch(()=>{}); }).catch(() => {});
     wsBroadcast(userId, { type: 'notification', notif: { title, body, ntype: type, ref_id: refId, url, created_at: new Date().toISOString() } });
   } catch(e) { console.error('Notification error:', e); }
+  return tid;
 }
 
 async function notifyWithEmail(userId, title, body, type, refId, emailSubject, emailBody, btnText, btnUrl) {
-  await notify(userId, title, body, type, refId);
+  const tid = await notify(userId, title, body, type, refId);
   try {
     const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [userId]);
     if (u.rows.length && u.rows[0].email) {
-      sendEmail(u.rows[0].email, emailSubject||title, emailTpl(title, emailBody.replace(/\{name\}/g, u.rows[0].name||''), btnText, btnUrl||SITE_URL)).catch(() => {});
+      sendEmail(u.rows[0].email, emailSubject||title, emailTpl(title, emailBody.replace(/\{name\}/g, u.rows[0].name||''), btnText, btnUrl||SITE_URL), { uid: userId, kind: type, tid }).catch(() => {});
     }
   } catch(e) { console.error('notifyWithEmail email part:', e.message); }
 }
@@ -3141,6 +3161,11 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS review_nudged_at TIMESTAMP`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS silent_stage SMALLINT DEFAULT 0`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS silent_at TIMESTAMP`);
+      // تتبّع الإشعارات: الإيميل (email_log) + إشعار التطبيق + الفتح
+      await _mig(`CREATE TABLE IF NOT EXISTS ntrack (id SERIAL PRIMARY KEY, nid INTEGER, user_id INTEGER, kind VARCHAR(30), ref_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), email_id INTEGER, push_n SMALLINT DEFAULT 0, push_ok SMALLINT DEFAULT 0, opened_at TIMESTAMP, open_via VARCHAR(8))`);
+      await _mig(`CREATE INDEX IF NOT EXISTS ntrack_kind ON ntrack(kind, created_at)`);
+      await _mig(`CREATE INDEX IF NOT EXISTS ntrack_ref ON ntrack(ref_id, kind)`);
+      await _mig(`CREATE INDEX IF NOT EXISTS ntrack_nid ON ntrack(nid)`);
       // مشروع مكرر: نفس العميل نشر نفس المشروع مرة ثانية
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dup_of INTEGER`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dup_intent VARCHAR(10)`);
@@ -7281,7 +7306,7 @@ app.put('/api/notifications/read', auth, async (req, res) => {
   try { await pool.query('UPDATE notifications SET is_read=TRUE WHERE user_id=$1 AND is_read=FALSE',[req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.put('/api/notifications/:id/read', auth, async (req, res) => {
-  try { await pool.query('UPDATE notifications SET is_read=TRUE WHERE id=$1 AND user_id=$2',[parseInt(req.params.id),req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  try { await pool.query('UPDATE notifications SET is_read=TRUE WHERE id=$1 AND user_id=$2',[parseInt(req.params.id),req.user.id]); pool.query("UPDATE ntrack SET opened_at=COALESCE(opened_at,NOW()), open_via=COALESCE(open_via,'app') WHERE nid=$1 AND user_id=$2", [parseInt(req.params.id), req.user.id]).catch(()=>{}); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.delete('/api/notifications/:id', auth, async (req, res) => {
   try { await pool.query('DELETE FROM notifications WHERE id=$1 AND user_id=$2',[parseInt(req.params.id),req.user.id]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -9573,6 +9598,75 @@ app.patch('/api/admin/requests/:id/quick', requirePermission('requests.edit'), e
     await logAdmin(req, 'edit_request', 'request', id, 'تعديل سريع من المراجعة: ' + Object.keys(b).join('، '));
     res.json(Object.assign({}, r.rows[0], { _dropped: dropped }));
   } catch(e) { console.error('/quick:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+// ═══ إحصائيات الإشعارات: مين وصله الإيميل/الإشعار، مين فتح، مين تفاعل ═══
+const _NT_LBL = { new_project:'🆕 مشروع جديد يناسبك', new_project_rem:'⏰ تذكير: فتح وما قدّم', req_updated:'📝 صاحب المشروع حدّث التفاصيل', pause:'⏸️ إيقاف مؤقت (للمزوّدين)', pause_chosen:'✅ اختارك للتفاوض', pause_ask:'🤝 كيف صار التفاوض؟', req_dup:'📂 مشروعك مكرر',
+  bid:'💼 العروض', bid_accepted:'🎉 العرض انقبل', bid_rejected:'العرض ما انقبل', request:'📋 تحديثات المشروع', request_published:'📥 استلمنا مشروعك', request_closed:'🔒 المشروع انقفل', message:'💬 رسالة جديدة', admin_message:'📣 رسالة من الإدارة',
+  new_request:'⭐ طلب مباشر', saai:'💰 السعي', saai_q:'💰 سؤال السعي', claim:'🧾 المطالبات', reminder:'⏰ تذكير', bidwatch:'👀 متابعة العروض', accept_ask:'🤝 هل اتفقتوا؟', new_question:'❓ سؤال جديد', question_answered:'💡 جواب سؤال',
+  negotiate:'🤝 تفاوض', completed:'🏁 اكتمل المشروع', review:'⭐ تقييم', close_help:'🙋 طلب مساعدة', becomeprov:'🛠 تفعيل مزوّد', askpenalty:'⚠️ تنبيه' };
+const _NT_PROV = ['new_project','new_project_rem','req_updated','pause','pause_chosen'];
+const _NT_COLS = `COUNT(*)::int AS sent,
+  COUNT(t.email_id)::int AS em, COUNT(*) FILTER (WHERE e.status IN ('delivered','opened','clicked'))::int AS em_ok,
+  COUNT(*) FILTER (WHERE e.status IN ('opened','clicked'))::int AS em_open, COUNT(*) FILTER (WHERE e.status IN ('bounced','failed','complained','suppressed'))::int AS em_bad,
+  COUNT(*) FILTER (WHERE t.push_n>0)::int AS ph, COUNT(*) FILTER (WHERE t.push_ok>0)::int AS ph_ok, COUNT(t.opened_at)::int AS opened,
+  COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM project_visits pv WHERE pv.request_id=t.ref_id AND pv.vkey='u'||t.user_id))::int AS visited,
+  COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM bids b WHERE b.request_id=t.ref_id AND b.provider_id=t.user_id))::int AS bid`;
+app.get('/api/admin/requests/:id/reach', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const tot = (await pool.query(`SELECT t.kind, MIN(t.created_at) AS first_at, ${_NT_COLS} FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id WHERE t.ref_id=$1 AND t.kind = ANY($2) GROUP BY t.kind`, [id, _NT_PROV])).rows;
+    const main = tot.find(x => x.kind === 'new_project') || null;
+    const rows = (await pool.query(`SELECT DISTINCT ON (t.user_id) t.user_id, COALESCE(u.business_name, u.name) AS name, u.city, e.status AS em, (t.email_id IS NOT NULL) AS has_em, t.push_n, t.push_ok, t.opened_at, t.open_via, t.created_at,
+        EXISTS (SELECT 1 FROM project_visits pv WHERE pv.request_id=t.ref_id AND pv.vkey='u'||t.user_id) AS visited,
+        EXISTS (SELECT 1 FROM bids b WHERE b.request_id=t.ref_id AND b.provider_id=t.user_id) AS bid,
+        EXISTS (SELECT 1 FROM ntrack r WHERE r.ref_id=t.ref_id AND r.user_id=t.user_id AND r.kind='new_project_rem') AS reminded
+      FROM ntrack t JOIN users u ON u.id=t.user_id LEFT JOIN email_log e ON e.id=t.email_id WHERE t.ref_id=$1 AND t.kind='new_project' ORDER BY t.user_id, t.id DESC`, [id])).rows;
+    rows.sort((a,b) => (b.bid - a.bid) || (b.visited - a.visited) || ((b.opened_at?1:0) - (a.opened_at?1:0)) || String(a.name||'').localeCompare(String(b.name||''), 'ar'));
+    const remindable = rows.filter(r => !r.bid && !r.reminded && (r.visited || r.opened_at || r.em === 'opened' || r.em === 'clicked')).length;
+    res.json({ tracked: !!main, main, kinds: tot.map(x => Object.assign(x, { label: _NT_LBL[x.kind] || x.kind })), providers: rows.slice(0, 400), remindable });
+  } catch(e) { console.error('reach:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// تذكير اللي فتحوا/دخلوا وما قدّموا (مرة وحدة لكل مزوّد بكل مشروع)
+app.post('/api/admin/requests/:id/reach/remind', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rq = (await pool.query('SELECT id, title, city, status, paused_at FROM requests WHERE id=$1', [id])).rows[0];
+    if (!rq || rq.status !== 'open' || rq.paused_at) return res.status(400).json({ message: 'المشروع مو مفتوح للعروض' });
+    const L = (await pool.query(`SELECT DISTINCT t.user_id, u.email, COALESCE(u.business_name,u.name) AS nm FROM ntrack t JOIN users u ON u.id=t.user_id LEFT JOIN email_log e ON e.id=t.email_id
+      WHERE t.ref_id=$1 AND t.kind='new_project' AND u.is_active IS NOT FALSE
+        AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=t.ref_id AND b.provider_id=t.user_id)
+        AND NOT EXISTS (SELECT 1 FROM ntrack r WHERE r.ref_id=t.ref_id AND r.user_id=t.user_id AND r.kind='new_project_rem')
+        AND (t.opened_at IS NOT NULL OR e.status IN ('opened','clicked') OR EXISTS (SELECT 1 FROM project_visits pv WHERE pv.request_id=t.ref_id AND pv.vkey='u'||t.user_id))`, [id])).rows;
+    const link = SITE_URL + '/project/x-' + id + '?id=' + id;
+    let n = 0;
+    for (const p of L) {
+      try {
+        const t = '⏰ لسا تقدر تقدّم عرضك';
+        const tid = await notify(p.user_id, t, `«${rq.title}»${rq.city ? ' · ' + rq.city : ''} — شفت المشروع وما قدّمت. صاحب المشروع يستقبل العروض الحين.`, 'request', id, { kind: 'new_project_rem', url: '/project/x-' + id + '?id=' + id });
+        if (p.email) sendEmail(p.email, t + ' — ' + rq.title, emailTpl(t, `<p>مرحباً${p.nm ? ' ' + eEsc(p.nm) : ''}،</p><p>شفت مشروع «<strong>${eEsc(rq.title)}</strong>»${rq.city ? ' · ' + eEsc(rq.city) : ''} وما قدّمت عرض.</p><p>صاحب المشروع لسا يستقبل العروض — قدّم عرضك قبل لا يقرر.</p>`, 'قدّم عرضك', _withN(link, tid, 'e')), { uid: p.user_id, kind: 'new_project_rem', tid }).catch(()=>{});
+        n++;
+      } catch(e) {}
+    }
+    await logAdmin(req, 'reach_remind', 'request', id, `تذكير ${n} مزوّد فتحوا وما قدّموا`);
+    res.json({ ok: true, sent: n });
+  } catch(e) { console.error('reach remind:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/notif-stats', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const days = [7, 30, 90].includes(parseInt(req.query.days)) ? parseInt(req.query.days) : 7;
+    const W = `t.created_at >= NOW() - ($1 || ' days')::interval`;
+    const [byKind, all, prov, hrs, since] = await Promise.all([
+      pool.query(`SELECT t.kind, ${_NT_COLS} FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id WHERE ${W} GROUP BY t.kind ORDER BY COUNT(*) DESC`, [String(days)]),
+      pool.query(`SELECT COUNT(*)::int AS sent, COUNT(t.email_id)::int AS em, COUNT(*) FILTER (WHERE e.status IN ('opened','clicked'))::int AS em_open, COUNT(*) FILTER (WHERE e.status IN ('bounced','failed','complained','suppressed'))::int AS em_bad,
+          COUNT(*) FILTER (WHERE t.push_n>0)::int AS ph, COUNT(*) FILTER (WHERE t.push_ok>0)::int AS ph_ok, COUNT(t.opened_at)::int AS opened FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id WHERE ${W}`, [String(days)]),
+      pool.query(`SELECT ${_NT_COLS} FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id WHERE ${W} AND t.kind = ANY($2)`, [String(days), _NT_PROV]),
+      pool.query(`SELECT EXTRACT(HOUR FROM (COALESCE(t.opened_at, e.updated_at) AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Riyadh'))::int AS h, COUNT(*)::int AS n FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id
+          WHERE ${W} AND (t.opened_at IS NOT NULL OR e.status IN ('opened','clicked')) GROUP BY 1`, [String(days)]),
+      pool.query(`SELECT MIN(created_at) AS at FROM ntrack`)
+    ]);
+    res.json({ days, since: since.rows[0].at, all: all.rows[0], prov: prov.rows[0],
+      kinds: byKind.rows.map(x => Object.assign(x, { label: _NT_LBL[x.kind] || x.kind, prov: _NT_PROV.includes(x.kind) })), hours: hrs.rows });
+  } catch(e) { console.error('notif-stats:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // ═══ كشف المشاريع المكررة (نفس العميل أو نفس الجوال، آخر 60 يوم) ═══
 function _arNorm(s){ return String(s||'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^\u0600-\u06FFa-z0-9\s]/g,' ').replace(/\s+/g,' ').trim(); }

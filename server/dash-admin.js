@@ -69,7 +69,7 @@ function _navGroupsVis(){
   try{var mo=new MutationObserver(function(){_navSums();});document.querySelectorAll('.nav .ni-badge').forEach(function(b){mo.observe(b,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});});}catch(e){setInterval(_navSums,3000);}
 })();
 // ═══ الصفحات المدموجة: كل مجموعة صفحة وحدة بتبويبات فوق ═══
-var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','drafts','requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
+var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','drafts','requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','nstats','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
 var _PG2GRP={};Object.keys(GRPS).forEach(function(g){GRPS[g].t.forEach(function(t){var b=t.split('@')[0];if(!_PG2GRP[b])_PG2GRP[b]=g;});});
 function _gtVisible(g){var bar=document.querySelector('#gtabsHost .gtabs[data-grp="'+g+'"]');if(!bar)return [];return [].filter.call(bar.querySelectorAll('.gt'),function(b){return b.style.display!=='none';}).map(function(b){return b.getAttribute('data-tab');});}
 function showGroup(g){
@@ -118,6 +118,7 @@ function showPage(pg,el){
   if(el)_navOpenFor(el);
   var meta={vstats:['التسجيل والتفعيل','كيف سجّلوا (البريد · Google · Apple) — مين فعّل ومين علق'],appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],deals:['متابعة الصفقات','مين اختار · مين ألغى · مين خلّص · مين سدّد'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   meta.outcomes=['نتائج المشاريع','وين راح كل مشروع — الترسية والإغلاق والسعي، ووش يحتاج قرارك'];
+  meta.nstats=['الإشعارات والإيميلات','مين وصله الإيميل وإشعار التطبيق — ومين فتح وتفاعل'];
   meta.drafts=['مشاريع ما اكتملت','ناس بدأوا يكتبون مشروع وطلعوا — نذكّرهم تلقائياً ونرجّعهم لمسودّتهم'];
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
   _gtSync(pg);
@@ -129,6 +130,7 @@ function showPage(pg,el){
   if(pg==='appstats')setTimeout(function(){_perMini('per-app');_loadAppStats();},0);
   if(pg==='ctstats')setTimeout(function(){_perMini('per-ct');_loadCtStats();},0);
   if(pg==='vstats')setTimeout(_loadVStats,0);
+  if(pg==='nstats')setTimeout(_loadNStats,0);
   if(pg==='inbox')loadInbox();
   if(pg==='saai')loadSaaiAdmin();
   if(pg==='settings')loadSettings();
@@ -2627,6 +2629,7 @@ function _rqOpen(id){
       +'<div class="rq-ds" style="flex-direction:row;flex-wrap:wrap;gap:8px"><button class="btn-g" style="flex:1" onclick="_rqClose();openReqEdit('+r.id+')">تعديل</button><a class="btn-g" style="flex:1;text-align:center;text-decoration:none" href="/project/x-'+r.id+'?id='+r.id+'" target="_blank" rel="noopener">فتح الصفحة</a>'
         +(r.status==='open'?'<button class="btn-g" style="flex:1;color:#c2410c" onclick="_rqClose();pullbackFromRow('+r.id+')">طلب تعديل</button>':'')+'</div>'
       +_rqActs(r)
+      +(['pending_review','review','needs_edit','rejected'].indexOf(r.status)<0?'<div class="rq-ds" id="rq-reach-'+r.id+'"><h4>📊 مين وصله ومين تفاعل</h4><div class="loading" style="padding:10px"><div class="spinner"></div></div></div>':'')
       +_roSection(r)
       +_saSection(r,x.saai,x.saai_suggest)
       +_cnSection(r)
@@ -2640,7 +2643,7 @@ function _rqOpen(id){
           :'<div style="font-size:13px;color:var(--muted)">ما وصل أي عرض بعد</div>')
       +'</div>'
       +(tl.length?'<div class="rq-ds"><h4>السجل</h4>'+tl.map(function(t){return '<div class="rq-tl"><i></i><div><b>'+esc(t.event||'')+'</b>'+(t.description?' — '+esc(t.description):'')+'<div style="font-size:11.5px;color:var(--muted)">'+new Date(t.created_at).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+'</div></div></div>';}).join('')+'</div>':'');
-    d.innerHTML=h;
+    d.innerHTML=h; if(document.getElementById('rq-reach-'+r.id)) _rqReach(r.id);
   }).catch(function(){ d.innerHTML='<div style="padding:30px">'+emptyState('تعذّر التحميل')+'</div>'; });
 }
 function _updAgentDue(){var el=document.getElementById('re-agent-due');if(!el)return;var pct=parseFloat((document.getElementById('re-agent-pct')||{}).value||0);var ap=window._reAcceptedPrice||0;if(!pct){el.textContent='';return;}if(pct>=3){el.textContent='⚠️ النسبة '+pct+'٪ تساوي أو تتجاوز رسوم المنصة (٣٪) — لن يتبقى لك ربح.';el.style.color='#dc2626';return;}if(ap>0){var due=Math.round(ap*pct/100);el.textContent='المستحق للمندوب: '+due.toLocaleString('en-US')+' ر.س ('+pct+'% من '+Math.round(ap).toLocaleString('en-US')+' ر.س — العرض المعتمد)';el.style.color='#059669';}else{el.textContent='يُحتسب المستحق ('+pct+'%) تلقائياً عند اعتماد عرض على المشروع.';el.style.color='#64748b';}}
@@ -5900,7 +5903,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={nstats:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
@@ -7018,4 +7021,90 @@ function _prAttAdd(id,inp){
     var slot={name:f.name,up:true}; at.push(slot);
     _mqUpAtt(f,slot,function(ok,msg){ if(!ok){ at.splice(at.indexOf(slot),1); toast(msg||('تعذّر رفع «'+f.name+'»'),'error'); } else delete slot.up; if(--left===0)_prQuick(id,{attachments:at},'انضافت الملفات ✓'); });
   });
+}
+
+// ═══ إحصائيات الإشعارات — (A) داخل المشروع ═══
+function _ntPct(v,t){ return t?Math.round(v*100/t):0; }
+function _ntBar(lb,v,tot,col,tip){ var p=_ntPct(v,tot); return '<div class="nt-fn"'+(tip?' title="'+esc(tip)+'"':'')+'><span class="nt-lb">'+lb+'</span><span class="nt-bar" data-nodk><i style="width:'+Math.max(p,v?2:0)+'%;--c:'+col+'"></i></span><span class="nt-v">'+fmtNum(v)+' <small>'+p+'%</small></span></div>'; }
+window._rqReachF=window._rqReachF||{};
+function _rqReach(id){
+  var box=document.getElementById('rq-reach-'+id); if(!box)return;
+  fetch(API+'/api/admin/requests/'+id+'/reach',hdr()).then(function(r){return r.json();}).then(function(d){ window['_rqR'+id]=d; _rqReachPaint(id); })
+    .catch(function(){ box.innerHTML='<h4>📊 مين وصله ومين تفاعل</h4><div style="font-size:13px;color:var(--muted)">تعذّر التحميل</div>'; });
+}
+function _rqReachPaint(id){
+  var box=document.getElementById('rq-reach-'+id), d=window['_rqR'+id]; if(!box||!d)return;
+  var h='<h4>📊 مين وصله ومين تفاعل</h4>';
+  if(!d.tracked||!d.main){ box.innerHTML=h+'<div style="font-size:13px;color:var(--muted);line-height:1.8">ما عندنا أرقام لهذا المشروع — الإحصائيات تبدأ من المشاريع اللي تنتشر بعد التحديث (17 أكتوبر).</div>'; return; }
+  var m=d.main, T=m.sent;
+  h+='<div style="font-size:12.5px;color:var(--muted);font-weight:700;margin:-2px 0 6px">«مشروع جديد يناسبك» · انرسل '+_adAgo(m.first_at)+' لـ '+fmtNum(T)+' مزوّد</div>'
+    +_ntBar('📧 الإيميل وصل',m.em_ok,T,'rgb(147,197,253)')
+    +_ntBar('👀 فتح الإيميل',m.em_open,T,'rgb(96,165,250)','الآيفون أحياناً يحسبه مفتوح تلقائياً')
+    +_ntBar('📱 إشعار التطبيق وصل',m.ph_ok,T,'rgb(165,180,252)')
+    +_ntBar('🔔 ضغط الإشعار/الرابط',m.opened,T,'rgb(129,140,248)','من التطبيق، أو الجرس في الموقع، أو زر الإيميل')
+    +_ntBar('🔎 دخل صفحة المشروع',m.visited,T,'rgb(251,191,36)')
+    +_ntBar('💬 قدّم عرض',m.bid,T,'rgb(34,197,94)');
+  var notes=[]; if(m.em_bad)notes.push('⚠️ '+fmtNum(m.em_bad)+' إيميل ما وصل'); if(T-m.ph>0)notes.push('📵 '+fmtNum(T-m.ph)+' ما عندهم التطبيق ولا إشعارات المتصفح'); if(m.em<T)notes.push(fmtNum(T-m.em)+' بدون إيميل');
+  if(notes.length)h+='<div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:6px;line-height:1.8">'+notes.join(' · ')+'</div>';
+  (d.kinds||[]).filter(function(k){return k.kind!=='new_project';}).forEach(function(k){ h+='<div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:4px">'+esc(k.label)+': انرسل '+k.sent+' · ضغطوه '+k.opened+(k.kind==='new_project_rem'?' · قدّموا بعدها '+k.bid:'')+'</div>'; });
+  var P=d.providers||[], f=window._rqReachF[id]||'all';
+  var isOpen=function(p){ return p.opened_at||p.em==='opened'||p.em==='clicked'||p.visited; };
+  var F={all:P,warm:P.filter(function(p){return isOpen(p)&&!p.bid;}),cold:P.filter(function(p){return !isOpen(p)&&!p.bid;}),bid:P.filter(function(p){return p.bid;})};
+  var L=F[f]||P, show=window['_rqRA'+id]?L:L.slice(0,25);
+  var em=function(p){ if(!p.has_em)return '<span class="nt-d n" title="ما عنده إيميل">–</span>'; if(p.em==='opened'||p.em==='clicked')return '<span class="nt-d y" title="فتح الإيميل">✓</span>'; if(/bounced|failed|complained|suppressed/.test(p.em||''))return '<span class="nt-d r" title="ما وصل">✕</span>'; if(p.em==='delivered')return '<span class="nt-d m" title="وصل وما فتحه">•</span>'; return '<span class="nt-d n" title="انرسل">·</span>'; };
+  var ph=function(p){ if(!p.push_n)return '<span class="nt-d n" title="ما عنده التطبيق">–</span>'; if(p.opened_at&&p.open_via!=='email')return '<span class="nt-d y" title="ضغط الإشعار">✓</span>'; if(p.push_ok)return '<span class="nt-d m" title="وصله وما ضغطه">•</span>'; return '<span class="nt-d r" title="ما وصل">✕</span>'; };
+  var yn=function(v,t){ return v?'<span class="nt-d y" title="'+t+'">✓</span>':'<span class="nt-d n">–</span>'; };
+  h+='<div class="nt-tabs">'+[['all','الكل',P.length],['warm','فتح وما قدّم',F.warm.length],['cold','ما فتح',F.cold.length],['bid','قدّم',F.bid.length]].map(function(t){return '<button type="button" class="'+(f===t[0]?'on':'')+'" onclick="window._rqReachF['+id+']=\''+t[0]+'\';_rqReachPaint('+id+')">'+t[1]+' <b>'+t[2]+'</b></button>';}).join('')+'</div>'
+    +'<table class="nt-tb"><tr><th>المزوّد</th><th title="الإيميل">📧</th><th title="إشعار التطبيق">📱</th><th title="دخل صفحة المشروع">🔎</th><th title="قدّم عرض">💬</th></tr>'
+    +(show.length?show.map(function(p){ return '<tr><td><a href="/pro/'+(parseInt(p.user_id)||0)+'" target="_blank" rel="noopener">'+esc(p.name||'مزوّد')+'</a>'+(p.reminded?' <span title="وصله تذكير" style="font-size:11px">⏰</span>':'')+'</td><td>'+em(p)+'</td><td>'+ph(p)+'</td><td>'+yn(p.visited,'دخل الصفحة')+'</td><td>'+yn(p.bid,'قدّم عرض')+'</td></tr>'; }).join(''):'<tr><td colspan="5" style="color:var(--muted);text-align:center">ما فيه أحد هنا</td></tr>')
+    +'</table>'
+    +(L.length>show.length?'<button type="button" class="nt-more" onclick="window._rqRA'+id+'=1;_rqReachPaint('+id+')">عرض الكل ('+L.length+')</button>':'')
+    +'<div class="nt-lg">✓ فتح/ضغط · • وصل وما فتح · ✕ ما وصل · – ما عنده</div>'
+    +(d.remindable?'<button type="button" class="nt-rem" onclick="_rqReachRemind('+id+',this)">📣 ذكّر اللي فتحوا وما قدّموا ('+d.remindable+')</button>':'');
+  box.innerHTML=h;
+}
+async function _rqReachRemind(id,btn){
+  var d=window['_rqR'+id]; if(!d)return;
+  if(!await askConfirm({title:'تذكير المزوّدين',message:'يوصل '+d.remindable+' مزوّد (فتحوا أو دخلوا وما قدّموا) إشعار وإيميل: «لسا تقدر تقدّم عرضك». ما يوصل أحد مرتين.',confirmText:'نعم، ذكّرهم'}))return;
+  btn.disabled=true;
+  fetch(API+'/api/admin/requests/'+id+'/reach/remind',Object.assign({method:'POST'},hdr())).then(function(r){return r.json().then(function(x){return {ok:r.ok,d:x};});}).then(function(res){
+    if(!res.ok){ toast((res.d&&res.d.message)||'تعذّر الإرسال','error'); btn.disabled=false; return; }
+    toast('وصل التذكير لـ '+res.d.sent+' مزوّد ✓','success'); _rqReach(id);
+  }).catch(function(){ toast('تعذّر الاتصال','error'); btn.disabled=false; });
+}
+// ═══ (B) صفحة الإشعارات والإيميلات ═══
+window._nsDays=window._nsDays||7;
+function _loadNStats(){
+  var box=document.getElementById('dash-nstats'); if(!box)return;
+  box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/notif-stats?days='+window._nsDays,hdr()).then(function(r){return r.json();}).then(function(d){ window._NS=d; _nsPaint(); })
+    .catch(function(){ box.innerHTML=emptyState('تعذّر التحميل'); });
+}
+function _nsPaint(){
+  var box=document.getElementById('dash-nstats'), d=window._NS; if(!box||!d)return;
+  var a=d.all||{}, p=d.prov||{};
+  var head='<div class="ns-hd"><div style="flex:1;font-size:12.5px;color:var(--muted);font-weight:700">'+(d.since?'الأرقام من '+new Date(d.since).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'})+' (يوم بدأ التتبّع)':'')+'</div>'
+    +[7,30,90].map(function(n){return '<button type="button" class="ns-per'+(window._nsDays===n?' on':'')+'" onclick="window._nsDays='+n+';_loadNStats()">'+(n===7?'7 أيام':n+' يوم')+'</button>';}).join('')+'</div>';
+  if(!a.sent){ box.innerHTML=head+'<div class="ad-card" style="text-align:center;padding:36px">'+emptyState('ما انرسل شي بعد التحديث — الأرقام تبدأ تطلع مع أول إشعار')+'</div>'; return; }
+  var k=function(v,l,c,t){ return '<div class="ns-k"'+(t?' title="'+esc(t)+'"':'')+'><b style="color:'+c+'">'+v+'</b><span>'+l+'</span></div>'; };
+  var html=head+'<div class="ns-kpis">'
+    +k(fmtNum(a.sent),'رسالة انرسلت','var(--text)')
+    +k(_ntPct(a.em_open,a.em)+'%','فتحوا الإيميل','#2563eb','من '+fmtNum(a.em)+' إيميل')
+    +k(_ntPct(a.ph_ok,a.sent)+'%','وصلهم إشعار التطبيق','#6366f1',fmtNum(a.ph_ok)+' من '+fmtNum(a.sent))
+    +k(_ntPct(a.opened,a.sent)+'%','ضغطوا الإشعار/الرابط','#7c3aed')
+    +(p.sent?k(_ntPct(p.visited,p.sent)+'%','المزوّدين دخلوا المشروع','#d97706'):'')
+    +(p.sent?k(_ntPct(p.bid,p.sent)+'%','المزوّدين قدّموا عرض','#16a34a'):'')
+    +k(_ntPct(a.em_bad,a.em)+'%','إيميل ما وصل','#dc2626',fmtNum(a.em_bad)+' إيميل')
+    +'</div>';
+  html+='<div class="ns-grid"><div class="ad-card ns-c"><b class="ns-t">حسب نوع الرسالة</b><div style="overflow-x:auto"><table class="nt-tb ns-tb"><tr><th>الرسالة</th><th>انرسلت</th><th title="من اللي لهم إيميل">📧 فتح</th><th>📱 وصل</th><th>🔔 ضغط</th><th>🔎 دخل</th><th>💬 قدّم</th></tr>'
+    +(d.kinds||[]).map(function(x){ return '<tr><td>'+esc(x.label)+'</td><td>'+fmtNum(x.sent)+'</td><td>'+(x.em?_ntPct(x.em_open,x.em)+'%':'—')+'</td><td>'+_ntPct(x.ph_ok,x.sent)+'%</td><td>'+_ntPct(x.opened,x.sent)+'%</td><td>'+(x.prov?_ntPct(x.visited,x.sent)+'%':'—')+'</td><td>'+(x.prov?_ntPct(x.bid,x.sent)+'%':'—')+'</td></tr>'; }).join('')
+    +'</table></div><div class="nt-lg">«دخل» و«قدّم» للرسائل اللي تروح للمزوّدين عن مشروع · «فتح الإيميل» تقريبي (الآيفون أحياناً يحسبه مفتوح تلقائياً)</div></div>';
+  var np=(d.kinds||[]).filter(function(x){return x.kind==='new_project';})[0];
+  html+='<div class="ad-card ns-c"><b class="ns-t">«مشروع جديد يناسبك» — المسار</b>'
+    +(np?_ntBar('انرسل',np.sent,np.sent,'rgb(148,163,184)')+_ntBar('📧 فتح الإيميل',np.em_open,np.sent,'rgb(96,165,250)')+_ntBar('📱 وصل الإشعار',np.ph_ok,np.sent,'rgb(129,140,248)')+_ntBar('🔔 ضغط الإشعار/الرابط',np.opened,np.sent,'rgb(167,139,250)')+_ntBar('🔎 دخل الصفحة',np.visited,np.sent,'rgb(251,191,36)')+_ntBar('💬 قدّم عرض',np.bid,np.sent,'rgb(34,197,94)'):'<div style="font-size:13px;color:var(--muted)">ما انتشر مشروع في هالفترة</div>');
+  var H=d.hours||[]; if(H.length){ var tot=H.reduce(function(s,x){return s+x.n;},0); if(tot>=10){ var best=null,bs=-1; for(var i=0;i<24;i++){ var s2=0; H.forEach(function(x){ if(x.h===i||x.h===(i+1)%24) s2+=x.n; }); if(s2>bs){bs=s2;best=i;} }
+      var f12=function(h){ var am=h<12; var hh=h%12||12; return hh+(am?' ص':' م'); };
+      html+='<div style="font-size:12.5px;color:var(--muted);font-weight:700;margin-top:10px">💡 أكثر وقت يفتحون فيه: '+f12(best)+' – '+f12((best+2)%24)+'</div>'; } }
+  html+='</div></div>';
+  box.innerHTML=html;
 }
