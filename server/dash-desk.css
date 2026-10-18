@@ -68,3 +68,4 @@
 [data-theme="dark"] .topbar{background:#0f172a!important;border-color:rgba(148,163,184,.2)}
 [data-theme="dark"] .topbar .topbar-title{color:#e5e7eb!important}
 [data-theme="dark"] .topbar button:not(.btn-new),[data-theme="dark"] .topbar .my-page-btn{background:rgba(148,163,184,.15)!important;color:#e5e7eb!important}
+@media (min-width:769px){[data-theme="dark"] body:has(#page-browse){background:var(--bg,#0f172a)}}

@@ -25,7 +25,7 @@
     el.textContent=s||''; el.style.display=s?'':'none';
   }
   // صفحات تنقسم لعمودين (المحتوى + عمود جانبي) بدون ما نغيّر طريقة رسمها
-  var GRIDS=isProv?{'page-home':['.hh-kpi','.hh-lvl','#ph-sharecard','#appDlCard'],'page-profile':['#pf-wal','#pf-link','#cp-card']}
+  var GRIDS=isProv?{'page-home':['.pa-prof','#ph-sharecard','.pa-act','#appDlCard'],'page-profile':['#pf-wal','#pf-link','#cp-card']}
                   :{'page-home':['.hh-stats','#ph-quick','#ph-role-slot','#appDlCard']};
   var busy=false;
   function gridify(id){

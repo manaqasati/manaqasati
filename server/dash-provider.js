@@ -449,7 +449,7 @@ function _renderHome(data){
   var newCount=pool.length;
   var avHtml=(profile&&_safeUrl(profile.profile_image))?'<img loading="lazy" src="'+_esc(_safeUrl(profile.profile_image))+'" style="width:100%;height:100%;object-fit:cover">':'<span style="font-size:20px;font-weight:900;color:#fff">'+_esc((_me.name||'م')[0])+'</span>';
   var firstName=_firstNm(_me.name)||'المزود';
-  var html='<div id="ph-invites"></div>';
+  var html='';
 
   // ── الرئيسية الجديدة ──
   var _lowComp=pool.filter(function(r){return (parseInt(r.bid_count)||0)<=1;}).length;
@@ -458,21 +458,12 @@ function _renderHome(data){
   var _accVal=_myBids.filter(function(b){return b.status==='accepted';}).reduce(function(a,b){return a+(parseFloat(b.price)||0);},0);
   function _pl(n,a){n=parseInt(n)||0;if(n===1)return a[0];if(n===2)return a[1];if(n<=10)return n+' '+a[2];return n+' '+a[3];}
   var _PRJ=['مشروع جديد','مشروعان جديدان','مشاريع جديدة','مشروعاً جديداً'];
-  // ── الرئيسية (النموذج 1): رأس مختصر بالأرقام · يحتاج منك · فرص تناسبك · المستوى ──
-  html+='<div class="hh-hero pv-hero">'
-    +'<div class="hh-top"><div class="ph-av hh-av">'+avHtml.replace('color:#fff','color:#1e3a8a')+'</div>'
-      +'<div style="min-width:0"><div class="hh-greet">أهلاً، '+_esc(firstName)+'</div><div class="hh-hi">'+_esc(profile.business_name||_me.name||'')+' '+_tierBadge(profile.tier)+_pubBadge(profile.badge)+'</div></div>'
-      +'<span class="hh-rate"><span style="color:#F0A500">★</span>'+rat+'</span></div>'
-    +'<div class="pv-kp">'
-      +'<button type="button" onclick="gotoPage(&quot;browse&quot;)"><b>'+newCount+'</b><small>'+(matchedBySpec?'مشروع يناسبك':'مشروع متاح')+'</small></button>'
-      +'<button type="button" onclick="gotoPage(&quot;works&quot;)"><b>'+pend+'</b><small>عرض ينتظر العميل</small></button>'
-      +'<button type="button" onclick="gotoPage(&quot;works&quot;)"><b>'+(_accVal?fmtN(_accVal):'0')+'</b><small>ر.س أعمال مقبولة</small></button>'
-    +'</div>'
-  +'</div>';
-  html+='<div id="ph-qa-nudge"></div>';
-  html+='<div class="nudges" id="ph-nudges"></div>';
-
-  // اكتمال الملف
+  // ── الرئيسية (النموذج A — مركز القيادة): ترحيب · أهم شي اليوم · الأرقام · فرص تناسبك | ملفك · ارفع ترتيبك · نشاطك ──
+  var _hr=new Date().getHours(), _gr=_hr<12?'صباح الخير':'مساء الخير';
+  var _dt=''; try{ _dt=new Date().toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'long',day:'numeric',month:'long'}); }catch(e){}
+  html+='<div class="pa-hi"><div style="min-width:0"><small>'+_esc(_dt)+'</small><h2>'+_gr+'، '+_esc(firstName)+' 👋</h2></div></div>';
+  // أهم شي اليوم: خطوة وحدة واضحة
+  var _fresh=pool.slice().sort(function(a,b){return new Date(b.created_at||0)-new Date(a.created_at||0);})[0]||null;
   var _pcItems=[
     {l:'الصورة الشخصية',d:!!profile.profile_image},
     {l:'التخصصات',d:(profile.specialties||[]).length>0},
@@ -481,33 +472,46 @@ function _renderHome(data){
     {l:'سنوات الخبرة',d:!!profile.experience_years}
   ];
   var _pcPct=Math.round(_pcItems.filter(function(x){return x.d;}).length/_pcItems.length*100);
-  if(_pcPct<100){
-    html+='<div class="hh-pc" onclick="gotoPage(&quot;profile&quot;)">'
-      +'<div class="hh-ring" style="background:conic-gradient(#f5a524 '+_pcPct+'%,#fde9c4 0)"><span>'+_pcPct+'%</span></div>'
-      +'<div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:900;color:var(--text)">أكمل ملفك يزيد قبول عروضك</div>'
-      +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">'+_pcItems.filter(function(x){return !x.d;}).map(function(x){return '<span class="hh-pc-chip">+ '+x.l+'</span>';}).join('')+'</div></div></div>';
-  }
-
-  // فرص تناسبك — كل مشروع بنفس الشكل وزر «قدّم عرض»
-  var _listPool=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);}).slice(0,5);
-  html+='<div class="hh-sec"><h3>'+(matchedBySpec?'فرص تناسبك':'أحدث المشاريع المتاحة')+'</h3><button class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل'+(newCount>5?' ('+newCount+')':'')+'</button></div>';
-  if(_listPool.length){ html+=_renderBrowseList(_listPool); }
-  else{ html+='<div class="hh-op" style="text-align:center;align-items:center;padding:24px 14px"><div style="font-size:13.5px;font-weight:800;color:var(--text)">ما فيه مشاريع جديدة الآن</div><div class="hh-note">تجيك إشعارات أول ما ينزل مشروع في تخصصك</div></div>'; }
-
+  var _fc;
+  if(newCount>0&&_fresh){ var _fb=parseInt(_fresh.bid_count)||0;
+    _fc={t:_pl(newCount,_PRJ)+' '+(matchedBySpec?'تناسبك':'متاحة')+' — قدّم بدري، العميل يرد أكثر على أول العروض',s:'الأحدث «'+String(_fresh.title||'').slice(0,40)+'» نزل '+timeAgoP(_fresh.created_at)+' — '+(_fb===0?'ما وصله أي عرض للحين':(_fb===1?'فيه عرض واحد بس':'فيه '+_fb+' عروض')),b:'ابدأ بالأحدث ←',go:'_viewProj('+_fresh.id+')'}; }
+  else if(_pcPct<100){ _fc={t:'أكمل ملفك — الملف الكامل يزيد قبول عروضك',s:'ناقصك: '+_pcItems.filter(function(x){return !x.d;}).map(function(x){return x.l;}).join('، '),b:'أكمل ملفك ←',go:'gotoPage(&quot;profile&quot;)'}; }
+  else { _fc={t:'ما فيه مشاريع جديدة الحين',s:'يوصلك إشعار أول ما ينزل مشروع يناسب تخصصك ومدينتك',b:'تصفّح كل المشاريع ←',go:'gotoPage(&quot;browse&quot;)'}; }
+  html+='<div class="pa-focus"><span class="pa-fi">⚡</span><div class="pa-ft"><small>أهم شي اليوم</small><b>'+_esc(_fc.t)+'</b><span>'+_esc(_fc.s)+'</span></div><button type="button" onclick="'+_fc.go+'">'+_fc.b+'</button></div>';
+  html+='<div id="ph-invites"></div>';
+  // الأرقام
+  var _wk=Date.now()-7*864e5, _newWk=pool.filter(function(r){return new Date(r.created_at).getTime()>=_wk;}).length;
+  var _days=[0,0,0,0,0,0,0]; pool.forEach(function(r){ var d=Math.floor((Date.now()-new Date(r.created_at).getTime())/864e5); if(d>=0&&d<7)_days[6-d]++; });
+  var _mx=Math.max.apply(null,_days)||1, _sp=_days.map(function(v,i){return (i*12.6).toFixed(1)+','+(22-v/_mx*18).toFixed(1);}).join(' ');
+  var _spark=function(pts,col){ return '<svg class="pa-sp" width="76" height="26" viewBox="0 0 76 26" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'; };
+  html+='<div class="pa-kpis">'
+    +'<button type="button" class="pa-k" onclick="gotoPage(&quot;browse&quot;)"><small>'+(matchedBySpec?'مشاريع تناسبك':'مشاريع متاحة')+'</small><div class="pa-kv"><b>'+newCount+'</b>'+_spark(_sp,'#60a5fa')+'</div><span class="pa-ks bl">'+(_newWk?'+'+_newWk+' هالأسبوع':'ما نزل جديد هالأسبوع')+'</span></button>'
+    +'<button type="button" class="pa-k" onclick="gotoPage(&quot;works&quot;)"><small>عروض بانتظار الرد</small><div class="pa-kv"><b>'+pend+'</b></div><span class="pa-ks">'+(pend?'عند العملاء الحين':(_myBids.length?'ما فيه شي معلّق':'قدّم أول عرض لك'))+'</span></button>'
+    +'<button type="button" class="pa-k" onclick="gotoPage(&quot;works&quot;)"><small>أعمال مقبولة</small><div class="pa-kv"><b>'+(_accVal?fmtN(_accVal):'0')+'</b></div><span class="pa-ks'+(acc?' gr':'')+'">ر.س'+(acc?' · '+(acc===1?'صفقة واحدة':acc+' صفقات'):'')+'</span></button>'
+    +'<button type="button" class="pa-k" onclick="gotoPage(&quot;profile&quot;)"><small>مشاهدات صفحتك</small><div class="pa-kv"><b id="pa-views">—</b></div><span class="pa-ks gr">منذ انضمامك</span></button>'
+  +'</div>';
+  html+='<div id="ph-qa-nudge"></div>';
+  html+='<div class="nudges" id="ph-nudges"></div>';
+  // فرص تناسبك — سطور مختصرة
+  var _listPool=pool.slice().sort(function(a,b){var ba=parseInt(a.bid_count||0),bb=parseInt(b.bid_count||0);if(ba!==bb)return ba-bb;return new Date(b.created_at||0)-new Date(a.created_at||0);}).slice(0,6);
+  html+='<div class="pa-ops"><div class="pa-oh"><b>'+(matchedBySpec?'فرص تناسبك':'أحدث المشاريع المتاحة')+'</b><button type="button" class="ch-link" onclick="gotoPage(&quot;browse&quot;)">عرض الكل'+(newCount>6?' ('+newCount+')':'')+'</button></div>'
+    +(_listPool.length?_listPool.map(function(r){ return _paRow(r,matchedBySpec); }).join(''):'<div class="pa-empty"><b>ما فيه مشاريع جديدة الآن</b><span>يوصلك إشعار أول ما ينزل مشروع يناسبك</span></div>')
+  +'</div>';
   var _savedPool=(allReq||[]).filter(function(r){return r&&r.status==='open'&&window._savedIds&&window._savedIds.indexOf(r.id)>=0;});
   if(_savedPool.length){
-    html+='<div class="hh-sec"><h3>🔖 محفوظاتي</h3><button class="ch-link" onclick="_gotoSaved()">عرض الكل</button></div>';
-    html+=_renderBrowseList(_savedPool.slice(0,3));
+    html+='<div class="pa-ops"><div class="pa-oh"><b>🔖 محفوظاتي</b><button type="button" class="ch-link" onclick="_gotoSaved()">عرض الكل</button></div>'+_savedPool.slice(0,3).map(function(r){return _paRow(r,false);}).join('')+'</div>';
   }
-
-  // المستوى — سطر مختصر
+  // العمود الجانبي: ملفك + المستوى · ارفع ترتيبك · نشاطك
   var _tiers=[{n:'مزود جديد',m:0},{n:'مزود نشط',m:3},{n:'مزود مميّز',m:10},{n:'خبير معتمد',m:25}];
   var _ci=0;for(var _ti=0;_ti<_tiers.length;_ti++){if(done>=_tiers[_ti].m)_ci=_ti;}
   var _next=_tiers[_ci+1]||null;
-  var _pct=_next?Math.max(6,Math.round((done-_tiers[_ci].m)/(_next.m-_tiers[_ci].m)*100)):100;
-  html+='<div class="pv-lv"><span>مستواك: <b>'+_tiers[_ci].n+'</b></span><div class="pv-bar"><i style="width:'+_pct+'%"></i></div><span class="nx">'+(_next?((_next.m-done)===1?'صفقة واحدة':(_next.m-done)===2?'صفقتان':(_next.m-done)+' صفقات')+' للتالي':'أعلى مستوى 🏅')+'</span></div>';
-
+  var _lvPct=_next?Math.max(6,Math.round((done-_tiers[_ci].m)/(_next.m-_tiers[_ci].m)*100)):100;
+  html+='<div class="pa-prof"><div class="pa-ph"><div class="ph-av pa-av">'+avHtml+'</div><div style="flex:1;min-width:0"><b>'+_esc(profile.business_name||_me.name||'')+'</b><small><span style="color:#F0A500">★</span> '+(rat==='—'?'لا يوجد تقييم بعد':rat)+' '+_tierBadge(profile.tier)+_pubBadge(profile.badge)+'</small></div></div>'
+    +(_pcPct<100?'<div class="pa-st"><span>قوة ملفك</span><b>'+_pcPct+'%</b></div><div class="pa-bar"><i style="width:'+_pcPct+'%"></i></div><div class="pa-miss">'+_pcItems.map(function(x){return '<span class="'+(x.d?'ok':'')+'">'+(x.d?'✓':'○')+' '+x.l+'</span>';}).join('')+'</div><button type="button" class="pa-btn" onclick="gotoPage(&quot;profile&quot;)">أكمل ملفك</button>':'<div class="pa-st"><span>ملفك مكتمل ✓</span></div>')
+    +'<div class="pa-lv"><div class="pa-st"><span>مستواك: <b>'+_tiers[_ci].n+'</b></span><small>'+(_next?'باقي '+((_next.m-done)===1?'صفقة واحدة':(_next.m-done)===2?'صفقتان':(_next.m-done)+' صفقات')+' لـ«'+_next.n+'»':'أعلى مستوى 🏆')+'</small></div><div class="pa-bar lv"><i style="width:'+_lvPct+'%"></i></div></div>'
+  +'</div>';
   html+='<div id="ph-sharecard"></div>';
+  html+='<div class="pa-act" id="pa-act"></div>';
 
   pg.innerHTML=html;_lb.done();_loadNotifCount();_loadChatBadge();
   _renderInvites();
@@ -515,6 +519,27 @@ function _renderHome(data){
   _renderProvAnswerNudge();
   _profileNudge(profile);
   _renderShareCard(profile);
+  _paExtras();
+}
+// سطر فرصة مختصر (الرئيسية)
+function _paRow(r,match){
+  var bc=parseInt(r.bid_count||0)||0, did=(_myBids||[]).some(function(b){return b.request_id===r.id;}), ds=_tkDesc(r.description);
+  return '<div class="pa-r" onclick="_viewProj('+r.id+')"><span class="pa-ri">'+catSvg(r.category,20)+'</span>'
+    +'<div class="pa-rt"><b>'+_esc(r.title||'')+'</b>'+(ds?'<p>'+_esc(ds)+'</p>':'')
+      +'<div class="pa-rm"><span>📍 '+_esc(r.city||'—')+'</span><span>💬 '+(bc===0?'كن الأول':(bc===1?'عرض واحد':(bc===2?'عرضين':bc+' عروض')))+'</span><span>🕒 '+timeAgoP(r.created_at)+'</span></div>'
+      +'<div class="pa-rc">'+(match?'<span class="pa-ch g">✓ تخصصك ومدينتك</span>':'')+(r.has_plan?'<span class="pa-ch b">📐 فيه مخطط</span>':'')+'</div></div>'
+    +'<div class="pa-rb"><small>الميزانية</small><b>'+(r.budget_max?fmtN(r.budget_max):'—')+'</b></div>'
+    +(did?'<button type="button" class="pa-go done" onclick="event.stopPropagation();gotoPage(\'works\')">✓ قدّمت</button>':'<button type="button" class="pa-go" onclick="event.stopPropagation();openBidFormDirectly('+r.id+')">قدّم عرض</button>')
+  +'</div>';
+}
+// المشاهدات + نشاطك (آخر الإشعارات)
+function _paExtras(){
+  try{ _api('/api/me/marketing').then(function(m){ var v=document.getElementById('pa-views'); if(v&&m) v.textContent=fmtN(m.views||0)||'0'; }).catch(function(){}); }catch(e){}
+  try{ _api('/api/notifications').then(function(L){ var el=document.getElementById('pa-act'); if(!el)return; L=Array.isArray(L)?L.slice(0,4):[]; if(!L.length){ el.style.display='none'; return; }
+    var col=function(t){ return /new_request|request/.test(t)?'#60a5fa':(/accept|completed|pause_chosen/.test(t)?'#34d399':(/reject|closed/.test(t)?'#f87171':'#94a3b8')); };
+    el.innerHTML='<b class="pa-at">نشاطك</b>'+L.map(function(n){ return '<div class="pa-ai"><i style="background:'+col(n.type||'')+'"></i><span>'+_esc(String(n.title||'').replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/,'').slice(0,60))+'</span><small>'+timeAgoP(n.created_at)+'</small></div>'; }).join('')
+      +'<button type="button" class="ch-link" onclick="gotoPage(\'notifs\')">كل الإشعارات</button>';
+  }).catch(function(){}); }catch(e){}
 }
 
 var _pnudgeTimer=null;
