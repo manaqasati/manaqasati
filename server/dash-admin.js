@@ -2195,8 +2195,8 @@ function _prHist(){
   fetch(API+'/api/admin/review-history',hdr()).then(function(r){return r.json();}).then(function(list){
     list=Array.isArray(list)?list:[];
     if(!list.length){el.innerHTML='';return;}
-    var L={dup:['مكرر','#ffedd5','#9a3412'],approve:['اعتمدته','#dcfce7','#15803d'],needs_edit:['طلبت تعديل','#fef3c7','#92400e'],reject:['رفضته','#fee2e2','#b91c1c']};
-    var STT={open:'منشور',pending_review:'رجع للمراجعة',review:'رجع للمراجعة',needs_edit:'ينتظر تعديل العميل',rejected:'مرفوض',in_progress:'قيد التنفيذ',completed:'مكتمل'};
+    var L={is_provider:['حوّلته لمزوّد','#ede9fe','#6d28d9'],other:['راجعته','#f1f5f9','#475569'],dup:['مكرر','#ffedd5','#9a3412'],approve:['اعتمدته','#dcfce7','#15803d'],needs_edit:['طلبت تعديل','#fef3c7','#92400e'],reject:['رفضته','#fee2e2','#b91c1c']};
+    var STT={open:'منشور',pending_review:'رجع للمراجعة',review:'رجع للمراجعة',needs_edit:'ينتظر تعديل العميل',rejected:'مرفوض',in_progress:'قيد التنفيذ',completed:'مكتمل',closed_auto:'انقفل',closed:'انقفل',assigned:'تمت الترسية',expired:'انتهت مدته'};
     var show=window._prHistAll?list:list.slice(0,8);
     el.innerHTML='<div class="ad-card" style="padding:16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><b style="font-size:15px">🕘 آخر المراجعات</b><span style="font-size:12.5px;color:var(--muted);font-weight:700">تقدر ترسل للعميل واتساب في أي وقت</span></div>'
       +show.map(function(x){var l=L[x.action]||L.approve;
