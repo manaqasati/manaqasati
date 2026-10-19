@@ -203,7 +203,7 @@ function _drToggle(key){
   box.innerHTML=html;
 }
 var _ibClient=null, _ibName='';
-var _SA={items:[],tab:'submitted',sum:{},monthly:[]};
+var _SA={items:[],tab:'',sum:{},monthly:[],per:'today'};
 function _saState(x){ if(x.status==='approved')return 'approved'; if(x.status==='submitted')return 'submitted'; if(x.status==='deferred')return 'deferred'; if(x.status==='cancelled')return 'cancelled'; return (x.age_days||0)>10?'overdue':'due'; }
 function loadSaaiAdmin(){
   var box=document.getElementById('saai-list'); if(!box)return;
@@ -212,7 +212,6 @@ function loadSaaiAdmin(){
     d=d||{}; _SA.items=d.items||[]; _SA.sum=d.summary||{}; _SA.monthly=d.monthly||[];
     var sm=_SA.sum;
     var bd=document.getElementById('saai-badge'); var _bn=(sm.awaiting_n||0)+(sm.deferred_attn||0); if(bd){ if(_bn>0){bd.textContent=_bn;bd.style.display='flex';}else bd.style.display='none'; }
-    if(!sm.awaiting_n && _SA.tab==='submitted') _SA.tab = sm.overdue_n?'overdue':(sm.due_n?'due':'all');
     _saSum();
     var rb=document.getElementById('sa-remind-all'); if(rb){ rb.textContent='تذكير كل المتأخرين'+(sm.overdue_n?' ('+sm.overdue_n+')':''); rb.disabled=!sm.overdue_n; rb.style.opacity=sm.overdue_n?'1':'.5'; }
     _saRender(); _saSide();
@@ -225,97 +224,166 @@ async function _saDefer(id,act){
     .then(function(x){ if(!x.ok){toast((x.d&&x.d.message)||'تعذّر','error');return;} toast((x.d&&x.d.message)||'تم','success'); loadSaaiAdmin(); })
     .catch(function(){toast('تعذّر الاتصال','error');});
 }
-// ═══ السعي — قائمة متابعة مقسّمة حسب وش تسوي ═══
+// ═══ السعي — (A) قرار قرار + عروض انقبلت بالفترة + التواريخ والساعة ═══
 var _SA_BIG=5000000; // مبلغ اتفاق فوق 5 مليون = غالباً غلط بالكتابة
+var _SA_MN=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function _saD(d){ if(!d)return ''; var t=new Date(new Date(d).getTime()+3*3600e3); return t.getUTCDate()+' '+_SA_MN[t.getUTCMonth()]; }
+function _saT(d){ if(!d)return ''; var t=new Date(new Date(d).getTime()+3*3600e3), h=t.getUTCHours(), m=t.getUTCMinutes(); return (h%12||12)+':'+(m<10?'0':'')+m+(h<12?' ص':' م'); }
+function _saDT(d){ return d?_saD(d)+' · '+_saT(d):''; }
+function _saDays(n){ n=Math.abs(n); return n===1?'يوم':(n===2?'يومين':n+' أيام'); }
 function _saEst(x){ if(x.status!=='pending')return false; var lg=x.edits_log; try{ if(typeof lg==='string')lg=JSON.parse(lg); }catch(e){ lg=[]; } return !(Array.isArray(lg)&&lg.length); }
 function _saNeedAmt(x){ if(x.status!=='pending'||x.defer_state==='conflict')return ''; var cv=parseFloat(x.contract_value)||0;
   if(!cv||!(parseFloat(x.saai_amount)>0)) return 'unit'; if(cv>=_SA_BIG) return 'big'; return ''; }
 function _saBucket(x){ var st=_saState(x);
   if(st==='submitted'||x.defer_state==='conflict'||(st==='deferred'&&(x.defer_state==='noreply'||x.defer_state==='await_admin')))return 'attn';
   if(st==='due'||st==='overdue'){ if(_saNeedAmt(x))return 'amt'; return st==='overdue'?'late':'due'; }
-  return st; }
+  return 'done'; }
+function _saDue(x){ return new Date(new Date(x.due_from||x.created_at).getTime()+10*864e5); }
+function _saAns(a){ return a==='started'?'«بدأنا التنفيذ»':(a==='active'?'«الاتفاق قائم»':(a==='postponed'?'«تأجّل فعلاً»':(a==='cancelled'?'«انلغى فعلاً»':'«'+esc(a||'')+'»'))); }
+function _saTot(a){ return a.reduce(function(t,x){return t+(parseFloat(x.saai_amount)||0);},0); }
+function _saGroups(){ var G={attn:[],late:[],amt:[],due:[],done:[]}; (_SA.items||[]).forEach(function(x){ G[_saBucket(x)].push(x); });
+  G.late.sort(function(a,b){return (b.age_days||0)-(a.age_days||0);}); G.due.sort(function(a,b){return (b.age_days||0)-(a.age_days||0);});
+  G.attn.sort(function(a,b){ return new Date(_saEvt(a)||0)-new Date(_saEvt(b)||0); });
+  G.done.sort(function(a,b){ return new Date(b.decided_at||b.approved_at||b.client_answer_at||b.defer_at||b.created_at)-new Date(a.decided_at||a.approved_at||a.client_answer_at||a.defer_at||a.created_at); });
+  return G; }
+// ── فوق: قراراتك اليوم + عروض انقبلت ──
 function _saSum(){
-  var sm=_SA.sum||{}, I=_SA.items||[], g={late:[],due:[],amt:[],attn:[]};
-  I.forEach(function(x){ var b=_saBucket(x); if(g[b])g[b].push(x); });
-  var tot=function(a){ return a.reduce(function(t,x){return t+(parseFloat(x.saai_amount)||0);},0); };
-  var pn=function(a){ var o={}; a.forEach(function(x){o[x.provider_id]=1;}); var n=Object.keys(o).length; return n===1?'مزوّد واحد':(n===2?'مزوّدين':n+' مزوّدين'); };
-  var near=g.due.map(function(x){return 10-(x.age_days||0);}).sort(function(a,b){return a-b;})[0];
-  var sub=g.attn.filter(function(x){return x.status==='submitted';});
   var el=document.getElementById('saai-sum'); if(!el)return;
-  el.innerHTML='<div class="sa-flow">كيف يمشي:<span>1 · العميل يقبل العرض</span>←<span>2 · المزوّد عنده 10 أيام</span>←<span>3 · يرفع إيصال التحويل</span>←<span>4 · أنت تعتمده ✓</span></div>'
-    +'<div class="kp kp4">'
-    +'<div><span class="l">✅ دخل حسابك هالشهر</span><span class="n" style="color:#15803d">'+fmtNum(sm.collected_month||0)+' <small>ر.س</small></span><span class="s">'+(sm.collected_month?'إيصالات اعتمدتها هالشهر':'ما اعتمدت إيصال هالشهر')+'</span></div>'
-    +'<div class="'+(sub.length?'blu':'')+'"><span class="l">🧾 إيصالات تنتظر اعتمادك</span><span class="n" style="color:#1d4ed8">'+sub.length+(sub.length?' <small>· '+fmtNum(tot(sub))+' ر.س</small>':'')+'</span><span class="s">'+(sub.length?'افتحها تحت واعتمدها':'ما فيه شي ✓')+'</span></div>'
-    +'<div class="'+(g.due.length?'amb':'')+'"><span class="l">⏳ لسا في المهلة</span><span class="n" style="color:#b45309">'+fmtNum(tot(g.due))+' <small>ر.س</small></span><span class="s">'+(g.due.length?pn(g.due)+' · أقرب موعد '+(near<=0?'اليوم':'بعد '+near+(near===1?' يوم':(near===2?' يومين':' أيام'))):'ما فيه شي')+'</span></div>'
-    +'<div class="'+(g.late.length?'red':'')+'"><span class="l">🔴 متأخر — تابعهم</span><span class="n" style="color:'+(g.late.length?'#dc2626':'var(--text)')+'">'+fmtNum(tot(g.late))+' <small>ر.س</small></span><span class="s">'+(g.late.length?pn(g.late):'ما فيه متأخر ✓')+(g.amt.length?' · + '+g.amt.length+' يحتاج مبلغ':'')+'</span></div>'
-    +'</div>';
-  var rb=document.getElementById('sa-remind-all'); if(rb){ rb.textContent='تذكير كل المتأخرين'+(g.late.length?' ('+g.late.length+')':''); rb.disabled=!g.late.length; rb.style.opacity=g.late.length?'1':'.5'; }
+  var G=_saGroups(), td=_ymd(new Date());
+  var dec=(_SA.items||[]).filter(function(x){ return x.decided_at&&_ymd(new Date(x.decided_at))===td; }).length, all=dec+G.attn.length, pc=all?Math.round(dec/all*100):100;
+  var sm=_SA.sum||{};
+  el.innerHTML='<div class="sa-top"><div class="sa-prog" data-nodk><span>قراراتك اليوم</span><b>'+dec+' <small>من '+all+'</small></b><div class="b"><i style="width:'+pc+'%"></i></div>'+(G.attn.length?'':'<em>✓ خلصت</em>')+'</div>'
+    +'<div class="sa-prog" data-nodk><span>✅ دخل حسابك هالشهر</span><b style="color:#15803d">'+fmtNum(sm.collected_month||0)+' <small>ر.س</small></b></div></div>'
+    +'<div class="sa-acc" id="sa-acc" data-nodk></div>';
+  _saAccLoad();
+  var rb=document.getElementById('sa-remind-all'); if(rb){ rb.textContent='تذكير كل المتأخرين'+(G.late.length?' ('+G.late.length+')':''); rb.disabled=!G.late.length; rb.style.opacity=G.late.length?'1':'.5'; }
 }
-function _saTab(t){ _SA.open=_SA.open===t?'':t; _saRender(); }
+function _saAccRange(){ var now=new Date(), d=function(n){return _ymd(new Date(now.getTime()-n*864e5));}, t=_ymd(now), k=_SA.per||'today';
+  if(k==='yesterday')return [d(1),d(1),'أمس']; if(k==='7d')return [d(6),t,'آخر 7 أيام']; if(k==='month')return [t.slice(0,8)+'01',t,'هالشهر'];
+  if(k==='custom')return [_SA.pf||d(6),_SA.pt||t,'مخصص']; return [t,t,'اليوم']; }
+function _saPer(k){ _SA.per=k; _saAccLoad(); }
+function _saAccLoad(){ var box=document.getElementById('sa-acc'); if(!box)return; var R=_saAccRange();
+  fetch(API+'/api/admin/saai/accepted?from='+R[0]+'&to='+R[1],hdr()).then(function(r){return r.json();}).then(function(d){ _SA.acc=d&&d.items||[]; _saAccPaint(); }).catch(function(){ box.innerHTML=''; }); }
+function _saAccPaint(){ var box=document.getElementById('sa-acc'); if(!box)return; var R=_saAccRange(), L=_SA.acc||[], k=_SA.per||'today';
+  var val=L.reduce(function(t,x){return t+(x.price_unit==='total'?(parseFloat(x.price)||0):0);},0), sa=L.reduce(function(t,x){return t+(parseFloat(x.saai_amount)||0);},0);
+  var per=[['today','اليوم'],['yesterday','أمس'],['7d','7 أيام'],['month','هالشهر'],['custom','📅 مخصص']];
+  var html='<div class="sa-acc-h"><b>🤝 عروض انقبلت</b><span>'+(L.length?(L.length===1?'عرض واحد':(L.length===2?'عرضين':L.length+' عروض'))+(val?' · قيمتها <b>'+fmtNum(val)+'</b> ر.س':'')+(sa?' · سعيها <b style="color:#15803d">'+fmtNum(sa)+'</b> ر.س':''):'ما انقبل عرض')+' — '+R[2]+'</span>'
+    +'<div class="sa-per">'+per.map(function(p){ return '<button type="button" class="'+(k===p[0]?'on':'')+'" onclick="_saPer(\''+p[0]+'\')">'+p[1]+'</button>'; }).join('')+'</div></div>';
+  if(k==='custom') html+='<div class="sa-cust">من <input type="date" value="'+R[0]+'" onchange="_SA.pf=this.value;_saAccLoad()"> إلى <input type="date" value="'+R[1]+'" onchange="_SA.pt=this.value;_saAccLoad()"></div>';
+  if(L.length){ html+='<div class="sa-acc-l">'+L.slice(0,_SA.accAll?300:6).map(function(x){
+      var pr=parseFloat(x.price)||0, unit=x.price_unit!=='total';
+      return '<div class="sa-acc-i"><div style="flex:1;min-width:0"><b>'+esc(x.client_name||'عميل')+'</b> <span class="mu">قبل عرض</span> <b>'+esc(x.provider_name||'مزوّد')+'</b>'
+        +'<div class="mu"><button type="button" class="sa-pj" onclick="_saOpenProj('+x.id+')">'+esc(x.title||'مشروع')+'</button> · #'+x.id+(x.city?' · '+esc(x.city):'')+' · '+_saDT(x.assigned_at)+'</div></div>'
+        +'<div class="sa-acc-v"><b>'+(pr?fmtNum(pr):'—')+'</b> <small>'+(unit?(x.price_unit==='meter'?'ر.س/متر':'ر.س/وحدة'):'ر.س')+'</small>'+(parseFloat(x.saai_amount)>0?'<div>سعي '+fmtNum(x.saai_amount)+'</div>':'<div style="color:#b45309">السعي ما تحدد</div>')+'</div></div>'; }).join('')+'</div>'
+      +(L.length>6&&!_SA.accAll?'<button type="button" class="nt-more" onclick="_SA.accAll=1;_saAccPaint()">عرض الكل ('+L.length+')</button>':''); }
+  box.innerHTML=html; }
+// ── التبويبات ──
+function _saTab(t){ _SA.tab=t; _SA.sel=null; _saRender(); }
+function _saSel(id){ _SA.sel=id; _saRender(); var d=document.getElementById('sa-det'); if(d&&window.innerWidth<900)d.scrollIntoView({behavior:'smooth',block:'start'}); }
 function _saRender(){
   var box=document.getElementById('saai-list'); if(!box)return;
-  var tb=document.getElementById('sa-tabs'); if(tb)tb.innerHTML='';
-  var G={attn:[],late:[],amt:[],due:[],deferred:[],approved:[],cancelled:[]};
-  _SA.items.forEach(function(x){ var b=_saBucket(x); (G[b]||G.cancelled).push(x); });
-  var stPill=function(x){ var st=_saState(x), left=10-(x.age_days||0);
-    if(st==='approved')return '<span class="pl" style="background:#e3f5e9;color:#166534">معتمد ✓</span>';
-    if(st==='cancelled')return '<span class="pl" style="background:#f1f5f9;color:#64748b">ملغي'+(x.defer_state==='client_cancel'?' — العميل أكّد':(x.defer_state==='admin_cancel'?' — بقرارك':''))+'</span>';
-    if(st==='deferred'){ var du=x.defer_until?new Date(x.defer_until).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'}):'';
-      var ds=x.defer_state, lbl=x.defer_kind==='cancel'?'يقول انلغى':'مؤجّل لـ '+du;
-      if(ds==='confirmed')return '<span class="pl" style="background:#e0e7ff;color:#3730a3">⏸ '+lbl+'</span><div class="sa-pn" style="color:#15803d">✓ العميل أكّد</div>';
-      if(ds==='await_admin')return '<span class="pl" style="background:#fef3c7;color:#92400e">تأجيل ثاني — ينتظرك</span><div class="sa-pn" style="color:#15803d">✓ العميل أكّد</div>';
-      if(ds==='noreply')return '<span class="pl" style="background:#fef2f2;color:#b91c1c">'+lbl+'</span><div class="sa-pn" style="color:#b91c1c">العميل ما رد — قرّر</div>';
-      return '<span class="pl" style="background:#fef9c3;color:#854d0e">'+lbl+'</span><div class="sa-pn">ننتظر تأكيد العميل</div>'; }
-    if(x.defer_state==='conflict')return '<span class="pl" style="background:#fef2f2;color:#b91c1c">⚠️ تعارض</span><div class="sa-pn" style="color:#b91c1c;max-width:170px">المزوّد قال '+(x.defer_kind==='cancel'?'انلغى':'تأجّل')+' والعميل قال '+esc(x.client_answer||'لا')+'</div>';
-    if(st==='submitted')return '<span class="pl" style="background:#e6eeff;color:#1d4ed8">🧾 رفع الإيصال — ينتظرك</span>';
-    return ''; };
-  // خط الـ10 أيام
-  var tline=function(x){ var st=_saState(x), age=x.age_days||0, left=10-age;
-    if(st==='overdue')return '<div class="sa-tl"><div class="b"><i style="width:100%;background:#dc2626"></i></div><small style="color:#dc2626">متأخر '+(age-10)+(age-10===1?' يوم':(age-10===2?' يومين':' أيام'))+'</small></div>';
-    if(st==='due')return '<div class="sa-tl"><div class="b"><i style="width:'+Math.min(100,Math.round(age*10))+'%;background:'+(left<=2?'#d97706':'#16a34a')+'"></i></div><small style="color:'+(left<=2?'#b45309':'#15803d')+'">'+(left<=0?'آخر يوم':'باقي '+left+(left===1?' يوم':(left===2?' يومين':' أيام')))+'</small></div>';
-    return '<div class="sa-tl">'+stPill(x)+'</div>'; };
-  var row=function(x){
-    var offer=parseFloat(x.offer_price)||0, cv=parseFloat(x.contract_value)||0, unit=x.price_unit&&x.price_unit!=='total', need=_saNeedAmt(x);
-    var diff=(offer&&cv&&!unit)?cv-offer:0;
-    var src=need==='unit'?'<span class="sa-src e1">يحتاج مبلغ</span> العرض '+(offer?fmtNum(offer):'—')+(unit?(x.price_unit==='meter'?' ر.س/متر — كم المساحة؟':' ر.س/وحدة — كم العدد؟'):' — ما تحدد مبلغ الاتفاق')
-      :need==='big'?'<span class="sa-src e3">⚠️ رقم كبير</span> 3% من '+fmtNum(cv)+' — غلط بالكتابة؟'
-      :(cv?(_saEst(x)?'<span class="sa-src e1">تقديري</span> 3% من سعر العرض '+fmtNum(cv):'<span class="sa-src e2">مؤكد</span> 3% من '+fmtNum(cv)+(diff?' <b style="color:'+(diff<0?'#b45309':'#15803d')+'">('+(diff<0?'نزّله':'رفعه')+' من '+fmtNum(offer)+')</b>':'')):'—');
-    var proof=x.proof_url?(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(x.proof_url)?'<a class="sa-proof" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener" title="الإيصال"><img src="'+esc(_safeUrl(x.proof_url))+'" alt="إيصال"></a>':'<a class="sa-proof" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener">PDF</a>'):'';
-    var ph=_waNorm(x.provider_phone), cph=_waNorm(x.client_phone);
-    var waT=ph?'<a class="act-btn sa-wa" target="_blank" rel="noopener" href="https://wa.me/'+ph+'?text='+encodeURIComponent('السلام عليكم '+(x.provider_name||'')+'، معك فريق منصة مناقصة 👋\nبخصوص سعي مشروع «'+(x.project_title||'')+'»: المبلغ '+fmtNum(x.saai_amount)+' ر.س (3% من قيمة الاتفاق).\nتقدر ترفع إيصال التحويل من لوحتك:\n'+location.origin+'/dashboard-provider.html#saai')+'">واتساب تذكير</a>':'';
-    var _ed=(x.status!=='approved'&&x.request_id)?'<button class="act-btn ab-default" title="فتح المشروع وتعديل قيمة الاتفاق" onclick="_saOpenProj('+x.request_id+',1)">'+(need==='big'?'راجع المبلغ':(need?'حدّد المبلغ':'✏️ تعديل'))+'</button>':'';
-    if(need&&_ed)_ed=_ed.replace('act-btn ab-default','act-btn sa-am');
-    var act='';
-    if(x.status==='deferred'||x.defer_state==='conflict'){
-      act=((x.status==='deferred'&&(x.defer_state==='noreply'||x.defer_state==='await_admin')&&x.defer_kind!=='cancel')?'<button class="act-btn" style="background:#3730a3;color:#fff;border-color:#3730a3" onclick="_saDefer('+x.id+',\'approve_defer\')">اعتمد التأجيل</button>':'')
-        +(x.status==='deferred'?'<button class="act-btn ab-default" onclick="_saDefer('+x.id+',\'resume\')">رجّعه مستحق</button>':'')
-        +((x.status==='deferred'&&x.defer_kind==='cancel')||x.defer_state==='conflict'||x.defer_state==='noreply'?'<button class="act-btn ab-default" style="color:#b91c1c;border-color:#fecaca" onclick="_saDefer('+x.id+',\'cancel\')">ألغِ السعي</button>':'')
-        +(cph?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" target="_blank" rel="noopener" href="https://wa.me/'+cph+'">واتساب العميل</a>':'')
-        +(ph?'<a class="act-btn ab-default" style="color:#15803d;border-color:#a7f3d0" target="_blank" rel="noopener" href="https://wa.me/'+ph+'">واتساب المزوّد</a>':'');
-    } else if(x.status==='submitted'){
-      act=proof+'<button class="act-btn" style="background:#16a34a;color:#fff;border-color:#16a34a" onclick="approveSaai('+x.id+','+(x.source==='self'&&x.request_id&&!x.req_assigned?1:0)+')">'+(x.source==='self'&&x.request_id&&!x.req_assigned?'اعتماد + ترسية':'اعتماد')+'</button><button class="act-btn ab-default" onclick="_saReject('+x.id+')">رفض</button>'+_ed;
-    } else if(x.status==='pending'){
-      act=(need?_ed:(_saState(x)==='overdue'?waT+'<button class="act-btn ab-default" title="تذكير بالتطبيق والإيميل" onclick="_saRemind(['+x.id+'])">🔔 تذكير</button>':'<button class="act-btn ab-default" title="تذكير بالتطبيق والإيميل" onclick="_saRemind(['+x.id+'])">🔔 تذكير</button>')+_ed);
-    } else if(x.status==='approved'){ act=proof; }
-    return '<div class="sa-it'+(need==='big'?' wrn':'')+'">'
-      +'<div class="sa-who"><a class="pro-name" href="/pro/'+(parseInt(x.provider_id)||0)+'" target="_blank" rel="noopener" title="صفحته العامة">'+esc(x.provider_name||'مزوّد')+' ↗</a>'
-        +'<div>'+(x.request_id?'<button type="button" class="sa-pj" onclick="_saOpenProj('+x.request_id+')">'+esc(x.project_title||'مشروع')+'</button>':'<b>'+esc(x.project_title||'مشروع')+'</b>')+' · '+(x.request_id?'#'+x.request_id:'خارج القائمة')+(x.city?' · '+esc(x.city):'')+(x.source==='self'?' · <span style="color:#7c3aed;font-weight:800">سداد ذاتي</span>':'')+'</div>'
-        +'<div class="sa-sub">'+(x.client_name?'العميل: '+esc(x.client_name)+' · ':'')+(x.provider_paid_n?'سدّد '+x.provider_paid_n+' مرات قبل':'أول سداد له')+'</div>'+(x.self_reason?'<div class="sa-sub" style="color:var(--text2)">'+esc(x.self_reason)+'</div>':'')+'</div>'
-      +'<div class="sa-amt"><b>'+(need==='unit'?'—':fmtNum(x.saai_amount))+' <small>ر.س</small></b><div>'+src+'</div></div>'
-      +tline(x)
-      +'<div class="sa-act">'+act+'</div></div>'
-      +(diff<0&&x.status==='submitted'?'<div class="sa-warn">تنبيه: «'+esc(x.provider_name||'')+'» نزّل مبلغ الاتفاق من '+fmtNum(offer)+' إلى '+fmtNum(cv)+' — تأكد من العميل قبل الاعتماد لو شاك.</div>':'');
-  };
-  var sec=function(k,dot,t,sub,cls){ var a=G[k]; if(!a.length)return ''; return '<div class="card sa-sec'+(cls?' '+cls:'')+'"><div class="sa-sh"><i style="background:'+dot+'"></i><b>'+t+'</b><span class="sa-n">'+a.length+'</span><small>'+sub+'</small></div>'+a.map(row).join('')+'</div>'; };
-  var html=sec('attn','#1d4ed8','ينتظر قرارك','إيصالات تعتمدها، وتأجيلات أو تعارض يحتاج رأيك','blu')
-    +sec('late','#dc2626','متأخر — تابعهم','عدّت عليهم الـ10 أيام وما دفعوا','red')
-    +sec('amt','#d97706','يحتاج تحدد المبلغ','ما نقدر نحسب السعي — العرض بالمتر أو المبلغ ناقص أو غير منطقي','amb')
-    +sec('due','#16a34a','في المهلة','ما يحتاج شي منك — يوصلهم تذكير تلقائي');
-  if(!html) html='<div class="card" style="padding:30px">'+emptyState('ما فيه سعي يحتاج متابعة ✓')+'</div>';
-  var cl=[['deferred','⏸ مؤجّل'],['approved','✓ معتمد'],['cancelled','✕ ملغي']];
-  html+='<div class="sa-closed">'+cl.map(function(c){ return '<button type="button" class="ftab'+(_SA.open===c[0]?' on':'')+'" onclick="_saTab(\''+c[0]+'\')">'+c[1]+' <span class="sa-n">'+G[c[0]].length+'</span></button>'; }).join('')+'<span>مقفولة — اضغط تفتحها</span></div>';
-  if(_SA.open&&G[_SA.open]){ html+=G[_SA.open].length?'<div class="card sa-sec">'+G[_SA.open].map(row).join('')+'</div>':'<div class="card" style="padding:20px">'+emptyState('لا يوجد شي هنا')+'</div>'; }
+  var G=_saGroups();
+  if(!_SA.tab||!G[_SA.tab]) _SA.tab=G.attn.length?'attn':(G.late.length?'late':(G.amt.length?'amt':'due'));
+  var tabs=[['attn','🧑‍⚖️ تحتاج قرارك'],['late','🔴 متأخر'],['amt','✏️ يحتاج مبلغ'],['due','⏳ في المهلة'],['done','📁 خلص']];
+  var html='<div class="sa-tabs">'+tabs.map(function(t){ var a=G[t[0]], s=(t[0]==='late'||t[0]==='due')&&a.length?' · '+fmtNum(_saTot(a))+' ر.س':'';
+    return '<button type="button" class="'+(_SA.tab===t[0]?'on':'')+(t[0]==='attn'&&a.length?' hot':'')+'" onclick="_saTab(\''+t[0]+'\')">'+t[1]+' <b>'+a.length+'</b>'+s+'</button>'; }).join('')+'</div>';
+  var L=G[_SA.tab];
+  if(_SA.tab==='attn'){
+    if(!L.length){ box.innerHTML=html+'<div class="card" style="padding:30px">'+emptyState('ما فيه شي ينتظر قرارك ✓')+'</div>'; return; }
+    var sel=L.filter(function(x){return x.id===_SA.sel;})[0]||L[0]; _SA.sel=sel.id;
+    html+='<div class="sa-q"><div class="sa-ql">'+L.map(function(x){ var tg=_saTag(x);
+        return '<button type="button" class="sa-qi'+(x.id===sel.id?' on':'')+'" onclick="_saSel('+x.id+')"><b>'+esc(x.provider_name||'مزوّد')+'</b><div>'+esc(x.project_title||'مشروع')+' · '+fmtNum(x.saai_amount)+' ر.س</div><div class="sa-qt"><span class="sa-tag '+tg[1]+'">'+tg[0]+'</span><small>'+_saDT(_saEvt(x))+'</small></div></button>'; }).join('')+'</div>'
+      +'<div class="card sa-det" id="sa-det">'+_saDet(sel,L.indexOf(sel)+1,L.length)+'</div></div>';
+    box.innerHTML=html; return;
+  }
+  if(!L.length){ box.innerHTML=html+'<div class="card" style="padding:30px">'+emptyState(_SA.tab==='late'?'ما فيه متأخر ✓':'لا يوجد شي هنا')+'</div>'; return; }
+  var sub={late:'عدّت عليهم الـ10 أيام وما دفعوا — الأقدم فوق',amt:'ما نقدر نحسب السعي — العرض بالمتر أو المبلغ ناقص أو غير منطقي',due:'ما يحتاج شي منك — يوصلهم تذكير تلقائي',done:'اللي انقفل: معتمد، ملغي، أو مؤجّل باتفاق'}[_SA.tab];
+  html+='<div class="card sa-sec"><div class="sa-sh"><small>'+sub+'</small></div>'+L.slice(0,_SA.more?1000:60).map(_saRow).join('')+'</div>'+(L.length>60&&!_SA.more?'<button type="button" class="nt-more" onclick="_SA.more=1;_saRender()">عرض الكل ('+L.length+')</button>':'');
   box.innerHTML=html;
+}
+function _saEvt(x){ return x.status==='submitted'?(x.submitted_at||x.created_at):((x.defer_state==='conflict'||x.defer_state==='await_admin')?(x.client_answer_at||x.defer_at):x.defer_at); }
+function _saTag(x){ if(x.status==='submitted')return ['🧾 رفع إيصال','b'];
+  if(x.defer_state==='conflict')return ['⚠️ المزوّد والعميل مختلفين','r'];
+  if(x.defer_state==='await_admin')return ['تأجيل ثاني — العميل أكّد','a'];
+  return [x.defer_kind==='cancel'?'يقول انلغى · العميل ما رد':'يقول تأجّل · العميل ما رد',x.defer_kind==='cancel'?'r':'a']; }
+function _saWho(x){ return '<a class="pro-name" href="/pro/'+(parseInt(x.provider_id)||0)+'" target="_blank" rel="noopener">'+esc(x.provider_name||'المزوّد')+'</a>'; }
+// ── تفاصيل القرار ──
+function _saDet(x,i,n){
+  var cv=parseFloat(x.contract_value)||0, amt=fmtNum(x.saai_amount)+' ر.س', cl='<b>'+esc(x.client_name||'العميل')+'</b>', T=[], story='', yes, no, q='وش قرارك؟';
+  var ph=_waNorm(x.provider_phone), cph=_waNorm(x.client_phone);
+  T.push(['g',x.assigned_at||x.created_at,'العميل قبل العرض'+(cv?' · '+fmtNum(cv)+' ر.س':'')]);
+  if(x.status==='submitted'){
+    T.push(['b',x.submitted_at,'المزوّد رفع إيصال التحويل']);
+    story='🧾 '+_saWho(x)+' رفع إيصال سداد السعي <b>'+amt+'</b>'+(cv?' (3% من '+fmtNum(cv)+')':'')+'.';
+    var proof=x.proof_url?(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(x.proof_url)?'<a class="sa-rc" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener"><img src="'+esc(_safeUrl(x.proof_url))+'" alt="إيصال"><span>افتح الإيصال ↗</span></a>':'<a class="sa-rc pdf" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener">📄 افتح الإيصال (PDF) ↗</a>'):'';
+    var off=parseFloat(x.offer_price)||0, diff=(off&&cv&&(!x.price_unit||x.price_unit==='total'))?cv-off:0;
+    story+=proof+(diff<0?'<div class="sa-warn" style="border-radius:10px;margin-top:10px">⚠️ نزّل مبلغ الاتفاق من '+fmtNum(off)+' إلى '+fmtNum(cv)+' — تأكد من العميل قبل الاعتماد لو شاك.</div>':'');
+    var deal=x.source==='self'&&x.request_id&&!x.req_assigned?1:0;
+    q='الإيصال صحيح والمبلغ وصلك؟';
+    yes=['✓ اعتمد الإيصال'+(deal?' + الترسية':''),'يتسجّل مدفوع'+(deal?' والمشروع يترسى عليه':''),'approveSaai('+x.id+','+deal+')'];
+    no=['✗ رفض — الإيصال غلط','يرجع مستحق ونطلب منه يرفع إيصال صحيح','_saReject('+x.id+')'];
+  } else {
+    var isC=x.defer_kind==='cancel', what=isC?'<b style="color:#b91c1c">انلغى</b>':'<b style="color:#b45309">تأجّل لـ '+_saD(x.defer_until)+'</b>';
+    T.push(['a',x.defer_at,'المزوّد قال: '+(isC?'انلغى':'تأجّل لـ '+_saD(x.defer_until))]);
+    if(x.defer_state==='conflict'){
+      T.push(['r',x.client_answer_at,'العميل قال: '+_saAns(x.client_answer)]);
+      story='⚠️ '+_saWho(x)+' يقول إن المشروع '+what+'، لكن العميل '+cl+' يقول '+_saAns(x.client_answer)+'.<br>السعي الحين <b>مستحق</b> — آخر موعد '+_saD(_saDue(x))+'.';
+      q='مين تصدّق؟';
+      yes=['✓ أصدّق العميل — لازم يدفع','يبقى مستحق '+amt,'_saDefer('+x.id+',\'resume\')'];
+      no=['أصدّق المزوّد — ألغِ السعي','ما يدفع شي','_saDefer('+x.id+',\'cancel\')'];
+      yes.push('g'); no.push('n');
+    } else if(x.defer_state==='await_admin'){
+      T.push(['g',x.client_answer_at,'العميل أكّد التأجيل']);
+      story='⏸ '+_saWho(x)+' يقول إن المشروع '+what+' — وهذا <b>تأجيل رقم '+(x.defer_count||2)+'</b>. العميل '+cl+' أكّد.';
+      q='توافق على التأجيل مرة ثانية؟';
+      yes=['✓ وافق — يرجع مستحق '+_saD(x.defer_until),'السعي يوقف لين التاريخ','_saDefer('+x.id+',\'approve_defer\')'];
+      no=['✗ لا — لازم يدفع الحين','يرجع مستحق '+amt,'_saDefer('+x.id+',\'resume\')'];
+    } else {
+      T.push(['r',x.defer_at?new Date(new Date(x.defer_at).getTime()+3*864e5):null,'العميل ما رد على سؤالنا (3 أيام)']);
+      story=(isC?'🏢 ':'⏸ ')+_saWho(x)+' يقول إن المشروع '+what+(isC?' وما راح يدفع السعي':'')+'.<br>سألنا العميل '+cl+' يأكد '+(x.defer_at?'يوم '+_saD(x.defer_at):'')+' — <b style="color:#b45309">ما رد</b>.';
+      q=isC?'تصدّقه؟':'توافق على التأجيل؟';
+      yes=isC?['✓ أصدّقه — ألغِ السعي','ما يدفع شي، والمشروع يتسجّل «انلغى»','_saDefer('+x.id+',\'cancel\')']:['✓ وافق — يرجع مستحق '+_saD(x.defer_until),'السعي يوقف لين التاريخ','_saDefer('+x.id+',\'approve_defer\')'];
+      no=['✗ ما أصدّقه — لازم يدفع','يرجع مستحق '+amt,'_saDefer('+x.id+',\'resume\')'];
+    }
+  }
+  if(!yes[3]) yes.push('g'); if(!no[3]) no.push('r');
+  return '<div class="sa-dh"><span class="sa-tag r">'+i+' من '+n+'</span><span class="mu">'+(x.request_id?'<button type="button" class="sa-pj" onclick="_saOpenProj('+x.request_id+')">'+esc(x.project_title||'مشروع')+'</button> · #'+x.request_id:esc(x.project_title||'مشروع'))+(x.city?' · '+esc(x.city):'')+'</span></div>'
+    +'<div class="sa-story">'+story+'</div>'
+    +(x.defer_note?'<div class="sa-note"><small>💬 كلام المزوّد:</small><div>«'+esc(x.defer_note)+'»</div></div>':'')
+    +'<div class="sa-tm">'+T.filter(function(t){return t[1];}).map(function(t){ return '<div><i class="'+t[0]+'"></i><span><b>'+_saDT(t[1])+'</b> — '+t[2]+'</span></div>'; }).join('')+'</div>'
+    +'<div class="sa-qq">'+q+'</div>'
+    +'<div class="sa-ch"><button type="button" class="'+yes[3]+'" onclick="'+yes[2]+'"><b>'+yes[0]+'</b><span>'+yes[1]+'</span></button><button type="button" class="'+no[3]+'" onclick="'+no[2]+'"><b>'+no[0]+'</b><span>'+no[1]+'</span></button></div>'
+    +'<div class="sa-lk">'+(cph?'<a target="_blank" rel="noopener" href="https://wa.me/'+cph+'">💬 اسأل العميل واتساب</a>':'')+(ph?'<a target="_blank" rel="noopener" href="https://wa.me/'+ph+'">💬 كلّم المزوّد</a>':'')+(n>1?'<button type="button" onclick="_saNext()">التالي ←</button>':'')+'</div>';
+}
+function _saNext(){ var L=_saGroups().attn; var i=L.findIndex(function(x){return x.id===_SA.sel;}); var nx=L[(i+1)%L.length]; if(nx)_saSel(nx.id); }
+// ── سطر في (متأخر / يحتاج مبلغ / في المهلة / خلص) ──
+function _saRow(x){
+  var offer=parseFloat(x.offer_price)||0, cv=parseFloat(x.contract_value)||0, unit=x.price_unit&&x.price_unit!=='total', need=_saNeedAmt(x), st=_saState(x);
+  var diff=(offer&&cv&&!unit)?cv-offer:0;
+  var src=need==='unit'?'<span class="sa-src e1">يحتاج مبلغ</span> العرض '+(offer?fmtNum(offer):'—')+(unit?(x.price_unit==='meter'?' ر.س/متر — كم المساحة؟':' ر.س/وحدة — كم العدد؟'):' — ما تحدد مبلغ الاتفاق')
+    :need==='big'?'<span class="sa-src e3">⚠️ رقم كبير</span> 3% من '+fmtNum(cv)+' — غلط بالكتابة؟'
+    :(cv?(_saEst(x)?'<span class="sa-src e1">تقديري</span> 3% من سعر العرض '+fmtNum(cv):'<span class="sa-src e2">مؤكد</span> 3% من '+fmtNum(cv)+(diff?' <b style="color:'+(diff<0?'#b45309':'#15803d')+'">('+(diff<0?'نزّله':'رفعه')+' من '+fmtNum(offer)+')</b>':'')):'—');
+  // التواريخ والساعة
+  var due=_saDue(x), left=Math.ceil((due-Date.now())/864e5), dt='', when='<div class="sa-when">انقبل '+_saDT(x.assigned_at||x.created_at)+'</div>';
+  if(st==='overdue') dt='<div class="sa-tl"><div class="b"><i style="width:100%;background:#dc2626"></i></div><small style="color:#dc2626">متأخر '+_saDays((x.age_days||0)-10)+'</small><div class="sa-when">آخر موعد كان '+_saD(due)+'</div></div>';
+  else if(st==='due') dt='<div class="sa-tl"><div class="b"><i style="width:'+Math.min(100,Math.round((x.age_days||0)*10))+'%;background:'+(left<=2?'#d97706':'#16a34a')+'"></i></div><small style="color:'+(left<=2?'#b45309':'#15803d')+'">'+(left<=0?'آخر يوم اليوم':'باقي '+_saDays(left))+'</small><div class="sa-when">آخر موعد '+_saD(due)+'</div></div>';
+  else if(st==='approved') dt='<div class="sa-tl"><span class="pl" style="background:#e3f5e9;color:#166534">✓ معتمد</span><div class="sa-when">'+_saDT(x.approved_at)+'</div></div>';
+  else if(st==='cancelled') dt='<div class="sa-tl"><span class="pl" style="background:#f1f5f9;color:#64748b">ملغي'+(x.defer_state==='client_cancel'?' — العميل أكّد':(x.defer_state==='admin_cancel'?' — بقرارك':''))+'</span><div class="sa-when">'+_saDT(x.decided_at||x.client_answer_at||x.defer_at)+'</div></div>';
+  else if(st==='deferred') dt='<div class="sa-tl"><span class="pl" style="background:#e0e7ff;color:#3730a3">⏸ مؤجّل لـ '+_saD(x.defer_until)+'</span><div class="sa-when">'+(x.defer_state==='confirmed'?'✓ متفق عليه':'ننتظر رد العميل')+' · '+_saDT(x.decided_at||x.client_answer_at||x.defer_at)+'</div></div>';
+  var ph=_waNorm(x.provider_phone);
+  var waT=ph?'<a class="act-btn sa-wa" target="_blank" rel="noopener" href="https://wa.me/'+ph+'?text='+encodeURIComponent('السلام عليكم '+(x.provider_name||'')+'، معك فريق منصة مناقصة 👋\nبخصوص سعي مشروع «'+(x.project_title||'')+'»: المبلغ '+fmtNum(x.saai_amount)+' ر.س (3% من قيمة الاتفاق)، وآخر موعد كان '+_saD(due)+'.\nتقدر ترفع إيصال التحويل من لوحتك:\n'+location.origin+'/dashboard-provider.html#saai')+'">واتساب تذكير</a>':'';
+  var _ed=(x.status!=='approved'&&x.request_id)?'<button class="act-btn '+(need?'sa-am':'ab-default')+'" title="فتح المشروع وتعديل قيمة الاتفاق" onclick="_saOpenProj('+x.request_id+',1)">'+(need==='big'?'راجع المبلغ':(need?'حدّد المبلغ':'✏️ تعديل'))+'</button>':'';
+  var rem='<button class="act-btn ab-default" title="تذكير بالتطبيق والإيميل" onclick="_saRemind(['+x.id+'])">🔔 تذكير</button>';
+  var act='';
+  if(x.status==='pending') act=need?_ed:(st==='overdue'?waT+rem:rem)+(need?'':'');
+  else if(x.status==='deferred') act='<button class="act-btn ab-default" onclick="_saDefer('+x.id+',\'resume\')">رجّعه مستحق</button>';
+  if(x.status==='approved'&&x.proof_url) act='<a class="sa-proof" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener" title="الإيصال">'+(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(x.proof_url)?'<img src="'+esc(_safeUrl(x.proof_url))+'" alt="إيصال">':'PDF')+'</a>';
+  return '<div class="sa-it'+(need==='big'?' wrn':'')+'">'
+    +'<div class="sa-who">'+_saWho(x)+' ↗'
+      +'<div>'+(x.request_id?'<button type="button" class="sa-pj" onclick="_saOpenProj('+x.request_id+')">'+esc(x.project_title||'مشروع')+'</button>':'<b>'+esc(x.project_title||'مشروع')+'</b>')+' · '+(x.request_id?'#'+x.request_id:'خارج القائمة')+(x.city?' · '+esc(x.city):'')+(x.source==='self'?' · <span style="color:#7c3aed;font-weight:800">سداد ذاتي</span>':'')+'</div>'
+      +'<div class="sa-sub">'+(x.client_name?'العميل: '+esc(x.client_name)+' · ':'')+(x.provider_paid_n?'سدّد '+x.provider_paid_n+' مرات قبل':'أول سداد له')+'</div>'+when+'</div>'
+    +'<div class="sa-amt"><b>'+(need==='unit'?'—':fmtNum(x.saai_amount))+' <small>ر.س</small></b><div>'+src+'</div></div>'
+    +dt+'<div class="sa-act">'+act+'</div></div>';
 }
 function _saSide(){
   var late=_SA.items.filter(function(x){return _saBucket(x)==='late';});
