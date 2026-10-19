@@ -188,7 +188,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/plan-gate.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/plan-gate.js','/tour.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -3358,6 +3358,7 @@ async function setupDatabase() {
     // تنظيف سجلات سعي فارغة نتجت عن خلل قديم في قبول العرض (بدون مشروع/مزوّد)
     // سداد ذاتي: المزوّد يسدد بنفسه (اتفق برا أو العميل ما قبل داخل المنصة) — مشروع من عروضه أو مشروع خارج القائمة
     try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS decided_at TIMESTAMP'); } catch(e){}
+    try { await _mig("ALTER TABLE users ADD COLUMN IF NOT EXISTS tours_seen TEXT[] DEFAULT '{}'"); } catch(e){}
     try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS source VARCHAR(10)'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS self_title TEXT'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS self_reason TEXT'); } catch(e){}
     try { await _mig("DELETE FROM saai_ledger WHERE provider_id IS NULL OR (request_id IS NULL AND self_title IS NULL)"); } catch(e){}
     // التحقق برمز من 6 أرقام (بديل الرابط لو ما اشتغل عند بعض تطبيقات البريد)
@@ -6517,6 +6518,16 @@ app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
     sum.due_total = (sum.due||0) + (sum.overdue||0);
     res.json({ items: r.rows, summary: Object.assign(sum, { awaiting_sum: sum.awaiting }), monthly });
   } catch(e){ console.error('admin-saai:', e.message); res.json({ items: [], summary: {}, monthly: [] }); }
+});
+// الجولة التعريفية: وش شاف المستخدم (مرة وحدة لكل حساب)
+app.get('/api/tour', auth, async (req, res) => {
+  try { const r = (await pool.query('SELECT COALESCE(tours_seen,\'{}\') AS s FROM users WHERE id=$1', [req.user.id])).rows[0]; res.json({ seen: r ? r.s : [] }); }
+  catch(e) { res.json({ seen: [] }); }
+});
+app.post('/api/tour', auth, async (req, res) => {
+  try { const k = String(req.body && req.body.key || '').replace(/[^a-z0-9_]/gi, '').slice(0, 20); if (!k) return res.status(400).json({ message: 'غير صحيح' });
+    await pool.query("UPDATE users SET tours_seen = array_append(COALESCE(tours_seen,'{}'), $2) WHERE id=$1 AND NOT ($2 = ANY(COALESCE(tours_seen,'{}')))", [req.user.id, k]); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // عروض انقبلت في فترة (اليوم/أمس/أسبوع/شهر/مخصص) — بتوقيت الرياض
 app.get('/api/admin/saai/accepted', auth, adminOnly, async (req, res) => {

@@ -81,6 +81,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   <div class="mob-right">
     <a class="my-page-btn" href="/pro" target="_blank" rel="noopener" aria-label="صفحتي العامة"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg>صفحتي</a>
     <button class="mob-notif" onclick="toggleTheme()" aria-label="الوضع الليلي"><span class="theme-ic" style="display:flex"></span></button>
+    <button class="mob-notif" id="tourQ" onclick="Tour.start()" aria-label="جولة تعريفية" title="جولة تعريفية"><b style="font-size:17px;font-family:Inter,sans-serif;line-height:1">?</b></button>
     <button class="mob-notif" onclick="gotoPage('notifs')">
       <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
       <span class="mob-notif-badge" id="mob-nb" style="display:none">0</span>
@@ -95,6 +96,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div style="display:flex;align-items:center;gap:8px">
       <button onclick="toggleTheme()" aria-label="الوضع الليلي" style="background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;padding:7px;border-radius:8px;display:flex;align-items:center"><span class="theme-ic" style="display:flex"></span></button>
       <button onclick="history.length>1?history.back():location.href='/'" style="background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;padding:7px 10px;border-radius:8px;display:flex;align-items:center;font-family:Tajawal,sans-serif"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <button id="tourQd" onclick="Tour.start()" aria-label="جولة تعريفية" title="جولة تعريفية" style="background:rgba(255,255,255,.1);border:none;color:#fff;cursor:pointer;width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:15px;font-family:Inter,sans-serif">?</button>
       <div class="topbar-title" id="pageTitle">الرئيسية</div>
       <a id="switchDash" href="/dashboard-client.html" title="التبديل إلى لوحة العميل" style="display:none;align-items:center;gap:5px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;padding:6px 12px;border-radius:9px;font-family:Tajawal,sans-serif;font-size:12.5px;font-weight:800;text-decoration:none;margin-right:8px"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>لوحة العميل</a>
     </div>
@@ -296,6 +298,6 @@ function fmtIns(id,kind){
 </script>
 
 <script src="/dash-app.js" defer></script>
-<script src="/dash-desk.js" defer></script><script src="/dash-more.js" defer></script>
+<script src="/dash-desk.js" defer></script><script src="/dash-more.js" defer></script><script src="/tour.js?v=1" defer></script>
 </body>
 </html>
