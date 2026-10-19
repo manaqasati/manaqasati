@@ -481,15 +481,17 @@ function _renderHome(data){
   html+='<div id="ph-invites"></div>';
   // الأرقام
   var _wk=Date.now()-7*864e5, _newWk=pool.filter(function(r){return new Date(r.created_at).getTime()>=_wk;}).length;
-  var _days=[0,0,0,0,0,0,0]; pool.forEach(function(r){ var d=Math.floor((Date.now()-new Date(r.created_at).getTime())/864e5); if(d>=0&&d<7)_days[6-d]++; });
-  var _mx=Math.max.apply(null,_days)||1, _sp=_days.map(function(v,i){return (i*12.6).toFixed(1)+','+(22-v/_mx*18).toFixed(1);}).join(' ');
-  var _spark=function(pts,col){ return '<svg class="pa-sp" width="76" height="26" viewBox="0 0 76 26" aria-hidden="true"><polyline points="'+pts+'" fill="none" stroke="'+col+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'; };
+  var _kp=function(go,ic,cl,lbl,val,sub,sc){ return '<button type="button" class="pa-k" onclick="gotoPage(&quot;'+go+'&quot;)"><span class="pa-ki '+cl+'">'+ic+'</span><span class="pa-kt"><small>'+lbl+'</small><b>'+val+'</b>'+(sub?'<span class="pa-ks '+(sc||'')+'">'+sub+'</span>':'')+'</span></button>'; };
   html+='<div class="pa-kpis">'
-    +'<button type="button" class="pa-k" onclick="gotoPage(&quot;browse&quot;)"><small>'+(matchedBySpec?'مشاريع تناسبك':'مشاريع متاحة')+'</small><div class="pa-kv"><b>'+newCount+'</b>'+_spark(_sp,'#60a5fa')+'</div><span class="pa-ks bl">'+(_newWk?'+'+_newWk+' هالأسبوع':'ما نزل جديد هالأسبوع')+'</span></button>'
-    +'<button type="button" class="pa-k" onclick="gotoPage(&quot;works&quot;)"><small>عروض بانتظار الرد</small><div class="pa-kv"><b>'+pend+'</b></div><span class="pa-ks">'+(pend?'عند العملاء الحين':(_myBids.length?'ما فيه شي معلّق':'قدّم أول عرض لك'))+'</span></button>'
-    +'<button type="button" class="pa-k" onclick="gotoPage(&quot;works&quot;)"><small>أعمال مقبولة</small><div class="pa-kv"><b>'+(_accVal?fmtN(_accVal):'0')+'</b></div><span class="pa-ks'+(acc?' gr':'')+'">ر.س'+(acc?' · '+(acc===1?'صفقة واحدة':acc+' صفقات'):'')+'</span></button>'
-    +'<button type="button" class="pa-k" onclick="gotoPage(&quot;profile&quot;)"><small>مشاهدات صفحتك</small><div class="pa-kv"><b id="pa-views">—</b></div><span class="pa-ks gr">منذ انضمامك</span></button>'
+    +_kp('browse','📋','bl',matchedBySpec?'مشاريع تناسبك':'مشاريع متاحة',newCount,_newWk?'+'+_newWk+' هالأسبوع':'',' bl')
+    +_kp('works','⏳','am','عروض بانتظار الرد',pend,pend?'عند العملاء الحين':(_myBids.length?'ما فيه شي معلّق':'قدّم أول عرض'),' am')
+    +_kp('works','✅','gr','أعمال مقبولة',(_accVal?fmtN(_accVal):'0')+' <i>ر.س</i>',acc?(acc===1?'صفقة واحدة':acc+' صفقات'):'',' gr')
   +'</div>';
+  // صفحتك: المشاهدات + شارك صفحتك
+  html+='<div class="pa-share"><div class="pa-sh1"><span class="pa-eye">👁️</span><b id="pa-vt">صفحتك العامة</b></div>'
+    +'<p>العملاء يثقون بالصفحة اللي فيها تقييماتك وأعمالك. شاركها مع عملائك — كل زيارة تقرّبك من عرض جديد.</p>'
+    +'<div class="pa-sh2"><button type="button" class="pa-wa" onclick="_paShareTo(&quot;wa&quot;)">'+_PA_IC.wa+' واتساب</button><button type="button" class="pa-sb" onclick="_paShare()">شارك صفحتي ↗</button></div>'
+    +'<button type="button" class="pa-why" onclick="_paShare(1)">كيف يفيدني؟ اضغط للشرح</button></div>';
   html+='<div id="ph-qa-nudge"></div>';
   html+='<div class="nudges" id="ph-nudges"></div>';
   // فرص تناسبك — سطور مختصرة
@@ -534,7 +536,7 @@ function _paRow(r,match){
 }
 // المشاهدات + نشاطك (آخر الإشعارات)
 function _paExtras(){
-  try{ _api('/api/me/marketing').then(function(m){ var v=document.getElementById('pa-views'); if(v&&m) v.textContent=fmtN(m.views||0)||'0'; }).catch(function(){}); }catch(e){}
+  try{ _api('/api/me/marketing').then(function(m){ var v=document.getElementById('pa-vt'); if(!v||!m)return; var n=parseInt(m.views)||0; v.innerHTML=n?('صفحتك انشافت <span>'+fmtN(n)+'</span> '+(n===1?'مرة':(n===2?'مرتين':(n<=10?'مرات':'مرة')))):'صفحتك جاهزة — شاركها'; }).catch(function(){}); }catch(e){}
   try{ _api('/api/notifications').then(function(L){ var el=document.getElementById('pa-act'); if(!el)return; L=Array.isArray(L)?L.slice(0,4):[]; if(!L.length){ el.style.display='none'; return; }
     var col=function(t){ return /new_request|request/.test(t)?'#60a5fa':(/accept|completed|pause_chosen/.test(t)?'#34d399':(/reject|closed/.test(t)?'#f87171':'#94a3b8')); };
     el.innerHTML='<b class="pa-at">نشاطك</b>'+L.map(function(n){ return '<div class="pa-ai"><i style="background:'+col(n.type||'')+'"></i><span>'+_esc(String(n.title||'').replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/,'').slice(0,60))+'</span><small>'+timeAgoP(n.created_at)+'</small></div>'; }).join('')
@@ -2678,3 +2680,44 @@ function _nfOpenP(id){
 }
 
 function _firstNm(n){var w=String(n||'').trim().split(/\s+/);if(w.length>1&&/^(ابو|أبو|ابن|بن|ام|أم|عبد|عبدال|آل|ال)$/.test(w[0]))return w[0]+' '+w[1];return w[0]||'';}
+
+// ═══ شارك صفحتك (نافذة) ═══
+var _PA_IC={
+  wa:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 00-8.6 15.1L2 22l5-1.3A10 10 0 1012 2zm5.2 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.1-4.5-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.9s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.3 0 .5l-.4.6-.4.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.7-.1 1.1z"/></svg>',
+  sc:'<svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" stroke="#111" stroke-width="1.3"><path d="M12 2.5c3 0 5.2 2.3 5.2 5.3v2.4l1.6-.5c.5-.1.9.5.4.8l-1.7 1c.5 1.6 1.8 2.9 3.4 3.4.4.1.3.7-.1.8l-1.6.4-.4 1.2-1.9-.1c-.9 0-1.8.8-3 1.4-.6.3-1.3.3-1.9 0-1.2-.6-2.1-1.4-3-1.4l-1.9.1-.4-1.2-1.6-.4c-.4-.1-.5-.7-.1-.8 1.6-.5 2.9-1.8 3.4-3.4l-1.7-1c-.5-.3-.1-.9.4-.8l1.6.5V7.8c0-3 2.2-5.3 5.2-5.3z"/></svg>',
+  tt:'<svg width="20" height="20" viewBox="0 0 24 24"><path d="M14 3c.4 2.6 2 4.3 4.6 4.5v3.1c-1.7 0-3.2-.5-4.6-1.4v6.3a5.5 5.5 0 11-5.5-5.5c.3 0 .6 0 .9.1v3.2a2.4 2.4 0 102 2.3V3H14z" fill="#fff"/></svg>',
+  ig:'<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="#fff"/></svg>',
+  x:'<svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M17.8 3h3.1l-6.8 7.8L22 21h-6.2l-4.9-6.4L5.3 21H2.2l7.3-8.3L2 3h6.4l4.4 5.8zm-1.1 16.2h1.7L7.4 4.7H5.6z"/></svg>',
+  tg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M21.5 4.3L2.9 11.5c-1.3.5-1.2 1.2-.2 1.5l4.7 1.5 1.8 5.6c.2.6.4.8.9.8.4 0 .6-.2.9-.5l2.3-2.2 4.8 3.5c.9.5 1.5.2 1.7-.8l3.1-14.7c.3-1.3-.5-1.9-1.4-1.6zM9.3 14l8.9-5.6c.4-.3.8-.1.5.2l-7.6 6.9-.3 3.2z"/></svg>'
+};
+function _paShareUrl(src){ var id=(_me&&_me.id)||(window._prof&&window._prof.id)||''; return location.origin+'/pro/'+id+'?ref=pro'+id+(src?'&src='+src:''); }
+var _PA_TXT='شوف أعمالنا وتقييمات عملائنا على منصة مناقصة، وتواصل معنا مباشرة 👇';
+function _paShareTo(k){
+  var u=_paShareUrl(k), t=_PA_TXT;
+  if(k==='wa') return window.open('https://wa.me/?text='+encodeURIComponent(t+'\n'+u),'_blank');
+  if(k==='x') return window.open('https://x.com/intent/post?text='+encodeURIComponent(t)+'&url='+encodeURIComponent(u),'_blank');
+  if(k==='tg') return window.open('https://t.me/share/url?url='+encodeURIComponent(u)+'&text='+encodeURIComponent(t),'_blank');
+  if(k==='sc') return window.open('https://www.snapchat.com/scan?attachmentUrl='+encodeURIComponent(u),'_blank');
+  if(k==='tt'||k==='ig'){ _copyText(u); var a=k==='tt'?'تيك توك':'إنستقرام'; setTimeout(function(){ showToast('نسخنا رابطك — الصقه في البايو حق '+a+'، أو نزّل صورة الستوري','success'); },300); return; }
+  if(k==='more'&&navigator.share){ navigator.share({title:'مناقصة',text:t+'\n'+u}).catch(function(){}); return; }
+  _copyText(u);
+}
+function _paShare(why){
+  var old=document.getElementById('pa-sheet'); if(old) old.remove();
+  var u=_paShareUrl(''), shown=u.replace(/^https?:\/\//,'').replace(/^www\./,'').replace(/\?.*$/,'');
+  var B=function(k,bg,ic,l,fg){ return '<button type="button" class="pa-sx" onclick="_paShareTo(\''+k+'\')"><span style="background:'+bg+(fg?';color:'+fg:'')+'">'+ic+'</span>'+l+'</button>'; };
+  var ov=document.createElement('div'); ov.id='pa-sheet'; ov.className='pa-sov';
+  ov.innerHTML='<div class="pa-sheet" role="dialog" aria-modal="true" aria-label="شارك صفحتك"><span class="pa-grab"></span><button type="button" class="pa-sx0" data-x aria-label="إغلاق">✕</button>'
+    +'<h3>شارك صفحتك وكسّب عملاء</h3><p class="pa-sp1">صفحتك فيها أعمالك وتقييماتك — العميل اللي يشوفها يثق فيك أكثر ويتواصل معك مباشرة</p>'
+    +'<div class="pa-lk"><span dir="ltr">'+_esc(shown)+'</span><button type="button" onclick="_paShareTo(\'copy\')">نسخ</button></div>'
+    +'<div class="pa-sxs">'+B('wa','#25d366',_PA_IC.wa,'واتساب','#fff')+B('sc','#fffc00',_PA_IC.sc,'سناب شات')+B('tt','#000',_PA_IC.tt,'تيك توك')+B('ig','linear-gradient(45deg,#f58529,#dd2a7b,#8134af)',_PA_IC.ig,'إنستقرام')+B('x','#000',_PA_IC.x,'X')+B('tg','#229ed9',_PA_IC.tg,'تيليجرام')+'</div>'
+    +'<div class="pa-story"><span class="pa-stp">ستوري</span><div><b>صورة ستوري جاهزة 📲</b><small>لسناب وتيك توك وإنستقرام — فيها شعارك وتقييمك ورمز QR يفتح صفحتك</small></div><button type="button" onclick="var s=document.getElementById(\'pa-sheet\');if(s)s.remove();_pfStory()">حمّلها</button></div>'
+    +'<div class="pa-wy'+(why?' on':'')+'"><b>💡 ليش أشاركها؟</b><span>• العميل يشوف أعمالك وتقييماتك قبل يتصل</span><span>• تبان أكثر احترافية من رقم واتساب بس</span><span>• حطّ الرابط في بايو تيك توك وإنستقرام وسناب — أي عميل يضغطه يشوف صفحتك</span></div>'
+    +(navigator.share?'<button type="button" class="pa-more" onclick="_paShareTo(\'more\')">مشاركة بتطبيق ثاني…</button>':'')
+  +'</div>';
+  var close=function(){ ov.remove(); document.removeEventListener('keydown',kd); };
+  var kd=function(e){ if(e.key==='Escape') close(); };
+  ov.addEventListener('click',function(e){ if(e.target===ov||e.target.closest('[data-x]')) close(); });
+  document.addEventListener('keydown',kd); document.body.appendChild(ov);
+  if(why){ var w=ov.querySelector('.pa-wy'); if(w) setTimeout(function(){ try{w.scrollIntoView({block:'nearest'});}catch(e){} },50); }
+}
