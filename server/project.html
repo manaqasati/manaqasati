@@ -594,8 +594,9 @@ async function load(){
     // العروض اللي بلّغ عنها صاحب المشروع تنفصل (تظهر فقط لو ضغط «إظهار»)
     _hidBids=_bids.filter(function(b){return !!b.is_hidden;}); _bids=_bids.filter(function(b){return !b.is_hidden;});
     render();
-    // عدّاد الزيارات: مرة وحدة لكل جلسة
-    try{ var _vk='pv_'+_rid; if(!sessionStorage.getItem(_vk)){ sessionStorage.setItem(_vk,'1'); fetch(API+'/api/requests/'+_rid+'/view',{method:'POST',headers:_tk?{'Authorization':'Bearer '+_tk}:{}}).catch(function(){}); } }catch(e){}
+    try{ _invBanner(); }catch(e){}
+    // عدّاد الزيارات: مرة وحدة لكل جلسة (ولو سجّل دخوله بعدها نعيدها عشان تنحسب باسمه)
+    try{ var _vk='pv_'+_rid+(_tk?'u':'a')+(_INV?'i':''); if(!sessionStorage.getItem(_vk)){ sessionStorage.setItem(_vk,'1'); fetch(API+'/api/requests/'+_rid+'/view'+(_INV?'?inv=1':''),{method:'POST',headers:_tk?{'Authorization':'Bearer '+_tk}:{}}).catch(function(){}); } }catch(e){}
   }catch(e){
     document.getElementById('main-content').innerHTML='<div style="text-align:center;padding:60px;color:var(--muted)"><div style="font-size:14px;font-weight:700;color:var(--red)"> تعذر تحميل المشروع</div><div style="margin-top:12px"><button onclick="load()" style="padding:9px 18px;background:var(--p);color:#fff;border:none;border-radius:9px;font-family:Tajawal;font-size:13px;font-weight:700;cursor:pointer">إعادة المحاولة</button></div></div>';
   }
@@ -759,6 +760,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   if(b.improved_at&&!isRej&&!isAcc&&(isOwner||isMine))tags='<span class="pj-pill" style="background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;border:1px solid #fcd34d">✨ عرض محسّن</span>'+tags;
   if(isMine)tags+='<span class="pj-pill" style="background:#1e3a8a;color:#fff">عرضك</span>';
   if(showBest)tags+='<span class="pj-pill" style="background:#1d4ed8;color:#fff">⭐ الأنسب لك</span>';
+  if(b.invited&&isOwner)tags+='<span class="pj-pill" style="background:#dcfce7;color:#166534">🔗 مدعو منك</span>';
   if(isMine&&b.hold_state==='held')tags+='<span class="pj-pill" style="background:#fef3c7;color:#92400e">⏳ تحت المراجعة</span>';
   if(isMine&&b.hold_state==='rejected')tags+='<span class="pj-pill" style="background:#fef2f2;color:#b91c1c">لم يُعتمد</span>';
   if(isCheap&&isOwner&&!isRej)tags+='<span class="pj-pill" style="background:#dcfce7;color:#15803d">الأرخص</span>';
@@ -1247,12 +1249,30 @@ function _showBidConfirmP(){
   document.body.insertAdjacentHTML('beforeend',html);
 }
 function _closeBidConfirmP(){var o=document.getElementById('bidConfirmOvP');if(o)o.remove();}
+// ═══ «العميل دعاك» — رابط مشروع أرسله صاحبه لمقاول يعرفه (?inv=1) ═══
+var _INV=false;
+try{ var _iq=new URLSearchParams(location.search); var _ir=_iq.get('id')||(location.pathname.match(/(\d+)\/?$/)||[])[1]||''; if(_iq.get('inv')==='1'&&_ir){ localStorage.setItem('mnq_inv_'+_ir,String(Date.now())); } if(_ir){ var _it=parseInt(localStorage.getItem('mnq_inv_'+_ir)||'0'); _INV=_it>0&&(Date.now()-_it)<30*864e5; } }catch(e){}
+function _invBanner(){
+  if(!_INV||!_req||_isOwnerView()||document.getElementById('inv-ban'))return;
+  var u=getUser(); if(u&&u.role==='admin')return;
+  if(_req.status&&_req.status!=='open')return;
+  var _w=String((_req.client&&_req.client.name)||_req.client_name||'').trim().split(/\s+/), nm=(/^(أبو|ابو|أم|ام|بو)$/.test(_w[0]||'')&&_w[1])?_w[0]+' '+_w[1]:(_w[0]||'صاحب المشروع');
+  var guest=!getToken();
+  var el=document.createElement('div'); el.id='inv-ban';
+  el.innerHTML='<div style="background:linear-gradient(120deg,#0b1f4d,#1d4ed8);color:#fff;border-radius:18px;padding:16px 18px;margin:0 0 14px;box-shadow:0 14px 30px -18px rgba(29,78,216,.8)">'
+    +'<div style="font-size:24px">👋</div><div style="font-size:17px;font-weight:900;margin-top:4px;line-height:1.5">'+(nm==='صاحب المشروع'?'صاحب المشروع':'العميل '+esc(nm))+' دعاك تقدّم عرض على مشروعه</div>'
+    +'<div style="font-size:13px;color:#c7d6ff;margin-top:4px;line-height:1.8">قدّم عرضك هنا، والعميل يشوفه مع باقي العروض ويختار</div>'
+    +'<button type="button" onclick="openBid()" style="margin-top:12px;border:0;border-radius:12px;background:#fbbf24;color:#0b1f4d;font-family:inherit;font-weight:900;font-size:14.5px;padding:12px 18px;cursor:pointer;min-height:46px">قدّم عرضك الحين</button>'
+    +(guest?'<div style="margin-top:12px;background:rgba(255,255,255,.1);border-radius:12px;padding:10px 12px;font-size:12.5px;line-height:1.8;color:#e0e9ff"><b style="color:#fff">ما عندك حساب؟</b> سجّل في دقيقة وترجع لهالمشروع على طول.<br><span style="color:#c7d6ff;font-size:11.5px">تقديم العروض مجاني · تطبق رسوم المنصة 3% عند الاتفاق مثل باقي المشاريع</span></div>':'')
+  +'</div>';
+  var mc=document.getElementById('main-content'); if(mc) mc.insertBefore(el,mc.firstChild);
+}
 async function _reallySubmitBidP(){
   var d=window._pendingBidP;if(!d)return;
   var al=document.getElementById('bid-al');
   var btn=document.getElementById('bidConfirmBtnP');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   try{
-    var _bb=JSON.stringify(Object.assign({price:d.price,days:d.days,note:d.note,attachment:(window._bidAttachP||null),price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null),area_mode:(window._areaMode||null)},(window._bxGet?_bxGet():{})));
+    var _bb=JSON.stringify(Object.assign({price:d.price,days:d.days,note:d.note,attachment:(window._bidAttachP||null),price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null),area_mode:(window._areaMode||null)},(window._bxGet?_bxGet():{}),_INV?{invited:1}:{}));
     var r=await fetch(API+'/api/requests/'+_rid+'/bids',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+getToken()},

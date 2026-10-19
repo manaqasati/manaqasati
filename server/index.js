@@ -1056,6 +1056,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         EXISTS(SELECT 1 FROM bid_reports br WHERE br.bid_id=b.id AND br.client_id=$4::int) as is_hidden,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean OR b.provider_id = $4::int THEN b.attachment_url ELSE NULL END as attachment_url,
         b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode,
+        CASE WHEN $3::boolean THEN COALESCE(b.invited,FALSE) ELSE FALSE END AS invited,
         b.price as _p,
         b.note as proposal,
         u.id as provider_id,
@@ -3167,6 +3168,9 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE contact_unlocks ADD COLUMN IF NOT EXISTS review_nudged_at TIMESTAMP`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS silent_stage SMALLINT DEFAULT 0`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS silent_at TIMESTAMP`);
+      // العميل يدعو مقاول يعرفه (رابط مشروعه ?inv=1)
+      await _mig(`ALTER TABLE project_visits ADD COLUMN IF NOT EXISTS inv BOOLEAN DEFAULT FALSE`);
+      await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS invited BOOLEAN DEFAULT FALSE`);
       // النشر الجاد: المخطط (has/design/none) + التعهّد + مشروع التنفيذ المحفوظ مع طلب المخطط
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS plan_status VARCHAR(8)`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS pledged_at TIMESTAMP`);
@@ -5489,7 +5493,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
              b.status, b.created_at, COALESCE(b.price_unit,'total') as price_unit, b.attachment_url,
-             b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode,
+             b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode, COALESCE(b.invited,FALSE) AS invited,
         u.name as provider_name, u.phone as provider_phone,
         u.last_seen_at as provider_last_seen,
         u.city as provider_city, u.service_cities AS _sc, COALESCE(u.serves_all_cities,FALSE) AS _sa, u.badge as provider_badge, u.tier as provider_tier,
@@ -5604,6 +5608,8 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     }
     if (req.body.materials !== undefined) { try { await pool.query('UPDATE bids SET materials=$1 WHERE id=$2', [_matVal(req.body.materials), row.id]); row.materials=_matVal(req.body.materials); } catch(e){} }
     await _bidExtras(row.id, req.user.id, req.body);
+    try { const _iv = (await pool.query(`SELECT 1 FROM project_visits WHERE request_id=$1 AND vkey=$2 AND inv`, [requestId, 'u' + req.user.id])).rows.length > 0;
+      if (_iv) { await pool.query('UPDATE bids SET invited=TRUE WHERE id=$1', [row.id]); row.invited = true; } } catch(e) {}
     // مزوّد تحت المراجعة (بلاغات عملاء) → العرض يتعلّق لين يراجعه الإدارة أو تمر المهلة
     let _held = false;
     try {
@@ -5745,8 +5751,10 @@ app.post('/api/requests/:id/view', rateLimiter(60, 60000), optionalAuth, async (
     let isProv = false;
     if (u) { const x = (await pool.query(`SELECT (role='provider' OR COALESCE(can_provide,FALSE)) AS p FROM users WHERE id=$1`, [u.id])).rows[0]; isProv = !!(x && x.p); }
     const vkey = u ? 'u' + u.id : 'a' + crypto.createHash('sha1').update(String(req.ip||'') + '|' + String(req.headers['user-agent']||'')).digest('hex').slice(0, 20);
-    const ins = await pool.query('INSERT INTO project_visits (request_id, vkey, is_prov) VALUES ($1,$2,$3) ON CONFLICT DO NOTHING', [id, vkey, isProv]);
+    const _inv = req.query.inv === '1';
+    const ins = await pool.query('INSERT INTO project_visits (request_id, vkey, is_prov, inv) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING', [id, vkey, isProv, _inv]);
     const isNew = ins.rowCount > 0;
+    if (!isNew && _inv) pool.query('UPDATE project_visits SET inv=TRUE WHERE request_id=$1 AND vkey=$2 AND inv IS NOT TRUE', [id, vkey]).catch(()=>{});
     await pool.query(`UPDATE requests SET views_total=COALESCE(views_total,0)+1, views_unique=COALESCE(views_unique,0)+$2, views_prov=COALESCE(views_prov,0)+$3 WHERE id=$1`,
       [id, isNew ? 1 : 0, (isNew && isProv) ? 1 : 0]);
   } catch(e) {}
@@ -9617,6 +9625,19 @@ app.patch('/api/admin/requests/:id/quick', requirePermission('requests.edit'), e
     res.json(Object.assign({}, r.rows[0], { _dropped: dropped }));
   } catch(e) { console.error('/quick:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
+// ═══ رابط «ادعُ مقاول تعرفه» — إحصائياته لصاحب المشروع ═══
+app.get('/api/requests/:id/invite-stats', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = (await pool.query('SELECT client_id, title, city, status FROM requests WHERE id=$1', [id])).rows[0];
+    if (!r || (r.client_id !== req.user.id && req.user.role !== 'admin')) return res.status(404).json({ message: 'غير موجود' });
+    const [o, b] = await Promise.all([
+      pool.query('SELECT COUNT(*)::int AS n FROM project_visits WHERE request_id=$1 AND inv', [id]),
+      pool.query('SELECT COUNT(*)::int AS n FROM bids WHERE request_id=$1 AND invited', [id])
+    ]);
+    res.json({ link: _invLink(id), wa_text: _invWaText(r.title, r.city, id), opens: o.rows[0].n, bids: b.rows[0].n, open: r.status === 'open' });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 // ═══ مشروع التنفيذ المحفوظ مع طلب المخطط ═══
 app.get('/api/requests/:id/exec-draft', auth, async (req, res) => {
   try {
@@ -9767,10 +9788,15 @@ app.get('/api/admin/requests/:id/review-info', requirePermission('requests.view'
     res.json({ matches: m.rows[0].n, client_prev: prev.rows[0].n, duplicates: dups, dup_intent: rq.dup_intent || null, dup_hint: rq.dup_hint || null });
   } catch(e) { console.error('review-info:', e.message); res.json({ matches: null, client_prev: null, duplicates: [] }); }
 });
-function _reviewWa(action, title, reason, phone){
+// رابط مشروع العميل اللي يرسله لمقاول يعرفه (inv=1 → صفحة «العميل دعاك» + نحسب الزيارات والعروض)
+function _invLink(id){ return SITE_URL + '/project/x-' + id + '?id=' + id + '&inv=1'; }
+function _invWaText(title, city, id){ return `السلام عليكم، عندي مشروع «${title}»${city ? ' في ' + city : ''} على منصة مناقصة — قدّم عرضك هنا:\n${_invLink(id)}`; }
+function _reviewWa(action, title, reason, phone, id, name){
   const ph = normPhone(phone); if (!ph) return null;
   const _note = String(reason||'').trim();
-  const waMsg = action==='approve'
+  const waMsg = (action==='approve' && id)
+    ? `السلام عليكم${name ? ' ' + name : ''}، معك فريق منصة مناقصة 👋\n\n✅ تم اعتماد ونشر مشروعك «${title}» وبدأت توصله عروض المزوّدين.${_note?`\n💡 نصيحة لعروض أفضل: ${_note}`:''}\n\n🔗 هذا رابط مشروعك:\n${_invLink(id)}\n\nعندك مقاول أو فني تعرفه؟ أرسل له الرابط يقدّم عرضه، وقارن بينه وبين عروض المنصة 👌`
+    : action==='approve'
     ? `السلام عليكم، تم اعتماد ونشر مشروعك «${title}» في منصة مناقصة ✅${_note?`\n💡 نصيحة لعروض أفضل: ${_note}`:''}\n\nستصلك عروض المنفّذين قريباً:\n${SITE_URL}/dashboard-client.html`
     : action==='needs_edit'
     ? `السلام عليكم، مشروعك «${title}» في منصة مناقصة يحتاج إكمال معلومات قبل نشره للمنفذين:\n${_note}\n\nادخل وأكمل التفاصيل ليُنشر ويستقبل العروض:\n${SITE_URL}/dashboard-client.html`
@@ -9880,7 +9906,7 @@ app.get('/api/admin/review-history', requirePermission('requests.review'), async
       WHERE l.action='review_request' ORDER BY l.id DESC LIMIT 40`);
     const A = { 'الموافقة على مشروع':'approve', 'طلب تعديل مشروع':'needs_edit', 'رفض مشروع':'reject' };
     res.json(r.rows.map(x => { const d0 = String(x.details||''); const act = A[d0] || (/^مكرر/.test(d0) ? 'dup' : (/^مزوّد سجّل كعميل/.test(d0) ? 'is_provider' : 'other'));
-      if (act === 'is_provider') { const ph = normPhone(x.phone); return { id: x.id, rid: x.rid, action: act, at: x.created_at, admin: x.admin_name, title: x.title, status: x.status, client_name: x.client_name, note: 'تعريف بشغله — وجّهناه يفعّل حساب المزوّد', wa_link: ph ? `https://wa.me/${ph}?text=${encodeURIComponent(`السلام عليكم ${x.client_name || ''}، معك فريق منصة مناقصة 👋\nشفنا إنك نشرت «${x.title}» — وواضح إنه تعريف بشغلك كمقدّم خدمة، مو مشروع تطلب له عروض.\n\nفعّل «تقديم العروض» مجاناً من هنا وتوصلك مشاريع العملاء في تخصصك ومدينتك:\n${SITE_URL}/dashboard-client.html#becomeprov`)}` : null }; } return { id: x.id, rid: x.rid, action: act, at: x.created_at, admin: x.admin_name, title: x.title, status: x.status, client_name: x.client_name, note: act==='approve' ? null : x.review_notes, wa_link: _reviewWa(act, x.title, act==='approve' ? '' : x.review_notes, x.phone) }; }));
+      if (act === 'is_provider') { const ph = normPhone(x.phone); return { id: x.id, rid: x.rid, action: act, at: x.created_at, admin: x.admin_name, title: x.title, status: x.status, client_name: x.client_name, note: 'تعريف بشغله — وجّهناه يفعّل حساب المزوّد', wa_link: ph ? `https://wa.me/${ph}?text=${encodeURIComponent(`السلام عليكم ${x.client_name || ''}، معك فريق منصة مناقصة 👋\nشفنا إنك نشرت «${x.title}» — وواضح إنه تعريف بشغلك كمقدّم خدمة، مو مشروع تطلب له عروض.\n\nفعّل «تقديم العروض» مجاناً من هنا وتوصلك مشاريع العملاء في تخصصك ومدينتك:\n${SITE_URL}/dashboard-client.html#becomeprov`)}` : null }; } return { id: x.id, rid: x.rid, action: act, at: x.created_at, admin: x.admin_name, title: x.title, status: x.status, client_name: x.client_name, note: act==='approve' ? null : x.review_notes, wa_link: _reviewWa(act, x.title, act==='approve' ? '' : x.review_notes, x.phone, x.rid, _drFirst(x.client_name)) }; }));
   } catch(e) { console.error('review-history:', e.message); res.json([]); }
 });
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
@@ -9907,14 +9933,17 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
     const inAppTitle = action==='approve' ? '✅ تمت الموافقة على مشروعك'
                      : action==='needs_edit' ? '📝 مشروعك يحتاج تعديلاً'
                      : '❌ تم رفض مشروعك';
-    const inAppBody = action==='approve' ? (`مشروعك "${row.title}" متاح للعروض الآن`+(String(reason||'').trim()?`\n💡 نصيحة: ${reason}`:''))
+    const inAppBody = action==='approve' ? (`مشروعك "${row.title}" متاح للعروض الآن — عندك مقاول تعرفه؟ أرسل له رابط مشروعك يقدّم عرضه`+(String(reason||'').trim()?`\n💡 نصيحة: ${reason}`:''))
                     : action==='needs_edit' ? `🔒 مشروعك "${row.title}" لم يعد ظاهراً للمنفذين بسبب نقص المعلومات — ادخل وأكمل التفاصيل ليُنشر ويستقبل العروض${reason?': '+reason:''}`
                     : `مشروعك "${row.title}" تم رفضه${reason?': '+reason:''}`;
     const logLabel = action==='approve' ? 'الموافقة على مشروع' : (action==='needs_edit' ? 'طلب تعديل مشروع' : 'رفض مشروع');
     await logAdmin(req, 'review_request', 'request', id, logLabel);
     await notify(row.client_id, inAppTitle, inAppBody, 'request', id);
     if (clientInfo.rows.length && clientInfo.rows[0].email) {
-      const body = action==='approve' ? (`<p>تمت الموافقة على مشروعك "<strong>${eEsc(row.title)}</strong>" ونشره على المنصة.</p>`+(String(reason||'').trim()?`<p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;color:#1e40af;margin:10px 0">💡 <strong>نصيحة من الإدارة:</strong> ${reason}</p>`:''))
+      const _waInv = 'https://wa.me/?text=' + encodeURIComponent(_invWaText(row.title, row.city, row.id));
+      const body = action==='approve' ? (`<p>تمت الموافقة على مشروعك "<strong>${eEsc(row.title)}</strong>" ونشره على المنصة.</p>`
+        + `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 14px;margin:12px 0"><p style="margin:0 0 6px;font-weight:700;color:#166534">عندك مقاول أو فني تعرفه؟</p><p style="margin:0 0 10px;color:#334155">أرسل له رابط مشروعك يقدّم عرضه، وقارن بينه وبين عروض المنصة:</p><p style="margin:0 0 10px;direction:ltr;text-align:left"><a href="${_invLink(row.id)}" style="color:#1d4ed8">${_invLink(row.id)}</a></p><a href="${_waInv}" style="display:inline-block;background:#25d366;color:#fff;text-decoration:none;font-weight:700;border-radius:8px;padding:9px 16px">📤 أرسل لمقاول تعرفه (واتساب)</a></div>`
+        +(String(reason||'').trim()?`<p style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;color:#1e40af;margin:10px 0">💡 <strong>نصيحة من الإدارة:</strong> ${reason}</p>`:''))
                  : action==='needs_edit' ? `<p>🔒 مشروعك "<strong>${eEsc(row.title)}</strong>" لم يعد ظاهراً للمنفذين بسبب نقص المعلومات.</p>${reason?`<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;color:#7f1d1d;margin:10px 0"><strong>المطلوب إكماله:</strong> ${reason}</p>`:''}<p>ادخل المنصة، أكمل التفاصيل، ثم أعد الإرسال — وسيعود مشروعك للنشر ويستقبل العروض.</p>`
                  : `<p>للأسف، تم رفض مشروعك "<strong>${eEsc(row.title)}</strong>"${reason?`<br><strong>السبب:</strong> ${reason}`:''}.</p>`;
       const cta = action==='needs_edit' ? 'تعديل المشروع' : 'فتح المنصة';
@@ -9923,7 +9952,7 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
     // عند الاعتماد: أشعر المزودين المطابقين (إشعار + إيميل) — الآن فقط، بعد المراجعة
     if (action === 'approve') { try { await notifyMatchingProviders({ id: row.id, title: row.title, category: row.category, city: row.city }); } catch(e){} }
     // رابط واتساب جاهز للإدارة (رقم العميل + رسالة معبّأة) — لكل المسارات، حتى الاعتماد بدون ملاحظة
-    const wa_link = _reviewWa(action, row.title, reason, clientInfo.rows.length ? clientInfo.rows[0].phone : null);
+    const wa_link = _reviewWa(action, row.title, reason, clientInfo.rows.length ? clientInfo.rows[0].phone : null, row.id, clientInfo.rows.length ? _drFirst(clientInfo.rows[0].name) : '');
     res.json({ ...row, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });

@@ -1025,7 +1025,7 @@ function openDetail(id,e){
     var money='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><path d="M21 12V7H5a2 2 0 010-4h14v4"/><path d="M3 5v14a2 2 0 002 2h16v-5"/><path d="M18 12a2 2 0 000 4h4v-4z"/></svg>';
     var cal='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>';
     var tag='<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-2px"><path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
-    window._curReq=req; _detRender(req); _closedBanner(req); try{_pauseRender(req);}catch(e){} loadActions(id);
+    window._curReq=req; _detRender(req); _closedBanner(req); try{_pauseRender(req);}catch(e){} try{_invCard(req);}catch(e){} loadActions(id);
   }).catch(function(){
     // المشروع غير موجود أو ليس للعميل → ارجع للرئيسية
     showToast('المشروع غير متاح','error');
@@ -1093,6 +1093,7 @@ function loadBids(id){
         if(isAcc)chips+='<span class="bid-chip acc"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>مقبول</span>';
         else if(isRej)chips+='<span class="bid-chip rej">ما اخترته</span>'+(b.chance_open?'<span class="bid-chip" style="background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0">⏳ ممكن يرسل عرض أفضل</span>':'');
         if(b.improved_at&&!isRej&&!isAcc)chips='<span class="bid-chip" style="background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e;border:1px solid #fcd34d;font-weight:900">✨ عرض محسّن</span>'+chips;
+        if(b.invited)chips='<span class="bid-chip" style="background:#dcfce7;color:#166534;border:1px solid #bbf7d0;font-weight:900">🔗 مدعو منك</span>'+chips;
         if(isCheap)chips+='<span class="bid-chip cheap"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>أقل سعر</span>';
         if(safeProvId)chips+='<a href="'+esc(proUrl)+'" class="bid-chip prof"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>عرض الملف</a>';
         chips+='<button class="_chatbtn bid-chip chat" data-pid="'+esc(safeProvId)+'"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>محادثة</button>';
@@ -3269,3 +3270,24 @@ function _planUp(){ var p=document.getElementById('n-plans'); if(!p) return; var
     PlanGate.pledgeBind('plA',function(on){ var b=document.getElementById('agreeBtn'); if(b) b.disabled=!on; }); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',swap); else swap();
 })();
+
+// ═══ «ادعُ مقاول تعرفه» — رابط مشروعك يقدّم عليه أي مقاول تعرفه ═══
+function _invCard(req){
+  var old=document.getElementById('inv-card'); if(old) old.remove();
+  if(!req||req.status!=='open'||req.paused_at) return;
+  var list=document.getElementById('bids-list'); if(!list||!list.parentNode) return;
+  var el=document.createElement('div'); el.id='inv-card'; el.className='inv-card';
+  el.innerHTML='<div class="loading" style="padding:10px">…</div>';
+  list.parentNode.insertBefore(el,list);
+  jFetch('/api/requests/'+req.id+'/invite-stats').then(function(d){
+    if(!d||!d.link){ el.remove(); return; }
+    window._invD=d;
+    el.innerHTML='<div class="inv-h"><span>🔗</span><b>ادعُ مقاول تعرفه</b></div>'
+      +'<p>أرسل رابط مشروعك لأي مقاول أو فني تعرفه — يقدّم عرضه وتقارن بينه وبين عروض المنصة.</p>'
+      +((d.opens||d.bids)?'<div class="inv-st"><div><b>'+(d.opens||0)+'</b><small>فتحوا رابطك</small></div><i></i><div><b class="g">'+(d.bids||0)+'</b><small>قدّموا عروض</small></div></div>':'')
+      +'<div class="inv-bt"><button type="button" class="wa" onclick="_invShare()">📤 واتساب</button><button type="button" onclick="_invCopy()">نسخ الرابط</button></div>';
+  }).catch(function(){ el.remove(); });
+}
+function _invShare(){ var d=window._invD; if(!d)return; window.open('https://wa.me/?text='+encodeURIComponent(d.wa_text),'_blank'); }
+function _invCopy(){ var d=window._invD; if(!d)return; var t=d.link;
+  try{ navigator.clipboard.writeText(t).then(function(){ showToast('نسخنا رابط مشروعك ✓','success'); },function(){ prompt('انسخ الرابط:',t); }); }catch(e){ prompt('انسخ الرابط:',t); } }
