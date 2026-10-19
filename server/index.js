@@ -9780,7 +9780,8 @@ async function _dupFind(rq, opts){
     const p9 = String(ph||'').replace(/\D/g,'').slice(-9);
     const c = await pool.query(`SELECT r.id, r.client_id, r.title, r.description, r.category, r.extra_categories, r.city, r.district, r.status, r.created_at, COALESCE(r.published_at,r.created_at) AS pub_at,
         r.budget_max, r.deadline, r.images, r.attachments, r.paused_at, r.assigned_provider_id,
-        (SELECT COUNT(*)::int FROM bids b WHERE b.request_id=r.id) AS bid_count, (r.client_id<>$1) AS other_acct
+        (SELECT COUNT(*)::int FROM bids b WHERE b.request_id=r.id) AS bid_count, (r.client_id<>$1) AS other_acct,
+        (SELECT name FROM users WHERE id=r.client_id) AS client_name, (SELECT phone FROM users WHERE id=r.client_id) AS client_phone
       FROM requests r WHERE r.id<>$2 AND (r.category IS DISTINCT FROM 'direct') AND r.created_at >= NOW()-INTERVAL '60 days'
         AND r.status NOT IN ('rejected') AND r.dup_of IS NULL
         AND (r.client_id=$1 OR (length($3)=9 AND r.client_id IN (SELECT id FROM users WHERE right(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$3)))
@@ -9801,7 +9802,7 @@ async function _dupFind(rq, opts){
       const att = Array.isArray(x.attachments) ? x.attachments : [];
       out.push({ id: x.id, title: x.title, description: x.description, category: x.category, city: x.city, district: x.district, status: normalizeStatus(x.status), raw_status: x.status,
         created_at: x.created_at, pub_at: x.pub_at, budget_max: x.budget_max, deadline: x.deadline, n_img: Array.isArray(x.images) ? x.images.length : 0, n_att: att.length,
-        bid_count: x.bid_count, paused: !!x.paused_at, other_acct: x.other_acct, pct, why, score: pct + (sameCat?20:0) + (sameCity?10:0) + (sameDist?15:0),
+        bid_count: x.bid_count, paused: !!x.paused_at, other_acct: x.other_acct, client_id: x.client_id, client_name: x.client_name, client_phone: x.client_phone, pct, why, score: pct + (sameCat?20:0) + (sameCity?10:0) + (sameDist?15:0),
         can_merge: x.status === 'open' && !x.assigned_provider_id, can_back: ['open','pending_review','review','needs_edit'].includes(x.status) && !x.assigned_provider_id });
     }
     out.sort((a,b) => b.score - a.score);

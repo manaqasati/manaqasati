@@ -2118,7 +2118,7 @@ function _prDupBox(sel,info){
   return '<div class="pr-dup" id="pr-dup-'+sel.id+'">'
     +'<div class="pr-dup-h">⚠️ يشبه مشروع سابق '+(d.other_acct?'لنفس الجوال (حساب ثاني)':'لنفس العميل')
       +(L.length>1?'<span class="pr-dup-tabs">'+L.map(function(x,i){return '<button type="button" class="'+(i===st.i?'on':'')+'" onclick="_prDupPick('+sel.id+','+i+')">#'+x.id+'</button>';}).join('')+'</span>':'')+'</div>'
-    +'<div class="pr-dup-t">'+esc(sel.client_name||'العميل')+' نشر '+_adAgo(d.pub_at||d.created_at)+': <a href="/project/x-'+d.id+'?id='+d.id+'" target="_blank" rel="noopener">#'+d.id+' '+esc(d.title||'')+'</a>'
+    +'<div class="pr-dup-t">'+esc(d.client_name||sel.client_name||'العميل')+' نشر '+_adAgo(d.pub_at||d.created_at)+': <a href="/project/x-'+d.id+'?id='+d.id+'" target="_blank" rel="noopener">#'+d.id+' '+esc(d.title||'')+'</a>'
       +'<span class="pr-dup-pl" style="background:'+S[1]+';color:'+S[2]+'">'+S[0]+' · '+_prOffN(nb)+'</span>'+(d.paused?'<span class="pr-dup-pl" style="background:#fef3c7;color:#92400e">⏸️ موقوف مؤقتاً</span>':'')+'</div>'
     +(info.dup_intent==='update'?'<div class="pr-dup-hint">💬 العميل نفسه اختار وقت النشر: «حدّث المشروع القديم»</div>':(info.dup_intent==='new'?'<div class="pr-dup-hint">💬 العميل قال وقت النشر: «هذا مشروع ثاني مختلف»</div>':''))
     +'<div class="pr-dup-why">'+(d.why||[]).map(function(w){return '<span>'+esc(w)+'</span>';}).join('')+'</div>'
@@ -2166,12 +2166,14 @@ function _prDupCmp(id){
   var S=_PR_ST[d.raw_status]||_PR_ST[d.status]||['مغلق','#f1f5f9','#475569'];
   var nImg=_prImgs(sel).length, nAtt=_prAtts(sel).length;
   var meta=function(o){ return [o.category?esc(o.category):'',o.city?esc(o.city)+(o.district?' · '+esc(o.district):''):'',' الميزانية: '+(o.budget_max?fmtNum(o.budget_max):'—')].filter(Boolean).join(' · '); };
+  var who=function(n,ph,id){ return '<div class="pr-cmp-who">👤 '+esc(n||'—')+(ph?' · <span dir="ltr">'+esc(ph)+'</span>':'')+' · حساب #'+id+'</div>'; };
+  var _same=String(d.client_id)===String(sel.client_id);
   var ov=document.createElement('div'); ov.className='pr-cmp'; ov.setAttribute('role','dialog');
   ov.innerHTML='<div class="pr-cmp-in"><div class="pr-cmp-hd"><b>قارن القديم والجديد</b><button type="button" class="pr-cmp-x" aria-label="إغلاق">✕</button></div>'
     +'<div class="pr-cmp-g">'
-    +'<div class="pr-cmp-c"><h5><span style="color:#16a34a">القديم #'+d.id+' · '+_adAgo(d.pub_at||d.created_at)+'</span><span class="pr-dup-pl" style="background:'+S[1]+';color:'+S[2]+'">'+S[0]+' · '+_prOffN(nb)+'</span></h5><div class="pr-cmp-ti">'+T[0]+'</div><div class="pr-cmp-ds">'+D[0]+'</div><div class="pr-cmp-m">'+meta(d)+'<br>صور: '+(d.n_img||0)+' · ملفات: '+(d.n_att||0)+'</div></div>'
-    +'<div class="pr-cmp-c nw"><h5><span style="color:#1d4ed8">الجديد #'+sel.id+' · ينتظر المراجعة</span></h5><div class="pr-cmp-ti">'+T[1]+'</div><div class="pr-cmp-ds">'+D[1]+'</div><div class="pr-cmp-m">'+meta(sel)+'<br>صور: '+nImg+(nImg>(d.n_img||0)?' <ins>+'+(nImg-(d.n_img||0))+'</ins>':'')+' · ملفات: '+nAtt+(nAtt>(d.n_att||0)?' <ins>+'+(nAtt-(d.n_att||0))+'</ins>':'')+'</div></div>'
-    +'</div><div class="pr-cmp-lg"><ins>أخضر</ins> = جديد · <del>أحمر</del> = انشال</div></div>';
+    +'<div class="pr-cmp-c"><h5><span style="color:#16a34a">القديم #'+d.id+' · '+_adAgo(d.pub_at||d.created_at)+'</span><span class="pr-dup-pl" style="background:'+S[1]+';color:'+S[2]+'">'+S[0]+' · '+_prOffN(nb)+'</span></h5>'+who(d.client_name,d.client_phone,d.client_id)+'<div class="pr-cmp-ti">'+T[0]+'</div><div class="pr-cmp-ds">'+D[0]+'</div><div class="pr-cmp-m">'+meta(d)+'<br>صور: '+(d.n_img||0)+' · ملفات: '+(d.n_att||0)+'</div></div>'
+    +'<div class="pr-cmp-c nw"><h5><span style="color:#1d4ed8">الجديد #'+sel.id+' · ينتظر المراجعة</span></h5>'+who(sel.client_name,sel.client_phone,sel.client_id)+'<div class="pr-cmp-ti">'+T[1]+'</div><div class="pr-cmp-ds">'+D[1]+'</div><div class="pr-cmp-m">'+meta(sel)+'<br>صور: '+nImg+(nImg>(d.n_img||0)?' <ins>+'+(nImg-(d.n_img||0))+'</ins>':'')+' · ملفات: '+nAtt+(nAtt>(d.n_att||0)?' <ins>+'+(nAtt-(d.n_att||0))+'</ins>':'')+'</div></div>'
+    +'</div><div class="pr-cmp-lg">'+(_same?'<b class="pr-cmp-sm y">✓ نفس الحساب</b> · ':(d.other_acct?'<b class="pr-cmp-sm n">⚠️ حساب ثاني بنفس الجوال</b> · ':''))+'<ins>أخضر</ins> = جديد · <del>أحمر</del> = انشال</div></div>';
   var close=function(){ ov.remove(); document.removeEventListener('keydown',kd,true); };
   var kd=function(e){ if(e.key==='Escape'){ e.stopPropagation(); close(); } };
   ov.addEventListener('click',function(e){ if(e.target===ov||e.target.closest('.pr-cmp-x')) close(); });
