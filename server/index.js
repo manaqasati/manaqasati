@@ -3171,6 +3171,7 @@ async function setupDatabase() {
       // العميل يدعو مقاول يعرفه (رابط مشروعه ?inv=1)
       await _mig(`ALTER TABLE project_visits ADD COLUMN IF NOT EXISTS inv BOOLEAN DEFAULT FALSE`);
       await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS invited BOOLEAN DEFAULT FALSE`);
+      try { await pool.query(`INSERT INTO platform_settings (key, value, updated_at) VALUES ('inv_since', COALESCE((SELECT to_char(MIN(first_at) AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"') FROM project_visits WHERE inv), to_char(NOW() AT TIME ZONE 'UTC','YYYY-MM-DD"T"HH24:MI:SS"Z"')), NOW()) ON CONFLICT (key) DO NOTHING`); } catch(e){}
       // النشر الجاد: المخطط (has/design/none) + التعهّد + مشروع التنفيذ المحفوظ مع طلب المخطط
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS plan_status VARCHAR(8)`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS pledged_at TIMESTAMP`);
@@ -9637,6 +9638,43 @@ app.get('/api/requests/:id/invite-stats', auth, async (req, res) => {
     ]);
     res.json({ link: _invLink(id), wa_text: _invWaText(r.title, r.city, id), opens: o.rows[0].n, bids: b.rows[0].n, open: r.status === 'open' });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ لوحة الإدارة: دعوات العملاء (رابط ?inv=1 ← فتح ← تسجيل ← عرض ← ترسية) ═══
+function _invRemindWa(phone, name, title, id){
+  const ph = normPhone(phone); if (!ph) return null;
+  const m = `السلام عليكم${name ? ' ' + name : ''}، معك فريق منصة مناقصة 👋\n\nمشروعك «${title}» منشور ويستقبل العروض.\nعندك مقاول أو فني تعرفه؟ أرسل له رابط مشروعك يقدّم عرضه، وقارن بينه وبين عروض المنصة 👌\n\n🔗 ${_invLink(id)}`;
+  return `https://wa.me/${ph}?text=${encodeURIComponent(m)}`;
+}
+app.get('/api/admin/invites', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const days = [7, 30, 90].includes(parseInt(req.query.days)) ? parseInt(req.query.days) : 30;
+    const since = await getSetting('inv_since', null);
+    const st = new Date(Math.max(Date.now() - days * 864e5, since ? new Date(since).getTime() : 0));
+    const APP = `r.published_at >= $1 AND r.dup_of IS NULL AND r.status NOT IN ('pending_review','rejected','needs_edit')`;
+    const projQ = pool.query(`SELECT r.id, r.title, r.city, r.status, r.published_at, u.id AS cid, u.name AS cname, u.phone AS cphone,
+        (SELECT COUNT(*) FROM project_visits pv WHERE pv.request_id=r.id AND pv.inv)::int AS opens,
+        (SELECT COUNT(*) FROM users nu WHERE nu.referred_by='inv'||r.id AND nu.role='provider')::int AS news,
+        (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id AND b.invited)::int AS ibids,
+        (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS bids,
+        EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.invited AND b.status='accepted') AS won
+      FROM requests r LEFT JOIN users u ON u.id=r.client_id WHERE ${APP} ORDER BY r.published_at DESC LIMIT 300`, [st]);
+    const newQ = pool.query(`SELECT nu.id, nu.name, nu.business_name, nu.specialties, nu.city, nu.created_at, r.id AS rid, r.title, cu.name AS cname,
+        (SELECT COUNT(*) FROM bids b WHERE b.provider_id=nu.id)::int AS bids,
+        EXISTS (SELECT 1 FROM bids b WHERE b.provider_id=nu.id AND b.status='accepted') AS won
+      FROM users nu LEFT JOIN requests r ON nu.referred_by ~ '^inv[0-9]+$' AND r.id=substring(nu.referred_by from 4)::int LEFT JOIN users cu ON cu.id=r.client_id
+      WHERE nu.role='provider' AND nu.referred_by ~ '^inv[0-9]+$' AND nu.created_at >= $1 ORDER BY nu.created_at DESC LIMIT 100`, [st]);
+    const [P, N] = await Promise.all([projQ, newQ]);
+    const rows = P.rows.map(x => Object.assign(x, { cphone: undefined, remind: (!x.opens && x.status === 'open') ? _invRemindWa(x.cphone, String(x.cname||'').split(/\s+/)[0], x.title, x.id) : null }));
+    const sum = (k) => rows.reduce((a, x) => a + (x[k] || 0), 0);
+    const k = { approved: rows.length, opened: rows.filter(x => x.opens > 0).length, opens: sum('opens'),
+      news: N.rows.length, ibids: sum('ibids'), bids: sum('bids'), won: rows.filter(x => x.won).length,
+      p_ibid: rows.filter(x => x.ibids > 0).length, p_new: rows.filter(x => x.news > 0).length,
+      never: rows.filter(x => !x.opens && x.status === 'open').length };
+    const cm = {};
+    rows.forEach(x => { if (!x.opens) return; const c = cm[x.cid] || (cm[x.cid] = { id: x.cid, name: x.cname, projects: 0, opens: 0, news: 0, ibids: 0 }); c.projects++; c.opens += x.opens; c.news += x.news; c.ibids += x.ibids; });
+    const top = Object.values(cm).sort((a, b) => (b.news - a.news) || (b.ibids - a.ibids) || (b.opens - a.opens)).slice(0, 5);
+    res.json({ days, since, from: st, k, projects: rows, news: N.rows, top });
+  } catch(e) { console.error('/admin/invites:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // ═══ مشروع التنفيذ المحفوظ مع طلب المخطط ═══
 app.get('/api/requests/:id/exec-draft', auth, async (req, res) => {

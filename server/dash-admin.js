@@ -69,7 +69,7 @@ function _navGroupsVis(){
   try{var mo=new MutationObserver(function(){_navSums();});document.querySelectorAll('.nav .ni-badge').forEach(function(b){mo.observe(b,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});});}catch(e){setInterval(_navSums,3000);}
 })();
 // ═══ الصفحات المدموجة: كل مجموعة صفحة وحدة بتبويبات فوق ═══
-var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','drafts','requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','nstats','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
+var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','drafts','requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','nstats','invites','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
 var _PG2GRP={};Object.keys(GRPS).forEach(function(g){GRPS[g].t.forEach(function(t){var b=t.split('@')[0];if(!_PG2GRP[b])_PG2GRP[b]=g;});});
 function _gtVisible(g){var bar=document.querySelector('#gtabsHost .gtabs[data-grp="'+g+'"]');if(!bar)return [];return [].filter.call(bar.querySelectorAll('.gt'),function(b){return b.style.display!=='none';}).map(function(b){return b.getAttribute('data-tab');});}
 function showGroup(g){
@@ -119,6 +119,7 @@ function showPage(pg,el){
   var meta={vstats:['التسجيل والتفعيل','كيف سجّلوا (البريد · Google · Apple) — مين فعّل ومين علق'],appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],deals:['متابعة الصفقات','مين اختار · مين ألغى · مين خلّص · مين سدّد'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   meta.outcomes=['نتائج المشاريع','وين راح كل مشروع — الترسية والإغلاق والسعي، ووش يحتاج قرارك'];
   meta.nstats=['الإشعارات والإيميلات','مين وصله الإيميل وإشعار التطبيق — ومين فتح وتفاعل'];
+  meta.invites=['دعوات العملاء','العميل يشارك رابط مشروعه مع مقاولين يعرفهم — مين فتح ومين سجّل ومين قدّم ورسى عليه'];
   meta.drafts=['مشاريع ما اكتملت','ناس بدأوا يكتبون مشروع وطلعوا — نذكّرهم تلقائياً ونرجّعهم لمسودّتهم'];
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
   _gtSync(pg);
@@ -131,6 +132,7 @@ function showPage(pg,el){
   if(pg==='ctstats')setTimeout(function(){_perMini('per-ct');_loadCtStats();},0);
   if(pg==='vstats')setTimeout(_loadVStats,0);
   if(pg==='nstats')setTimeout(_loadNStats,0);
+  if(pg==='invites')setTimeout(_loadInv,0);
   if(pg==='inbox')loadInbox();
   if(pg==='saai')loadSaaiAdmin();
   if(pg==='settings')loadSettings();
@@ -5906,7 +5908,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={nstats:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={nstats:'analytics.view',invites:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
@@ -7074,6 +7076,73 @@ async function _rqReachRemind(id,btn){
     if(!res.ok){ toast((res.d&&res.d.message)||'تعذّر الإرسال','error'); btn.disabled=false; return; }
     toast('وصل التذكير لـ '+res.d.sent+' مزوّد ✓','success'); _rqReach(id);
   }).catch(function(){ toast('تعذّر الاتصال','error'); btn.disabled=false; });
+}
+// ═══ دعوات العملاء: رابط المشروع ?inv=1 ← انفتح ← مقاول جديد سجّل ← قدّم ← رسى ═══
+window._ivDays=window._ivDays||30; window._ivF=window._ivF||'all';
+function _loadInv(){
+  var box=document.getElementById('dash-invites'); if(!box)return;
+  box.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
+  fetch(API+'/api/admin/invites?days='+window._ivDays,hdr()).then(function(r){return r.json();}).then(function(d){ window._IV=d; _ivPaint(); })
+    .catch(function(){ box.innerHTML=emptyState('تعذّر التحميل'); });
+}
+function _ivDate(d){ try{ return new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'}); }catch(e){ return ''; } }
+function _ivPaint(){
+  var box=document.getElementById('dash-invites'), d=window._IV; if(!box||!d)return;
+  if(!d.k){ box.innerHTML=emptyState((d&&d.message)||'تعذّر التحميل'); return; }
+  var k=d.k, P=d.projects||[], N=d.news||[], T=d.top||[];
+  var head='<div class="ns-hd"><div style="flex:1;font-size:12.5px;color:var(--muted);font-weight:700">'+(d.since?'الأرقام من '+_ivDate(d.from)+(new Date(d.from).getTime()<=new Date(d.since).getTime()+864e5?' (يوم بدأت الدعوات)':''):'')+'</div>'
+    +[7,30,90].map(function(n){return '<button type="button" class="ns-per'+(window._ivDays===n?' on':'')+'" onclick="window._ivDays='+n+';_loadInv()">'+(n===7?'7 أيام':n+' يوم')+'</button>';}).join('')+'</div>';
+  if(!k.approved){ box.innerHTML=head+'<div class="ad-card" style="text-align:center;padding:36px">'+emptyState('ما فيه مشاريع معتمدة في هالفترة — الأرقام تطلع مع أول مشروع تعتمده')+'</div>'; return; }
+  var kp=function(v,l,c,sub,t){ return '<div class="ns-k"'+(t?' title="'+esc(t)+'"':'')+'><b style="color:'+c+'">'+v+'</b><span>'+l+'</span>'+(sub?'<small class="iv-ks">'+sub+'</small>':'')+'</div>'; };
+  var html=head+'<div class="ns-kpis">'
+    +kp(fmtNum(k.opened),'مشاريع انفتح رابطها','#2563eb','من '+fmtNum(k.approved)+' معتمد')
+    +kp(fmtNum(k.opens),'مرات فتح الروابط','#6366f1','زوّار مختلفين')
+    +kp(fmtNum(k.news),'مقاولين جدد سجّلوا','#d97706','جوا من رابط عميل')
+    +kp(fmtNum(k.ibids),'عروض من مدعوين','#7c3aed',(k.bids?_ntPct(k.ibids,k.bids)+'% من كل العروض':''))
+    +kp(fmtNum(k.won),'صفقات رست على مدعو','#16a34a')
+    +'</div>';
+  // المسار (كله بالمشاريع) + أكثر العملاء جابوا مقاولين
+  html+='<div class="ns-grid"><div class="ad-card ns-c"><b class="ns-t">المسار</b>'
+    +_ntBar('مشاريع معتمدة',k.approved,k.approved,'rgb(148,163,184)')
+    +_ntBar('🔗 انفتح رابطها',k.opened,k.approved,'rgb(96,165,250)')
+    +_ntBar('💬 جاها عرض من مدعو',k.p_ibid,k.approved,'rgb(167,139,250)')
+    +_ntBar('🆕 سجّل منها مقاول جديد',k.p_new,k.approved,'rgb(251,191,36)')
+    +_ntBar('🏆 رسى على مدعو',k.won,k.approved,'rgb(34,197,94)')
+    +(k.never?'<div class="iv-tip" data-nodk>💡 '+fmtNum(k.never)+' مشروع مفتوح ما انفتح رابطه — ذكّر أصحابها بواتساب <button type="button" onclick="window._ivF=\'never\';_ivPaint();var t=document.getElementById(\'iv-tbl\');if(t)t.scrollIntoView({behavior:\'smooth\',block:\'start\'})">اعرضها</button></div>':'')
+    +'<div class="nt-lg">نعرف إذا الرابط <b>انفتح</b> — ما نقدر نعرف إذا العميل أرسله (الواتساب يطلع من جواله)</div></div>';
+  html+='<div class="ad-card ns-c"><b class="ns-t">أكثر العملاء جابوا مقاولين</b>'
+    +(T.length?T.map(function(c,i){ return '<div class="iv-top"><span class="iv-n">'+(i+1)+'</span><div style="flex:1;min-width:0"><b>'+esc(c.name||'—')+'</b><small>'+fmtNum(c.projects)+' مشروع · فتحوا '+fmtNum(c.opens)+'</small></div><span class="iv-pill" title="مقاولين جدد سجّلوا">🆕 '+fmtNum(c.news)+'</span><span class="iv-pill" title="عروض من مدعوين">💬 '+fmtNum(c.ibids)+'</span></div>'; }).join('')
+      :'<div style="font-size:13px;color:var(--muted)">ما انفتح أي رابط بعد</div>')
+    +'</div></div>';
+  // جدول المشاريع
+  var F={all:P,never:P.filter(function(x){return !x.opens&&x.status==='open';}),act:P.filter(function(x){return x.opens>0;})};
+  var L=F[window._ivF]||P;
+  var stat=function(x){
+    if(x.won) return '<span class="iv-st g">🏆 رسى على مدعو</span>';
+    if(x.ibids) return '<span class="iv-st v">💬 فيه عرض من مدعو</span>';
+    if(x.opens) return '<span class="iv-st b">🔗 انفتح</span>';
+    if(x.status!=='open') return '<span class="iv-st n">مغلق</span>';
+    return '<span class="iv-st n">ما انفتح</span>';
+  };
+  html+='<div class="ad-card ns-c" id="iv-tbl" style="margin-top:14px"><b class="ns-t">المشاريع</b><div class="nt-tabs">'
+    +[['all','الكل'],['act','فيها نشاط'],['never','ما انفتح رابطها']].map(function(t){ return '<button type="button" class="'+(window._ivF===t[0]?'on':'')+'" onclick="window._ivF=\''+t[0]+'\';_ivPaint()">'+t[1]+' <b>'+F[t[0]].length+'</b></button>'; }).join('')+'</div>'
+    +(L.length?'<div style="overflow-x:auto"><table class="nt-tb ns-tb iv-tb"><tr><th>المشروع</th><th>فتحوا</th><th>سجّلوا جدد</th><th title="من مدعوين / كل العروض">عروض</th><th>الحالة</th><th></th></tr>'
+      +L.slice(0,window._ivMore?300:40).map(function(x){ return '<tr onclick="if(!event.target.closest(\'a,button\'))_rqOpen('+x.id+')" style="cursor:pointer"><td><b>'+esc(x.title||'')+'</b><small class="iv-sub">'+esc(x.cname||'—')+(x.city?' · '+esc(x.city):'')+' · #'+x.id+'</small><div class="iv-mo">'+stat(x)+(x.remind?'<a class="iv-wa" href="'+esc(x.remind)+'" target="_blank" rel="noopener">ذكّره يشارك</a>':'')+'</div></td>'
+        +'<td>'+(x.opens?fmtNum(x.opens):'<span class="iv-z">0</span>')+'</td><td>'+(x.news?fmtNum(x.news):'<span class="iv-z">0</span>')+'</td>'
+        +'<td>'+(x.ibids?'<b style="color:#7c3aed">'+x.ibids+'</b>':'<span class="iv-z">0</span>')+'<span class="iv-z"> / '+x.bids+'</span></td><td class="iv-dk">'+stat(x)+'</td>'
+        +'<td class="iv-dk">'+(x.remind?'<a class="iv-wa" href="'+esc(x.remind)+'" target="_blank" rel="noopener">ذكّره يشارك</a>':'')+'</td></tr>'; }).join('')
+      +'</table></div>'+(!window._ivMore&&L.length>40?'<button type="button" class="nt-more" onclick="window._ivMore=1;_ivPaint()">عرض الكل ('+L.length+')</button>':'')
+      :'<div style="font-size:13px;color:var(--muted);padding:10px 0">ما فيه مشاريع هنا</div>')
+    +'<div class="nt-lg">«فتحوا» = زوّار مختلفين فتحوا رابط الدعوة · «ذكّره يشارك» يطلع للمشروع المفتوح اللي ما انفتح رابطه</div></div>';
+  // المقاولين الجدد
+  html+='<div class="ad-card ns-c" style="margin-top:14px"><b class="ns-t">مقاولين جدد جابهم العملاء</b>'
+    +(N.length?N.map(function(u){ var sp=(u.specialties||[])[0]||'';
+        var st=u.won?'<span class="iv-st g">🏆 فاز</span>':(u.bids?'<span class="iv-st v">💬 قدّم '+(u.bids>1?u.bids+' عروض':'عرض')+'</span>':'<span class="iv-st n">سجّل بس</span>');
+        return '<div class="iv-np"><div style="flex:1;min-width:0"><b>'+esc(u.business_name||u.name||'—')+'</b><small>'+esc([sp,u.city].filter(Boolean).join(' · '))+' · سجّل '+_ivDate(u.created_at)+'</small>'
+          +'<small>دعاه '+esc(u.cname||'—')+(u.rid?' على <a href="javascript:void 0" onclick="_rqOpen('+u.rid+')">'+esc(u.title||('#'+u.rid))+'</a>':'')+'</small></div>'+st+'</div>'; }).join('')
+      :'<div style="font-size:13px;color:var(--muted)">ما سجّل أحد من رابط عميل بعد — يتحسب المقاول اللي فتح رابط الدعوة ثم سجّل خلال 30 يوم</div>')
+    +'</div>';
+  box.innerHTML=html;
 }
 // ═══ (B) صفحة الإشعارات والإيميلات ═══
 window._nsDays=window._nsDays||7;

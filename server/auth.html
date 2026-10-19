@@ -706,7 +706,7 @@ async function doSubmit(){
       }
       url='/api/auth/register';
       body={name:name,email:em,password:pass,role:ROLE,city:city,phone:fmtPhone(rph)};
-      try{var _ref=localStorage.getItem('ref_src')||new URLSearchParams(location.search).get('ref');if(_ref)body.ref=String(_ref).slice(0,40);}catch(e){}
+      try{var _ref=_invRef()||localStorage.getItem('ref_src')||new URLSearchParams(location.search).get('ref');if(_ref)body.ref=String(_ref).slice(0,40);}catch(e){}
       if(window._cardToken)body.card_token=window._cardToken;
       if(_regAvatarData)body.profile_image=_regAvatarData;
       if(ROLE==='provider'){
@@ -779,6 +779,8 @@ document.addEventListener('keydown',function(e){
   var hd=document.getElementById('hd-s'); if(hd)hd.textContent='سجّل كمزوّد لتقديم عرضك';
 })();
 
+// ═══ مقاول جا من رابط دعوة عميل (project.html?inv=1 يحفظ mnq_inv_<id>) — أحدث دعوة خلال 30 يوم ═══
+function _invRef(){ try{ var best=0,id=null; for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i), m=k&&k.match(/^mnq_inv_(\d+)$/); if(!m)continue; var t=parseInt(localStorage.getItem(k)||'0'); if(t>best&&(Date.now()-t)<30*864e5){best=t;id=m[1];} } return id?'inv'+id:null; }catch(e){ return null; } }
 // ═══ قدوم من الكرت الرقمي (?ref=card&t=TOKEN) ═══
 (function(){
   var qs=new URLSearchParams(location.search);
@@ -1023,7 +1025,7 @@ function _gcSubmit(){ if(_gcBusy)return; var al=document.getElementById('gc-al')
   if(!city){ setAl(al,'اختر مدينتك','err'); return; }
   if(_gRoleV==='provider'&&!_gSpecs.length){ setAl(al,'اختر تخصص واحد على الأقل','err'); document.getElementById('gc-specs').scrollIntoView({behavior:'smooth',block:'center'}); return; }
   var body={signup_token:_gTok,role:_gRoleV,name:name,phone:fmtPhone(ph),city:city};
-  try{var _ref=localStorage.getItem('ref_src')||new URLSearchParams(location.search).get('ref');if(_ref)body.ref=String(_ref).slice(0,40);}catch(e){}
+  try{var _ref=_invRef()||localStorage.getItem('ref_src')||new URLSearchParams(location.search).get('ref');if(_ref)body.ref=String(_ref).slice(0,40);}catch(e){}
   if(window._cardToken)body.card_token=window._cardToken;
   if(_gRoleV==='provider'){ body.specialties=_gSpecs.slice(); body.notify_categories=_gSpecs.slice(); body.business_name=name; }
   _gcBusy=true; var bt=document.getElementById('gc-btn'); bt.disabled=true; document.getElementById('gc-btn-t').textContent='جاري إنشاء الحساب...';

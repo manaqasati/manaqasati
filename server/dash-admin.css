@@ -1166,3 +1166,25 @@ a.cu-pv:hover{border-color:#86efac}
 [data-theme="dark"] .nt-rem{border-color:#334766;color:#93c5fd}
 [data-theme="dark"] .nt-bar{background:#0f172a}
 .ns-tb td:first-child{min-width:150px}.ns-tb td{white-space:nowrap}.ns-tb td:first-child{white-space:normal}
+
+/* دعوات العملاء */
+.iv-ks{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-top:2px}
+.iv-tip{margin-top:12px;background:#fef9c3;border:1px solid #fde68a;color:#854d0e;border-radius:11px;padding:10px 12px;font-size:12.5px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.iv-tip button{margin-inline-start:auto;border:0;background:#854d0e;color:#fff;border-radius:8px;padding:6px 12px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;min-height:32px}
+.iv-top{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}.iv-top:last-child{border-bottom:0}
+.iv-top b,.iv-np b{display:block;font-size:13px}.iv-top small,.iv-np small{display:block;font-size:11.5px;color:var(--muted);font-weight:700}
+.iv-n{width:22px;height:22px;border-radius:50%;background:var(--bg,#eef2f8);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;flex-shrink:0}
+.iv-pill{font-size:11.5px;font-weight:800;background:var(--bg,#eef2f8);border-radius:20px;padding:3px 8px;white-space:nowrap}
+.iv-sub{display:block;font-size:11px;color:var(--muted);font-weight:700}
+.iv-z{color:var(--muted);font-weight:700}
+.iv-st{display:inline-block;font-size:11.5px;font-weight:800;border-radius:20px;padding:3px 9px;white-space:nowrap}
+.iv-st.g{background:#dcfce7;color:#166534}.iv-st.v{background:#ede9fe;color:#5b21b6}.iv-st.b{background:#dbeafe;color:#1e40af}.iv-st.n{background:#f1f5f9;color:#64748b}
+.iv-wa{display:inline-block;background:#16a34a;color:#fff!important;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:800;text-decoration:none!important;white-space:nowrap}
+.iv-np{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}.iv-np:last-child{border-bottom:0}
+.iv-np a{color:#1d4ed8;text-decoration:none;font-weight:800}
+[data-theme="dark"] .iv-tip{background:rgba(234,179,8,.12);border-color:rgba(234,179,8,.3);color:#fde68a}[data-theme="dark"] .iv-tip button{background:#ca8a04}
+[data-theme="dark"] .iv-st.g{background:rgba(22,163,74,.2);color:#86efac}[data-theme="dark"] .iv-st.v{background:rgba(124,58,237,.22);color:#c4b5fd}
+[data-theme="dark"] .iv-st.b{background:rgba(37,99,235,.22);color:#93c5fd}[data-theme="dark"] .iv-st.n{background:rgba(148,163,184,.12);color:#94a3b8}
+[data-theme="dark"] .iv-np a{color:#93c5fd}
+.iv-mo{display:none}
+@media(max-width:640px){.iv-tb .iv-dk{display:none}.iv-mo{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}.iv-tb td:first-child{min-width:170px}}
