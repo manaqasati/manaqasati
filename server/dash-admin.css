@@ -1190,3 +1190,45 @@ a.cu-pv:hover{border-color:#86efac}
 @media(max-width:640px){.iv-tb .iv-dk{display:none}.iv-mo{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}.iv-tb td:first-child{min-width:170px}}
 .pr-cmp-who{font-size:12.5px;font-weight:800;color:var(--text2,#334155);background:var(--bg,#f1f5f9);border-radius:8px;padding:6px 10px;margin:4px 0 8px;display:inline-block}
 .pr-cmp-sm{font-size:12px}.pr-cmp-sm.y{color:#16a34a}.pr-cmp-sm.n{color:#d97706}
+/* بطاقة «عروض انقبلت» */
+.dl-bars{display:flex;align-items:flex-end;gap:3px;height:34px;margin-top:4px}
+.dl-bars i{flex:1;border-radius:3px;background:#e5ebf5;min-height:3px}.dl-bars i.on{background:#86efac}.dl-bars i.on.last{background:#16a34a}
+.dl-ax{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);font-weight:700}
+.dl-mo{display:flex;justify-content:space-between;gap:6px;border-top:1px solid var(--border);padding-top:7px;margin-top:2px;font-size:12px;color:var(--muted);font-weight:700}.dl-mo b{color:var(--text);font-weight:800}
+[data-theme="dark"] .dl-bars i{background:#1e293b}[data-theme="dark"] .dl-bars i.on{background:#166534}[data-theme="dark"] .dl-bars i.on.last{background:#22c55e}
+/* السعي — قائمة متابعة */
+.sa-flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:800;color:var(--text2,#334155);padding:10px 14px;background:#eef4ff;border:1px solid #d6e3fb;border-radius:12px;margin-bottom:12px}
+.sa-flow span{background:var(--card,#fff);border:1px solid #d6e3fb;border-radius:20px;padding:4px 11px}
+.kp.kp4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:900px){.kp.kp4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.sa-sec{margin-bottom:12px;overflow:hidden;padding:0}
+.sa-sec.red{border-color:#fecaca}.sa-sec.amb{border-color:#fcd9a8}.sa-sec.blu{border-color:#bfd3ff}
+.sa-sh{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.sa-sh i{width:9px;height:9px;border-radius:50%;flex-shrink:0}.sa-sh b{font-size:15px}.sa-sh small{font-size:12px;color:var(--muted);font-weight:700}
+.sa-n{font-size:11.5px;font-weight:900;background:var(--bg,#eef2f8);border-radius:20px;padding:1px 8px}
+.sa-it{display:flex;align-items:center;gap:14px;padding:12px 16px;border-top:1px solid var(--border)}
+.sa-sec .sa-sh+.sa-it,.sa-sec>.sa-it:first-child{border-top:0}
+.sa-it.wrn{background:#fffbeb}
+.sa-who{flex:1;min-width:0}.sa-who .pro-name{font-weight:900;font-size:14px}
+.sa-who>div{font-size:12.5px;color:var(--text2,#334155);font-weight:700;margin-top:2px}
+.sa-who .sa-sub{font-size:11.5px;color:var(--muted)}
+.sa-amt{width:230px;flex-shrink:0}.sa-amt>b{font-size:19px;font-weight:900;display:block}.sa-amt>b small{font-size:12px;color:var(--muted)}
+.sa-amt>div{font-size:11.5px;color:var(--muted);font-weight:700;line-height:1.6}
+.sa-src{display:inline-block;font-size:10.5px;font-weight:900;border-radius:6px;padding:0 6px}
+.sa-src.e1{background:#fef3c7;color:#92400e}.sa-src.e2{background:#dcfce7;color:#166534}.sa-src.e3{background:#fee2e2;color:#b91c1c}
+.sa-tl{width:170px;flex-shrink:0}.sa-tl .b{height:7px;border-radius:5px;background:#e8eef8;position:relative;overflow:hidden}.sa-tl .b i{position:absolute;right:0;top:0;bottom:0;border-radius:5px}
+.sa-tl small{font-size:11.5px;font-weight:800;display:block;margin-top:5px}
+.sa-pn{font-size:11px;font-weight:800;color:var(--muted);margin-top:3px}
+.sa-act{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;width:280px;flex-shrink:0}
+.sa-act .sa-proof img{width:38px;height:38px}
+.act-btn.sa-wa{background:#16a34a;color:#fff;border-color:#16a34a}
+.act-btn.sa-am{background:#b45309;color:#fff;border-color:#b45309}
+.sa-warn{background:#fffbeb;color:#92400e;font-size:12.5px;font-weight:700;padding:8px 16px}
+.sa-closed{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:4px 0 12px}.sa-closed>span{font-size:12px;color:var(--muted);font-weight:700}
+@media(max-width:900px){.sa-it{flex-wrap:wrap;gap:10px}.sa-who{flex-basis:100%}.sa-amt{width:auto;flex:1}.sa-tl{width:130px}.sa-act{width:100%;justify-content:flex-start}}
+[data-theme="dark"] .sa-flow{background:rgba(37,99,235,.1);border-color:#1e3a6e}[data-theme="dark"] .sa-flow span{border-color:#1e3a6e}
+[data-theme="dark"] .sa-tl .b{background:#1e293b}
+[data-theme="dark"] .sa-it.wrn,[data-theme="dark"] .sa-warn{background:rgba(234,179,8,.08)}[data-theme="dark"] .sa-warn{color:#fde68a}
+[data-theme="dark"] .sa-src.e1{background:rgba(234,179,8,.16);color:#fde68a}[data-theme="dark"] .sa-src.e2{background:rgba(22,163,74,.2);color:#86efac}[data-theme="dark"] .sa-src.e3{background:rgba(220,38,38,.2);color:#fca5a5}
+[data-theme="dark"] .sa-sec.red{border-color:#5b1f24}[data-theme="dark"] .sa-sec.amb{border-color:#5a3d12}[data-theme="dark"] .sa-sec.blu{border-color:#1e3a6e}
+.ftab.on .sa-n{background:rgba(255,255,255,.22);color:#fff}

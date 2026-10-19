@@ -4444,6 +4444,8 @@ app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, re
         (SELECT COUNT(*) FROM requests WHERE (category IS DISTINCT FROM 'direct') AND ${RD('created_at')})::int AS requests,
         (SELECT COUNT(*) FROM bids WHERE ${RD('created_at')})::int AS bids,
         (SELECT COUNT(*) FROM requests WHERE assigned_provider_id IS NOT NULL AND ${RD('assigned_at')})::int AS deals,
+        (SELECT COALESCE(SUM(b.price),0) FROM requests r2 JOIN bids b ON b.request_id=r2.id AND b.provider_id=r2.assigned_provider_id AND b.status='accepted' AND COALESCE(b.price_unit,'total')='total' WHERE r2.assigned_provider_id IS NOT NULL AND ${RD('r2.assigned_at')})::float AS deal_value,
+        (SELECT COALESCE(SUM(saai_amount),0) FROM saai_ledger WHERE status<>'cancelled' AND COALESCE(source,'')<>'self' AND ${RD('created_at')})::float AS deal_saai,
         (SELECT COALESCE(SUM(saai_amount),0) FROM saai_ledger WHERE status='approved' AND ${RD('approved_at')})::float AS collected`, [f, t]))[0];
     const cur = await summaryFor(R.from, R.to), prev = await summaryFor(R.pfrom, R.pto);
     const pfunnel = (await q(`WITH p AS (SELECT r.id, r.status, r.assigned_provider_id FROM requests r
@@ -4485,8 +4487,10 @@ app.get('/api/admin/visits', requirePermission('analytics.view'), async (req, re
     const acted = (await q(`SELECT COUNT(DISTINCT id)::int n FROM (
         SELECT r.client_id AS id FROM requests r JOIN users u ON u.id=r.client_id WHERE ${RD('r.created_at')} AND ${RD('u.created_at')} AND (r.category IS DISTINCT FROM 'direct') AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date)
         UNION SELECT b.provider_id FROM bids b JOIN users u ON u.id=b.provider_id WHERE ${RD('b.created_at')} AND ${RD('u.created_at')} AND EXISTS (SELECT 1 FROM site_visits w WHERE w.uid=u.id AND w.day=(u.created_at + INTERVAL '3 hours')::date)) z`))[0].n;
+    const dmonth = (await q(`SELECT COUNT(*)::int n, COALESCE(SUM((SELECT b.price FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.assigned_provider_id AND b.status='accepted' AND COALESCE(b.price_unit,'total')='total' LIMIT 1)),0)::float v
+        FROM requests r WHERE r.assigned_provider_id IS NOT NULL AND (r.assigned_at + INTERVAL '3 hours') >= date_trunc('month', NOW() + INTERVAL '3 hours')`, []))[0];
     const live = _liveCount();
-    res.json({ range: R, live, cur, prev, series, monthly, spark, sources, devices, pages,
+    res.json({ range: R, live, cur, prev, series, monthly, spark, dmonth, sources, devices, pages,
       visitors: cur.visitors, logged: { provider: cur.logged_p, client: cur.logged_c },
       funnel: { visitors: cur.visitors, signups: cur.tracked_signups, acted }, pfunnel, summary: cur });
   } catch(e) { console.error('admin visits:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
