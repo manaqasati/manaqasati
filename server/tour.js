@@ -64,10 +64,10 @@
     css(); clear();
     var d = document.createElement('div'); d.id = 'tr-dim'; d.className = 'tr-dim'; document.body.appendChild(d);
     var w = document.createElement('div'); w.id = 'tr-wel'; w.className = 'tr-wel'; w.setAttribute('role', 'dialog');
-    w.innerHTML = '<div class="tr-wh">👋</div><div class="tr-wb"><h3>أهلاً بك في مناقصة</h3><p>' + WEL[role] + '</p><button type="button" class="tr-go">ابدأ الجولة</button><button type="button" class="tr-lt">لاحقاً</button></div>';
+    w.innerHTML = '<div class="tr-wh">👋</div><div class="tr-wb"><h3>أهلاً بك في مناقصة</h3><p>' + WEL[role] + '</p><button type="button" class="tr-go">ابدأ الجولة</button>' + (role === 'provider' ? '<button type="button" class="tr-lt tr-vd" style="color:#1d4ed8">▶️ أو شوف فيديو: كيف تقدّم عرضك (دقيقة)</button>' : '') + '<button type="button" class="tr-lt">لاحقاً</button></div>';
     document.body.appendChild(w);
     w.querySelector('.tr-go').onclick = function(){ start(); };
-    w.querySelector('.tr-lt').onclick = function(){ end(); };
+    [].forEach.call(w.querySelectorAll('.tr-lt'), function(b){ b.onclick = function(){ end(); if (b.classList.contains('tr-vd') && window.Guide) Guide.show('bid', { primary: ['تمام ✓'] }); }; });
     document.addEventListener('keydown', key, true);
   }
   function start(){
@@ -119,7 +119,7 @@
       if (!d) return; if ((d.seen || []).indexOf(KEY[role]) >= 0) { lsSet(); return; }
       var tries = 0; (function wait(){
         tries++;
-        var busy = document.querySelector('.overlay.on,.overlay.show,.modal.on,.sheet.on,#tr-wel');
+        var busy = document.querySelector('.overlay.on,.overlay.show,.modal.on,.sheet.on,#tr-wel,#gv-ov');
         var home = document.getElementById('page-home'); var onHome = !home || home.classList.contains('on') || home.offsetParent !== null;
         if (!busy && onHome && find(STEPS[role][0])) { welcome(); return; }
         if (tries < 20) setTimeout(wait, 700);

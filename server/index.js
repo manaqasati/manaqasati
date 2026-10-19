@@ -188,7 +188,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/plan-gate.js','/tour.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/plan-gate.js','/tour.js','/guide.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -6521,7 +6521,10 @@ app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
 });
 // الجولة التعريفية: وش شاف المستخدم (مرة وحدة لكل حساب)
 app.get('/api/tour', auth, async (req, res) => {
-  try { const r = (await pool.query('SELECT COALESCE(tours_seen,\'{}\') AS s FROM users WHERE id=$1', [req.user.id])).rows[0]; res.json({ seen: r ? r.s : [] }); }
+  try { const r = (await pool.query(`SELECT COALESCE(u.tours_seen,'{}') AS s,
+        (u.role='client' AND NOT COALESCE(u.can_provide,FALSE) AND NOT COALESCE(u.provider_hint_dismissed,FALSE)
+         AND EXISTS (SELECT 1 FROM requests q WHERE q.client_id=u.id AND q.status='rejected' AND q.review_notes=$2)) AS isprov
+      FROM users u WHERE u.id=$1`, [req.user.id, _ISPROV_NOTE])).rows[0]; res.json({ seen: r ? r.s : [], isprov: !!(r && r.isprov) }); }
   catch(e) { res.json({ seen: [] }); }
 });
 app.post('/api/tour', auth, async (req, res) => {
