@@ -247,7 +247,7 @@ function _jsa(s){return esc(JSON.stringify(String(s==null?'':s)));}
 function toast(m,t){ var e=document.getElementById('toast'); if(!e)return; e.textContent=m; e.className='on '+(t||''); setTimeout(function(){e.className='';},2400); }
 function api(path,opts){
   return fetch(API+path,Object.assign({},hdr(),opts||{})).then(function(r){
-    if(r.status===401){ toast('انتهت جلستك','err'); setTimeout(function(){location.replace('/auth.html');},1200); throw new Error('401'); }
+    if(r.status===401){ toast('انتهت جلستك','err'); setTimeout(function(){ try{localStorage.removeItem('token');localStorage.removeItem('user');}catch(e){} try{ if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_LOGOUT'})); }catch(e){} location.replace('/auth.html');},1200); throw new Error('401'); }
     if(!r.ok)throw new Error('HTTP '+r.status);
     return r.json();
   });

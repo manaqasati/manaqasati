@@ -6,6 +6,8 @@
 (function(){
   try{
     var t=localStorage.getItem('token'); if(!t) return;
+    // جلسة منتهية: نمسحها (ونبلّغ التطبيق) بدل ما نحوّل للوحة فترجعنا هنا — كان يعلّق المستخدم
+    try{ var _jp=JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))); if(_jp&&_jp.exp&&_jp.exp*1000<Date.now()+60000){ localStorage.removeItem('token'); localStorage.removeItem('user'); try{ if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_LOGOUT'})); }catch(_){} return; } }catch(_){}
     var u=JSON.parse(localStorage.getItem('user')||'{}'); if(!u||!u.id) return;
     var p=new URLSearchParams(location.search);
     if(p.get('mode')==='logout'||p.get('force')) return;   // إعادة دخول متعمّدة

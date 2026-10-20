@@ -7290,3 +7290,11 @@ function _nsPaint(){
   html+='</div></div>';
   box.innerHTML=html;
 }
+
+// ═══ تجديد جلسة الإدارة تلقائياً (لو عمر التوكن أكثر من يومين) ═══
+(function(){ try{
+  var t=localStorage.getItem('token'); if(!t) return;
+  var p=JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+  if(!p||!p.iat||(Date.now()/1000-p.iat)<2*86400) return;
+  setTimeout(function(){ fetch(API+'/api/auth/refresh',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'}}).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(!d||!d.token||localStorage.getItem('token')!==t) return; try{ localStorage.setItem('token',d.token); if(localStorage.getItem('adminToken')) localStorage.setItem('adminToken',d.token); }catch(e){} try{ if(typeof token!=='undefined') token=d.token; }catch(e){} }).catch(function(){}); },3000);
+}catch(e){} })();
