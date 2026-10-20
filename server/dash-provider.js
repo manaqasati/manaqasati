@@ -1111,9 +1111,10 @@ async function loadWorks(){
   else{pg.innerHTML=_skList(4);}
   try{
     var r=await Promise.all([_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/provider/bid-standing').catch(function(){return null;})]);
-    _myBids=Array.isArray(r[0])?r[0]:[];_myProjs=Array.isArray(r[1])?r[1]:[];
+    if(!Array.isArray(r[0])){ if(!cached){ _loadFail(pg,'loadWorks','عروضي'); return; } }   // فشل: نخلي المحفوظ
+    else { _myBids=r[0]; _myProjs=Array.isArray(r[1])?r[1]:_myProjs;
     window._bidStanding=r[2]||null;
-    var hc=_cacheGet('home_data')||{profile:{}};_cacheSet('home_data',{profile:hc.profile,bids:_myBids,projs:_myProjs});
+    var hc=_cacheGet('home_data')||{profile:{}};_cacheSet('home_data',{profile:hc.profile,bids:_myBids,projs:_myProjs}); }
   }catch(e){}
   var acc=_myBids.filter(function(b){return b.status==='accepted';}).length;
   var pend=_myBids.filter(function(b){return b.status==='pending';}).length;
@@ -1313,8 +1314,8 @@ function _renderProjs(list){
 
 async function loadReviews(){
   var pg=_el('page-reviews');if(!pg)return;pg.innerHTML=_skList(4);
-  var list=[];try{list=await _api('/api/provider/reviews')||[];}catch(e){}
-  if(!Array.isArray(list))list=[];
+  var list=null;try{list=await _api('/api/provider/reviews');}catch(e){}
+  if(!Array.isArray(list)){ _loadFail(pg,'loadReviews','تقييماتي'); return; }
   var avg=list.length?(list.reduce(function(s,r){return s+(r.rating||0);},0)/list.length).toFixed(1):'—';
   var html='<div class="pghd"><div class="pg-t">تقييماتي</div><div class="pg-s">'+list.length+' تقييم</div></div>';
   if(list.length){
@@ -1400,11 +1401,15 @@ document.addEventListener('visibilitychange',function(){
 });
 setInterval(function(){if(!_pollPaused){_loadNotifCount();_loadChatBadge();}},35000);
 
+
+// ═══ فشل التحميل (نت ضعيف): رسالة + إعادة محاولة بدل صفحة فاضية مضلّلة أو نموذج فاضي ═══
+function _loadFail(pg,fnName,title){ if(!pg)return; pg.innerHTML=(title?'<div class="pghd"><div class="pg-t">'+title+'</div></div>':'')+'<div style="text-align:center;padding:50px 20px"><div style="font-size:15px;font-weight:800;color:var(--red);margin-bottom:6px">تعذّر التحميل</div><div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">تحقّق من اتصالك بالإنترنت</div><button type="button" onclick="'+fnName+'()" style="background:var(--navy,#1e3a8a);color:#fff;border:0;border-radius:11px;padding:11px 22px;font-family:inherit;font-weight:800;cursor:pointer">إعادة المحاولة</button></div>'; }
 // ═══ PROFILE — مُصلح: dangerZone مُعرَّف قبل insertBefore ═══
 async function loadProfile(){
   var pg=_el('page-profile');if(!pg)return;
   pg.innerHTML=_skList(3);
-  var p=await _api('/api/provider/profile')||{};
+  var p=await _api('/api/provider/profile');
+  if(!p||!p.id){ _loadFail(pg,'loadProfile','صفحتي'); return; }   // لا نعرض نموذج فاضي — لو حفظه ينمسح ملفه
   var reviews=await _api('/api/provider/reviews')||[];
   var projs=await _api('/api/provider/projects')||[];
   var totalBids=_myBids.length||0;
@@ -1850,7 +1855,7 @@ function loadSaai(){
   var pg=_el('page-saai'); if(!pg)return;
   pg.innerHTML='<div class="loading">جاري التحميل...</div>';
   _api('/api/provider/saai').then(function(d){
-    d=d||{items:[],pending_total:0,approved_total:0,contract_total:0};
+    if(!d){ _loadFail(pg,'loadSaai','السعي'); return; }
     var items=d.items||[];
     var wallet='<div style="background:linear-gradient(135deg,#172554,#1e3a8a 60%,#2563eb);color:#fff;border-radius:18px;padding:22px;margin-bottom:16px">'
       +'<div style="font-size:12.5px;opacity:.85">سعي مستحق عليك <span style="background:rgba(255,255,255,.16);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:800">تقديري</span></div>'
@@ -2667,7 +2672,7 @@ function _nfPaintP(){
 async function loadNotifs(){
   var pg=_el('page-notifs');if(!pg)return;
   var cached=_cacheGet('notifs'); if(cached&&Array.isArray(cached)){ _nfList=cached; _nfPaintP(); } else pg.innerHTML=_skList(5);
-  try{var fresh=await _api('/api/notifications')||[]; _nfList=Array.isArray(fresh)?fresh:[]; _cacheSet('notifs',_nfList);}catch(e){}
+  try{var fresh=await _api('/api/notifications'); if(Array.isArray(fresh)){ _nfList=fresh; _cacheSet('notifs',_nfList); } else if(!cached){ _loadFail(pg,'loadNotifs','الإشعارات'); _lb.done(); return; } }catch(e){}
   _nfPaintP(); _lb.done();
 }
 function _nfOpenP(id){

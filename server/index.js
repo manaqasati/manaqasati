@@ -3090,7 +3090,7 @@ async function setupDatabase() {
       try { await _mig("UPDATE requests SET extra_categories=array_replace(extra_categories,'أبواب وبوابات أوتوماتيكية','أبواب وبوابات') WHERE 'أبواب وبوابات أوتوماتيكية'=ANY(extra_categories)"); } catch(_e){}
       try { await _mig("UPDATE post_drafts SET category='أبواب وبوابات' WHERE category='أبواب وبوابات أوتوماتيكية'"); } catch(_e){}
       // «صيانة مصاعد» صار «تركيب وصيانة مصاعد»
-      for (const col of ['specialties','notify_categories','categories']) {
+      for (const col of ['specialties','notify_categories']) {
         try { await _mig(`UPDATE users SET ${col}=array_replace(${col},'صيانة مصاعد','تركيب وصيانة مصاعد') WHERE 'صيانة مصاعد'=ANY(${col})`); } catch(_e){}
       }
       await _mig("UPDATE requests SET category='تركيب وصيانة مصاعد' WHERE category='صيانة مصاعد'");
@@ -3193,6 +3193,11 @@ async function setupDatabase() {
       await _mig(`CREATE TABLE IF NOT EXISTS ntrack (id SERIAL PRIMARY KEY, nid INTEGER, user_id INTEGER, kind VARCHAR(30), ref_id INTEGER, created_at TIMESTAMP DEFAULT NOW(), email_id INTEGER, push_n SMALLINT DEFAULT 0, push_ok SMALLINT DEFAULT 0, opened_at TIMESTAMP, open_via VARCHAR(8))`);
       await _mig(`CREATE INDEX IF NOT EXISTS ntrack_kind ON ntrack(kind, created_at)`);
       await _mig(`CREATE INDEX IF NOT EXISTS ntrack_ref ON ntrack(ref_id, kind)`);
+      // فهارس للجداول اللي تكبر مع الوقت (إحصائيات الإشعارات/الدعوات/السعي) — عشان ما تبطأ اللوحة بعد أشهر
+      await _mig(`CREATE INDEX IF NOT EXISTS ntrack_created ON ntrack(created_at)`);
+      await _mig(`CREATE INDEX IF NOT EXISTS idx_users_ref_inv ON users(referred_by) WHERE referred_by LIKE 'inv%'`);
+      await _mig(`CREATE INDEX IF NOT EXISTS idx_saai_provider ON saai_ledger(provider_id)`);
+      await _mig(`CREATE INDEX IF NOT EXISTS email_log_created ON email_log(created_at)`);
       await _mig(`CREATE INDEX IF NOT EXISTS ntrack_nid ON ntrack(nid)`);
       // مشروع مكرر: نفس العميل نشر نفس المشروع مرة ثانية
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS dup_of INTEGER`);

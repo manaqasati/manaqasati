@@ -2244,8 +2244,8 @@ function loadProfile(){
     window._loadedEmail=(p.email||'').trim();
     var ctEl=document.getElementById('prof-city');if(ctEl){if(!ctEl.options.length)fillCitySelect(ctEl);ctEl.value=p.city||'';}
     document.getElementById('profNameDisp').textContent=p.name||'—';
-    _prFill(p);
-  }).catch(function(){});
+    _prFill(p); window._profFail=false;
+  }).catch(function(){ window._profFail=true; try{ showToast('تعذّر تحميل بياناتك — تحقّق من الاتصال','error'); }catch(e){} });
   updatePushToggleUI();
   _prPushState();
 }
@@ -2265,6 +2265,7 @@ function uploadClientAvatar(input){
   r.readAsDataURL(f);
 }
 function saveClientProfile(btn){
+  if(window._profFail){ showToast('بياناتك ما تحمّلت — نعيد التحميل قبل الحفظ','error'); loadProfile(); return; }   // لا نحفظ نموذج فاضي فوق بياناته
   var name=(document.getElementById('prof-name').value||'').trim();
   var phone=(document.getElementById('prof-phone').value||'').trim();
   var email=(document.getElementById('prof-email').value||'').trim();
