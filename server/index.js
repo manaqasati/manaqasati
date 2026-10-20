@@ -1672,6 +1672,16 @@ function _htmlToText(h){
     .replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'")
     .replace(/[ \t]+/g,' ').replace(/\n[ \t]*/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
 }
+function _pxSig(id){ return crypto.createHmac('sha256', String(JWT_SECRET)).update('px:' + id).digest('hex').slice(0, 10); }
+const _PX_GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+app.get('/api/e/o/:tok', async (req, res) => {
+  res.set({ 'Content-Type': 'image/gif', 'Cache-Control': 'no-store, no-cache, must-revalidate, private', 'Pragma': 'no-cache' });
+  res.end(_PX_GIF);
+  try {
+    const m = String(req.params.tok || '').match(/^(\d+)-([a-f0-9]{10})\.gif$/); if (!m || _pxSig(m[1]) !== m[2]) return;
+    await pool.query(`UPDATE email_log SET status='opened', updated_at=NOW() WHERE id=$1 AND status IN ('sending','sent','delayed','delivered')`, [parseInt(m[1])]);
+  } catch(e) {}
+});
 async function sendEmail(to, subject, html, meta) {
   meta = meta || {};
   if (!RESEND_KEY) { console.warn(' RESEND_KEY not set — skipping email to', to); return false; }
@@ -1679,6 +1689,8 @@ async function sendEmail(to, subject, html, meta) {
   let logId = null;
   try { logId = (await pool.query('INSERT INTO email_log (user_id, to_email, subject, kind, status) VALUES ($1,$2,$3,$4,$5) RETURNING id', [meta.uid || null, String(to).slice(0,200), String(subject||'').slice(0,200), meta.kind || 'other', 'sending'])).rows[0].id; } catch(e) {}
   if (logId && meta.tid) pool.query('UPDATE ntrack SET email_id=$1 WHERE id=$2', [logId, meta.tid]).catch(()=>{});
+  // عدّاد فتح خاص فينا (صورة 1×1) — ما نعتمد على إعداد «Open tracking» في Resend
+  if (logId) { const px = '<img src="' + SITE_URL + '/api/e/o/' + logId + '-' + _pxSig(logId) + '.gif" width="1" height="1" alt="" style="display:block;border:0;width:1px;height:1px;opacity:0">'; html = /<\/body>/i.test(html) ? html.replace(/<\/body>/i, px + '</body>') : html + px; }
   const _fail = (msg) => { if (logId) pool.query("UPDATE email_log SET status='failed', error=$1, updated_at=NOW() WHERE id=$2", [String(msg||'').slice(0,500), logId]).catch(()=>{}); };
   try {
     const r = await fetch('https://api.resend.com/emails', {
