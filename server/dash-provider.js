@@ -289,7 +289,8 @@ var _sessionExpiredShown=false;
 function _sessionExpired(){
   if(_sessionExpiredShown)return; _sessionExpiredShown=true;
   try{ if(typeof showToast==='function')showToast('انتهت جلستك — يرجى تسجيل الدخول من جديد','error'); }catch(e){}
-  setTimeout(function(){ try{localStorage.removeItem('token');localStorage.removeItem('user');}catch(e){} location.href='/auth.html'; }, 1500);
+  // نبلّغ التطبيق يمسح التوكن المحفوظ — وإلا يرجّعه ويعلق المستخدم بين الدخول واللوحة
+  setTimeout(function(){ try{localStorage.removeItem('token');localStorage.removeItem('user');}catch(e){} try{ if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_LOGOUT'})); }catch(e){} location.href='/auth.html'; }, 1500);
 }
 
 var _lb={t:null,v:0,
@@ -2721,3 +2722,11 @@ function _paShare(why){
   document.addEventListener('keydown',kd); document.body.appendChild(ov);
   if(why){ var w=ov.querySelector('.pa-wy'); if(w) setTimeout(function(){ try{w.scrollIntoView({block:'nearest'});}catch(e){} },50); }
 }
+
+// ═══ تجديد الجلسة تلقائياً (التوكن ينتهي بعد 30 يوم — نجدّده لو عمره أكثر من يومين) ═══
+(function(){ try{
+  var t=localStorage.getItem('token'); if(!t) return;
+  var p=JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+  if(!p||!p.iat||(Date.now()/1000-p.iat)<2*86400) return;
+  setTimeout(function(){ fetch(API+'/api/auth/refresh',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'}}).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d&&d.token&&localStorage.getItem('token')===t) _newSess(d); }).catch(function(){}); },2500);
+}catch(e){} })();

@@ -3463,6 +3463,12 @@ app.post('/api/auth/logout-all', rateLimiter(10, 600000), auth, async (req, res)
     res.json({ ok: true, token: _sessSign(u), message: 'طلّعنا كل الأجهزة الثانية ✓' });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
+// تجديد الجلسة: اللوحات تطلب توكن جديد لو القديم عمره أكثر من يومين — عشان ما ينطرد المستخدم النشِط كل 30 يوم
+app.post('/api/auth/refresh', auth, async (req, res) => {
+  try { const u = (await pool.query('SELECT id, role, COALESCE(token_ver,0) AS token_ver FROM users WHERE id=$1 AND is_active IS NOT FALSE', [req.user.id])).rows[0];
+    if (!u) return res.status(403).json({ message: 'الحساب غير متاح' }); res.json({ ok: true, token: _sessSign(u) }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
   try {
     const { email, phone, password } = req.body;
