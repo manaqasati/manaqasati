@@ -739,7 +739,7 @@ function loadHome(){
   else if(el)el.innerHTML=_skCards(3);
   try{_reqDraftNudge();}catch(e){}
   jFetch('/api/requests/my').then(function(all){
-    if(!Array.isArray(all)){if(el)el.innerHTML=errH(loadReqs);return;}
+    if(!Array.isArray(all)){ if(el&&!(cached&&cached.length))el.innerHTML=errH(loadHome); return; }   // فشل: نخلي آخر بيانات محفوظة بدل ما نمسحها
     _cSet('my_reqs',all);
     var _sg=all.map(function(r){return r.id+':'+r.status+':'+(r.bid_count||0);}).join(',');
     if(_sg===window._homeSig && cached && cached.length) return;   // لا تغيير → لا إعادة رسم

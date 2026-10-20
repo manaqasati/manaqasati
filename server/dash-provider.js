@@ -698,6 +698,8 @@ async function loadHome(){
   var cached=_cacheGet('home_data');if(cached){_renderHome(cached);}else{pg.innerHTML=_skList(4);}
   try{
     var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests'),_api('/api/saved-requests/ids')]);
+    // فشل شبكة (الملف ما رجع): لا نمسح البيانات المخزّنة ولا نرسم لوحة فاضية «0» مضلّلة
+    if(!r[0]||!r[0].id){ if(!cached) pg.innerHTML='<div style="text-align:center;padding:50px 20px"><div style="font-size:15px;font-weight:800;color:var(--red);margin-bottom:6px">تعذّر التحميل</div><div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">تحقّق من اتصالك بالإنترنت</div><button type="button" onclick="loadHome()" style="background:var(--navy,#1e3a8a);color:#fff;border:0;border-radius:11px;padding:11px 22px;font-family:inherit;font-weight:800;cursor:pointer">إعادة المحاولة</button></div>'; return; }
     window._savedIds=Array.isArray(r[4])?r[4]:[];
     var fresh={profile:r[0]||{},bids:r[1]||[],projs:r[2]||[],requests:Array.isArray(r[3])?r[3]:[]};
     _cacheSet('home_data',fresh);

@@ -1,4 +1,4 @@
-var CACHE = 'manaqasa-v8';
+var CACHE = 'manaqasa-v9';
 var STATIC = [
   './',
   './index.html',
@@ -112,6 +112,8 @@ self.addEventListener('fetch', function(e) {
   }
   // ── Non-GET requests: pass through ──
   if (e.request.method !== 'GET') return;
+  // ── الفيديو وطلبات Range: من الشبكة مباشرة (الآيفون ما يشغّل الفيديو لو رجع له رد كامل من الكاش بدل 206) ──
+  if (e.request.headers.get('range') || /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url)) return;
   // ── Google Fonts: cache first ──
   if (url.includes('fonts.googleapis') || url.includes('fonts.gstatic')) {
     e.respondWith(
