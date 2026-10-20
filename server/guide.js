@@ -89,7 +89,7 @@
     if (!fromLink) setTimeout(function(){
       if (ss('gv_prov')) return;
       state().then(function(s){
-        if (!s.isprov || document.getElementById('gv-ov') || document.getElementById('tr-wel')) return;
+        if (!s.isprov || document.getElementById('gv-ov') || document.getElementById('tr-wel') || document.querySelector('.overlay.on,.overlay.show,.modal.on,[id^=closeModalOv]')) return;   // ما نقاطع نافذة مفتوحة
         ss('gv_prov', '1');
         show('prov', { primary: ['فعّل حساب المزوّد ←', function(){ (origBP || window.openBecomeProv)(); }], secondary: ['لا، أنا أطلب خدمة فعلاً', dismissProv] });
       });

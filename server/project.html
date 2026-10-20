@@ -1488,7 +1488,7 @@ function openCloseModal(){
       +'<label class="cm-r"><input type="radio" name="cmreason" value="postponed"> أجّلت أو ألغيت المشروع</label>'
       +'<label class="cm-r"><input type="radio" name="cmreason" value="no_suitable_offers"> لم تصلني عروض مناسبة</label>'
       +'<label class="cm-r"><input type="radio" name="cmreason" value="other"> سبب آخر</label>'
-      +'<textarea id="cm-note" placeholder="تفاصيل إضافية (اختياري)" style="width:100%;margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-family:Tajawal;font-size:13px;min-height:60px;resize:vertical"></textarea>'
+      +'<div id="cm-otherhint" style="display:none;margin-top:10px;font-size:12.5px;font-weight:800;color:#b45309">✍️ اكتب السبب (إلزامي) — يساعدنا نحسّن المنصة</div><textarea id="cm-note" placeholder="تفاصيل إضافية (اختياري)" style="width:100%;margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-family:Tajawal;font-size:13px;min-height:60px;resize:vertical"></textarea>'
       +'<button onclick="_cmConfirm()" style="width:100%;margin-top:12px;background:#dc2626;color:#fff;border:none;border-radius:11px;padding:13px;font-family:Tajawal;font-weight:800;font-size:14px;cursor:pointer">تأكيد الإغلاق</button>'
     +'</div>'
     +'<button onclick="document.getElementById(\'closeModalOv\').remove()" style="width:100%;margin-top:10px;background:none;border:none;color:#64748b;font-family:Tajawal;font-size:13px;cursor:pointer">إلغاء</button>'
@@ -1496,6 +1496,7 @@ function openCloseModal(){
     +'</div>';
   document.body.appendChild(d);
   try{ if(window._nsoMount)_nsoMount('cmreason'); }catch(e){}
+  try{ [].forEach.call(document.querySelectorAll('input[name=cmreason]'),function(r){ r.addEventListener('change',function(){ var oth=document.querySelector('input[name=cmreason]:checked'); oth=oth&&oth.value==='other'; var t=document.getElementById('cm-note'), h=document.getElementById('cm-otherhint'); if(h)h.style.display=oth?'block':'none'; if(t){ t.placeholder=oth?'مثال: لقيت مقاول قريب لي · غيّرت رأيي في التصميم · المشروع انتقل لشخص ثاني':'تفاصيل إضافية (اختياري)'; t.style.borderColor=oth?'#f59e0b':'#e2e8f0'; if(oth)t.focus(); } }); }); }catch(e){}
 }
 function _cmChose(){
   var st=document.getElementById('cm-step1'); if(!st)return;
@@ -1534,6 +1535,7 @@ function _cmConfirm(){
   var sel=document.querySelector('input[name=cmreason]:checked');
   if(!sel){ alert('اختر سبب الإغلاق'); return; }
   var note=(document.getElementById('cm-note')||{}).value||'';
+  if(sel.value==='other'&&note.trim().length<10){ alert('اكتب سبب الإغلاق (10 حروف على الأقل)'); try{document.getElementById('cm-note').focus();}catch(e){} return; }
   var id=getReqId();
   fetch(API+'/api/requests/'+id+'/close-by-owner',{method:'POST',headers:{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'},body:JSON.stringify(Object.assign({reason:sel.value,note:note},(sel.value==='no_suitable_offers'&&window._nsoGet)?_nsoGet():{}))}).then(function(r){return r.json();}).then(function(d){
     if(d&&d.ok){ var ov=document.getElementById('closeModalOv'); if(ov)ov.remove();

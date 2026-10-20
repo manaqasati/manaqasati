@@ -230,7 +230,7 @@ function openCloseModalC(id, ev){ if(ev){ev.stopPropagation();}
       +'<label class="cmc-r"><input type="radio" name="cmcreason" value="postponed"> أجّلت أو ألغيت المشروع</label>'
       +'<label class="cmc-r"><input type="radio" name="cmcreason" value="no_suitable_offers"> لم تصلني عروض مناسبة</label>'
       +'<label class="cmc-r"><input type="radio" name="cmcreason" value="other"> سبب آخر</label>'
-      +'<textarea id="cmc-note" placeholder="تفاصيل إضافية (اختياري)" style="width:100%;margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-family:Tajawal;font-size:13px;min-height:60px;resize:vertical"></textarea>'
+      +'<div id="cmc-otherhint" style="display:none;margin-top:10px;font-size:12.5px;font-weight:800;color:#b45309">✍️ اكتب السبب (إلزامي) — يساعدنا نحسّن المنصة</div><textarea id="cmc-note" placeholder="تفاصيل إضافية (اختياري)" style="width:100%;margin-top:10px;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-family:Tajawal;font-size:13px;min-height:60px;resize:vertical"></textarea>'
       +'<button onclick="_cmcConfirm()" style="width:100%;margin-top:12px;background:#dc2626;color:#fff;border:none;border-radius:11px;padding:13px;font-family:Tajawal;font-weight:800;font-size:14px;cursor:pointer">تأكيد الإغلاق</button>'
     +'</div>'
     +'<button onclick="document.getElementById(\'closeModalOvC\').remove()" style="width:100%;margin-top:10px;background:none;border:none;color:#64748b;font-family:Tajawal;font-size:13px;cursor:pointer">إلغاء</button>'
@@ -238,6 +238,7 @@ function openCloseModalC(id, ev){ if(ev){ev.stopPropagation();}
     +'</div>';
   document.body.appendChild(d);
   try{ if(window._nsoMount)_nsoMount('cmcreason'); }catch(e){}
+  try{ [].forEach.call(document.querySelectorAll('input[name=cmcreason]'),function(r){ r.addEventListener('change',function(){ var oth=document.querySelector('input[name=cmcreason]:checked'); oth=oth&&oth.value==='other'; var t=document.getElementById('cmc-note'), h=document.getElementById('cmc-otherhint'); if(h)h.style.display=oth?'block':'none'; if(t){ t.placeholder=oth?'مثال: لقيت مقاول قريب لي · غيّرت رأيي في التصميم · المشروع انتقل لشخص ثاني':'تفاصيل إضافية (اختياري)'; t.style.borderColor=oth?'#f59e0b':'#e2e8f0'; if(oth)t.focus(); } }); }); }catch(e){}
 }
 function _cmcChose(){
   var st=document.getElementById('cmc-step1'); if(!st)return;
@@ -251,6 +252,7 @@ function _cmcConfirm(){
   var sel=document.querySelector('input[name=cmcreason]:checked');
   if(!sel){ showToast('اختر سبب الإغلاق','error'); return; }
   var note=(document.getElementById('cmc-note')||{}).value||'';
+  if(sel.value==='other'&&note.trim().length<10){ showToast('اكتب سبب الإغلاق (10 حروف على الأقل)','error'); try{document.getElementById('cmc-note').focus();}catch(e){} return; }
   fetch(API+'/api/requests/'+window._closeReqId+'/close-by-owner',Object.assign({method:'POST',body:JSON.stringify(Object.assign({reason:sel.value,note:note},(sel.value==='no_suitable_offers'&&window._nsoGet)?_nsoGet():{}))},hdr())).then(function(r){return r.json();}).then(function(d){
     if(d&&d.ok){ var ov=document.getElementById('closeModalOvC'); if(ov)ov.remove(); var _cid=window._closeReqId; loadReqs(); loadHome(); if(curRequestId&&String(curRequestId)===String(_cid)){ openDetail(_cid); }
       if(window._pcSheet&&(d.offers||d.postponed)) _pcSheet(d,_cid,function(){ openDetail(_cid); },function(){ repostReq(_cid); });

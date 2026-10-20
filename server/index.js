@@ -10146,6 +10146,7 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
     const note = String(req.body.note||'').slice(0,500);
     const REASONS = ['chose_outside','price_high','postponed','no_suitable_offers','other'];
     if (!REASONS.includes(reason)) return res.status(400).json({ message: 'سبب غير صحيح' });
+    if (reason === 'other' && note.trim().length < 10) return res.status(400).json({ message: 'اكتب سبب الإغلاق (10 حروف على الأقل)' });
     // «سبب آخر» وكلامه تأجيل (بانتظار/لاحقاً/بعدين…) ← ينحسب تأجيل
     if (reason === 'other' && _POSTPONE_RX.test(note)) reason = 'postponed';
     const _postponed = reason === 'postponed';
