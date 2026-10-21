@@ -1625,11 +1625,30 @@ function _pfStory(){
   var ov=document.createElement('div'); ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.75);display:flex;align-items:center;justify-content:center;padding:16px;font-family:Tajawal,sans-serif;direction:rtl';
   ov.innerHTML='<div style="background:#fff;border-radius:20px;padding:16px;max-width:340px;width:100%;display:flex;flex-direction:column;gap:12px;max-height:94vh;overflow:auto"><b style="font-family:Cairo,sans-serif;font-size:16px;color:#0f2544;text-align:center">صورة ستوري لصفحتك</b>'
     +'<img src="'+u+'" alt="صورة ستوري" style="width:100%;border-radius:14px;aspect-ratio:9/16;background:#0b1f4d;object-fit:cover">'
-    +'<a href="'+u+'?dl=1" download="manaqasa-story.png" style="display:block;text-align:center;background:#1d4ed8;color:#fff;border-radius:12px;padding:12px;font-weight:900;text-decoration:none">⬇ حمّل الصورة</a>'
+    +'<a href="'+u+'?dl=1" download="manaqasa-story.png" onclick="return _pfStoryDl(\''+u+'\',this)" style="display:block;text-align:center;background:#1d4ed8;color:#fff;border-radius:12px;padding:12px;font-weight:900;text-decoration:none">⬇ حمّل الصورة</a>'
     +'<div style="font-size:12.5px;font-weight:700;color:#475569;line-height:1.8;text-align:center">انشرها في تيك توك أو سناب أو حالة الواتساب — أي أحد يمسح الكود يدخل صفحتك مباشرة</div>'
     +'<button type="button" style="border:0;background:none;color:#64748b;font-family:inherit;font-weight:800;cursor:pointer;padding:6px">إغلاق</button></div>';
   ov.addEventListener('click',function(e){ if(e.target===ov||e.target.tagName==='BUTTON')ov.remove(); });
   document.body.appendChild(ov);
+}
+// داخل التطبيق: رابط التحميل كان يفتح الصورة مكان التطبيق فيعلق المستخدم بدون رجوع
+// ← نشاركها/نحفظها بقائمة الجوال، ولو ما تدعمها نعرضها كاملة مع «اضغط مطوّلاً واحفظ» وزر إغلاق
+function _pfStoryDl(u,a){
+  var inApp=!!(window.ReactNativeWebView||/; wv\)|Manaqasa/i.test(navigator.userAgent||''));
+  if(!inApp) return true;
+  if(a){ a.style.opacity='.6'; a.textContent='جاري التجهيز…'; }
+  var done=function(){ if(a){ a.style.opacity=''; a.textContent='⬇ حمّل الصورة'; } };
+  var show=function(){ done(); var o=document.createElement('div'); o.style.cssText='position:fixed;inset:0;z-index:10001;background:#0b1220;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;font-family:Tajawal,sans-serif;direction:rtl';
+    o.innerHTML='<img src="'+u+'" alt="صورة ستوري" style="max-width:100%;max-height:72vh;border-radius:14px"><div style="color:#fff;font-weight:800;font-size:14px;text-align:center;line-height:1.8">اضغط على الصورة مطوّلاً ← «حفظ الصورة»<br><span style="color:#94a3b8;font-size:12.5px">أو خذ لقطة شاشة لها</span></div><button type="button" style="background:#fff;color:#0f172a;border:0;border-radius:12px;padding:12px 28px;font-family:inherit;font-weight:900;font-size:15px">رجوع</button>';
+    o.querySelector('button').onclick=function(){ o.remove(); }; document.body.appendChild(o); };
+  try{
+    fetch(u+'?dl=1').then(function(r){ if(!r.ok) throw 0; return r.blob(); }).then(function(b){
+      var f=new File([b],'manaqasa-story.png',{type:b.type||'image/png'});
+      if(navigator.canShare&&navigator.canShare({files:[f]})){ return navigator.share({files:[f]}).then(done,function(e){ if(e&&e.name==='AbortError') done(); else show(); }); }
+      show();
+    }).catch(show);
+  }catch(e){ show(); }
+  return false;
 }
 function _pfLinkBio(app){ _copyText(_pfLinkUrl()); setTimeout(function(){ showToast('نسخنا الرابط — الصقه في البايو حق '+app,'success'); },300); }
 function _pfEnhance(pg,n){

@@ -2987,6 +2987,7 @@ async function clientOnly(req, res, next) {
   try { const r = await pool.query('SELECT can_request FROM users WHERE id=$1', [req.user.id]); if (r.rows[0] && r.rows[0].can_request) return next(); } catch(e){}
   return res.status(403).json({ message: 'للعملاء فقط' });
 }
+async function _canReq(uid){ try { const r = await pool.query('SELECT COALESCE(can_request,FALSE) AS c FROM users WHERE id=$1', [uid]); return !!(r.rows[0] && r.rows[0].c); } catch(e){ return false; } }
 async function providerOnly(req, res, next) {
   if (req.user.role === 'provider' || req.user.role === 'admin') return next();
   try { const r = await pool.query('SELECT can_provide FROM users WHERE id=$1', [req.user.id]); if (r.rows[0] && r.rows[0].can_provide) return next(); } catch(e){}
@@ -3318,6 +3319,9 @@ async function setupDatabase() {
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS can_request BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await _mig("UPDATE users SET can_provide=TRUE WHERE role='provider' AND can_provide IS NOT TRUE"); } catch(e){}
     try { await _mig("UPDATE users SET can_request=TRUE WHERE role='client' AND can_request IS NOT TRUE"); } catch(e){}
+    // عميل فعّل «تقديم العروض» = مزوّد يقدر يطلب خدمات (نفس المزوّد اللي فعّل وضع العميل).
+    // كان يبقى role='client' فينحرم من: إشعارات المشاريع الجديدة، صفحته العامة، صورة الستوري، الدليل، المستويات…
+    try { const _cv = await _mig("UPDATE users SET role='provider', can_request=TRUE WHERE role='client' AND COALESCE(can_provide,FALSE)=TRUE RETURNING id"); if (_cv.rowCount) console.log('dual→provider:', _cv.rowCount); } catch(e){}
     // آخر حساب استخدمه صاحب الحسابين (عميل/مزوّد) — يرجع له عند أي دخول جديد حتى من جهاز ثاني
     await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_mode VARCHAR(10)');
     await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS provider_hint_dismissed BOOLEAN DEFAULT FALSE');
@@ -4059,9 +4063,10 @@ app.post('/api/me/enable-provider', auth, async (req, res) => {
     if (!specs.length) return res.status(400).json({ message: 'اختر تخصصاً واحداً على الأقل' });
     if (!city) return res.status(400).json({ message: 'أدخل مدينتك' });
     await pool.query(
-      "UPDATE users SET can_provide=TRUE, last_mode='provider', specialties=$1, city=COALESCE(NULLIF($2,''),city), bio=COALESCE(NULLIF($3,''),bio), notify_categories=COALESCE(notify_categories,$1) WHERE id=$4",
+      "UPDATE users SET can_provide=TRUE, can_request=TRUE, role=CASE WHEN role='client' THEN 'provider' ELSE role END, last_mode='provider', specialties=$1, city=COALESCE(NULLIF($2,''),city), bio=COALESCE(NULLIF($3,''),bio), notify_categories=COALESCE(notify_categories,$1) WHERE id=$4",
       [specs, city, bio, req.user.id]
     );
+    _userState.delete(req.user.id);
     res.json({ ok: true, message: 'تم تفعيل تقديم العروض' });
   } catch(e){ console.error('enable-provider:', e.message); res.status(500).json({ message: 'تعذّر التفعيل' }); }
 });
@@ -4109,7 +4114,7 @@ app.post('/api/drafts/save', rateLimiter(60, 60000), express.json({ limit: '24kb
   try {
     const b = req.body || {}; const did = String(b.did || '');
     if (!/^[a-z0-9]{12,40}$/.test(did)) return res.status(400).json({ ok: false });
-    if (req.user && req.user.role !== 'client') return res.json({ ok: true, skip: 1 });
+    if (req.user && req.user.role !== 'client' && !(await _canReq(req.user.id))) return res.json({ ok: true, skip: 1 });
     const ua = String(req.headers['user-agent'] || ''); if (!ua || _BOT_RE.test(ua)) return res.json({ ok: true, skip: 1 });
     const f = _drClean(b.f);
     if (!f.t && !f.d) return res.json({ ok: true, skip: 1 });
@@ -6422,7 +6427,7 @@ app.post('/api/admin/message-client', auth, adminOnly, async (req, res) => {
     const reqId = req.body.request_id ? parseInt(req.body.request_id) : null;
     const doEmail = req.body.email !== false;
     if (!clientId || !content) return res.status(400).json({ message: 'اختر العميل واكتب الرسالة' });
-    const cli = await pool.query("SELECT id, name, email FROM users WHERE id=$1 AND role='client'", [clientId]);
+    const cli = await pool.query("SELECT id, name, email FROM users WHERE id=$1 AND (role='client' OR COALESCE(can_request,FALSE))", [clientId]);
     if (!cli.rows.length) return res.status(404).json({ message: 'العميل غير موجود' });
     if (reqId) {
       const rq = await pool.query('SELECT id FROM requests WHERE id=$1 AND client_id=$2', [reqId, clientId]);
@@ -6447,7 +6452,7 @@ app.get('/api/admin/inbox', auth, adminOnly, async (req, res) => {
         (SELECT COUNT(*) FROM messages m4 WHERE m4.sender_id=c.other_id AND m4.receiver_id=$1 AND m4.is_read=false)::int AS unread
       FROM (SELECT DISTINCT CASE WHEN sender_id=$1 THEN receiver_id ELSE sender_id END AS other_id
             FROM messages WHERE sender_id=$1 OR receiver_id=$1) c
-      JOIN users u ON u.id=c.other_id AND u.role='client'
+      JOIN users u ON u.id=c.other_id AND (u.role='client' OR COALESCE(u.can_request,FALSE))
       ORDER BY last_time DESC NULLS LAST LIMIT 100`, [me]);
     res.json(r.rows);
   } catch(e){ console.error('admin-inbox:', e.message); res.json([]); }
@@ -6481,7 +6486,7 @@ app.get('/api/admin/client-projects', auth, adminOnly, async (req, res) => {
 // سياق العميل في المحادثة: مشاريعه المفتوحة + هل قدّم هذا المزوّد عليها/على مشروع المحادثة
 app.get('/api/client/quote-context', auth, async (req, res) => {
   try {
-    if (req.user.role !== 'client') return res.json({ open: [], cur_open: false, cur_bid: true });
+    if (req.user.role !== 'client' && !(await _canReq(req.user.id))) return res.json({ open: [], cur_open: false, cur_bid: true });
     const cid = req.user.id;
     const providerId = parseInt(req.query.provider) || null;
     const curReqId = parseInt(req.query.req) || null;
