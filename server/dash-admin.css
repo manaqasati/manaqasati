@@ -1287,3 +1287,24 @@ a.cu-pv:hover{border-color:#86efac}
 [data-theme="dark"] .sa-tabs button.on{background:#2563eb;border-color:#2563eb}
 [data-theme="dark"] .sa-lk a,[data-theme="dark"] .sa-lk button{color:#93c5fd}
 .sa-rc{display:flex;width:fit-content}
+
+/* واتساب من صفحة المستخدمين */
+.act-btn.uw-wa{background:#16a34a;border-color:#16a34a;color:#fff;padding:0 10px;min-width:36px;justify-content:center}
+.act-btn.uw-wa2{background:#16a34a;border-color:#16a34a;color:#fff}
+.uw-ov{position:fixed;inset:0;z-index:3000;background:rgba(6,13,32,.55);display:flex;align-items:center;justify-content:center;padding:14px}
+.uw-m{background:var(--card,#fff);color:var(--text);border-radius:18px;width:min(560px,100%);max-height:calc(100vh - 28px);display:flex;flex-direction:column;box-shadow:0 30px 80px -10px rgba(0,0,0,.5)}
+.uw-h{display:flex;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)}.uw-h b{flex:1;font-size:16px}
+.uw-x{border:0;background:var(--bg,#f1f5f9);width:34px;height:34px;border-radius:50%;cursor:pointer;font-weight:900;color:var(--text)}
+.uw-b{padding:14px 18px;overflow:auto}
+.uw-t{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}.uw-t button{border:1.5px solid var(--border);background:var(--card,#fff);color:var(--text2);border-radius:20px;padding:5px 12px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer}
+#uwMsg{width:100%;border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:13.5px;line-height:1.7;background:var(--card,#fff);color:var(--text);resize:vertical}
+.uw-hint{font-size:11.5px;color:var(--muted);font-weight:700;margin:6px 0 10px;line-height:1.7}
+.uw-next{width:100%;background:#16a34a;color:#fff;border:0;border-radius:12px;padding:12px;font-family:inherit;font-weight:900;font-size:14.5px;cursor:pointer;min-height:46px}
+.uw-p{font-size:12.5px;font-weight:800;color:var(--muted);margin:12px 0 4px}
+.uw-r{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}.uw-r b{display:block;font-size:13.5px}.uw-r small{font-size:11.5px;color:var(--muted);font-weight:700}
+.uw-r button{border:1.5px solid #86efac;background:#f0fdf4;color:#15803d;border-radius:10px;padding:6px 14px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;min-height:34px}
+.uw-r.done{opacity:.6}.uw-r.done button{background:var(--bg,#f1f5f9);border-color:var(--border);color:var(--muted)}
+.uw-no{color:var(--muted)}
+[data-theme="dark"] .uw-r button{background:rgba(22,163,74,.12);border-color:#166534;color:#86efac}
+@media(max-width:1600px){#users-table td:last-child .act-btn{padding-inline:9px;font-size:12px;gap:4px}#users-table td:last-child .act-btn svg{width:14px;height:14px}}
+@media(max-width:1500px){#users-table td:last-child .act-btn.ab-default svg{display:none}}

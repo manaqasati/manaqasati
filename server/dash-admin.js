@@ -699,7 +699,7 @@ function renderUsers(){
       +'<td>'+(function(){var p=_uPct(u); if(p==null)return '<span style="color:var(--muted)">—</span>'; var c=p>=80?'#16a34a':(p>=50?'#f59e0b':'#dc2626'); return '<div class="u-pc"><div class="b"><i style="width:'+p+'%;background:'+c+'"></i></div><span>'+p+'%</span></div>';})()+'</td>'
       +'<td>'+_uSeen(u)+'</td>'
       +'<td><span class="status '+(u.is_active?'s-on':'s-off')+'">'+(u.is_active?'نشط':'محظور')+'</span></td>'
-      +'<td><div style="display:flex;gap:6px">'+(u.role==='provider'?_proLink(u.id):'')+'<button class="act-btn ab-default" onclick="openUserView('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</button><button class="act-btn ab-primary" onclick="openUserModal('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>إدارة</button></div></td>'
+      +'<td><div style="display:flex;gap:6px">'+(_waNorm(u.phone)?'<button class="act-btn uw-wa" title="واتساب" aria-label="واتساب" onclick="_uWa('+u.id+')"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 14.4c-.3-.1-1.8-.9-2-1-.3-.1-.5-.1-.7.1-.2.3-.8 1-.9 1.2-.2.2-.3.2-.6.1-.3-.1-1.3-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.4-.5c.2-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.9-2.2c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5.1 4.5 2.5 1 3 .8 3.5.7.6-.1 1.8-.7 2-1.4.2-.7.2-1.3.2-1.4-.1-.1-.3-.2-.6-.3zM12 2a10 10 0 0 0-8.6 15l-1.4 5 5.1-1.3A10 10 0 1 0 12 2z"/></svg></button>':'')+(u.role==='provider'?_proLink(u.id):'')+'<button class="act-btn ab-default" onclick="openUserView('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>عرض</button><button class="act-btn ab-primary" onclick="openUserModal('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>إدارة</button></div></td>'
     +'</tr>';
   }).join('')+'</tbody></table>'+_pager('u',_total);
   updateSelBar();
@@ -1164,10 +1164,11 @@ function renderDuplicates(d){
   if(em.length)h+='<div style="font-weight:900;font-size:13px;margin:14px 0 8px">📧 مكرّر بالبريد ('+em.length+')</div>'+em.map(function(g){return _dupGroup(g,'البريد');}).join('');
   b.innerHTML=h;
 }
-function exportUsers(){
+function exportUsers(onlySel){
   var list=getFilteredUsers();
+  if(onlySel===true){ list=(_allUsers||[]).filter(function(u){return _selUsers[u.id];}); }
   if(!list.length){toast('لا توجد بيانات للتصدير','error');return;}
-  if(!_xlsxReady(exportUsers))return;
+  if(!_xlsxReady(function(){exportUsers(onlySel);}))return;
   if(typeof XLSX==='undefined'||!XLSX.utils){ exportUsersCSV(list); return; }
   var headers=['الاسم','البريد الإلكتروني','الجوال','الدور','المدينة','التخصصات','اللقب','المستوى','موثّق','الحالة','الطلبات','العروض','التقييم','تاريخ التسجيل'];
   var aoa=[headers];
@@ -7298,3 +7299,37 @@ function _nsPaint(){
   if(!p||!p.iat||(Date.now()/1000-p.iat)<2*86400) return;
   setTimeout(function(){ fetch(API+'/api/auth/refresh',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'}}).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(!d||!d.token||localStorage.getItem('token')!==t) return; try{ localStorage.setItem('token',d.token); if(localStorage.getItem('adminToken')) localStorage.setItem('adminToken',d.token); }catch(e){} try{ if(typeof token!=='undefined') token=d.token; }catch(e){} }).catch(function(){}); },3000);
 }catch(e){} })();
+
+// ═══ واتساب من صفحة المستخدمين: لشخص واحد، أو للمحدّدين واحد واحد ═══
+function _uFirst(n){ var w=String(n||'').trim().split(/\s+/); return (/^(أبو|ابو|أم|ام)$/.test(w[0])&&w[1])?w[0]+' '+w[1]:(w[0]||''); }
+function _uWaUrl(u,msg){ var ph=_waNorm(u.phone); if(!ph)return null; var t=String(msg||'').replace(/\{الاسم\}/g,_uFirst(u.name)); return 'https://wa.me/'+ph+(t?'?text='+encodeURIComponent(t):''); }
+function _uWa(id){ var u=(_allUsers||[]).find(function(x){return x.id===id;}); if(!u)return; var url=_uWaUrl(u,'السلام عليكم {الاسم}، معك فريق منصة مناقصة 👋\n'); if(url) window.open(url,'_blank','noopener'); }
+var _UWT=[
+  ['تحية','السلام عليكم {الاسم}، معك فريق منصة مناقصة 👋\n'],
+  ['كمّل ملفك','السلام عليكم {الاسم}، معك فريق منصة مناقصة 👋\nلاحظنا إن ملفك في المنصة ناقص — كمّله (صور أعمالك ونبذة عنك) عشان يثق فيك العملاء وتنقبل عروضك أكثر:\nhttps://manaqasa.com/dashboard-provider.html#profile'],
+  ['فيه مشاريع تناسبك','السلام عليكم {الاسم}، معك فريق منصة مناقصة 👋\nفيه مشاريع جديدة في تخصصك ومدينتك تنتظر عروض — ادخل وقدّم عرضك:\nhttps://manaqasa.com/dashboard-provider.html#browse'],
+  ['انشر مشروعك','السلام عليكم {الاسم}، معك فريق منصة مناقصة 👋\nعندك مشروع؟ انشره مجاناً وتجيك عروض أسعار من مزوّدين في مدينتك:\nhttps://manaqasa.com/new']
+];
+function _uWaBulk(){
+  var L=(_allUsers||[]).filter(function(u){return _selUsers[u.id];});
+  if(!L.length){ toast('حدّد مستخدمين أول','error'); return; }
+  window._uwSent=window._uwSent||{};
+  var ov=document.createElement('div'); ov.className='uw-ov'; ov.id='uwOv';
+  var noPh=L.filter(function(u){return !_waNorm(u.phone);}).length;
+  ov.innerHTML='<div class="uw-m" role="dialog" aria-label="واتساب للمحدّدين"><div class="uw-h"><b>💬 واتساب للمحدّدين ('+L.length+')</b><button type="button" class="uw-x" onclick="document.getElementById(\'uwOv\').remove()" aria-label="إغلاق">✕</button></div>'
+    +'<div class="uw-b"><div class="uw-t">'+_UWT.map(function(t,i){return '<button type="button" onclick="document.getElementById(\'uwMsg\').value=_UWT['+i+'][1]">'+esc(t[0])+'</button>';}).join('')+'</div>'
+    +'<textarea id="uwMsg" rows="5">'+esc(_UWT[0][1])+'</textarea><div class="uw-hint">«{الاسم}» يتبدّل باسم كل شخص · واتساب ما يسمح بإرسال جماعي، فتفتح المحادثات واحدة واحدة — اضغط «التالي» بعد ما ترسل</div>'
+    +'<button type="button" class="uw-next" onclick="_uWaNext()">افتح التالي ←</button>'
+    +'<div class="uw-l" id="uwList"></div>'+(noPh?'<div class="uw-hint" style="color:#b45309">'+noPh+' بدون رقم جوال — ما ينرسل لهم</div>':'')+'</div></div>';
+  document.body.appendChild(ov); _uWaList();
+}
+function _uWaList(){
+  var box=document.getElementById('uwList'); if(!box)return;
+  var L=(_allUsers||[]).filter(function(u){return _selUsers[u.id];}), S=window._uwSent||{};
+  var done=L.filter(function(u){return S[u.id];}).length;
+  box.innerHTML='<div class="uw-p">'+done+' من '+L.filter(function(u){return _waNorm(u.phone);}).length+' انفتحت</div>'+L.map(function(u){ var ok=!!_waNorm(u.phone);
+    return '<div class="uw-r'+(S[u.id]?' done':'')+'"><div style="flex:1;min-width:0"><b>'+esc(u.name||'—')+'</b><small>'+esc(u.phone||'بدون رقم')+(u.city?' · '+esc(u.city):'')+'</small></div>'
+      +(ok?'<button type="button" onclick="_uWaOne('+u.id+')">'+(S[u.id]?'✓ انفتحت':'افتح')+'</button>':'<span class="uw-no">—</span>')+'</div>'; }).join('');
+}
+function _uWaOne(id){ var u=(_allUsers||[]).find(function(x){return x.id===id;}); if(!u)return; var url=_uWaUrl(u,(document.getElementById('uwMsg')||{}).value||''); if(!url)return; window._uwSent[id]=1; window.open(url,'_blank','noopener'); _uWaList(); }
+function _uWaNext(){ var L=(_allUsers||[]).filter(function(u){return _selUsers[u.id]&&_waNorm(u.phone)&&!(window._uwSent||{})[u.id];}); if(!L.length){ toast('خلصت — انفتحت كل المحادثات ✓','success'); return; } _uWaOne(L[0].id); }
