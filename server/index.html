@@ -1910,7 +1910,7 @@ function demoPublish(){
     // الزائر → معالج النشر
     location.href='/new.html?q='+encodeURIComponent(title.slice(0,120))+(cat?'&cat='+encodeURIComponent(cat):''); return;
   }
-  if(u.role!=='client'){ demoMsg('النشر متاح لحسابات العملاء فقط','err'); return; }
+  if(u.role!=='client'&&!u.can_request){ demoMsg('النشر متاح لحسابات العملاء فقط','err'); return; }
   if(!title){ demoMsg('أدخل عنوان المشروع أولاً','err'); return; }
   var body={title:title,description:desc,category:cat,city:loc};
   demoMsg('جاري النشر...','info');
@@ -2187,7 +2187,7 @@ function _realBidRow(b,best){
 }
 function initDemoBids(){
   var u=getUser();
-  if(!u || u.role!=='client') return; // غير مسجّل أو ليس عميلاً → يبقى المثال التوضيحي
+  if(!u || (u.role!=='client'&&!u.can_request)) return; // غير مسجّل أو ليس عميلاً → يبقى المثال التوضيحي
   var tok=localStorage.getItem('token'); if(!tok) return;
   fetch(API+'/api/requests/my',{headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok},cache:'no-store'})
     .then(function(r){return r.ok?r.json():[];})

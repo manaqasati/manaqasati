@@ -672,7 +672,7 @@ function _pjHidBar(){
 function _bidRating(b){return parseFloat(b.avg_rating||b.provider_rating)||0;}
 function _unitLabel(u){return u==='meter'?'/ متر':u==='unit'?'/ وحدة':'';}
 function _maskNums(t){ return String(t).replace(/[0-9٠-٩۰-۹]{3,}/g,'🔒'); }
-function _isOwnerView(){var u=getUser(),req=_req||{};return !!(u&&u.role==='client'&&(String(u.id)===String(req.client_id)||String(u.id)===String(req.client&&req.client.id)));}
+function _isOwnerView(){var u=getUser(),req=_req||{};return !!(u&&(u.role==='client'||u.can_request)&&(String(u.id)===String(req.client_id)||String(u.id)===String(req.client&&req.client.id)));}
 function _totalPrices(){return _bids.filter(function(b){return (b.price_unit||'total')==='total'&&Number(b.price)>0&&b.status!=='rejected';}).map(function(b){return Number(b.price);});}
 function _bidStats(){
   var prices=_totalPrices();
@@ -1306,7 +1306,7 @@ function doMsg(){
   if(!u){goLogin();return;}
   // العميل صاحب المشروع لا يحتاج يراسل نفسه
   var ownerId=(_req&&_req.client_id)||(_req&&_req.client&&_req.client.id);
-  if(u.role==='client'&&String(u.id)===String(ownerId)){
+  if(String(u.id)===String(ownerId)){
     alert('هذا مشروعك — يمكنك التواصل مع المزودين عبر العروض');return;
   }
   var clientName=(_req&&_req.client&&_req.client.name)||(_req&&_req.client_name)||'صاحب المشروع';
@@ -1619,7 +1619,7 @@ function renderQuestions(qs){
   var el=document.getElementById('questions-wrap');
   if(!el)return;
   var u=getUser();
-  var isOwner=u&&_req&&u.role==='client'&&(String(u.id)===String(_req.client_id)||String(u.id)===String(_req.client&&_req.client.id));
+  var isOwner=u&&_req&&(u.role==='client'||u.can_request)&&(String(u.id)===String(_req.client_id)||String(u.id)===String(_req.client&&_req.client.id));
   var list='';
   if(!qs.length){
     list='<div style="text-align:center;padding:24px 14px"><div style="width:48px;height:48px;background:var(--p-light,#dbeafe);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 11px;font-size:22px">❓</div><div style="font-size:13px;font-weight:800;color:var(--text)">لا توجد أسئلة بعد</div><div style="font-size:11.5px;color:var(--muted);margin-top:4px">اسأل صاحب المشروع عن أي تفاصيل قبل تقديم عرضك</div></div>';
