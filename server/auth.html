@@ -645,7 +645,7 @@ function togglePw(id,btn){
     :'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 }
 
-function getV(id){var e=document.getElementById(id);return e?e.value.trim():'';}
+function getV(id){var e=document.getElementById(id);var v=e?e.value.trim():'';if(/phone|otp|code/i.test(id))v=v.replace(/[\u0660-\u0669]/g,function(d){return d.charCodeAt(0)-0x660;}).replace(/[\u06F0-\u06F9]/g,function(d){return d.charCodeAt(0)-0x6F0;});return v;}
 function validatePhone(v){var d=v.replace(/[^0-9]/g,'');return d.length===10&&d.startsWith('05');}
 function fmtPhone(v){
   var d=v.replace(/[^0-9]/g,'');
