@@ -3933,6 +3933,7 @@ app.get('/api/account/deletion-preview', auth, async (req, res) => {
       const r2 = await pool.query('SELECT COUNT(*)::int as c FROM bids WHERE provider_id=$1', [userId]); stats.bids = r2.rows[0].c;
       const r3 = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct')`, [userId]); stats.active_projects = r3.rows[0].c;
     }
+    { const ro = await pool.query("SELECT COUNT(*)::int as c FROM requests WHERE client_id=$1 AND status IN ('open','pending_review','review','needs_edit','in_progress','accepted') AND (category IS DISTINCT FROM 'direct')", [userId]); stats.open_projects = ro.rows[0].c; }
     const r4 = await pool.query('SELECT COUNT(*)::int as c FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]); stats.messages = r4.rows[0].c;
     const r5 = await pool.query('SELECT COUNT(*)::int as c FROM reviews WHERE reviewer_id=$1 OR reviewed_id=$1', [userId]); stats.reviews = r5.rows[0].c;
     const r6 = await pool.query('SELECT COUNT(*)::int as c FROM notifications WHERE user_id=$1', [userId]); stats.notifications = r6.rows[0].c;
@@ -3940,6 +3941,16 @@ app.get('/api/account/deletion-preview', auth, async (req, res) => {
   } catch(e) { console.error('deletion-preview:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
+// الحذف يتبع قيود الجداول الفعلية في القاعدة (لو فيه جدول قديم مربوط بدون CASCADE ما يطيّح الحذف)
+async function _fkClear(client, refTable, ids){
+  if (!ids || !ids.length) return;
+  const fks = (await client.query(`SELECT c.conrelid::regclass::text AS t, a.attname AS col, a.attnotnull AS nn FROM pg_constraint c JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=ANY(c.conkey) WHERE c.contype='f' AND c.confrelid=$1::regclass AND c.confdeltype IN ('a','r') AND c.conrelid<>$1::regclass`, [refTable])).rows;
+  for (const f of fks) {
+    const col = '"' + String(f.col).replace(/"/g, '""') + '"';
+    if (f.nn) await client.query(`DELETE FROM ${f.t} WHERE ${col} = ANY($1::int[])`, [ids]);
+    else await client.query(`UPDATE ${f.t} SET ${col}=NULL WHERE ${col} = ANY($1::int[])`, [ids]);
+  }
+}
 app.delete('/api/account/delete', auth, async (req, res) => {
   try {
     const userId = req.user.id; const role = req.user.role; const { confirmation } = req.body;
@@ -3953,7 +3964,10 @@ app.delete('/api/account/delete', auth, async (req, res) => {
     if (!userInfo.rows.length) return res.status(404).json({ message: 'الحساب غير موجود' });
     const userName = userInfo.rows[0].name; const userEmail = userInfo.rows[0].email;
     // معاملة حقيقية على اتصال مخصّص — يضمن التراجع الكامل عند أي فشل
+    // المزوّدين اللي قدّموا على مشاريعه المفتوحة — نبلّغهم بعد الحذف إن المشروع انقفل
+    const _bidders = (await pool.query(`SELECT DISTINCT b.provider_id, r.id AS rid, r.title FROM bids b JOIN requests r ON r.id=b.request_id WHERE r.client_id=$1 AND b.provider_id<>$1 AND r.status IN ('open','in_progress','accepted')`, [userId])).rows;
     const client = await pool.connect();
+    let _step = 'begin';
     try {
       await client.query('BEGIN');
       // الحذف حسب العلاقة مو حسب الدور — الحساب اللي عنده دورين (عميل ومزوّد) كان يفشل حذفه
@@ -3967,8 +3981,13 @@ app.delete('/api/account/delete', auth, async (req, res) => {
       await client.query('DELETE FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]);
       await client.query('DELETE FROM favorites WHERE user_id=$1 OR provider_id=$1', [userId]);
       await client.query('DELETE FROM push_tokens WHERE user_id=$1', [userId]);
+      _step = 'requests';
+      const _ownIds = (await client.query('SELECT id FROM requests WHERE client_id=$1', [userId])).rows.map(x => x.id);
+      await _fkClear(client, 'requests', _ownIds);
       await client.query('DELETE FROM requests WHERE client_id=$1', [userId]); // العروض والرسائل والأسئلة تنحذف معها تلقائياً
       await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [userId]);
+      _step = 'users';
+      await _fkClear(client, 'users', [userId]);
       const del = await client.query('DELETE FROM users WHERE id=$1', [userId]);
       if (del.rowCount === 0) throw new Error('فشل حذف الحساب');
       await client.query('COMMIT');
@@ -3976,9 +3995,10 @@ app.delete('/api/account/delete', auth, async (req, res) => {
       console.log(`🗑️  Account deleted: ${userName} (${userEmail}) [id=${userId}, role=${role}]`);
       if (userEmail && RESEND_KEY) sendEmail(userEmail, 'تم حذف حسابك من منصة مناقصة', emailTpl('تم حذف حسابك', `<p>عزيزي ${eEsc(userName)}،</p><p>تم حذف حسابك من منصة مناقصة بنجاح.</p>`, null, null)).catch(()=>{});
       res.json({ ok: true, message: 'تم حذف حسابك بنجاح. شكراً لاستخدامك منصة مناقصة.' });
-    } catch(e) { try { await client.query('ROLLBACK'); } catch(_){} console.error('account delete transaction:', e); throw e; }
+      for (const x of _bidders) notify(x.provider_id, 'أُغلق مشروع «' + String(x.title||'').slice(0, 60) + '»', 'صاحب المشروع حذف حسابه من المنصة، فالمشروع ما عاد متاح. لا تشيل هم — مشاريع جديدة توصلك أول بأول.', 'request', null).catch(()=>{});
+    } catch(e) { try { await client.query('ROLLBACK'); } catch(_){} console.error('account delete transaction [' + _step + ']:', e.code, e.table || '', e.constraint || '', e.message); e._ref = [_step, e.code, e.constraint || e.table || ''].filter(Boolean).join('/'); throw e; }
     finally { client.release(); }
-  } catch(e) { console.error('DELETE /api/account/delete:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  } catch(e) { console.error('DELETE /api/account/delete:', e); res.status(500).json({ message: 'تعذّر حذف الحساب — تواصل معنا على cs@manaqasa.com ونحذفه لك' + (e._ref ? ' (رمز: ' + e._ref + ')' : ''), ref: e._ref || null }); }
 });
 
 // ═══ PROFILES ═══

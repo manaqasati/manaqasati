@@ -155,10 +155,10 @@ function pickReason(i,el){
 }
 
 // تنبيهات قبل خطوة التأكيد: مشاريع قيد التنفيذ + سعي غير مسدد
-var _warns={active:'',saai:''};
+var _warns={open:'',active:'',saai:''};
 function renderWarns(){
   var w=document.getElementById('warn-wrap'); if(!w) return;
-  var h=_warns.active+_warns.saai;
+  var h=(_warns.open||'')+_warns.active+_warns.saai;
   w.innerHTML=h?'<div class="warn-box">'+h+'</div>':'';
 }
 
@@ -168,6 +168,8 @@ function loadStats(){
   }).then(function(r){return r.json();}).then(function(d){
     if(d&&d.stats){
       var s=d.stats;
+      var op=parseInt(s.open_projects)||0;
+      if(op>0){ _warns.open='<span>📌 عندك '+op+' '+(op===1?'مشروع مفتوح':'مشاريع مفتوحة')+' — بتنقفل مع الحذف، ونبلّغ المزوّدين اللي قدّموا عليها.</span>'; renderWarns(); }
       var act=parseInt(s.active_projects)||0;
       if(act>0){
         _warns.active='⚠️ عندك '+act+' '+(act===1?'مشروع':'مشاريع')+' قيد التنفيذ — لازم تكملها أو تتفق مع العميل قبل الحذف.';
