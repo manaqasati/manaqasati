@@ -754,7 +754,7 @@ app.get('/dashboard-provider.html',(req, res) => res.sendFile(__dirname + '/dash
 app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth.html'));
 // رابط الدخول القصير: /m/الرمز → صفحة الدخول السحري
 // ?n= وجهة بعد الدخول (صفحات اللوحات فقط)
-function _magicNext(n){ n = String(n||''); return (/^\/(dashboard-client|dashboard-provider)\.html(#[a-z]+(\/\d+)?)?$/.test(n) || /^\/new\.html\?draft=[a-f0-9]{32}$/.test(n) || /^\/new\.html\?exec=\d{1,10}$/.test(n)) ? n : ''; }
+function _magicNext(n){ n = String(n||''); return (/^\/(dashboard-client|dashboard-provider)\.html(#[a-z]+(\/\d+)?)?$/.test(n) || /^\/new\.html\?draft=[a-f0-9]{32}$/.test(n) || /^\/new\.html\?exec=\d{1,10}$/.test(n) || /^\/dashboard-client\.html\?edit=\d{1,10}$/.test(n)) ? n : ''; }
 app.get('/m/:token',               (req, res) => { const n = _magicNext(req.query.n); res.redirect(302, '/auth.html?magic=' + encodeURIComponent(req.params.token) + (n ? '&next=' + encodeURIComponent(n) : '')); });
 // رابط دخول مباشر لصفحة محددة (للتذكيرات)
 async function _magicUrl(uid, next){ try { const t = await getMagicToken(uid); const n = _magicNext(next); return SITE_URL + '/m/' + t + (n ? '?n=' + encodeURIComponent(n) : ''); } catch(e){ return SITE_URL + (next||''); } }
@@ -9888,15 +9888,15 @@ app.get('/api/admin/requests/:id/review-info', requirePermission('requests.view'
 // رابط مشروع العميل اللي يرسله لمقاول يعرفه (inv=1 → صفحة «العميل دعاك» + نحسب الزيارات والعروض)
 function _invLink(id){ return SITE_URL + '/project/x-' + id + '?id=' + id + '&inv=1'; }
 function _invWaText(title, city, id){ return `السلام عليكم، عندي مشروع «${title}»${city ? ' في ' + city : ''} على منصة مناقصة — قدّم عرضك هنا:\n${_invLink(id)}`; }
-function _reviewWa(action, title, reason, phone, id, name){
+function _reviewWa(action, title, reason, phone, id, name, editUrl){
   const ph = normPhone(phone); if (!ph) return null;
   const _note = String(reason||'').trim();
   const waMsg = (action==='approve' && id)
-    ? `السلام عليكم${name ? ' ' + name : ''}، معك فريق منصة مناقصة 👋\n\n✅ تم اعتماد ونشر مشروعك «${title}» وبدأت توصله عروض المزوّدين.${_note?`\n💡 نصيحة لعروض أفضل: ${_note}`:''}\n\n🔗 هذا رابط مشروعك:\n${_invLink(id)}\n\nعندك مقاول أو فني تعرفه؟ أرسل له الرابط يقدّم عرضه، وقارن بينه وبين عروض المنصة 👌`
+    ? `السلام عليكم${name ? ' ' + name : ''}، معك فريق منصة مناقصة 👋\n\n✅ تم اعتماد ونشر مشروعك «${title}» وبدأت توصله عروض المزوّدين.${_note?`\n\n💡 نصيحة لعروض أفضل: ${_note}`:''}${_note&&editUrl?`\n\n✏️ رابط تعديل مشروعك (يفتح لك التعديل مباشرة):\n${editUrl}`:''}\n\n🔗 رابط مشروعك${_note&&editUrl?' (شاركه مع مقاول تعرفه)':''}:\n${_invLink(id)}\n\nعندك مقاول أو فني تعرفه؟ أرسل له رابط مشروعك يقدّم عرضه، وقارن بينه وبين عروض المنصة 👌`
     : action==='approve'
     ? `السلام عليكم، تم اعتماد ونشر مشروعك «${title}» في منصة مناقصة ✅${_note?`\n💡 نصيحة لعروض أفضل: ${_note}`:''}\n\nستصلك عروض المنفّذين قريباً:\n${SITE_URL}/dashboard-client.html`
     : action==='needs_edit'
-    ? `السلام عليكم، مشروعك «${title}» في منصة مناقصة يحتاج إكمال معلومات قبل نشره للمنفذين:\n${_note}\n\nادخل وأكمل التفاصيل ليُنشر ويستقبل العروض:\n${SITE_URL}/dashboard-client.html`
+    ? `السلام عليكم، مشروعك «${title}» في منصة مناقصة يحتاج إكمال معلومات قبل نشره للمنفذين:\n${_note}\n\n✏️ اضغط هنا وعدّل مشروعك مباشرة، وبعدها يُنشر ويستقبل العروض:\n${editUrl || (SITE_URL + '/dashboard-client.html')}`
     : `السلام عليكم، بخصوص مشروعك «${title}» في منصة مناقصة:\n${_note}`;
   return `https://wa.me/${ph}?text=${encodeURIComponent(waMsg)}`;
 }
@@ -10044,12 +10044,16 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
                  : action==='needs_edit' ? `<p>🔒 مشروعك "<strong>${eEsc(row.title)}</strong>" لم يعد ظاهراً للمنفذين بسبب نقص المعلومات.</p>${reason?`<p style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 12px;color:#7f1d1d;margin:10px 0"><strong>المطلوب إكماله:</strong> ${reason}</p>`:''}<p>ادخل المنصة، أكمل التفاصيل، ثم أعد الإرسال — وسيعود مشروعك للنشر ويستقبل العروض.</p>`
                  : `<p>للأسف، تم رفض مشروعك "<strong>${eEsc(row.title)}</strong>"${reason?`<br><strong>السبب:</strong> ${reason}`:''}.</p>`;
       const cta = action==='needs_edit' ? 'تعديل المشروع' : 'فتح المنصة';
-      sendEmail(clientInfo.rows[0].email, inAppTitle, emailTpl(inAppTitle, body, cta, SITE_URL+'/dashboard-client.html')).catch(()=>{});
+      const _eu = action==='needs_edit' ? await _magicUrl(row.client_id, '/dashboard-client.html?edit=' + row.id) : SITE_URL+'/dashboard-client.html';
+      sendEmail(clientInfo.rows[0].email, inAppTitle, emailTpl(inAppTitle, body, cta, _eu)).catch(()=>{});
     }
     // عند الاعتماد: أشعر المزودين المطابقين (إشعار + إيميل) — الآن فقط، بعد المراجعة
     if (action === 'approve') { try { await notifyMatchingProviders({ id: row.id, title: row.title, category: row.category, city: row.city }); } catch(e){} }
     // رابط واتساب جاهز للإدارة (رقم العميل + رسالة معبّأة) — لكل المسارات، حتى الاعتماد بدون ملاحظة
-    const wa_link = _reviewWa(action, row.title, reason, clientInfo.rows.length ? clientInfo.rows[0].phone : null, row.id, clientInfo.rows.length ? _drFirst(clientInfo.rows[0].name) : '');
+    // رابط تعديل مباشر (يدخّله حسابه ويفتح نافذة التعديل) — لطلب التعديل، وللاعتماد لو فيه نصيحة
+    let _editUrl = null;
+    if (row.client_id && (action === 'needs_edit' || (action === 'approve' && String(reason||'').trim()))) { try { _editUrl = await _magicUrl(row.client_id, '/dashboard-client.html?edit=' + row.id); } catch(e){} }
+    const wa_link = _reviewWa(action, row.title, reason, clientInfo.rows.length ? clientInfo.rows[0].phone : null, row.id, clientInfo.rows.length ? _drFirst(clientInfo.rows[0].name) : '', _editUrl);
     res.json({ ...row, wa_link });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
