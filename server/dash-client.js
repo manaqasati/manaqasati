@@ -1816,7 +1816,7 @@ function smField(f){
 }
 function renderSmart(cat){
   var host=document.getElementById('n-smart');if(!host)return;
-  var def=SMART_FORMS[cat];
+  var def=(window.SQ&&SQ.has(cat))?null:SMART_FORMS[cat];   // الأسئلة السريعة (smartq.js) أخذت مكانها
   var desc=document.getElementById('n-desc'), guide=document.getElementById('n-guide');
   if(!def){ host.style.display='none'; host.innerHTML=''; if(desc){desc.readOnly=false;desc.style.background='';desc.style.color='';} return; }
   var h='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:13px 15px">'
@@ -1831,7 +1831,7 @@ function renderSmart(cat){
 }
 function buildSmart(){
   var cat=((document.getElementById('n-cat')||{}).value||'');
-  var def=SMART_FORMS[cat]; if(!def)return;
+  var def=SMART_FORMS[cat]; if(!def||(window.SQ&&SQ.has(cat)))return;
   var lines=[];
   def.forEach(function(f){
     var el=document.getElementById('sm-'+f.key); if(!el)return;
@@ -1855,7 +1855,7 @@ function segPick(btn,key,oi){
 function updateGuide(){
   var box=document.getElementById('n-guide');if(!box)return;
   var cat=((document.getElementById('n-cat')||{}).value||'');
-  if(!cat){box.style.display='none';return;}
+  if(!cat||(window.SQ&&SQ.has(cat))){box.style.display='none';return;}
   var qs=CAT_HINTS[cat]||CAT_HINTS._default;
   box.style.display='block';
   box.innerHTML='<b>لتحصل على أفضل سعر، وضّح في التفاصيل:</b><div style="margin-top:6px">'+qs.map(function(q){return '• '+esc(q);}).join('<br>')+'</div><button type="button" onclick="insertGuide()" style="margin-top:11px;background:#ea580c;color:#fff;border:none;border-radius:9px;padding:8px 14px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:800;cursor:pointer">✍️ أدرج هذه الأسئلة في التفاصيل</button>';
@@ -1928,7 +1928,7 @@ function submitReq(){
   var cat=document.getElementById('n-cat').value;
   var catOther=cat==='أخرى'?document.getElementById('n-cat-other').value.trim():'';
   var title=(document.getElementById('n-title').value||'').trim();
-  var desc=(document.getElementById('n-desc').value||'').trim();
+  var desc=(window.SQ&&SQ.dashDesc)?SQ.dashDesc():(document.getElementById('n-desc').value||'').trim();
   var city=document.getElementById('n-city').value;
   var budget=document.getElementById('n-budget').value;
   var deadline=document.getElementById('n-deadline').value;
@@ -1985,7 +1985,7 @@ function acceptAgree(){
   var cat=document.getElementById('n-cat').value;
   var catOther=cat==='أخرى'?document.getElementById('n-cat-other').value.trim():'';
   var title=(document.getElementById('n-title').value||'').trim();
-  var desc=(document.getElementById('n-desc').value||'').trim();
+  var desc=(window.SQ&&SQ.dashDesc)?SQ.dashDesc():(document.getElementById('n-desc').value||'').trim();
   var city=document.getElementById('n-city').value;
   var budget=document.getElementById('n-budget').value;
   var deadline=document.getElementById('n-deadline').value;
@@ -2026,7 +2026,7 @@ function acceptAgree(){
       if(r&&r.id){ window._planSt=null; window._planDOk=0;
         _reqImages=[];renderImgGrid();
         _reqFiles=[];renderFileList();
-        ['n-cat','n-title','n-desc','n-budget','n-deadline','n-district'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(window._cpReset)_cpReset();
+        ['n-cat','n-title','n-desc','n-budget','n-deadline','n-district'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(window.SQ&&SQ.dashReset)SQ.dashReset();if(window._cpReset)_cpReset();
         if(msg)msg.className='alert';
         showToast('تم نشر المشروع','success');
         try{ if(window.mnqAppMoment) setTimeout(function(){ mnqAppMoment('posted'); },900); }catch(e){}

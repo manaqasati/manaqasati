@@ -109,7 +109,7 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
 </style>
 <script src="/track.js?v=3"></script>
 <script src="/catpick.js?v=1" defer></script>
-<script src="/plan-gate.js?v=1"></script>
+<script src="/plan-gate.js?v=2"></script><script src="/smartq.js?v=1"></script>
 </head>
 <body>
 <header class="top"><div class="in"><button type="button" class="bk" onclick="_nwBack()" aria-label="رجوع"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>رجوع</button><a class="lg" href="/">مناقصة</a><span class="tt">مشروع جديد</span></div></header>
@@ -154,17 +154,6 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
   <!-- الخطوة 2: التفاصيل -->
   <section class="step" id="st-2">
     <div class="card">
-      <div>
-        <label class="lbl big" for="n-desc">وصف المطلوب</label>
-        <div class="tips">💡 كل ما وضّحت أكثر، جتك عروض أدق وأسرع:<br>• وش المطلوب بالضبط؟<br>• المساحة أو الكمية أو المقاسات<br>• مع المواد أو بدون؟ وأي تفاصيل تهمّك</div>
-        <textarea id="n-desc" class="inp" style="margin-top:10px" maxlength="5000" placeholder="مثال: واجهة أمامية تقريباً 180 م² فيها تشققات ودهان متقشّر، المطلوب معالجة ولياسة ودهان كامل بلونين."></textarea>
-        <div class="err" id="e-desc"></div>
-      </div>
-      <div>
-        <span class="lbl"><span id="img-lbl">صور أو مخطط</span> <small>(اختياري · حتى 8)</small></span>
-        <div class="imgs" id="n-imgs"></div>
-        <input type="file" id="n-file" accept="image/*" multiple style="display:none">
-      </div>
       <div id="plan-q" style="display:none">
         <span class="lbl big">📐 عندك مخطط للمشروع؟</span>
         <div class="hint" id="plan-sub" style="margin:-4px 0 9px"></div>
@@ -176,8 +165,21 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
         <input type="file" id="n-plan" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.rar,.7z,.csv,image/*" multiple style="display:none">
         <div class="err" id="e-plan"></div>
       </div>
+      <div id="n-sq" style="display:none"></div>
+      <div class="err" id="e-sq"></div>
       <div>
-        <label class="lbl" for="n-budget">الميزانية التقريبية (ر.س) <small>(اختياري)</small></label>
+        <label class="lbl big" for="n-desc" id="desc-lbl">وصف المطلوب</label>
+        <div class="tips" id="desc-tips">💡 كل ما وضّحت أكثر، جتك عروض أدق وأسرع:<br>• وش المطلوب بالضبط؟<br>• المساحة أو الكمية أو المقاسات<br>• مع المواد أو بدون؟ وأي تفاصيل تهمّك</div>
+        <textarea id="n-desc" class="inp" style="margin-top:10px" maxlength="5000" placeholder="مثال: واجهة أمامية تقريباً 180 م² فيها تشققات ودهان متقشّر، المطلوب معالجة ولياسة ودهان كامل بلونين."></textarea>
+        <div class="err" id="e-desc"></div>
+      </div>
+      <div>
+        <span class="lbl"><span id="img-lbl">صور أو مخطط</span> <small>(اختياري · حتى 8)</small></span>
+        <div class="imgs" id="n-imgs"></div>
+        <input type="file" id="n-file" accept="image/*" multiple style="display:none">
+      </div>
+      <div>
+        <label class="lbl" for="n-budget"><span id="bud-lbl">الميزانية التقريبية (ر.س)</span> <small>(اختياري)</small></label>
         <input type="text" id="n-budget" class="inp" inputmode="numeric" placeholder="مثال: 15000" maxlength="10" dir="ltr" style="text-align:right">
         <div class="err" id="e-budget"></div>
       </div>
@@ -382,6 +384,7 @@ function planNeed(){ return !!(window.PlanGate&&PlanGate.need(catVal())); }
 function planPaint(){
   var w=$('plan-q'); if(!w) return;
   var need=planNeed(); w.style.display=need?'':'none';
+  sqPaint();
   var il=$('img-lbl'); if(il) il.textContent=need?'صور':'صور أو مخطط';
   if(!need) return;
   $('plan-sub').textContent='مشاريع «'+catVal()+'» تحتاج مخطط عشان تجيك أسعار دقيقة';
@@ -389,6 +392,38 @@ function planPaint(){
   var pf=$('pf'); pf.style.display=PLAN==='has'?'':'none';
   pf.innerHTML=PFILES.map(function(f,i){ return '<div class="f">'+(f.up?'⏳':(f.wait?'📎':'✅'))+' <span class="nm">'+esc(f.name)+(f.wait?' <small style="color:#5b6b85;font-weight:700">· ينرفع مع النشر</small>':'')+'</span><button type="button" data-prm="'+i+'" aria-label="حذف">✕</button>'+(f.up&&window.PlanGate?'<div class="pb">'+PlanGate.bar(f.pct||0)+'</div>':'')+'</div>'; }).join('')+(PFILES.length<PF_MAX?'<button type="button" class="up" data-pup>+ ارفع المخطط<small style="display:block;font-weight:700;color:#5b6b85;font-size:11.5px;margin-top:3px" dir="ltr">PDF · DWG · DXF · JPG · PNG · Excel · Word · ZIP · RAR</small><small style="display:block;font-weight:700;color:#5b6b85;font-size:11.5px">حتى '+PF_MB+'MB للملف</small></button>':'');
   $('pq-dn').style.display=PLAN==='design'?'':'none';
+  sqPaint();
+}
+// ── أسئلة سريعة حسب التخصص (smartq.js): العميل يجاوب بالضغط، والوصف ينكتب منها ──
+var SQA={}, _SQK='', DESC_PH0=$('n-desc').getAttribute('placeholder')||'';
+function sqKey(){
+  if(!window.SQ) return '';
+  var c=catVal(); if(!c) return '';
+  if(planNeed()){ if(!PLAN) return ''; if(PLAN==='design') return 'design'; }
+  return SQ.has(c)?c:'';
+}
+function sqAns(k){
+  if(k==='design'&&window.PlanGate&&PlanGate.dAns){ var d=PlanGate.dAns(); if(!d){ d=SQA.design||PlanGate.dPrefill({title:$('n-title').value,description:$('n-desc').value}); PlanGate.dAns(d); } SQA.design=d; return d; }
+  return SQA[k]||(SQA[k]={});
+}
+function sqPaint(){
+  var k=sqKey(), el=$('n-sq'); if(!el) return;
+  if(k!==_SQK){ _SQK=k; if(k) SQ.render(el,k,sqAns(k),function(){ fErr('e-sq',null,''); fErr('e-desc','n-desc',''); renderStrength(); saveDraft(); }); else { el.innerHTML=''; el.style.display='none'; } }
+  var dz=k==='design', on=!!k, ds=$('n-desc');
+  $('desc-lbl').innerHTML=on?(dz?'أي شي ثاني تبي المكتب يعرفه؟':'تفاصيل إضافية')+' <small>(اختياري)</small>':'وصف المطلوب';
+  $('desc-lbl').className=on?'lbl':'lbl big';
+  $('desc-tips').style.display=on?'none':'';
+  ds.style.minHeight=on?'90px':''; ds.style.marginTop=on?'0':'10px';
+  ds.setAttribute('placeholder',on?(dz?'مثال: أبي مجلس رجال بمدخل مستقل، و٥ غرف نوم، وواجهة حديثة':'مثال: أي شي يهمّك المزوّد يعرفه (وقت الدوام، صعوبة الوصول، تفضيلات…)'):DESC_PH0);
+  var il=$('img-lbl'); if(il&&dz) il.textContent='صور الأرض';
+  $('bud-lbl').textContent=dz?'ميزانية التنفيذ التقريبية (ر.س)':'الميزانية التقريبية (ر.س)';
+}
+// الوصف النهائي: إجابات الأسئلة + اللي كتبه
+function fullDesc(){
+  var notes=($('n-desc').value||'').trim(), k=sqKey();
+  if(!k||k==='design') return notes;
+  var c=SQ.compose(k,sqAns(k));
+  return c?(c+(notes?'\n\n'+notes:'')):notes;
 }
 $('pq-w').addEventListener('click',function(e){
   var rm=e.target.closest('[data-prm]'); if(rm){ e.stopPropagation(); PFILES.splice(parseInt(rm.getAttribute('data-prm'),10),1); planPaint(); return; }
@@ -428,10 +463,24 @@ function pledgeOk(){ if(!window.PlanGate) return true; if(PlanGate.pledged(pledg
 // ── قوة الطلب ──
 function renderStrength(){
   var desc=($('n-desc').value||'').trim(), bud=parseFloat(_dig($('n-budget').value))||0;
-  var s=25, tips=[];
+  var s=25, tips=[], _k=window.SQ?sqKey():'';
+  if(_k){
+    var A=sqAns(_k), tot=SQ.total(_k), n=Math.min(tot,SQ.answered(_k,A)-((A.ax&&A.ax.length)?1:0)), miss=SQ.missing(_k,A);
+    s=20+Math.round(45*(tot?n/tot:0));
+    if(!miss.length) tips.push([1,_k==='design'?'جاوبت كل اللي يحتاجه المكتب':'جاوبت الأسئلة السريعة']); else tips.push([0,'حدّد: '+miss.slice(0,3).join('، ')]);
+    if(IMGS.length||PFILES.length){ s+=15; tips.push([1,PFILES.length?'أرفقت المخطط':('أرفقت '+(IMGS.length===1?'صورة':(IMGS.length===2?'صورتين':IMGS.length+' صور')))]); } else tips.push([0,_k==='design'?'أضف صورة الأرض أو الصك — المكتب يسعّر أدق':'أضف صور — المزوّد يفهم طلبك أسرع']);
+    if(bud>0){ s+=10; tips.push([1,'حدّدت الميزانية']); } else if(_k!=='design') tips.push([0,'أضف الميزانية التقريبية لتصلك عروض أدق']);
+    if(desc.length>=10){ s+=10; tips.push([1,'أضفت تفاصيل تهمّك']); }
+    if(_k==='design'&&!(bud>0)) s+=5;
+    s=Math.min(100,s);
+    return paintStr(s,tips);
+  }
   if(desc.length>=60){s+=35;tips.push([1,'وصف واضح ومفصّل']);} else if(desc.length>=15){s+=20;tips.push([0,'زد التفاصيل (المساحة، الكمية، المواد)']);} else tips.push([0,'اكتب وصف المطلوب']);
   if(IMGS.length){s+=20;tips.push([1,'أرفقت '+(IMGS.length===1?'صورة':(IMGS.length===2?'صورتين':IMGS.length+' صور'))]);} else tips.push([0,'أضف صور — المزوّد يفهم طلبك أسرع']);
   if(bud>0){s+=20;tips.push([1,'حدّدت الميزانية']);} else tips.push([0,'أضف الميزانية التقريبية لتصلك عروض أدق']);
+  paintStr(s,tips);
+}
+function paintStr(s,tips){
   var lv=s>=85?'ممتاز':(s>=60?'جيد':'مقبول'), col=s>=60?'#15803d':'#b45309';
   $('n-str').innerHTML='<div class="h"><span>قوة طلبك</span><span style="color:'+col+'">'+s+'% · '+lv+'</span></div><div class="bar"><i style="width:'+s+'%;background:'+(s>=60?'#16a34a':'#f59e0b')+'"></i></div>'
     +tips.map(function(t){return '<div class="tp" style="color:'+(t[0]?'#15803d':'#b45309')+'">'+(t[0]?'✓':'•')+' '+esc(t[1])+'</div>';}).join('');
@@ -446,6 +495,7 @@ function _saveNow(){
     var o={};Object.keys(DFIELDS).forEach(function(k){var el=$(DFIELDS[k]);if(el&&el.value)o[k]=String(el.value).slice(0,5000);});
     try{ if(window._cpExtras){ var ex=window._cpExtras(); if(ex&&ex.length) o.ex=ex; } }catch(e){}
     if(PLAN) o.pl=PLAN;
+    try{ var _sq={}; Object.keys(SQA).forEach(function(k){ var v=SQA[k]; if(v&&Object.keys(v).length) _sq[k]=v; }); if(Object.keys(_sq).length) o.sq=_sq; }catch(e){}
     localStorage.setItem(DKEY,JSON.stringify(o));
     _srvQ(o);
   }catch(e){}
@@ -516,8 +566,10 @@ function validate(step,focus){
     else fErr('e-other','n-cat-other','');
   }
   if(step===2){
-    var d=($('n-desc').value||'').trim();
-    chk(fErr('e-desc','n-desc',!d?'اكتب وصف المطلوب':(d.length<15?'الوصف قصير — اكتب 15 حرف على الأقل':'')),'n-desc');
+    var d=($('n-desc').value||'').trim(), _k=sqKey();
+    if(_k==='design'){ chk(fErr('e-sq',null,PlanGate.dMiss(sqAns('design'))),'n-sq'); fErr('e-desc','n-desc',''); }
+    else if(_k){ var _n=SQ.answered(_k,sqAns(_k)); chk(fErr('e-sq',null,(!_n&&d.length<15)?'جاوب الأسئلة فوق بالضغط — أو اكتب وصف المطلوب':''),'n-sq'); fErr('e-desc','n-desc',''); }
+    else chk(fErr('e-desc','n-desc',!d?'اكتب وصف المطلوب':(d.length<15?'الوصف قصير — اكتب 15 حرف على الأقل':'')),'n-desc');
     var bv=_dig($('n-budget').value).replace(/[,\s٬]/g,'').trim();
     chk(fErr('e-budget','n-budget',(bv&&!/^\d+(\.\d+)?$/.test(bv))?'الميزانية لازم تكون رقم':''),'n-budget');
     if(planNeed()) chk(fErr('e-plan',null,!PLAN?'اختر: عندك مخطط، أو تبي مكتب هندسي، أو ما يحتاج':(PLAN==='has'&&!PFILES.length?'ارفع المخطط — أو اختر خيار ثاني':(PLAN==='has'&&PFILES.some(function(f){return f.up;})?'انتظر لين يكتمل رفع المخطط':''))),'plan-q');
@@ -566,7 +618,8 @@ function renderSummary(){
 // ── النشر ──
 function buildBody(){
   var c=catVal();
-  var body={title:($('n-title').value||'').trim(),description:($('n-desc').value||'').trim(),category:c,city:$('n-city').value};
+  var body={title:($('n-title').value||'').trim(),description:fullDesc(),category:c,city:$('n-city').value};
+  if(sqKey()==='design') body.design_desc=SQ.compose('design',sqAns('design'));
   if(c==='أخرى'){ var co=($('n-cat-other').value||'').trim(); if(co) body.category_other=co; }
   try{ if(window._cpExtras){ var ex=window._cpExtras(); if(ex&&ex.length) body.extra_categories=ex; } }catch(e){}
   var di=($('n-district').value||'').trim(); if(di) body.district=di;
@@ -696,7 +749,7 @@ $('btn-pub').addEventListener('click',function(){ if(!validate(4,true)) return; 
 // ── «عندي حساب»: نحفظ المسودّة وننتقل للدخول (التدفّق موجود) ──
 function goLogin(){
   var bv=parseFloat(_dig($('n-budget').value).replace(/[,\s٬]/g,''));
-  var dr={title:($('n-title').value||'').trim().slice(0,200),category:catVal(),description:($('n-desc').value||'').trim(),city:$('n-city').value,budget_max:bv>0?bv:'',deadline:$('n-deadline').value||'',open:1};
+  var dr={title:($('n-title').value||'').trim().slice(0,200),category:catVal(),description:fullDesc(),city:$('n-city').value,budget_max:bv>0?bv:'',deadline:$('n-deadline').value||'',open:1};
   try{ var _dd=localStorage.getItem('mnq_did'); if(_dd) dr.did=_dd; }catch(e){}
   try{ sessionStorage.setItem('mnq_req_draft',JSON.stringify(dr)); sessionStorage.setItem('auth_mode','login'); sessionStorage.setItem('auth_role','client'); }catch(e){}
   _saveNow();
@@ -763,6 +816,7 @@ function _restore(){
   renderImgs();
   renderStrength();
   if(dr.pl&&/^(has|design|none)$/.test(dr.pl)) PLAN=dr.pl;
+  if(dr.sq&&typeof dr.sq==='object'){ SQA=dr.sq; if(SQA.design&&window.PlanGate&&PlanGate.dAns) PlanGate.dAns(SQA.design); _SQK='~'; }
   if(dr.co) _catSug();
 }
 if(!GUEST_UI){ $('st-4').parentNode.removeChild($('st-4')); }

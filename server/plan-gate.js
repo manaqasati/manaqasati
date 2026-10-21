@@ -79,27 +79,46 @@
   }
   function pledged(id){ var c=document.getElementById(id+'-c'); return !!(c&&c.checked); }
   function pledgeNudge(id){ var w=document.getElementById(id); if(!w) return; w.classList.remove('bad'); void w.offsetWidth; w.classList.add('bad'); try{ w.scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){} }
+  // إجابات أسئلة المكتب الهندسي (تنعبّى من نافذة «ابدأ بالمخطط» أو من صفحة النشر)
+  var DANS=null;
+  function dPrefill(body){
+    var a={}, t=String((body.title||'')+' '+(body.description||''));
+    if(/دبلكس|دوبلكس/.test(t)) a.bt='دبلكس'; else if(/فيلا|فله|فلة/.test(t)) a.bt='فيلا سكنية'; else if(/عمار[ةه]/.test(t)) a.bt='عمارة سكنية'; else if(/استراح[ةه]/.test(t)) a.bt='استراحة';
+    if(/دورين|دوران|طابقين/.test(t)) a.fl='دورين'; else if(/(3|٣|ثلاث[ةه]?)\s*(ادوار|أدوار|طوابق)/.test(t)) a.fl='3 أدوار'; else if(/دور واحد|دور أرضي فقط|طابق واحد/.test(t)) a.fl='دور واحد';
+    var ax=[]; if(/ملحق/.test(t)) ax.push('ملحق علوي'); if(/قبو|بدروم/.test(t)) ax.push('قبو'); if(ax.length) a.ax=ax;
+    return a;
+  }
   // «ابدأ بالمخطط»: يحوّل مشروع التنفيذ لطلب مخطط للمكاتب الهندسية، ومشروع التنفيذ ينحفظ عنده
   function designBody(body){
     var t=String(body.title||'').trim(), d=String(body.description||'').trim();
     var ex={title:t,description:d,category:body.category,city:body.city};
     ['district','budget_max','deadline','category_other','extra_categories','geo_lat','geo_lng'].forEach(function(k){ if(body[k]!=null&&body[k]!=='') ex[k]=body[k]; });
-    var out={title:('تصميم مخطط — '+t).slice(0,150),description:'أبي مكتب هندسي يجهّز مخطط لمشروعي:\n\n'+d,category:'مكاتب هندسية',city:body.city,exec_draft:ex,pledge:!!body.pledge};
+    var nt=(window.SQ&&SQ.dashNotes)?SQ.dashNotes():d;   // في لوحة العميل: ملاحظاته بس (بدون أسئلة التنفيذ مثل المواد)
+    var dd=String(body.design_desc||'').trim()||(window.SQ&&DANS?SQ.compose('design',DANS):'');
+    var out={title:('تصميم مخطط — '+t).slice(0,150),description:'أبي مكتب هندسي يجهّز مخطط لمشروعي:\n'+(dd?dd+(nt?'\n\nملاحظات العميل: '+nt:''):'\n'+d),category:'مكاتب هندسية',city:body.city,exec_draft:ex,pledge:!!body.pledge};
     ['district','geo_lat','geo_lng','images','draft_did'].forEach(function(k){ if(body[k]!=null&&body[k]!=='') out[k]=body[k]; });
     return out;
   }
+  // الحد الأدنى اللي يحتاجه المكتب: نوع المبنى + وش المطلوب منه
+  function dMiss(a){ a=a||{}; if(!a.bt) return 'اختر نوع المبنى'; if(!(Array.isArray(a.need)&&a.need.length)) return 'اختر وش تبي من المكتب (مخطط معماري، إنشائي…)'; return ''; }
   // يعرض الشاشة ويرجّع وعد بالقرار: true = انشر طلب المخطط
   function designAsk(body){
     return new Promise(function(res){
+      var ask=!!(window.SQ&&!String(body.design_desc||'').trim());
+      if(ask&&!DANS) DANS=dPrefill(body);
       var b=designBody(body), done=false;
       var s=sheet('<div class="pg-ic">🏛️</div><div class="pg-h">ابدأ بالمخطط</div>'
         +'<div class="pg-p">نرسل طلبك للمكاتب الهندسية'+(body.city?' في <b>'+esc(body.city)+'</b>':'')+' وتجيك عروضهم لتصميم المخطط.</div>'
         +'<div class="pg-box"><small>الطلب اللي بينتشر:</small><b>'+esc(b.title)+'</b><small style="margin-top:3px">مكاتب هندسية'+(body.city?' · '+esc(body.city):'')+(body.district?' · '+esc(body.district):'')+'</small></div>'
+        +(ask?'<div data-sq style="margin-top:12px"></div><div data-sqe style="display:none;color:#dc2626;font-weight:800;font-size:13px;margin-top:8px"></div>':'')
         +'<div class="pg-note">📌 مشروع التنفيذ <b>محفوظ عندك</b> — لما يجهز المخطط نذكّرك تكمّله وترفع المخطط فيه.</div>'
         +'<button type="button" class="pg-go" data-go>انشر طلب المخطط</button><button type="button" class="pg-lk" data-x>رجوع</button>');
+      if(ask) SQ.render(s.el.querySelector('[data-sq]'),'design',DANS,function(){ var e=s.el.querySelector('[data-sqe]'); if(e) e.style.display='none'; });
       var mo=new MutationObserver(function(){ if(!s.el.isConnected) fin(false); });
       var fin=function(v){ if(done) return; done=true; mo.disconnect(); res(v); };
-      s.el.querySelector('[data-go]').addEventListener('click',function(){ fin(true); s.close(); });
+      s.el.querySelector('[data-go]').addEventListener('click',function(){
+        if(ask){ var m=dMiss(DANS); if(m){ var e=s.el.querySelector('[data-sqe]'); e.textContent=m; e.style.display='block'; try{ e.scrollIntoView({behavior:'smooth',block:'center'}); }catch(x){} return; } }
+        fin(true); s.close(); });
       mo.observe(document.body,{childList:true});
     });
   }
@@ -132,5 +151,5 @@
   function bar(pct){ css(); pct=Math.max(0,Math.min(100,pct||0)); return '<span class="pg-bar" role="progressbar" aria-valuenow="'+pct+'" aria-valuemin="0" aria-valuemax="100"><i style="width:'+pct+'%"></i></span><span class="pg-pct">'+pct+'%</span>'; }
   function progress(title){ css(); var o=document.createElement('div'); o.className='pg-up'; o.innerHTML='<div><div style="font-size:30px">⏫</div><b>'+esc(title||'جاري رفع الملفات…')+'</b><div class="r">'+bar(0)+'</div><div style="font-size:12px;color:var(--muted,#64748b);font-weight:700;margin-top:10px">لا تسكّر الصفحة لين يخلص</div></div>'; document.body.appendChild(o);
     return {set:function(p){ var r=o.querySelector('.r'); if(r) r.innerHTML=bar(p); }, close:function(){ o.remove(); }}; }
-  window.PlanGate={progress:progress,ext:EXT,xhr:xhr,upload:upload,bar:bar,cats:CATS,need:function(c){ return CATS.indexOf(String(c||''))>=0; },terms:terms,pledgeHTML:pledgeHTML,pledgeBind:pledgeBind,pledged:pledged,pledgeNudge:pledgeNudge,designBody:designBody,designAsk:designAsk,ask:ask};
+  window.PlanGate={progress:progress,ext:EXT,xhr:xhr,upload:upload,bar:bar,cats:CATS,need:function(c){ return CATS.indexOf(String(c||''))>=0; },terms:terms,pledgeHTML:pledgeHTML,pledgeBind:pledgeBind,pledged:pledged,pledgeNudge:pledgeNudge,designBody:designBody,designAsk:designAsk,ask:ask,dMiss:dMiss,dPrefill:dPrefill,dAns:function(v){ if(v!==undefined) DANS=v; return DANS; }};
 })();

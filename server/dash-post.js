@@ -1242,7 +1242,7 @@ function submitReq(){
   var cat=document.getElementById('n-cat').value;
   var catOther=cat==='أخرى'?document.getElementById('n-cat-other').value.trim():'';
   var title=(document.getElementById('n-title').value||'').trim();
-  var desc=(document.getElementById('n-desc').value||'').trim();
+  var desc=(window.SQ&&SQ.dashDesc)?SQ.dashDesc():(document.getElementById('n-desc').value||'').trim();
   var city=document.getElementById('n-city').value;
   var budget=document.getElementById('n-budget').value;
   var deadline=document.getElementById('n-deadline').value;
@@ -1272,7 +1272,7 @@ function acceptAgree(){
   var cat=document.getElementById('n-cat').value;
   var catOther=cat==='أخرى'?document.getElementById('n-cat-other').value.trim():'';
   var title=(document.getElementById('n-title').value||'').trim();
-  var desc=(document.getElementById('n-desc').value||'').trim();
+  var desc=(window.SQ&&SQ.dashDesc)?SQ.dashDesc():(document.getElementById('n-desc').value||'').trim();
   var city=document.getElementById('n-city').value;
   var budget=document.getElementById('n-budget').value;
   var deadline=document.getElementById('n-deadline').value;
@@ -1304,7 +1304,7 @@ function acceptAgree(){
       if(r&&r.id){ window._planSt=null; window._planDOk=0;
         _reqImages=[];renderImgGrid();
         _reqFiles=[];renderFileList();
-        ['n-cat','n-title','n-desc','n-budget','n-deadline','n-district'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(window._cpReset)_cpReset();
+        ['n-cat','n-title','n-desc','n-budget','n-deadline','n-district'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});if(window.SQ&&SQ.dashReset)SQ.dashReset();if(window._cpReset)_cpReset();
         if(msg)msg.className='alert';
         showToast('تم نشر الطلب','success');try{ if(window.mnqAppMoment) setTimeout(function(){ mnqAppMoment('posted'); },900); }catch(e){}
         if(window.track)track('Lead');
