@@ -9113,6 +9113,7 @@ async function _inviteLeft(id){ try { return (await pool.query(`SELECT GREATEST(
 async function _openInvite(id, why){
   const r = await pool.query(`UPDATE requests SET invite_state='open' WHERE id=$1 AND invite_state IS DISTINCT FROM 'open' RETURNING id, title, category, city, status`, [id]);
   const x = r.rows[0]; if (!x) return false;
+  addTimeline(id, 'invite_open', 'انفتح لكل المزوّدين تلقائياً — المزوّد المطلوب ما قدّم خلال ' + INVITE_OPEN_HOURS + ' ساعات').catch(()=>{});
   if (x.status === 'open') { try { await notifyMatchingProviders(x, true); } catch(e){} }
   return true;
 }
@@ -9140,6 +9141,7 @@ app.post('/api/requests/:id/open-invite', auth, async (req, res) => {
     if (String(q.client_id) !== String(req.user.id) && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
     if (q.invite_state === 'open' || !q.invite_state) return res.json({ ok: true, already: true });
     await pool.query("UPDATE requests SET invite_state='open' WHERE id=$1", [id]);
+    addTimeline(id, 'invite_open', String(q.client_id) === String(req.user.id) ? 'العميل فتحه لكل المزوّدين (كان محجوز لمزوّد طلبه بالاسم)' : 'الإدارة فتحته لكل المزوّدين (كان محجوز لمزوّد طلبه العميل بالاسم)').catch(()=>{});
     const x = (await pool.query('SELECT id, title, category, city, status FROM requests WHERE id=$1', [id])).rows[0];
     if (x && x.status === 'open') { try { await notifyMatchingProviders(x, true); } catch(e){} }
     res.json({ ok: true });

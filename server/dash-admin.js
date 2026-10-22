@@ -2492,6 +2492,7 @@ function renderRequests(){
 // ═══ كل إجراءات المشروع داخل لوحة التفاصيل ═══
 // مشروع طلب فيه العميل مزوّد بالاسم: محجوز له — الإدارة تشوف لمين وكم باقي وتقدر تفتحه
 function _rqInv(r){
+  if(r.invited_provider_id&&r.invite_state==='open') return '<div class="rq-ds" style="font-size:12.5px;font-weight:700;color:var(--muted)">⭐ العميل طلب «'+esc(r.invited_name||'مزوّد')+'» بالاسم — كان محجوز له، والحين مفتوح لكل المزوّدين.</div>';
   if(r.status!=='open'||r.invite_state!=='exclusive') return '';
   var sec=parseInt(r.invite_left_sec)||0, hh=Math.floor(sec/3600), mm=Math.ceil((sec%3600)/60);
   var left=hh>=1?(hh+' ساعة'):(mm+' دقيقة');
