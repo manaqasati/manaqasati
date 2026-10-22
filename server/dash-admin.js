@@ -4354,7 +4354,7 @@ function _cwTpls(d){
   var hi='السلام عليكم'+(d.name?' '+d.name:'')+'، معك فريق منصة مناقصة 👋\n\n', pj='مشروعك «'+(d.title||'')+'»', L=d.link, nb=d.bids||0;
   var offers=!nb?'':(nb===1?(' — وصلك عرض واحد'+(d.min_price?' بـ '+_cwN(d.min_price)+' ر.س':'')):(' — وصلك '+(nb===2?'عرضين':nb+' '+(nb<=10?'عروض':'عرض'))+(d.min_price?'، وأقلها '+_cwN(d.min_price)+' ر.س':'')));
   var T={
-    nego:['💬 فاوضهم — أرقامهم عندك','يدخل عروضه ويكلّم أقرب عرضين لميزانيته',hi+'بخصوص '+pj+offers+'.\n\nأسعار العروض مو نهائية، وأغلب المزوّدين يقبلون التفاوض 🤝\nأرقامهم عندك في صفحة العروض — كلّم أقرب عرضين لميزانيتك وقل لهم ميزانيتك بوضوح.\n\n👈 عروضك (سجّل دخولك وتفتح لك):\n'+L+'\n\nوتبي مشروعك يرجع يستقبل عروض جديدة؟ في نفس الصفحة زر «إعادة نشر المشروع» 🔄\n\nبالتوفيق 🌹'],
+    nego:['💬 فاوضهم — أرقامهم عندك','يدخل عروضه ويكلّم أقرب عرضين لميزانيته',hi+'بخصوص '+pj+offers+'.\n\nأسعار العروض مو نهائية، وأغلب المزوّدين يقبلون التفاوض 🤝\nأرقامهم عندك في صفحة العروض — كلّم أقرب عرضين لميزانيتك وقل لهم ميزانيتك بوضوح.\n\n👈 عروضك (يفتح لك مباشرة بدون كلمة مرور):\n'+L+'\n\nوتبي مشروعك يرجع يستقبل عروض جديدة؟ في نفس الصفحة زر «إعادة نشر المشروع» 🔄\n\nبالتوفيق 🌹'],
     reprice:['🔁 يعيد فتحه بميزانيته','نسأله ميزانيته ونعيد فتح مشروعه',hi+'بخصوص '+pj+'.\n\nإذا تبي، قل لنا ميزانيتك التقريبية ونعيد فتح مشروعك ويشوفها المزوّدين — كثير منهم يعدّل عرضه لما يعرف الميزانية.\n\nبالتوفيق 🌹'],
     scope:['✂️ قسّم المشروع أو غيّر المواد','يعدّل النطاق ويعيد النشر',hi+'بخصوص '+pj+'.\n\nممكن تنزل التكلفة لو قسّمت المشروع على مراحل، أو غيّرت بعض المواد لخيارات أوفر.\nادخل مشروعك من الرابط، عدّله واضغط «إعادة نشر المشروع»:\n'+L+'\n\nبالتوفيق 🌹'],
     budget_ask:['🙏 شكر + نسأل ميزانيته','بدون عرض — نتعلم للمرات الجاية',hi+'شكراً لك على استخدام المنصة 🌹\nبخصوص '+pj+': ودنا نعرف وش كانت ميزانيتك التقريبية؟ يساعدنا نوصلك بعروض أنسب المرة الجاية.'],
@@ -4405,11 +4405,11 @@ function _cwOpen(id){
       +'</div><div class="cw-p"><div class="cw-hint" style="font-weight:900;color:var(--text2,#475569)">الرسالة — تقدر تعدّلها قبل الإرسال</div><textarea id="cw-t"></textarea>'
       +(d.phone?'':'<div class="cw-hint" style="color:#b91c1c">ما عنده رقم جوال صحيح — انسخ الرسالة وأرسلها يدوياً</div>')
       +'<div class="cw-f">'+(d.phone?'<a class="cw-wa" id="cw-go" target="_blank" rel="noopener" href="#">إرسال واتساب</a>':'')+'<button type="button" class="cw-cp" id="cw-cp">نسخ</button><span class="cw-hint">«رجع» = أعاد فتح مشروعه أو نشر مشروع جديد خلال أسبوعين</span></div>'
-      +'</div></div>';
+      +'<div class="cw-hint">🔒 الرابط يدخّل العميل حسابه مباشرة — أرسله له هو بس</div></div></div>';
     var m=ov.querySelector('.cw-m'); m.innerHTML=h;
     var ta=m.querySelector('#cw-t'), go=m.querySelector('#cw-go');
     var paint=function(){ ta.value=cur.m; sync(); };
-    var sync=function(){ if(!go) return; var u='https://wa.me/'+d.phone+'?text='+encodeURIComponent(ta.value); go.href=window._waFix?_waFix(u):u; };   // واتساب ويب يخرّب الإيموجي ← wafix يشيلها على الكمبيوتر
+    var sync=function(){ if(go) go.href='https://wa.me/'+d.phone+'?text='+encodeURIComponent(ta.value); };
     var log=function(){ fetch(API+'/api/admin/requests/'+id+'/close-wa',Object.assign({method:'POST',body:JSON.stringify({tpl:cur.k})},hdr())).catch(function(){}); };
     ta.oninput=sync;
     m.querySelector('.cw-x').onclick=function(){ ov.remove(); };
