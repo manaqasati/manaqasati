@@ -4409,7 +4409,7 @@ function _cwOpen(id){
     var m=ov.querySelector('.cw-m'); m.innerHTML=h;
     var ta=m.querySelector('#cw-t'), go=m.querySelector('#cw-go');
     var paint=function(){ ta.value=cur.m; sync(); };
-    var sync=function(){ if(go) go.href='https://wa.me/'+d.phone+'?text='+encodeURIComponent(ta.value); };
+    var sync=function(){ if(!go) return; var u='https://wa.me/'+d.phone+'?text='+encodeURIComponent(ta.value); go.href=window._waFix?_waFix(u):u; };   // واتساب ويب يخرّب الإيموجي ← wafix يشيلها على الكمبيوتر
     var log=function(){ fetch(API+'/api/admin/requests/'+id+'/close-wa',Object.assign({method:'POST',body:JSON.stringify({tpl:cur.k})},hdr())).catch(function(){}); };
     ta.oninput=sync;
     m.querySelector('.cw-x').onclick=function(){ ov.remove(); };
