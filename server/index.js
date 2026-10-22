@@ -10292,7 +10292,7 @@ app.get('/api/admin/requests/:id/close-wa', requirePermission('requests.view'), 
         (SELECT MIN(price) FROM bids b WHERE b.request_id=r.id AND b.price>0 AND COALESCE(b.price_unit,'total')='total') AS min_price
       FROM requests r JOIN users u ON u.id=r.client_id WHERE r.id=$1`, [id])).rows[0];
     if (!r) return res.status(404).json({ message: 'غير موجود' });
-    const link = await _magicUrl(r.client_id, '/dashboard-client.html#detail/' + r.id);
+    const link = SITE_URL + '/dashboard-client.html#detail/' + r.id;   // رابط عادي — يسجّل دخوله أول (مو رابط دخول مباشر)
     const st = (await pool.query(`SELECT l.tpl, COUNT(*)::int AS sent, COUNT(*) FILTER (WHERE ${_CWA_BACK})::int AS back FROM close_wa_log l GROUP BY l.tpl`)).rows;
     const mine = (await pool.query(`SELECT tpl, created_at FROM close_wa_log WHERE request_id=$1 ORDER BY id DESC LIMIT 5`, [id])).rows;
     res.json({ id: r.id, title: r.title, city: r.city, name: _drFirst(r.client_name || ''), phone: normPhone(r.client_phone), bids: r.bids, min_price: r.min_price ? Number(r.min_price) : null,

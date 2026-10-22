@@ -41,7 +41,7 @@ var _pollPaused=false;
 document.addEventListener('visibilitychange',function(){_pollPaused=document.hidden;});
 var user=JSON.parse(localStorage.getItem('user')||'{}');
 var token=localStorage.getItem('token')||'';
-if(!token||!user.id){location.href='/auth.html';}
+if(!token||!user.id){ try{ if(location.hash||location.search) localStorage.setItem('_after_login', location.pathname+location.search+location.hash); }catch(e){} location.href='/auth.html'; }   // بعد الدخول يرجع لنفس الصفحة (مثل رابط عروض مشروع)
 
 // ═══ ?edit=ID — فتح تعديل مشروع مباشرة (من صفحة المشروع) ═══
 (function(){
