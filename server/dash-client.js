@@ -663,7 +663,7 @@ function _invCardHtml(r){
   else if(st==='exclusive'&&el>=rh*3600)h+=_invTl(G,'بعد '+rh+' ساعات: نذكّره لو ما قدّم','تم التذكير ✓');
   else h+=_invTl(st==='exclusive'?A:N,'بعد '+rh+' ساعات: نذكّره لو ما قدّم',st==='exclusive'?'باقي '+_invHrs(rh*3600-el):'');
   if(st==='open')h+=_invTl(G,'انفتح لباقي المزوّدين ✓','');
-  else h+=_invTl(N,'بعد '+oh+' ساعة: ينفتح لباقي المزوّدين',st==='exclusive'?'باقي '+_invHrs(left)+' — تلقائي':'تلقائي');
+  else h+=_invTl(N,'بعد '+oh+(oh>10?' ساعة':' ساعات')+': ينفتح لباقي المزوّدين'+(r.invite_has_bid?' إذا ما اخترت عرضه':''),st==='exclusive'?'باقي '+_invHrs(left)+' — تلقائي':'تلقائي');
   if(st==='exclusive')h+='<button onclick="_invOpenAll(this)" style="border:1.5px solid #dbe5f5;background:#fff;color:#1e3a8a;border-radius:12px;padding:10px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer;width:100%">افتحه للجميع الآن</button>';
   return h+'</div>';
 }

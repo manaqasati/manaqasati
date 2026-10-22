@@ -2498,7 +2498,7 @@ function _rqInv(r){
   var left=hh>=1?(hh+' ساعة'):(mm+' دقيقة');
   return '<div class="rq-ds" style="background:#fffbeb;border:1.5px solid #fcd34d;border-radius:14px"><h4 style="color:#92400e">🔒 محجوز لمزوّد طلبه العميل بالاسم</h4>'
     +'<div style="font-size:13px;font-weight:700;line-height:1.9;color:#78350f">المزوّد: <b>'+esc(r.invited_name||'—')+'</b><br>'
-    +(r.invite_has_bid?'قدّم عرضه ← يبقى محجوز لين يفتحه العميل أو أنت.':'ما قدّم للحين ← ينفتح لباقي المزوّدين تلقائياً بعد <b>'+left+'</b>.')
+    +(r.invite_has_bid?'قدّم عرضه ← إذا العميل ما اختاره ينفتح لباقي المزوّدين تلقائياً بعد <b>'+left+'</b>.':'ما قدّم للحين ← ينفتح لباقي المزوّدين تلقائياً بعد <b>'+left+'</b>.')
     +'<br><span style="color:#92400e">باقي المزوّدين يشوفون «محجوز» وما يقدرون يقدّمون.</span></div>'
     +'<button class="btn-g" style="margin-top:8px" onclick="_rqOpenInv('+(parseInt(r.id)||0)+',this)">🔓 افتحه للجميع الحين</button></div>';
 }

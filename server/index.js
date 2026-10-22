@@ -881,16 +881,15 @@ app.get('/api/requests/public/:id', async (req, res) => {
       if (row.invited_provider_id && _own2) {
         const _pv = (await pool.query('SELECT COALESCE(business_name,name) AS nm FROM users WHERE id=$1', [row.invited_provider_id])).rows[0]; row.invited_name = _pv ? _pv.nm : null;
         if (row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); // يحسب في قاعدة البيانات (يتفادى فرق التوقيت)
-        row.invite_remind_hours = INVITE_REMIND_HOURS; row.invite_open_hours = INVITE_OPEN_HOURS;
         row.invite_has_bid = (await pool.query('SELECT 1 FROM bids WHERE request_id=$1 AND provider_id=$2', [id, row.invited_provider_id])).rows.length > 0;
+        row.invite_remind_hours = INVITE_REMIND_HOURS; row.invite_open_hours = row.invite_has_bid ? INVITE_BID_HOURS : INVITE_OPEN_HOURS;
       } else if (row.invited_provider_id && _v2 && String(_v2.id) === String(row.invited_provider_id)) {
         row.invited_me = row.invite_state === 'exclusive';
         if (row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); // يحسب في قاعدة البيانات (يتفادى فرق التوقيت)
         delete row.invited_provider_id;
       } else {
         if (row.invite_state === 'exclusive') { row.invite_locked = true; // مشروع محجوز حالياً لمزوّد آخر
-          const _hb = (await pool.query('SELECT 1 FROM bids WHERE request_id=$1 AND provider_id=$2', [id, row.invited_provider_id])).rows.length > 0;
-          if (!_hb && row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); }   // لو المدعو ما قدّم: ينفتح بعد الوقت الباقي
+          if (row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); }   // ينفتح للباقين بعد الوقت الباقي
         delete row.invited_provider_id; delete row.invite_started_at;
       }
     } catch(e) {}
@@ -5063,8 +5062,8 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (row.invited_provider_id && (isOwner || isAdmin)) {
       try { const _pv = (await pool.query('SELECT COALESCE(business_name,name) AS nm FROM users WHERE id=$1', [row.invited_provider_id])).rows[0]; row.invited_name = _pv ? _pv.nm : null;
         if (row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); // يحسب في قاعدة البيانات (يتفادى فرق التوقيت)
-        row.invite_remind_hours = INVITE_REMIND_HOURS; row.invite_open_hours = INVITE_OPEN_HOURS;
-        row.invite_has_bid = (await pool.query('SELECT 1 FROM bids WHERE request_id=$1 AND provider_id=$2', [id, row.invited_provider_id])).rows.length > 0; } catch(e){}
+        row.invite_has_bid = (await pool.query('SELECT 1 FROM bids WHERE request_id=$1 AND provider_id=$2', [id, row.invited_provider_id])).rows.length > 0;
+        row.invite_remind_hours = INVITE_REMIND_HOURS; row.invite_open_hours = row.invite_has_bid ? INVITE_BID_HOURS : INVITE_OPEN_HOURS; } catch(e){}
     } else if (!(isAdmin || (uid && String(uid)===String(row.invited_provider_id)))) { delete row.invited_provider_id; }
     // المحادثات المباشرة: الأرقام ما تنكشف من خلالها (كانت تسمح بجمع جوال أي مستخدم)
     if (row.category === 'direct' && !isAdmin) { row.client_phone = null; row.provider_phone = null; }
@@ -8945,7 +8944,7 @@ app.get('/api/admin/requests', requirePermission('requests.view'), async (req, r
       sl AS (SELECT DISTINCT ON (request_id) request_id, id FROM saai_ledger WHERE request_id IS NOT NULL ORDER BY request_id, id)
       SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE(bs.n,0) as bid_count, bs.acc as accepted_price, bs.mn as min_bid, sl.id as saai_id, u.phone as client_phone,
         (SELECT COALESCE(NULLIF(iv.business_name,''),iv.name) FROM users iv WHERE iv.id=r.invited_provider_id) AS invited_name,
-        CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + (${INVITE_OPEN_HOURS} || ' hours')::interval - NOW())))::int END AS invite_left_sec,
+        CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + ((CASE WHEN EXISTS(SELECT 1 FROM bids ib0 WHERE ib0.request_id=r.id AND ib0.provider_id=r.invited_provider_id) THEN ${INVITE_BID_HOURS} ELSE ${INVITE_OPEN_HOURS} END) || ' hours')::interval - NOW())))::int END AS invite_left_sec,
         EXISTS(SELECT 1 FROM bids ib WHERE ib.request_id=r.id AND ib.provider_id=r.invited_provider_id) AS invite_has_bid
       FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id LEFT JOIN bs ON bs.request_id=r.id LEFT JOIN sl ON sl.request_id=r.id
       WHERE (r.category IS DISTINCT FROM 'direct')`;
@@ -9108,12 +9107,12 @@ app.post('/api/admin/contact-unlocks/:rid/remind', requirePermission('requests.v
 });
 
 // ═══ دعوة مزوّد مباشرة ═══
-const INVITE_REMIND_HOURS = 3, INVITE_OPEN_HOURS = 6;
-async function _inviteLeft(id){ try { return (await pool.query(`SELECT GREATEST(0, EXTRACT(EPOCH FROM (invite_started_at + ($2 || ' hours')::interval - NOW())))::int AS s FROM requests WHERE id=$1`, [id, String(INVITE_OPEN_HOURS)])).rows[0].s; } catch(e) { return null; } }
+const INVITE_REMIND_HOURS = 3, INVITE_OPEN_HOURS = 6, INVITE_BID_HOURS = 24;   // قدّم المزوّد المطلوب ← نعطي العميل 24 ساعة يختاره، وبعدها ينفتح للباقين
+async function _inviteLeft(id){ try { return (await pool.query(`SELECT GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + ((CASE WHEN EXISTS(SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id) THEN $3 ELSE $2 END) || ' hours')::interval - NOW())))::int AS s FROM requests r WHERE r.id=$1`, [id, String(INVITE_OPEN_HOURS), String(INVITE_BID_HOURS)])).rows[0].s; } catch(e) { return null; } }
 async function _openInvite(id, why){
   const r = await pool.query(`UPDATE requests SET invite_state='open' WHERE id=$1 AND invite_state IS DISTINCT FROM 'open' RETURNING id, title, category, city, status`, [id]);
   const x = r.rows[0]; if (!x) return false;
-  addTimeline(id, 'invite_open', 'انفتح لكل المزوّدين تلقائياً — المزوّد المطلوب ما قدّم خلال ' + INVITE_OPEN_HOURS + ' ساعات').catch(()=>{});
+  addTimeline(id, 'invite_open', why === 'bid_timeout' ? ('انفتح لكل المزوّدين تلقائياً — المزوّد المطلوب قدّم، والعميل ما اختاره خلال ' + INVITE_BID_HOURS + ' ساعة') : ('انفتح لكل المزوّدين تلقائياً — المزوّد المطلوب ما قدّم خلال ' + INVITE_OPEN_HOURS + ' ساعات')).catch(()=>{});
   if (x.status === 'open') { try { await notifyMatchingProviders(x, true); } catch(e){} }
   return true;
 }
@@ -9130,6 +9129,11 @@ setInterval(() => _jobLock('invite', async () => {
     const due = await pool.query(`SELECT r.id FROM requests r WHERE r.invite_state='exclusive' AND r.invite_started_at <= NOW() - ($1 || ' hours')::interval
       AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id) LIMIT 50`, [String(INVITE_OPEN_HOURS)]);
     for (const x of due.rows) await _openInvite(x.id, 'timeout');
+    // قدّم المزوّد المطلوب بس العميل ما اختاره خلال 24 ساعة ← ينفتح للباقين (وعرضه يبقى)
+    const due2 = await pool.query(`SELECT r.id, r.title, r.invited_provider_id FROM requests r WHERE r.invite_state='exclusive' AND r.status='open' AND r.paused_at IS NULL
+      AND r.invite_started_at <= NOW() - ($1 || ' hours')::interval AND EXISTS(SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id)
+      AND NOT EXISTS (SELECT 1 FROM bids b2 WHERE b2.request_id=r.id AND b2.status='accepted') LIMIT 50`, [String(INVITE_BID_HOURS)]);
+    for (const x of due2.rows) { if (await _openInvite(x.id, 'bid_timeout')) notify(x.invited_provider_id, 'انفتح «' + x.title + '» لباقي المزوّدين', 'العميل ما اختار عرض للحين، فانفتح المشروع للباقين. عرضك باقي وأنت أول واحد قدّم — تواصل مع العميل وتابع معه.', 'request', x.id).catch(()=>{}); }
   } catch(e) { console.error('invite timer:', e.message); }
 }), 10*60*1000);
 // العميل يفتح مشروعه الموجّه لباقي المزوّدين الآن
@@ -9668,7 +9672,7 @@ app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), as
     const id = parseInt(req.params.id);
     const rq = (await pool.query(`SELECT r.*, u.name AS client_name, u.phone AS client_phone, u.email AS client_email,
         (SELECT COALESCE(NULLIF(iv.business_name,''),iv.name) FROM users iv WHERE iv.id=r.invited_provider_id) AS invited_name,
-        CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + (${INVITE_OPEN_HOURS} || ' hours')::interval - NOW())))::int END AS invite_left_sec,
+        CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + ((CASE WHEN EXISTS(SELECT 1 FROM bids ib0 WHERE ib0.request_id=r.id AND ib0.provider_id=r.invited_provider_id) THEN ${INVITE_BID_HOURS} ELSE ${INVITE_OPEN_HOURS} END) || ' hours')::interval - NOW())))::int END AS invite_left_sec,
         EXISTS(SELECT 1 FROM bids ib WHERE ib.request_id=r.id AND ib.provider_id=r.invited_provider_id) AS invite_has_bid,
         (SELECT COUNT(*) FROM requests x WHERE x.client_id=r.client_id AND x.id<>r.id AND (x.category IS DISTINCT FROM 'direct'))::int AS client_prev
       FROM requests r JOIN users u ON u.id=r.client_id WHERE r.id=$1`, [id])).rows[0];
