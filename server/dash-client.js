@@ -237,7 +237,7 @@ function openCloseModalC(id, ev){ if(ev){ev.stopPropagation();}
     +'<style>.cmc-r{display:flex;align-items:center;gap:9px;padding:11px;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:7px;font-size:13.5px;font-weight:600;color:#334155;cursor:pointer}.cmc-r input{width:17px;height:17px;accent-color:#dc2626}</style>'
     +'</div>';
   document.body.appendChild(d);
-  try{ if(window._nsoMount)_nsoMount('cmcreason'); }catch(e){}
+  try{ if(window._nsoMount)_nsoMount('cmcreason',window._closeReqId); }catch(e){}
   try{ [].forEach.call(document.querySelectorAll('input[name=cmcreason]'),function(r){ r.addEventListener('change',function(){ var oth=document.querySelector('input[name=cmcreason]:checked'); oth=oth&&oth.value==='other'; var t=document.getElementById('cmc-note'), h=document.getElementById('cmc-otherhint'); if(h)h.style.display=oth?'block':'none'; if(t){ t.placeholder=oth?'مثال: لقيت مقاول قريب لي · غيّرت رأيي في التصميم · المشروع انتقل لشخص ثاني':'تفاصيل إضافية (اختياري)'; t.style.borderColor=oth?'#f59e0b':'#e2e8f0'; if(oth)t.focus(); } }); }); }catch(e){}
 }
 function _cmcChose(){

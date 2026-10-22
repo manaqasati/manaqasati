@@ -3463,6 +3463,8 @@ async function setupDatabase() {
     ];
     await _mig(`CREATE TABLE IF NOT EXISTS email_log (id SERIAL PRIMARY KEY, user_id INTEGER, to_email VARCHAR(200), subject VARCHAR(200), kind VARCHAR(30), resend_id VARCHAR(80), status VARCHAR(30) DEFAULT 'sent', error TEXT, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())`);
     try { await _mig('CREATE INDEX IF NOT EXISTS email_log_rid ON email_log(resend_id)'); await _mig('CREATE INDEX IF NOT EXISTS email_log_uid ON email_log(user_id, created_at DESC)'); } catch(e){}
+    await _mig(`CREATE TABLE IF NOT EXISTS close_wa_log (id SERIAL PRIMARY KEY, request_id INTEGER, client_id INTEGER, tpl VARCHAR(30), admin_id INTEGER, created_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE INDEX IF NOT EXISTS idx_close_wa_req ON close_wa_log(request_id)`);
     await _mig(`CREATE TABLE IF NOT EXISTS contract_downloads (id SERIAL PRIMARY KEY, user_id INTEGER, slug VARCHAR(60), created_at TIMESTAMP DEFAULT NOW())`);
     await _mig(`CREATE TABLE IF NOT EXISTS csp_reports (id SERIAL PRIMARY KEY, directive TEXT NOT NULL, blocked TEXT NOT NULL DEFAULT '', page TEXT NOT NULL DEFAULT '', sample TEXT, n INTEGER NOT NULL DEFAULT 1, first_at TIMESTAMPTZ DEFAULT NOW(), last_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(directive, blocked, page))`);
     for (const q of _idx) { try { await _mig(q); } catch(e) {} }
@@ -10279,6 +10281,31 @@ app.post('/api/requests/:id/revisit', auth, async (req, res) => {
 app.put('/api/admin/requests/:id/help-done', requirePermission('requests.view'), async (req, res) => {
   try { await pool.query('UPDATE requests SET close_help_done=TRUE WHERE id=$1', [parseInt(req.params.id)]); await logAdmin(req, 'close_help_done', 'request', parseInt(req.params.id), 'تواصلت مع عميل طلب مساعدة'); res.json({ ok: true }); }
   catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ «كلّم العميل» بعد الإغلاق: بيانات الرسالة + رابط دخول مباشر لعروضه + نتيجة كل رد (كم مرة انرسل وكم مرة رجع العميل) ═══
+const _CWA_BACK = `EXISTS (SELECT 1 FROM requests rr WHERE rr.client_id=l.client_id AND ((rr.id=l.request_id AND rr.closed_at IS NULL AND rr.status IN ('open','pending_review','review','in_progress','completed')) OR (rr.id<>l.request_id AND rr.created_at > l.created_at AND rr.created_at < l.created_at + INTERVAL '14 days')))`;
+app.get('/api/admin/requests/:id/close-wa', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = (await pool.query(`SELECT r.id, r.title, r.city, r.client_id, r.status, r.close_reason, r.close_missing, r.close_auto_kind, u.name AS client_name, u.phone AS client_phone,
+        (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS bids,
+        (SELECT MIN(price) FROM bids b WHERE b.request_id=r.id AND b.price>0 AND COALESCE(b.price_unit,'total')='total') AS min_price
+      FROM requests r JOIN users u ON u.id=r.client_id WHERE r.id=$1`, [id])).rows[0];
+    if (!r) return res.status(404).json({ message: 'غير موجود' });
+    const link = await _magicUrl(r.client_id, '/dashboard-client.html#detail/' + r.id);
+    const st = (await pool.query(`SELECT l.tpl, COUNT(*)::int AS sent, COUNT(*) FILTER (WHERE ${_CWA_BACK})::int AS back FROM close_wa_log l GROUP BY l.tpl`)).rows;
+    const mine = (await pool.query(`SELECT tpl, created_at FROM close_wa_log WHERE request_id=$1 ORDER BY id DESC LIMIT 5`, [id])).rows;
+    res.json({ id: r.id, title: r.title, city: r.city, name: _drFirst(r.client_name || ''), phone: normPhone(r.client_phone), bids: r.bids, min_price: r.min_price ? Number(r.min_price) : null,
+      reason: r.close_reason || (r.close_auto_kind ? 'auto' : (r.status === 'completed' ? 'completed' : 'auto')), missing: r.close_missing || null, link, stats: st, sent: mine });
+  } catch(e) { console.error('close-wa:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/requests/:id/close-wa', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), tpl = String(req.body.tpl || '').replace(/[^a-z0-9_]/g, '').slice(0, 30) || 'custom';
+    const r = (await pool.query('SELECT client_id FROM requests WHERE id=$1', [id])).rows[0]; if (!r) return res.status(404).json({ message: 'غير موجود' });
+    await pool.query('INSERT INTO close_wa_log (request_id, client_id, tpl, admin_id) VALUES ($1,$2,$3,$4)', [id, r.client_id, tpl, req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (req, res) => {
   try {

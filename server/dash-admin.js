@@ -4347,6 +4347,78 @@ function loadCloseReasons(){
     .catch(function(){ if(b)b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>'; });
 }
 var _CR_MISS={price:'💰 الأسعار أعلى من ميزانيته',far:'📍 ما فيه مزوّد قريب',few:'🔢 العروض قليلة',weak:'📄 العروض ضعيفة / ما فهموا المشروع'};
+
+// ═══ «كلّم العميل» بعد الإغلاق: ردود جاهزة حسب السبب + رابط دخول مباشر لعروضه + نتيجة كل رد ═══
+function _cwN(n){ return Number(n||0).toLocaleString('en-US'); }
+function _cwTpls(d){
+  var hi='السلام عليكم'+(d.name?' '+d.name:'')+'، معك فريق منصة مناقصة 👋\n\n', pj='مشروعك «'+(d.title||'')+'»', L=d.link, nb=d.bids||0;
+  var offers=!nb?'':(nb===1?(' — وصلك عرض واحد'+(d.min_price?' بـ '+_cwN(d.min_price)+' ر.س':'')):(' — وصلك '+(nb===2?'عرضين':nb+' '+(nb<=10?'عروض':'عرض'))+(d.min_price?'، وأقلها '+_cwN(d.min_price)+' ر.س':'')));
+  var T={
+    nego:['💬 فاوضهم — أرقامهم عندك','يدخل عروضه ويكلّم أقرب عرضين لميزانيته',hi+'بخصوص '+pj+offers+'.\n\nأسعار العروض مو نهائية، وأغلب المزوّدين يقبلون التفاوض 🤝\nأرقامهم عندك في صفحة العروض — كلّم أقرب عرضين لميزانيتك وقل لهم ميزانيتك بوضوح.\n\n👈 عروضك (يفتح لك مباشرة بدون كلمة مرور):\n'+L+'\n\nبالتوفيق 🌹'],
+    reprice:['🔁 يعيد فتحه بميزانيته','نسأله ميزانيته ونعيد فتح مشروعه',hi+'بخصوص '+pj+'.\n\nإذا تبي، قل لنا ميزانيتك التقريبية ونعيد فتح مشروعك ويشوفها المزوّدين — كثير منهم يعدّل عرضه لما يعرف الميزانية.\n\nبالتوفيق 🌹'],
+    scope:['✂️ قسّم المشروع أو غيّر المواد','يعدّل النطاق ويعيد النشر',hi+'بخصوص '+pj+'.\n\nممكن تنزل التكلفة لو قسّمت المشروع على مراحل، أو غيّرت بعض المواد لخيارات أوفر.\nادخل مشروعك من الرابط، عدّله وأعد نشره بضغطة:\n'+L+'\n\nبالتوفيق 🌹'],
+    budget_ask:['🙏 شكر + نسأل ميزانيته','بدون عرض — نتعلم للمرات الجاية',hi+'شكراً لك على استخدام المنصة 🌹\nبخصوص '+pj+': ودنا نعرف وش كانت ميزانيتك التقريبية؟ يساعدنا نوصلك بعروض أنسب المرة الجاية.'],
+    far:['📍 نجيب مزوّدين أقرب','نعيد فتحه ونستهدف مدينته',hi+'بخصوص '+pj+'.\n\nنقدر نعيد فتح مشروعك ونوصله لمزوّدين أقرب لك'+(d.city?' في '+d.city:'')+'. تبي نعيد فتحه؟ رد بـ «نعم».'],
+    few:['🔢 نعيد فتحه لمزوّدين أكثر','نوسّع وصوله',hi+'بخصوص '+pj+'.\n\nنقدر نعيد فتح مشروعك ونوصله لمزوّدين أكثر في نفس التخصص. تبي نعيد فتحه؟ رد بـ «نعم».'],
+    weak:['📄 وضّح مشروعك أكثر','مقاسات وصور ← عروض أدق',hi+'بخصوص '+pj+'.\n\nالعروض تصير أدق لما يكون المشروع واضح: المقاسات، الكميات، والصور.\nادخل مشروعك من الرابط، أضف التفاصيل وأعد نشره:\n'+L+'\n\nبالتوفيق 🌹'],
+    outside:['🎉 مبروك + وش الناقص','نشكره ونسأل وش ما عجبه',hi+'مبروك اتفاقك على '+pj+' 🎉 الله يتمّمه على خير.\nودنا نعرف: وش اللي كان ناقص في عروض المنصة؟ رأيك يساعدنا نتحسّن.'],
+    later:['⏰ متى تبدأ؟','نذكّره وقتها ومشروعه محفوظ',hi+'بخصوص '+pj+'.\n\nمتى تتوقع تبدأ فيه؟ نذكّرك وقتها، ومشروعك محفوظ تعيد نشره بضغطة من هنا:\n'+L+'\n\nبالتوفيق 🌹'],
+    back_offers:['👀 ارجع لعروضك','انقفل وفيه عروض ما اختار منها',hi+pj+' انقفل'+offers+'.\n\nتقدر ترجع لها وتكلّم المزوّدين مباشرة — أرقامهم عندك:\n'+L+'\n\nبالتوفيق 🌹'],
+    reopen:['🔄 نعيد فتحه لك؟','انقفل بدون اختيار',hi+'بخصوص '+pj+'.\n\nمشروعك انقفل. تبي نعيد فتحه لك ويوصل لمزوّدين أكثر؟ رد بـ «نعم».'],
+    missing:['💬 وش الناقص؟','سؤال عام',hi+'بخصوص '+pj+'. وش اللي كان ناقص في العروض؟ نقدر نرشّح لك مزوّدين مناسبين'+(d.city?' في '+d.city:'')+'.']
+  };
+  var r=d.reason, m=d.missing, keys;
+  if(r==='price_high'||(r==='no_suitable_offers'&&m==='price')) keys=['nego','reprice','scope','budget_ask'];
+  else if(r==='no_suitable_offers'&&m==='far') keys=['far','nego','missing'];
+  else if(r==='no_suitable_offers'&&m==='few') keys=['few','nego','missing'];
+  else if(r==='no_suitable_offers'&&m==='weak') keys=['weak','nego','missing'];
+  else if(r==='chose_outside') keys=['outside'];
+  else if(r==='postponed') keys=['later','budget_ask'];
+  else if(/^auto/.test(r||'')) keys=nb?['back_offers','nego','reopen']:['reopen','missing'];
+  else keys=nb?['missing','nego','reopen']:['missing','reopen'];
+  return keys.map(function(k){ return {k:k,t:T[k][0],s:T[k][1],m:T[k][2]}; });
+}
+function _cwOpen(id){
+  var ov=document.createElement('div'); ov.id='cw-ov'; ov.style.cssText='position:fixed;inset:0;background:rgba(10,20,45,.5);z-index:10050;display:flex;align-items:center;justify-content:center;padding:14px';
+  ov.innerHTML='<div class="cw-m"><div class="loading" style="padding:40px"><div class="spinner"></div></div></div>';
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  if(!document.getElementById('cw-css')){ var st=document.createElement('style'); st.id='cw-css'; st.textContent='.cw-m{width:min(880px,100%);max-height:calc(100vh - 28px);overflow:auto;background:var(--card,#fff);color:var(--text,#0f1d3a);border-radius:20px;box-shadow:0 30px 80px rgba(0,0,0,.35);direction:rtl}'
+    +'.cw-h{padding:16px 18px;border-bottom:1px solid var(--border,#e8eef8);display:flex;gap:10px;align-items:flex-start}.cw-h b{font-size:17px;font-weight:900;display:block}.cw-h small{color:var(--muted,#64748b);font-weight:700;font-size:12.5px}'
+    +'.cw-x{margin-right:auto;width:36px;height:36px;border-radius:10px;border:0;background:var(--bg,#f1f5fb);color:var(--muted,#64748b);font-weight:900;cursor:pointer;flex-shrink:0}'
+    +'.cw-b{display:grid;grid-template-columns:290px 1fr}@media(max-width:760px){.cw-b{grid-template-columns:1fr}}'
+    +'.cw-l{border-left:1px solid var(--border,#e8eef8);padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--bg,#fafcff)}'
+    +'.cw-o{border:1.5px solid var(--border,#dbe5f5);background:var(--card,#fff);border-radius:13px;padding:11px 12px;text-align:right;cursor:pointer;font-family:inherit;color:inherit}'
+    +'.cw-o.on{border-color:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,.13)}.cw-o b{display:block;font-size:13.5px;font-weight:900}.cw-o small{display:block;color:var(--muted,#64748b);font-weight:700;font-size:12px;margin-top:2px}'
+    +'.cw-o em{display:block;font-style:normal;font-size:11px;font-weight:800;color:#15803d;margin-top:5px}'
+    +'.cw-p{padding:14px 16px;display:flex;flex-direction:column;gap:9px}.cw-p textarea{width:100%;min-height:290px;border:1.5px solid var(--border,#dbe5f5);border-radius:13px;padding:12px;font-family:inherit;font-size:14px;line-height:1.9;background:var(--card,#fff);color:inherit;resize:vertical}'
+    +'.cw-f{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.cw-wa{background:#16a34a;color:#fff;border:0;border-radius:12px;padding:12px 20px;font-weight:900;font-family:inherit;font-size:14.5px;cursor:pointer;text-decoration:none}'
+    +'.cw-cp{background:var(--bg,#eef3ff);color:#1e3a8a;border:0;border-radius:12px;padding:12px 16px;font-weight:800;font-family:inherit;cursor:pointer}.cw-hint{font-size:12px;color:var(--muted,#64748b);font-weight:700}';
+    document.head.appendChild(st); }
+  document.body.appendChild(ov);
+  fetch(API+'/api/admin/requests/'+id+'/close-wa',hdr()).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.id){ ov.querySelector('.cw-m').innerHTML='<div style="padding:30px;text-align:center">تعذّر التحميل</div>'; return; }
+    var tp=_cwTpls(d), S={}; (d.stats||[]).forEach(function(x){ S[x.tpl]=x; }); var cur=tp[0];
+    var sent=(d.sent||[]).length?'<div class="cw-hint" style="color:#b45309">⚠️ انرسل له قبل: '+d.sent.map(function(x){ var t=tp.filter(function(z){return z.k===x.tpl;})[0]; return (t?t.t.replace(/^\S+\s/,''):x.tpl)+' ('+_adAgo(x.created_at)+')'; }).join('، ')+'</div>':'';
+    var h='<div class="cw-h"><div style="min-width:0"><b>كلّم العميل'+(d.name?' — '+esc(d.name):'')+'</b><small>'+esc(d.title||'')+' · '+(d.bids||0)+' عرض</small>'+sent+'</div><button type="button" class="cw-x" aria-label="إغلاق">✕</button></div>'
+      +'<div class="cw-b"><div class="cw-l"><div class="cw-hint" style="padding:0 2px">ردود جاهزة لهالسبب</div>'
+      +tp.map(function(t,i){ var x=S[t.k]; return '<button type="button" class="cw-o'+(i?'':' on')+'" data-k="'+t.k+'"><b>'+(i?'':'<span style="font-size:10.5px;background:#16a34a;color:#fff;border-radius:6px;padding:1px 6px;margin-left:6px">مقترح</span>')+esc(t.t)+'</b><small>'+esc(t.s)+'</small>'+(x&&x.sent?'<em>📈 انرسل '+x.sent+' · رجع '+x.back+' ('+Math.round(x.back*100/x.sent)+'%)</em>':'')+'</button>'; }).join('')
+      +'</div><div class="cw-p"><div class="cw-hint" style="font-weight:900;color:var(--text2,#475569)">الرسالة — تقدر تعدّلها قبل الإرسال</div><textarea id="cw-t"></textarea>'
+      +(d.phone?'':'<div class="cw-hint" style="color:#b91c1c">ما عنده رقم جوال صحيح — انسخ الرسالة وأرسلها يدوياً</div>')
+      +'<div class="cw-f">'+(d.phone?'<a class="cw-wa" id="cw-go" target="_blank" rel="noopener" href="#">إرسال واتساب</a>':'')+'<button type="button" class="cw-cp" id="cw-cp">نسخ</button><span class="cw-hint">«رجع» = أعاد فتح مشروعه أو نشر مشروع جديد خلال أسبوعين</span></div>'
+      +'<div class="cw-hint">🔒 الرابط يدخّل العميل حسابه مباشرة — أرسله له هو بس</div></div></div>';
+    var m=ov.querySelector('.cw-m'); m.innerHTML=h;
+    var ta=m.querySelector('#cw-t'), go=m.querySelector('#cw-go');
+    var paint=function(){ ta.value=cur.m; sync(); };
+    var sync=function(){ if(go) go.href='https://wa.me/'+d.phone+'?text='+encodeURIComponent(ta.value); };
+    var log=function(){ fetch(API+'/api/admin/requests/'+id+'/close-wa',Object.assign({method:'POST',body:JSON.stringify({tpl:cur.k})},hdr())).catch(function(){}); };
+    ta.oninput=sync;
+    m.querySelector('.cw-x').onclick=function(){ ov.remove(); };
+    [].forEach.call(m.querySelectorAll('.cw-o'),function(b){ b.onclick=function(){ cur=tp.filter(function(t){return t.k===b.getAttribute('data-k');})[0]; [].forEach.call(m.querySelectorAll('.cw-o'),function(z){ z.classList.toggle('on',z===b); }); paint(); }; });
+    if(go) go.addEventListener('click',function(){ sync(); log(); toast('انفتح واتساب — انسجّل الإرسال','success'); });
+    m.querySelector('#cw-cp').onclick=function(){ try{ navigator.clipboard.writeText(ta.value); }catch(e){ ta.select(); document.execCommand('copy'); } log(); toast('نُسخت الرسالة','success'); };
+    paint();
+  }).catch(function(){ ov.querySelector('.cw-m').innerHTML='<div style="padding:30px;text-align:center">تعذّر التحميل</div>'; });
+}
 function _crRow(p){
   var _fd=function(d){return d?new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'}):'';};
   var ph=_waNorm(p.client_phone), wt='السلام عليكم '+(p.client_name||'')+'،\nمعك فريق منصة مناقصة بخصوص مشروعك «'+(p.title||'')+'». وش اللي كان ناقص في العروض؟ نقدر نرشّح لك مزوّدين مناسبين'+(p.city?' في '+p.city:'')+'.';
@@ -4355,7 +4427,7 @@ function _crRow(p){
     +'<div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-top:3px">'+esc(p.client_name||'عميل')+(p.city?' · '+esc(p.city):'')+' · '+(p.bid_count||0)+' عروض'+(p.closed_at?' · أُغلق '+_fd(p.closed_at):'')+'</div>'
     +(p.close_missing?'<div style="margin-top:6px;font-size:12.5px;font-weight:800">الناقص: <span style="color:#b45309">'+(_CR_MISS[p.close_missing]||'')+'</span></div>':'')
     +(p.close_reason_note?'<div style="margin-top:5px;font-size:12px;font-weight:700;color:var(--text2);background:var(--bg);border-radius:9px;padding:6px 9px">'+esc(p.close_reason_note)+'</div>':'')+(typeof _crExtra==='function'?_crExtra(p):'')+'</div>'
-    +'<div class="nso-acts">'+(ph?'<a class="act-btn ab-default" style="color:#047857;border-color:#a7f3d0;text-decoration:none" href="https://wa.me/'+ph+'?text='+encodeURIComponent(wt)+'" target="_blank" rel="noopener">💬 كلّم العميل</a>':'')
+    +'<div class="nso-acts"><button type="button" class="act-btn ab-default" style="color:#047857;border-color:#a7f3d0" onclick="_cwOpen('+(parseInt(p.id)||0)+')">💬 كلّم العميل</button>'
     +'<button class="act-btn ab-default" onclick="gsOpenReq('+(parseInt(p.id)||0)+')" title="منه تعيد فتحه وتدعو مزوّدين">📂 افتح المشروع</button>'
     +(p.close_help&&!p.close_help_done?'<button class="act-btn ab-default" onclick="_crHelpDone('+(parseInt(p.id)||0)+')">✓ تواصلت</button>':'')+'</div></div>';
 }
@@ -4432,7 +4504,7 @@ function _crCard(p){
     if(p.close_reason==='deal_cancelled'){ lbl='الاتفاق انلغى'; col='#b91c1c'; }
     if(_crTime(p))when='الساعة '+_crTime(p);
     var expl=(ci.text&&ci.by!=='done')?'<div style="font-size:12px;font-weight:700;color:var(--text2);margin-top:6px;line-height:1.7;background:var(--bg);border-radius:9px;padding:6px 9px"><b style="color:'+who[1]+'">'+who[0]+':</b> '+esc(ci.text)+(ci.open_days!=null?' · <span style="color:var(--muted)">ظل مفتوح '+ci.open_days+' يوم</span>':'')+'</div>':'';
-    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="min-width:0"><div style="font-weight:800;font-size:13.5px">'+esc(p.title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+esc(p.client_name||'عميل')+' · '+(p.bid_count||0)+' عروض'+(p.created_at?' · نُشر '+_fd(p.created_at):'')+(when?' · '+when:'')+'</div>'+expl+(p.close_reason==='deal_cancelled'&&p.close_reason_note?'<div style="font-size:12px;font-weight:700;color:var(--text2);margin-top:5px">ملاحظة المزوّد: «'+esc(p.close_reason_note)+'»</div>':'')+_crExtra(p)+'</div><span style="flex-shrink:0;background:'+col+'1a;color:'+col+';font-size:11px;font-weight:800;padding:5px 11px;border-radius:14px;height:fit-content">'+esc(lbl)+'</span></div></div>';
+    return '<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><div style="min-width:0"><div style="font-weight:800;font-size:13.5px">'+esc(p.title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+esc(p.client_name||'عميل')+' · '+(p.bid_count||0)+' عروض'+(p.created_at?' · نُشر '+_fd(p.created_at):'')+(when?' · '+when:'')+'</div>'+expl+(p.close_reason==='deal_cancelled'&&p.close_reason_note?'<div style="font-size:12px;font-weight:700;color:var(--text2);margin-top:5px">ملاحظة المزوّد: «'+esc(p.close_reason_note)+'»</div>':'')+_crExtra(p)+(p.status!=='completed'&&p.close_reason!=='completed'&&p.close_reason!=='deal_cancelled'?'<div style="margin-top:9px"><button type="button" class="act-btn ab-default" style="color:#047857;border-color:#a7f3d0" onclick="_cwOpen('+(parseInt(p.id)||0)+')">💬 كلّم العميل</button></div>':'')+'</div><span style="flex-shrink:0;background:'+col+'1a;color:'+col+';font-size:11px;font-weight:800;padding:5px 11px;border-radius:14px;height:fit-content">'+esc(lbl)+'</span></div></div>';
 }
 function loadOutreach(){
   var b=document.getElementById('outreach-body');if(!b)return;

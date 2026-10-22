@@ -309,11 +309,48 @@ window._askConfirmOpen=function(b,send){
   };
 };
 
+
+// ═══ العميل يقفل لأن «الأسعار أعلى» ← قبل ما يقفل: أقرب 3 عروض بأرقامهم يفاوضهم ═══
+function _ngMount(radioName,reqId){
+  reqId=reqId||window._closeReqId; if(!reqId) return;
+  var pr=document.querySelector('input[name="'+radioName+'"][value="price_high"]'); if(!pr) return;
+  var anchor=(document.querySelector('input[name="'+radioName+'"][value="other"]')||pr); anchor=anchor.closest('label')||anchor.parentNode;
+  var box=document.createElement('div'); box.id='ng-box'; box.style.cssText='display:none;background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:12px;margin:2px 0 10px;text-align:right';
+  anchor.parentNode.insertBefore(box, anchor.nextSibling);
+  var bids=null, loading=false, title='';
+  function paint(){
+    if(!bids){ box.innerHTML='<div style="font-size:12.5px;color:#166534;font-weight:700">…</div>'; return; }
+    var L=bids.filter(function(b){ return b.provider_phone&&parseFloat(b.price)>0&&(b.price_unit||'total')==='total'&&b.status!=='rejected'&&!b.is_hidden; }).sort(function(a,b){ return parseFloat(a.price)-parseFloat(b.price); }).slice(0,3);
+    if(!L.length){ box.style.display='none'; return; }
+    var wt=function(){ return 'السلام عليكم، بخصوص عرضك على مشروعي'+(title?' «'+title+'»':'')+' في منصة مناقصة. ميزانيتي أقل من عرضك — هل تقدر تعدّل السعر؟'; };
+    var ph=function(p){ p=String(p||'').replace(/\D/g,''); if(p.indexOf('05')===0)p='966'+p.slice(1); return p; };
+    box.innerHTML='<b style="display:block;font-size:14.5px;color:#14532d">🤝 قبل ما تقفل — فاوضهم</b><div style="font-size:12.5px;font-weight:700;color:#166534;line-height:1.8;margin:3px 0 8px">الأسعار مو نهائية. أقرب '+(L.length===1?'عرض':(L.length===2?'عرضين':L.length+' عروض'))+' لك — كلّمهم وقل لهم ميزانيتك:</div>'
+      +L.map(function(b){ var p=ph(b.provider_phone), nm=b.provider_business_name||b.provider_name||'مزوّد';
+        return '<div style="display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #d1fae5;border-radius:11px;padding:8px 9px;margin-bottom:6px"><div style="flex:1;min-width:0"><b style="display:block;font-size:13px;color:#0f2544;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+E(nm)+'</b><small style="color:#64748b;font-weight:700;font-size:11.5px">'+(b.days?b.days+' يوم':'عرض')+'</small></div><b style="font-size:13.5px;color:#0f2544;white-space:nowrap">'+N(b.price)+' ر.س</b>'
+          +'<a href="https://wa.me/'+p+'?text='+encodeURIComponent(wt())+'" target="_blank" rel="noopener" aria-label="واتساب" style="width:36px;height:36px;border-radius:10px;background:#dcfce7;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:16px">💬</a>'
+          +'<a href="tel:'+E(String(b.provider_phone).replace(/[^\d+]/g,''))+'" aria-label="اتصال" style="width:36px;height:36px;border-radius:10px;background:#e0e7ff;display:flex;align-items:center;justify-content:center;text-decoration:none;font-size:16px">📞</a></div>'; }).join('')
+      +'<div style="font-size:12px;font-weight:700;color:#166534;margin:2px 0 9px">💡 قل لهم ميزانيتك بوضوح — كثير منهم يعدّل عرضه</div>'
+      +'<button type="button" id="ng-keep" style="width:100%;background:#1d4ed8;color:#fff;border:0;border-radius:11px;padding:12px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer">بكلّمهم أول — خلّه مفتوح</button>';
+    box.style.display='block';
+    box.querySelector('#ng-keep').onclick=function(){ var ov=box.closest('[id^="closeModalOv"]'); if(ov) ov.remove(); };
+  }
+  function want(){ var c=document.querySelector('input[name="'+radioName+'"]:checked'); return !!c&&(c.value==='price_high'||(c.value==='no_suitable_offers'&&_nso.missing==='price')); }
+  function sync(){
+    if(!document.body.contains(box)) return;
+    if(!want()){ box.style.display='none'; return; }
+    box.style.display='block';
+    if(bids){ paint(); return; } if(loading) return; loading=true; paint();
+    fetch(API_+'/api/requests/'+reqId+'/bids',{headers:{'Authorization':'Bearer '+_tok()}}).then(function(r){ return r.ok?r.json():[]; }).then(function(d){ bids=Array.isArray(d)?d:((d&&d.bids)||[]); title=(d&&d.title)||((window._req&&window._req.title)||''); paint(); }).catch(function(){ bids=[]; paint(); });
+  }
+  window._ngSync=sync;
+  document.querySelectorAll('input[name="'+radioName+'"]').forEach(function(r){ r.addEventListener('change',sync); });
+}
 // ═══ إغلاق المشروع: «ما لقيت عرض مناسب» → وش الناقص + أبي مساعدة ═══
 var _nso={missing:null,help:false};
 window._nsoGet=function(){ return {missing:_nso.missing, help:!!_nso.help}; };
-window._nsoMount=function(radioName){
+window._nsoMount=function(radioName,reqId){
   _ccss(); _nso={missing:null,help:false};
+  try{ _ngMount(radioName,reqId); }catch(e){}
   var inp=document.querySelector('input[name="'+radioName+'"][value="no_suitable_offers"]'); if(!inp)return;
   var lbl=inp.closest('label')||inp.parentNode, box=document.createElement('div');
   box.id='nso-box'; box.style.cssText='display:none;margin:-2px 0 9px;padding:2px 4px 0';
@@ -321,7 +358,7 @@ window._nsoMount=function(radioName){
   box.innerHTML='<span class="rj-lb" style="margin-top:4px">وش كان ناقص؟ <span>(اختياري)</span></span><div class="rj-chips">'+M.map(function(m){return '<button type="button" class="rj-chip" data-m="'+m[0]+'" style="font-size:12.5px;padding:8px 11px">'+m[1]+'</button>';}).join('')+'</div>'
     +'<button type="button" class="rj-opt off" data-h="1" style="margin-top:9px;background:#eff6ff;border-color:#93c5fd"><span class="rj-cb" style="background:#1d4ed8">✓</span><span><b style="color:#1e3a8a">أبي مساعدة فريق مناقصة</b><small style="color:#1e40af">نتواصل معك ونرشّح لك مزوّدين مناسبين — بدون أي رسوم عليك</small></span></button>';
   lbl.parentNode.insertBefore(box, lbl.nextSibling);
-  box.querySelectorAll('[data-m]').forEach(function(b){ b.onclick=function(){ var k=b.getAttribute('data-m'); _nso.missing=(_nso.missing===k?null:k); box.querySelectorAll('[data-m]').forEach(function(z){z.classList.toggle('on',z.getAttribute('data-m')===_nso.missing);}); }; });
+  box.querySelectorAll('[data-m]').forEach(function(b){ b.onclick=function(){ var k=b.getAttribute('data-m'); _nso.missing=(_nso.missing===k?null:k); try{ if(window._ngSync)_ngSync(); }catch(e){} box.querySelectorAll('[data-m]').forEach(function(z){z.classList.toggle('on',z.getAttribute('data-m')===_nso.missing);}); }; });
   var hb=box.querySelector('[data-h]'); hb.onclick=function(){ _nso.help=!_nso.help; hb.classList.toggle('off',!_nso.help); };
   document.querySelectorAll('input[name="'+radioName+'"]').forEach(function(r){ r.addEventListener('change',function(){ box.style.display=inp.checked?'block':'none'; }); });
 };
