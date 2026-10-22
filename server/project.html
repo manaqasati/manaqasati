@@ -840,6 +840,7 @@ function _pjCompare(){
   d.onclick=function(e){if(e.target===d)d.remove();};
   document.body.appendChild(d);
 }
+function _pjLeft(sec){ sec=Math.max(0,parseInt(sec)||0); var h=Math.floor(sec/3600), m=Math.ceil((sec%3600)/60); if(h>=1) return h===1?'ساعة':(h===2?'ساعتين':(h<=10?h+' ساعات':h+' ساعة')); return m<=1?'دقيقة':m+' دقيقة'; }
 function _pjToast(t,bad){var d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:'+(bad?'#b91c1c':'#1e293b')+';color:#fff;padding:11px 18px;border-radius:12px;font-size:13px;font-weight:800;z-index:9999;max-width:90vw;text-align:center';document.body.appendChild(d);setTimeout(function(){d.remove();},2600);}
 function _pjPost(path,btn,okMsg){
   if(btn){btn.disabled=true;btn._t=btn.textContent;btn.textContent='...';}
@@ -1097,12 +1098,13 @@ function render(){
   } else {
     // مشروع موجّه: للمزوّد المدعو بانر، وللباقين تنبيه إنه محجوز
     if(req.invited_me)h+='<div class="pj-card" style="background:linear-gradient(160deg,#1e3a8a,#1d4ed8);color:#fff;border:0;gap:10px"><span class="pj-pill" style="align-self:flex-start;background:#facc15;color:#422006">⭐ مشروع طلبك أنت بالاسم</span><div style="background:rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:800;line-height:1.8">⭐ هذا المشروع موجّه لك خاصة — لك وحدك الحين، وينفتح لباقي المزوّدين بعد <span style="color:#fde68a">'+_pjHrs(req.invite_left_sec)+'</span></div>'+(!_bids.some(function(b){return b.is_mine;})&&req.status==='open'?'<button class="pj-b" style="width:100%;min-height:46px;background:#fff;color:#1e3a8a;border-color:#fff" onclick="openBid()">قدّم عرضك الآن</button>':'')+'</div>';
-    else if(req.invite_locked)h+='<div class="pj-card" style="background:#eff6ff;border:1.5px solid #93c5fd;flex-direction:row;align-items:flex-start;gap:10px"><span style="font-size:20px">🔒</span><div style="font-size:13px;font-weight:800;color:#1e3a8a;line-height:1.8">هذا المشروع محجوز حالياً لمزوّد اختاره العميل — ينفتح للعروض خلال 24 ساعة</div></div>';
+    else if(req.invite_locked)h+='<div class="pj-card" style="background:#eff6ff;border:1.5px solid #93c5fd;flex-direction:row;align-items:flex-start;gap:10px"><span style="font-size:20px">🔒</span><div style="font-size:13px;font-weight:800;color:#1e3a8a;line-height:1.8">هذا المشروع طلب فيه العميل مزوّد محدد بالاسم — '+(req.invite_left_sec>0?'ينفتح لباقي المزوّدين خلال '+_pjLeft(req.invite_left_sec):(req.invite_left_sec===0?'ينفتح لباقي المزوّدين خلال دقائق':'ينفتح لباقي المزوّدين إذا فتحه العميل'))+'</div></div>';
+    else if(req.invite_state==='exclusive'&&req.invited_name&&!isOwner)h+='<div class="pj-card" style="background:#fffbeb;border:1.5px solid #fcd34d;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:20px">🔒</span><div style="font-size:13px;font-weight:800;color:#92400e;line-height:1.8">للإدارة: العميل طلب «'+esc(req.invited_name)+'» بالاسم — المشروع محجوز له وباقي المزوّدين ما يقدرون يقدّمون.<br>'+(req.invite_has_bid?'قدّم عرضه ← يبقى محجوز لين يفتحه العميل أو الإدارة.':'ما قدّم للحين ← ينفتح للجميع تلقائياً خلال '+_pjLeft(req.invite_left_sec||0)+'.')+'</div></div><button type="button" class="pj-b" style="align-self:flex-start" onclick="_pjOpenInvite(this)">🔓 افتحه للجميع الحين</button></div>';
     if(req.status==='open'){
       var n=req.bids_n!=null?req.bids_n:_bids.length;
       var lvl=n<=2?['منخفضة','#15803d']:(n<=6?['متوسطة','#b45309']:['عالية','#b91c1c']);
       h+='<div class="pj-duo pj-r"><div class="pj-mini" style="background:#ecfdf5;border-color:#bbf7d0"><span style="color:#15803d">الوقت المتبقي</span><b>'+(dl===null?'مفتوح':(dl<=0?'آخر يوم':dl+' '+_dWord(dl)))+'</b><small>'+(req.last_bid_at?'آخر عرض قبل '+ago(req.last_bid_at):'ما أحد قدّم للحين')+'</small></div>';
-      h+='<div class="pj-mini"><span>المنافسة</span><b>'+n+' '+(n>=3&&n<=10?'عروض':'عرض')+' <em style="color:'+lvl[1]+'">· '+lvl[0]+'</em></b><small>'+(n===0?'كن أول واحد يقدّم':'قدّم عرض واضح وتميّز')+'</small></div></div>';
+      h+='<div class="pj-mini"><span>المنافسة</span><b>'+n+' '+(n>=3&&n<=10?'عروض':'عرض')+' <em style="color:'+lvl[1]+'">· '+lvl[0]+'</em></b><small>'+(req.invite_locked?'محجوز حالياً لمزوّد محدد':(n===0?'كن أول واحد يقدّم':'قدّم عرض واضح وتميّز'))+'</small></div></div>';
     }
     if(req.status==='open'&&req.paused)h+=(req.pause_chosen?'<div class="pj-card" style="background:#ecfdf5;border:1.5px solid #6ee7b7;color:#065f46;gap:4px"><b style="font-size:14.5px">✅ صاحب المشروع اختارك للتفاوض!</b><div style="font-size:13px;font-weight:600;line-height:1.8">وقّف استقبال العروض عشانك — تواصل معه واتفقوا على التفاصيل.</div></div>':'<div class="pj-card" style="background:#fff7ed;border:1.5px solid #fdba74;color:#7c2d12;gap:4px"><b style="font-size:14.5px">⏸️ صاحب المشروع يتفاوض حالياً مع أحد المزوّدين.</b><div style="font-size:13px;font-weight:600;line-height:1.8">نرجو عدم التواصل معه خلال هالفترة. لو ما تم الاتفاق، يرجع المشروع يستقبل عروض ويوصل إشعار للي قدّموا.</div></div>');
     if(req.status==='open'&&req.client_silent_days)h+='<div class="pj-card" style="background:#fff7ed;border:1.5px solid #fdba74;flex-direction:row;align-items:flex-start;gap:10px"><span style="font-size:20px">⚠️</span><div style="font-size:13px;font-weight:800;color:#9a3412;line-height:1.8">صاحب المشروع ما اطّلع على العروض من '+req.client_silent_days+' '+(req.client_silent_days>=3&&req.client_silent_days<=10?'أيام':'يوم')+' — ممكن يتأخر رده.</div></div>';
@@ -1185,7 +1187,7 @@ function openBid(){
   var u=getUser();
   if(!u){goLogin();return;}
   if(u.role!=='provider'&&!u.can_provide){alert('هذا الزر للمزودين فقط — فعّل تقديم العروض من حسابك');return;}
-  if(_req&&_req.invite_locked){_pjToast('هذا المشروع محجوز حالياً لمزوّد اختاره العميل — ينفتح للعروض خلال 24 ساعة',1);return;}
+  if(_req&&_req.invite_locked){_pjToast('العميل طلب مزوّد محدد بالاسم — '+(_req.invite_left_sec>0?'ينفتح للعروض خلال '+_pjLeft(_req.invite_left_sec):'ينفتح إذا فتحه العميل'),1);return;}
   if(_req&&_req.paused&&!_req.pause_chosen&&!(_bids||[]).some(function(b){return b.is_mine;})){_pjToast('⏸️ صاحب المشروع يتفاوض حالياً مع أحد المزوّدين — المشروع ما يستقبل عروض جديدة الحين',1);return;}
   if(window._areaGate&&!window._agSkip&&!(_bids||[]).some(function(b){return b.is_mine;})){ _areaGate(getReqId(),function(){ window._agSkip=1; try{openBid();}finally{window._agSkip=0;} }); return; }
   document.getElementById('bidOverlay').classList.add('on');

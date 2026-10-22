@@ -888,7 +888,9 @@ app.get('/api/requests/public/:id', async (req, res) => {
         if (row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); // يحسب في قاعدة البيانات (يتفادى فرق التوقيت)
         delete row.invited_provider_id;
       } else {
-        if (row.invite_state === 'exclusive') row.invite_locked = true; // مشروع محجوز حالياً لمزوّد آخر
+        if (row.invite_state === 'exclusive') { row.invite_locked = true; // مشروع محجوز حالياً لمزوّد آخر
+          const _hb = (await pool.query('SELECT 1 FROM bids WHERE request_id=$1 AND provider_id=$2', [id, row.invited_provider_id])).rows.length > 0;
+          if (!_hb && row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); }   // لو المدعو ما قدّم: ينفتح بعد الوقت الباقي
         delete row.invited_provider_id; delete row.invite_started_at;
       }
     } catch(e) {}
@@ -8941,7 +8943,10 @@ app.get('/api/admin/requests', requirePermission('requests.view'), async (req, r
         (array_agg(price ORDER BY id) FILTER (WHERE status='accepted'))[1] AS acc
         FROM bids GROUP BY request_id),
       sl AS (SELECT DISTINCT ON (request_id) request_id, id FROM saai_ledger WHERE request_id IS NOT NULL ORDER BY request_id, id)
-      SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE(bs.n,0) as bid_count, bs.acc as accepted_price, bs.mn as min_bid, sl.id as saai_id, u.phone as client_phone
+      SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE(bs.n,0) as bid_count, bs.acc as accepted_price, bs.mn as min_bid, sl.id as saai_id, u.phone as client_phone,
+        (SELECT COALESCE(NULLIF(iv.business_name,''),iv.name) FROM users iv WHERE iv.id=r.invited_provider_id) AS invited_name,
+        CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + INTERVAL '24 hours' - NOW())))::int END AS invite_left_sec,
+        EXISTS(SELECT 1 FROM bids ib WHERE ib.request_id=r.id AND ib.provider_id=r.invited_provider_id) AS invite_has_bid
       FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id LEFT JOIN bs ON bs.request_id=r.id LEFT JOIN sl ON sl.request_id=r.id
       WHERE (r.category IS DISTINCT FROM 'direct')`;
     const params = [];
@@ -9660,6 +9665,9 @@ app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), as
   try {
     const id = parseInt(req.params.id);
     const rq = (await pool.query(`SELECT r.*, u.name AS client_name, u.phone AS client_phone, u.email AS client_email,
+        (SELECT COALESCE(NULLIF(iv.business_name,''),iv.name) FROM users iv WHERE iv.id=r.invited_provider_id) AS invited_name,
+        CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + INTERVAL '24 hours' - NOW())))::int END AS invite_left_sec,
+        EXISTS(SELECT 1 FROM bids ib WHERE ib.request_id=r.id AND ib.provider_id=r.invited_provider_id) AS invite_has_bid,
         (SELECT COUNT(*) FROM requests x WHERE x.client_id=r.client_id AND x.id<>r.id AND (x.category IS DISTINCT FROM 'direct'))::int AS client_prev
       FROM requests r JOIN users u ON u.id=r.client_id WHERE r.id=$1`, [id])).rows[0];
     if (!rq) return res.status(404).json({ message: 'غير موجود' });
