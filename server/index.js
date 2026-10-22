@@ -617,8 +617,8 @@ async function notifyMatchingProviders(request, _force){
         if(!iv.invite_state || iv.invite_state === 'pending'){
           await pool.query(`UPDATE requests SET invite_state='exclusive', invite_started_at=NOW() WHERE id=$1`, [request.id]);
           const pv = (await pool.query('SELECT email, COALESCE(business_name,name) AS nm FROM users WHERE id=$1', [iv.invited_provider_id])).rows[0];
-          await notify(iv.invited_provider_id, '⭐ عميل طلب عرضك أنت بالاسم', `مشروع «${iv.title}» موجّه لك خاصة — لك وحدك ${INVITE_OPEN_HOURS} ساعة قبل ما ينفتح لباقي المزوّدين. قدّم عرضك الآن.`, 'new_request', request.id);
-          if(pv && pv.email && !/@manaqasa\.local$/i.test(pv.email)){ const t='⭐ عميل طلب عرضك بالاسم'; sendEmail(pv.email, t, emailTpl(t, `<p>عزيزي <strong>${eEsc(pv.nm)}</strong>،</p><p>اختارك عميل من صفحتك على مناقصة وأرسل لك مشروع «<strong>${eEsc(iv.title)}</strong>». المشروع لك وحدك ${INVITE_OPEN_HOURS} ساعة قبل ما يوصل لباقي المزوّدين.</p>`, 'قدّم عرضك الآن', SITE_URL+'/project/x-'+request.id+'?id='+request.id)).catch(()=>{}); }
+          await notify(iv.invited_provider_id, '⭐ عميل طلب عرضك أنت بالاسم', `مشروع «${iv.title}» موجّه لك خاصة — لك وحدك ${INVITE_OPEN_HOURS} ساعات قبل ما ينفتح لباقي المزوّدين. قدّم عرضك الآن.`, 'new_request', request.id);
+          if(pv && pv.email && !/@manaqasa\.local$/i.test(pv.email)){ const t='⭐ عميل طلب عرضك بالاسم'; sendEmail(pv.email, t, emailTpl(t, `<p>عزيزي <strong>${eEsc(pv.nm)}</strong>،</p><p>اختارك عميل من صفحتك على مناقصة وأرسل لك مشروع «<strong>${eEsc(iv.title)}</strong>». المشروع لك وحدك ${INVITE_OPEN_HOURS} ساعات قبل ما يوصل لباقي المزوّدين.</p>`, 'قدّم عرضك الآن', SITE_URL+'/project/x-'+request.id+'?id='+request.id)).catch(()=>{}); }
         }
         return;
       }
@@ -3230,7 +3230,7 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS admin_watch_at TIMESTAMP`);
       await _mig(`DELETE FROM offer_flags WHERE reason='contact_share'`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP`);
-      // دعوة مزوّد مباشرة من صفحته: المشروع له وحده 24 ساعة (تذكير بعد 5 ساعات) ثم ينفتح للجميع
+      // دعوة مزوّد مباشرة من صفحته: المشروع له وحده 6 ساعات (تذكير بعد 3 ساعات) ثم ينفتح للجميع
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invited_provider_id INTEGER`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_state VARCHAR(12)`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS notify_scope VARCHAR(10)`);
@@ -8945,7 +8945,7 @@ app.get('/api/admin/requests', requirePermission('requests.view'), async (req, r
       sl AS (SELECT DISTINCT ON (request_id) request_id, id FROM saai_ledger WHERE request_id IS NOT NULL ORDER BY request_id, id)
       SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE(bs.n,0) as bid_count, bs.acc as accepted_price, bs.mn as min_bid, sl.id as saai_id, u.phone as client_phone,
         (SELECT COALESCE(NULLIF(iv.business_name,''),iv.name) FROM users iv WHERE iv.id=r.invited_provider_id) AS invited_name,
-        CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + INTERVAL '24 hours' - NOW())))::int END AS invite_left_sec,
+        CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + (${INVITE_OPEN_HOURS} || ' hours')::interval - NOW())))::int END AS invite_left_sec,
         EXISTS(SELECT 1 FROM bids ib WHERE ib.request_id=r.id AND ib.provider_id=r.invited_provider_id) AS invite_has_bid
       FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id LEFT JOIN bs ON bs.request_id=r.id LEFT JOIN sl ON sl.request_id=r.id
       WHERE (r.category IS DISTINCT FROM 'direct')`;
@@ -9108,7 +9108,7 @@ app.post('/api/admin/contact-unlocks/:rid/remind', requirePermission('requests.v
 });
 
 // ═══ دعوة مزوّد مباشرة ═══
-const INVITE_REMIND_HOURS = 5, INVITE_OPEN_HOURS = 24;
+const INVITE_REMIND_HOURS = 3, INVITE_OPEN_HOURS = 6;
 async function _inviteLeft(id){ try { return (await pool.query(`SELECT GREATEST(0, EXTRACT(EPOCH FROM (invite_started_at + ($2 || ' hours')::interval - NOW())))::int AS s FROM requests WHERE id=$1`, [id, String(INVITE_OPEN_HOURS)])).rows[0].s; } catch(e) { return null; } }
 async function _openInvite(id, why){
   const r = await pool.query(`UPDATE requests SET invite_state='open' WHERE id=$1 AND invite_state IS DISTINCT FROM 'open' RETURNING id, title, category, city, status`, [id]);
@@ -9123,9 +9123,9 @@ setInterval(() => _jobLock('invite', async () => {
       AND r.invite_started_at <= NOW() - ($1 || ' hours')::interval AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id) LIMIT 50`, [String(INVITE_REMIND_HOURS)]);
     for (const x of rem.rows) {
       await pool.query('UPDATE requests SET invite_reminded=TRUE WHERE id=$1', [x.id]);
-      await notify(x.invited_provider_id, '⏰ باقي وقت على مشروعك الخاص', `العميل ينتظر عرضك على «${x.title}» — باقي ${INVITE_OPEN_HOURS-INVITE_REMIND_HOURS} ساعة قبل ما ينفتح لباقي المزوّدين.`, 'new_request', x.id);
+      await notify(x.invited_provider_id, '⏰ باقي وقت على مشروعك الخاص', `العميل ينتظر عرضك على «${x.title}» — باقي ${INVITE_OPEN_HOURS-INVITE_REMIND_HOURS} ساعات قبل ما ينفتح لباقي المزوّدين.`, 'new_request', x.id);
     }
-    // بعد 24 ساعة بدون عرض منه: ينفتح للجميع
+    // بعد ${INVITE_OPEN_HOURS} ساعات بدون عرض منه: ينفتح للجميع
     const due = await pool.query(`SELECT r.id FROM requests r WHERE r.invite_state='exclusive' AND r.invite_started_at <= NOW() - ($1 || ' hours')::interval
       AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id) LIMIT 50`, [String(INVITE_OPEN_HOURS)]);
     for (const x of due.rows) await _openInvite(x.id, 'timeout');
@@ -9666,7 +9666,7 @@ app.get('/api/admin/requests/:id/detail', requirePermission('requests.view'), as
     const id = parseInt(req.params.id);
     const rq = (await pool.query(`SELECT r.*, u.name AS client_name, u.phone AS client_phone, u.email AS client_email,
         (SELECT COALESCE(NULLIF(iv.business_name,''),iv.name) FROM users iv WHERE iv.id=r.invited_provider_id) AS invited_name,
-        CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + INTERVAL '24 hours' - NOW())))::int END AS invite_left_sec,
+        CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + (${INVITE_OPEN_HOURS} || ' hours')::interval - NOW())))::int END AS invite_left_sec,
         EXISTS(SELECT 1 FROM bids ib WHERE ib.request_id=r.id AND ib.provider_id=r.invited_provider_id) AS invite_has_bid,
         (SELECT COUNT(*) FROM requests x WHERE x.client_id=r.client_id AND x.id<>r.id AND (x.category IS DISTINCT FROM 'direct'))::int AS client_prev
       FROM requests r JOIN users u ON u.id=r.client_id WHERE r.id=$1`, [id])).rows[0];

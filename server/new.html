@@ -789,7 +789,7 @@ if(INV_ID){
     if(!p||!p.id) return;
     INVITE={id:String(p.id),name:p.business_name||p.name||'المزوّد'};
     var b=$('inv-banner');
-    b.innerHTML='<span class="ic">★</span><div>مشروعك يوصل لـ «'+esc(INVITE.name)+'» أول — إذا ما قدّم عرض خلال 24 ساعة يوصل لباقي المزوّدين تلقائياً</div>';
+    b.innerHTML='<span class="ic">★</span><div>مشروعك يوصل لـ «'+esc(INVITE.name)+'» أول — إذا ما قدّم عرض خلال 6 ساعات يوصل لباقي المزوّدين تلقائياً</div>';
     b.style.display='flex';
   }).catch(function(){});
 }
