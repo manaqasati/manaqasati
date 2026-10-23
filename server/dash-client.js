@@ -899,6 +899,7 @@ function renderBestOffer(all){
   jFetch('/api/requests/'+req.id+'/bids').then(function(bids){
     if(Array.isArray(bids))bids=bids.filter(function(b){return !b.is_hidden;});
     if(!Array.isArray(bids)||!bids.length){slot.innerHTML='';return;}
+    var _tot=bids.filter(function(b){return (b.price_unit||'total')==='total'&&b.status!=='rejected';}); if(_tot.length)bids=_tot;   // سعر المتر/الوحدة ما ينقارن بالإجمالي
     var best=bids.slice().sort(function(a,b){
       var ra=parseFloat(a.provider_rating)||0,rb=parseFloat(b.provider_rating)||0;
       if(rb!==ra)return rb-ra;
@@ -908,7 +909,7 @@ function renderBestOffer(all){
     var rating=parseFloat(best.provider_rating)||0;
     var reviews=parseInt(best.provider_reviews)||0;
     var stars='';for(var i=1;i<=5;i++){stars+=(i<=Math.round(rating)?'★':'☆');}
-    var price=best.price?fmtN(best.price):'—';
+    var price=best.price?fmtN(best.price):'—'; var _pu=(best.price_unit&&best.price_unit!=='total')?(best.price_unit==='meter'?' / متر':' / وحدة'):'';
     var avHtml=isImg(best.provider_image)?'<img loading="lazy" src="'+esc(_safeUrl(best.provider_image))+'">':esc(nm.charAt(0));
     slot.innerHTML='<div class="ph-feat" style="padding-top:20px" onclick="_markBestOfferSeen('+req.id+');openDetail('+req.id+',event)">'
       +'<span class="ph-fb">أفضل عرض على مشروعك</span>'
@@ -919,7 +920,7 @@ function renderBestOffer(all){
           +'<div><div style="font-size:14px;font-weight:800;color:var(--text)">'+esc(nm)+'</div>'
           +'<div style="font-size:12px;margin-top:2px;color:#F0A500">'+stars+' <span style="color:var(--muted)">'+(rating?rating.toFixed(1):'—')+' · '+reviews+' تقييم</span></div></div>'
         +'</div>'
-        +'<div style="text-align:left"><div style="font-family:Cairo,sans-serif;font-size:18px;font-weight:900;color:var(--green)">'+price+' <span style="font-size:12px">ر.س</span></div>'+(best.days?'<div style="font-size:11px;color:var(--muted)">خلال '+best.days+' يوم</div>':'')+'</div>'
+        +'<div style="text-align:left"><div style="font-family:Cairo,sans-serif;font-size:18px;font-weight:900;color:var(--green)">'+price+' <span style="font-size:12px">ر.س'+_pu+'</span></div>'+(best.days?'<div style="font-size:11px;color:var(--muted)">خلال '+best.days+' يوم</div>':'')+'</div>'
       +'</div>'
       +'<button class="ph-feat-cta" onclick="event.stopPropagation();_markBestOfferSeen('+req.id+');openDetail('+req.id+',event)">استعرض كل العروض</button>'
     +'</div>';
