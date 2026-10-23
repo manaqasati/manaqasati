@@ -2614,6 +2614,7 @@ function _negotiate(provId,reqId,provName,price,bidId){
   d.innerHTML='<div style="background:var(--white);width:100%;max-width:470px;border-radius:22px 22px 0 0;overflow:hidden;padding-bottom:calc(env(safe-area-inset-bottom,0px) + 8px)">'
     +'<div style="width:38px;height:4px;background:var(--border);border-radius:3px;margin:10px auto"></div>'
     +'<div style="padding:4px 20px 12px;text-align:center"><div style="font-size:15.5px;font-weight:900;margin-bottom:3px">التفاوض مع '+esc(provName)+'</div><div style="font-size:12.5px;color:var(--muted);line-height:1.7">عرضه الحالي <b style="color:var(--green)">'+(price?Number(price).toLocaleString('en-US'):'—')+' ر.س</b><br>تواصل معه لتتفقا على السعر أو التفاصيل</div></div>'
+    +(function(){ var r=window._curReq||{}; if(String(r.id)!==String(reqId)||r.status!=='open'||r.paused) return ''; return '<button style="'+btn+';background:rgba(245,158,11,.09)" onclick="var m=document.getElementById(\'negModal\');if(m)m.remove();_pzOpen('+reqId+',false,'+provId+')"><span style="font-size:20px">⏸️</span><div><div>أوقف استقبال العروض وأنت تتفاوض</div><div style="font-size:11px;color:var(--muted);font-weight:600">المزوّدين الثانيين ما يتصلون عليك، ومدة مشروعك توقف</div></div></button>'; })()
     +'<button style="'+btn+'" onclick="_counterOffer('+provId+','+reqId+','+(price||0)+')"><span style="font-size:20px">💰</span><div><div>اقترح سعراً (عرض مضاد)</div><div style="font-size:11px;color:var(--muted);font-weight:600">أسرع طريقة — يصله إشعار فوري</div></div></button>'
     +'<button style="'+btn+'" onclick="_negoGo(\'chat\','+provId+','+reqId+')"><span style="font-size:20px">💬</span><div><div>محادثة داخل المنصة</div><div style="font-size:11px;color:var(--muted);font-weight:600">موثّقة ومحفوظة</div></div></button>'
     +'<button style="'+btn+'" onclick="_negoGo(\'call\','+provId+','+reqId+')"><span style="font-size:20px">📞</span><div><div>اتصال مباشر</div><div style="font-size:11px;color:var(--muted);font-weight:600">أسرع للتفاهم على التفاصيل</div></div></button>'
@@ -3240,10 +3241,10 @@ function _pauseRender(req){
   c.innerHTML='<b>تتفاوض مع أحد المزوّدين؟</b><div class="pz-s">أوقف استقبال العروض مؤقتاً — المزوّدين ما يتصلون عليك، والمدة الباقية لمشروعك توقف.</div><button type="button" class="pz-b o" onclick="_pzOpen('+req.id+')">⏸️ أوقف استقبال العروض مؤقتاً</button>';
   list.parentNode.insertBefore(c,list.nextSibling);
 }
-function _pzOpen(id,ext){
+function _pzOpen(id,ext,pre){
   var req=window._curReq||{}; var bids=(window._curBids||[]).filter(function(b){return b.status!=='rejected'&&!b.is_hidden;});
   var seen={}; bids=bids.filter(function(b){ if(seen[b.provider_id])return false; seen[b.provider_id]=1; return true; });
-  var cur=req.pause_with_provider?String(req.pause_with_provider):'';
+  var cur=pre?String(pre):(req.pause_with_provider?String(req.pause_with_provider):'');
   var o=document.createElement('div'); o.className='pz-ov'; o.id='pz-ov';
   o.innerHTML='<div class="pz-sh" role="dialog" aria-modal="true"><div class="pz-grab"></div><div class="pz-h">⏸️ '+(ext?'مدة الإيقاف':'إيقاف مؤقت')+'</div><div class="pz-s">مشروعك يختفي من المزوّدين الجدد، وما يوصلك عروض جديدة لين ترجّعه.</div>'
     +'<div class="pz-l">كم المدة؟</div><div class="pz-seg" id="pz-days"><button type="button" data-d="3">3 أيام</button><button type="button" data-d="7" class="on">أسبوع</button><button type="button" data-d="0">لين أرجّعه</button></div>'
