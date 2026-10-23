@@ -693,7 +693,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .dt-imgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}.dt-imgs img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;cursor:zoom-in}
 /* جوال: شريط ثابت فوق الشريط السفلي */
 #det-bar{position:fixed;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:90;display:flex;gap:8px;background:var(--white);border:1px solid var(--border);border-radius:16px;padding:8px;box-shadow:0 12px 30px -12px rgba(11,31,77,.35)}
-#page-detail.has-bar{padding-bottom:80px}
+#page-detail.has-bar{padding-bottom:calc(170px + env(safe-area-inset-bottom))}
 @media(min-width:769px){#det-bar{display:none!important}#page-detail.has-bar{padding-bottom:0}}
 /* كمبيوتر: عمودين — بطاقة المشروع جنب */
 @media(min-width:1100px){
