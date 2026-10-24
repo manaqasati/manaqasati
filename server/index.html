@@ -1565,18 +1565,17 @@ function card(p){
     +imgBox
     +'<div class="hzp-body">'
       +'<div class="hzp-title">'+_esc(p.title)+'</div>'
-      +((p.category||_stPill||p.has_plan)?'<div class="hzp-catrow">'+(p.category?'<span class="hzp-cat">'+_esc(p.category)+'</span>':'')+(p.has_plan?'<span class="hzp-cat" style="background:#dbeafe;color:#1d4ed8">📐 فيه مخطط</span>':'')+_stPill+'</div>':'')
+      +((p.category||_stPill||p.has_plan)?'<div class="hzp-catrow">'+(p.category?'<span class="hzp-cat">'+_esc(p.category)+'</span>':'')+(_lk?'<span class="hzp-cat" style="background:#fef3c7;color:#92400e;flex-shrink:0">⭐ بالاسم</span>':(p.has_plan?'<span class="hzp-cat" style="background:#dbeafe;color:#1d4ed8">📐 فيه مخطط</span>':''))+(_lk?'':_stPill)+'</div>':'')
       +'<div class="hzp-meta">'
         +(p.city?'<span>'+_esc(p.city)+'</span>':'')
-        +'<span>'+_arN(bidN,'b')+'</span>'
+        +(_lk?'<span style="color:#92400e;font-weight:800;flex:1 1 0;min-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">⭐ <a href="/pro/'+(parseInt(p.invited_pid)||0)+'" onclick="event.stopPropagation()" style="color:#b45309">'+_esc(p.invited_name||'مزوّد')+'</a></span>':'<span>'+_arN(bidN,'b')+'</span>')
         +(p.created_at?'<span>'+(function(t){return t==='الآن'?t:'منذ '+t;})(ago(p.created_at))+'</span>':'')
       +'</div>'
-      +(_lk?'<div style="margin-top:6px;font-size:12.5px;font-weight:800;color:#92400e;line-height:1.7"><span style="display:inline-block;background:#fef3c7;border-radius:999px;padding:2px 9px;margin-left:5px">⭐ طلبه العميل بالاسم</span>من <a href="/pro/'+(parseInt(p.invited_pid)||0)+'" onclick="event.stopPropagation()" style="color:#b45309;text-decoration:underline">'+_esc(p.invited_name||'مزوّد')+'</a></div>':'')
     +'</div>'
     +'<div class="hzp-side">'
       +(_hCanSave()?'<button class="hzp-save'+(_hIsSaved(p.id)?' on':'')+'" data-sid="'+p.id+'" onclick="event.stopPropagation();_hToggleSave('+p.id+',this)" title="'+(_hIsSaved(p.id)?'محفوظ':'حفظ للاحقاً')+'" aria-label="حفظ المشروع"><svg viewBox="0 0 24 24" width="16" height="16" fill="'+(_hIsSaved(p.id)?'currentColor':'none')+'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></button>':'')
       +'<div class="hzp-price"><span style="font-size:12px;color:var(--muted)">حسب العرض</span></div>'
-      +(isOpen&&!_lk?'<button onclick="event.stopPropagation();handleBidClick('+p.id+')" class="hzp-bid">تقديم عرض</button>':'')+(_lk?'<span class="hzp-bid" style="background:#fef3c7;color:#92400e;cursor:default">🔒 محجوز</span>':'')
+      +(isOpen&&!_lk?'<button onclick="event.stopPropagation();handleBidClick('+p.id+')" class="hzp-bid">تقديم عرض</button>':'')+(_lk?'<button class="hzp-bid" onclick="event.stopPropagation();goProject(this.closest(\'.hzp\'))" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;box-shadow:0 3px 10px rgba(217,119,6,.3)">🔒 محجوز</button>':'')
     +'</div>'
   +'</div>';
 }

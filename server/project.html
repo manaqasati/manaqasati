@@ -370,6 +370,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .pj-cmp tr.bst td{background:#eff6ff}
 @media(min-width:640px){.pj-sheet{border-radius:20px;margin-bottom:5vh}.pj-ov{align-items:center}}
 .pj-ic svg{stroke-width:1.9}[data-theme="dark"] .pj-ic{background:rgba(96,165,250,.14);color:#93c5fd;border-color:transparent}
+.pj-gold{border:1.5px solid #fcd34d!important;background:linear-gradient(180deg,#fffbeb,#fff 70%)!important}
 </style>
 <script src="/wafix.js?v=1"></script>
 </head>
@@ -842,6 +843,20 @@ function _pjCompare(){
 }
 function _pjLeft(sec){ sec=Math.max(0,parseInt(sec)||0); var h=Math.floor(sec/3600), m=Math.ceil((sec%3600)/60); if(h>=1) return h===1?'ساعة':(h===2?'ساعتين':(h<=10?h+' ساعات':h+' ساعة')); return m<=1?'دقيقة':m+' دقيقة'; }
 function _pjWatch(btn){ if(!getToken()){ location.href='/auth.html'; return; } btn.disabled=true; fetch(API+'/api/requests/'+_rid+'/watch-open',{method:'POST',headers:{'Authorization':'Bearer '+getToken()}}).then(function(r){return r.json();}).then(function(d){ if(d&&d.open){ location.reload(); return; } btn.textContent='✓ بننبّهك أول ما ينفتح'; var app=!!(window.ReactNativeWebView||/ManaqasaApp|Expo/i.test(navigator.userAgent||'')); _pjToast(app?'🔔 بننبّهك أول ما ينفتح':'🔔 سجّلنا طلبك — حمّل تطبيق مناقصة من manaqasa.com/app عشان يوصلك التنبيه فوراً'); }).catch(function(){ btn.disabled=false; }); }
+// مشروع محجوز لمزوّد طلبه العميل بالاسم — ذهبي + اسم المؤسسة + زر حسب الزائر
+function _pjLockHtml(req){
+  var u={}; try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}
+  var tk=getToken(), isProv=tk&&(u.role==='provider'||u.can_provide);
+  var nm=req.invited_name?'<a href="/pro/'+(parseInt(req.invited_pid)||0)+'" style="color:#b45309;text-decoration:underline">'+esc(req.invited_name)+'</a>':'مزوّد محدد';
+  var left=req.invite_left_sec>0?'ينفتح لباقي المزوّدين خلال <b>'+_pjLeft(req.invite_left_sec)+'</b> إذا ما قدّموا':(req.invite_left_sec===0?'ينفتح لباقي المزوّدين خلال دقائق':'ينفتح لباقي المزوّدين إذا العميل ما اختارهم');
+  var btn=isProv?'<button type="button" class="pj-b" style="border-color:#f59e0b;color:#92400e;background:#fff" onclick="_pjWatch(this)">🔔 نبّهني إذا انفتح</button>'
+    :'<a class="pj-b" href="/new.html" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;border:0;text-decoration:none;text-align:center">عندك مشروع؟ انشره مجاناً</a>'
+      +(tk?'':'<button type="button" class="pj-b" style="border-color:#fcd34d;color:#92400e;background:#fff" onclick="try{sessionStorage.setItem(\'auth_mode\',\'register\');sessionStorage.setItem(\'auth_role\',\'provider\');}catch(e){}location.href=\'/auth.html\'">أنت مزوّد؟ سجّل وننبّهك أول ما ينفتح</button>');
+  return '<div class="pj-card" style="background:linear-gradient(160deg,#fffbeb,#fef3c7);border:1.5px solid #fcd34d;gap:10px">'
+    +'<span class="pj-pill" style="align-self:flex-start;background:#f59e0b;color:#fff">⭐ طلبه العميل بالاسم</span>'
+    +'<div style="font-size:14px;font-weight:800;color:#78350f;line-height:1.9">🔒 محجوز لـ «'+nm+'» — العميل اختارهم من صفحتهم في مناقصة.<br><span style="font-size:13px;color:#92400e">'+left+'</span></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+btn+'</div></div>';
+}
 function _pjToast(t,bad){var d=document.createElement('div');d.textContent=t;d.style.cssText='position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:'+(bad?'#b91c1c':'#1e293b')+';color:#fff;padding:11px 18px;border-radius:12px;font-size:13px;font-weight:800;z-index:9999;max-width:90vw;text-align:center';document.body.appendChild(d);setTimeout(function(){d.remove();},2600);}
 function _pjPost(path,btn,okMsg){
   if(btn){btn.disabled=true;btn._t=btn.textContent;btn.textContent='...';}
@@ -1070,7 +1085,7 @@ function render(){
 
   var h='';
   if(!hasCover||isOwner){
-    h+='<div class="pj-card pj-head">';
+    h+='<div class="pj-card pj-head'+(req.invite_locked?' pj-gold':'')+'">';
     if(!hasCover&&req.city)h+='<div style="display:flex">'+_pjCityBadge(req,1)+'</div>';
     if(!hasCover)h+='<div style="display:flex;gap:12px;align-items:center"><span class="pj-ic">'+catSvg(req.category,26)+'</span><div style="min-width:0;flex:1"><span class="pj-pill" style="background:'+stc[0]+';color:'+stc[1]+'">'+stLine+'</span><h1 class="pj-title">'+esc(req.title||'مشروع')+'</h1><div class="pj-bs">'+catcity+(isOwner?' · #'+req.id:' · نُشر قبل '+ago(req.created_at))+'</div></div></div>';
     if(isOwner)h+=_stepper(req.status);
@@ -1099,7 +1114,7 @@ function render(){
   } else {
     // مشروع موجّه: للمزوّد المدعو بانر، وللباقين تنبيه إنه محجوز
     if(req.invited_me)h+='<div class="pj-card" style="background:linear-gradient(160deg,#1e3a8a,#1d4ed8);color:#fff;border:0;gap:10px"><span class="pj-pill" style="align-self:flex-start;background:#facc15;color:#422006">⭐ مشروع طلبك أنت بالاسم</span><div style="background:rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:800;line-height:1.8">⭐ هذا المشروع موجّه لك خاصة — لك وحدك الحين، وينفتح لباقي المزوّدين بعد <span style="color:#fde68a">'+_pjHrs(req.invite_left_sec)+'</span></div>'+(!_bids.some(function(b){return b.is_mine;})&&req.status==='open'?'<button class="pj-b" style="width:100%;min-height:46px;background:#fff;color:#1e3a8a;border-color:#fff" onclick="openBid()">قدّم عرضك الآن</button>':'')+'</div>';
-    else if(req.invite_locked)h+='<div class="pj-card" style="background:#eff6ff;border:1.5px solid #93c5fd;flex-direction:row;align-items:flex-start;gap:10px"><span style="font-size:20px">🔒</span><div style="font-size:13px;font-weight:800;color:#1e3a8a;line-height:1.8">هذا المشروع طلب فيه العميل مزوّد محدد بالاسم — '+(req.invite_left_sec>0?'ينفتح لباقي المزوّدين خلال '+_pjLeft(req.invite_left_sec):(req.invite_left_sec===0?'ينفتح لباقي المزوّدين خلال دقائق':'ينفتح لباقي المزوّدين إذا فتحه العميل'))+'<br><button type="button" class="pj-b" style="margin-top:8px" onclick="_pjWatch(this)">🔔 نبّهني إذا انفتح</button></div></div>';
+    else if(req.invite_locked)h+=_pjLockHtml(req);
     else if(req.invite_state==='exclusive'&&req.invited_name&&!isOwner)h+='<div class="pj-card" style="background:#fffbeb;border:1.5px solid #fcd34d;gap:8px"><div style="display:flex;gap:10px;align-items:flex-start"><span style="font-size:20px">🔒</span><div style="font-size:13px;font-weight:800;color:#92400e;line-height:1.8">للإدارة: العميل طلب «'+esc(req.invited_name)+'» بالاسم — المشروع محجوز له وباقي المزوّدين ما يقدرون يقدّمون.<br>'+(req.invite_has_bid?'قدّم عرضه ← إذا العميل ما اختاره ينفتح للجميع تلقائياً خلال '+_pjLeft(req.invite_left_sec||0)+'.':'ما قدّم للحين ← ينفتح للجميع تلقائياً خلال '+_pjLeft(req.invite_left_sec||0)+'.')+'</div></div><button type="button" class="pj-b" style="align-self:flex-start" onclick="_pjOpenInvite(this)">🔓 افتحه للجميع الحين</button></div>';
     if(req.status==='open'){
       var n=req.bids_n!=null?req.bids_n:_bids.length;

@@ -889,6 +889,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
         delete row.invited_provider_id;
       } else {
         if (row.invite_state === 'exclusive') { row.invite_locked = true; // مشروع محجوز حالياً لمزوّد آخر
+          try { const _pv = (await pool.query("SELECT id, COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [row.invited_provider_id])).rows[0]; if (_pv) { row.invited_name = _pv.nm; row.invited_pid = _pv.id; } } catch(e){}
           if (row.invite_started_at) row.invite_left_sec = await _inviteLeft(id); }   // ينفتح للباقين بعد الوقت الباقي
         delete row.invited_provider_id; delete row.invite_started_at;
       }
