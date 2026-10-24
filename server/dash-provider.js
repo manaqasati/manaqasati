@@ -514,7 +514,6 @@ function _renderHome(data){
     +'<div class="pa-lv"><div class="pa-st"><span>مستواك: <b>'+_tiers[_ci].n+'</b></span><small>'+(_next?'باقي '+((_next.m-done)===1?'صفقة واحدة':(_next.m-done)===2?'صفقتان':(_next.m-done)+' صفقات')+' لـ«'+_next.n+'»':'أعلى مستوى 🏆')+'</small></div><div class="pa-bar lv"><i style="width:'+_lvPct+'%"></i></div></div>'
   +'</div>';
   html+='<div id="ph-sharecard"></div>';
-  html+='<div class="pa-act" id="pa-act"></div>';
 
   pg.innerHTML=html;_lb.done();_loadNotifCount();_loadChatBadge();
   _renderInvites();
@@ -536,14 +535,9 @@ function _paRow(r,match){
     +(did?'<button type="button" class="pa-go done" onclick="event.stopPropagation();gotoPage(\'works\')">✓ قدّمت</button>':'<button type="button" class="pa-go" onclick="event.stopPropagation();openBidFormDirectly('+r.id+')">قدّم عرض</button>')
   +'</div>';
 }
-// المشاهدات + نشاطك (آخر الإشعارات)
+// المشاهدات
 function _paExtras(){
   try{ _api('/api/me/marketing').then(function(m){ var v=document.getElementById('pa-vt'); if(!v||!m)return; var n=parseInt(m.views)||0; v.innerHTML=n?('صفحتك انشافت <span>'+fmtN(n)+'</span> '+(n===1?'مرة':(n===2?'مرتين':(n<=10?'مرات':'مرة')))):'صفحتك جاهزة — شاركها'; }).catch(function(){}); }catch(e){}
-  try{ _api('/api/notifications').then(function(L){ var el=document.getElementById('pa-act'); if(!el)return; L=Array.isArray(L)?L.slice(0,4):[]; if(!L.length){ el.style.display='none'; return; }
-    var col=function(t){ return /new_request|request/.test(t)?'#60a5fa':(/accept|completed|pause_chosen/.test(t)?'#34d399':(/reject|closed/.test(t)?'#f87171':'#94a3b8')); };
-    el.innerHTML='<b class="pa-at">نشاطك</b>'+L.map(function(n){ return '<div class="pa-ai"><i style="background:'+col(n.type||'')+'"></i><span>'+_esc(String(n.title||'').replace(/^[^\u0600-\u06FFa-zA-Z0-9]+/,'').slice(0,60))+'</span><small>'+timeAgoP(n.created_at)+'</small></div>'; }).join('')
-      +'<button type="button" class="ch-link" onclick="gotoPage(\'notifs\')">كل الإشعارات</button>';
-  }).catch(function(){}); }catch(e){}
 }
 
 var _pnudgeTimer=null;
