@@ -1560,7 +1560,8 @@ function card(p){
   var imgBox=img
     ? '<div class="hzp-img"><img src="'+_esc(_safeUrl(img))+'" loading="lazy">'+_overlay+'</div>'
     : '<div class="hzp-img hzp-noimg"><span class="hzp-cat-ic">'+catIcon+'</span>'+_overlay+'</div>';
-  return '<div class="hzp" data-slug="'+projSlug+'" onclick="goProject(this)">'
+  var _lk=!!p.invite_locked;
+  return '<div class="hzp" data-slug="'+projSlug+'" onclick="goProject(this)"'+(_lk?' style="border:1.5px solid #fcd34d;background:linear-gradient(180deg,rgba(254,243,199,.5),transparent 75%)"':'')+'>'
     +imgBox
     +'<div class="hzp-body">'
       +'<div class="hzp-title">'+_esc(p.title)+'</div>'
@@ -1570,11 +1571,12 @@ function card(p){
         +'<span>'+_arN(bidN,'b')+'</span>'
         +(p.created_at?'<span>'+(function(t){return t==='الآن'?t:'منذ '+t;})(ago(p.created_at))+'</span>':'')
       +'</div>'
+      +(_lk?'<div style="margin-top:6px;font-size:12.5px;font-weight:800;color:#92400e;line-height:1.7"><span style="display:inline-block;background:#fef3c7;border-radius:999px;padding:2px 9px;margin-left:5px">⭐ طلبه العميل بالاسم</span>من <a href="/pro/'+(parseInt(p.invited_pid)||0)+'" onclick="event.stopPropagation()" style="color:#b45309;text-decoration:underline">'+_esc(p.invited_name||'مزوّد')+'</a></div>':'')
     +'</div>'
     +'<div class="hzp-side">'
       +(_hCanSave()?'<button class="hzp-save'+(_hIsSaved(p.id)?' on':'')+'" data-sid="'+p.id+'" onclick="event.stopPropagation();_hToggleSave('+p.id+',this)" title="'+(_hIsSaved(p.id)?'محفوظ':'حفظ للاحقاً')+'" aria-label="حفظ المشروع"><svg viewBox="0 0 24 24" width="16" height="16" fill="'+(_hIsSaved(p.id)?'currentColor':'none')+'" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></button>':'')
       +'<div class="hzp-price"><span style="font-size:12px;color:var(--muted)">حسب العرض</span></div>'
-      +(isOpen?'<button onclick="event.stopPropagation();handleBidClick('+p.id+')" class="hzp-bid">تقديم عرض</button>':'')
+      +(isOpen&&!_lk?'<button onclick="event.stopPropagation();handleBidClick('+p.id+')" class="hzp-bid">تقديم عرض</button>':'')+(_lk?'<span class="hzp-bid" style="background:#fef3c7;color:#92400e;cursor:default">🔒 محجوز</span>':'')
     +'</div>'
   +'</div>';
 }
@@ -1592,7 +1594,7 @@ function applyAll(){
   PAGE=8;
   // المدينة/التخصص: نجيب مشاريعها من الخادم (القائمة الأولى فيها أحدث 100 بس) وندمجها
   if(F_CI||F_CAT){ var _k=F_CI+'|'+F_CAT; window._lvFetched=window._lvFetched||{}; if(!window._lvFetched[_k]){ window._lvFetched[_k]=1;
-    fetch(API+'/api/requests?'+(F_CI?'city='+encodeURIComponent(F_CI):'')+(F_CAT?(F_CI?'&':'')+'category='+encodeURIComponent(F_CAT):'')).then(function(r){return r.ok?r.json():[];}).then(function(L){
+    fetch(API+'/api/requests?inc_locked=1&'+(F_CI?'city='+encodeURIComponent(F_CI):'')+(F_CAT?(F_CI?'&':'')+'category='+encodeURIComponent(F_CAT):'')).then(function(r){return r.ok?r.json():[];}).then(function(L){
       if(!Array.isArray(L)||!L.length)return; var ids={}; ALL.forEach(function(p){ids[p.id]=1;}); var add=L.filter(function(p){return !ids[p.id];});
       if(add.length){ ALL=ALL.concat(add).sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);}); applyAll(); } }).catch(function(){}); } }
   CUR=ALL.filter(function(p){
@@ -1733,7 +1735,7 @@ function _hxFeed(all){
     else if(openN>0){ lt.textContent=openN+(openN===1?' مشروع مفتوح':(openN<=10?' مشاريع مفتوحة':' مشروعاً مفتوحاً'))+' للعروض الآن'; lv.style.display=''; }
   }
   var L=document.getElementById('hxFeedL'); if(!L) return;
-  var open=all.filter(function(p){return p.status==='open';}).slice(0,3);
+  var open=all.filter(function(p){return p.status==='open'&&!p.invite_locked;}).slice(0,3);
   var won=all.filter(function(p){return p.status==='in_progress'||p.status==='completed'||p.status==='done'||p.status==='assigned';})[0];
   var items=open.map(function(p){
     var bn=parseInt(p.bid_count)||0;
@@ -1750,9 +1752,9 @@ function _hxFeed(all){
 }
 async function load(){
   try{
-    var r=await fetch(API+'/api/requests');var d=await r.json();
+    var r=await fetch(API+'/api/requests?inc_locked=1');var d=await r.json();
     ALL=Array.isArray(d)?d:[];CUR=ALL;
-    var open=ALL.filter(function(p){return p.status==='open';}).length;
+    var open=ALL.filter(function(p){return p.status==='open'&&!p.invite_locked;}).length;
     var sub=document.getElementById('lv-proj-sub');if(sub)sub.textContent=open+' مفتوح للعروض الآن';
     // العدد الحقيقي من الخادم (القائمة تجيب أحدث 100 بس)
     fetch(API+'/api/requests/stats').then(function(r){return r.ok?r.json():null;}).then(function(st){ if(st&&st.all!=null&&sub){ sub.textContent=st.all.toLocaleString('en')+' مشروع على المنصة، '+st.open.toLocaleString('en')+' مفتوح للعروض الآن'; } }).catch(function(){});

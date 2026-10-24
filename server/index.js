@@ -5000,7 +5000,7 @@ app.get('/api/requests', async (req, res) => {
     { let _vid = 0; try { const _t = (req.headers.authorization||'').split(' ')[1]; if (_t) { const _p = jwt.verify(_t, JWT_SECRET); if (!_p.purpose) _vid = parseInt(_p.id)||0; } } catch(e){}
       params.push(_vid);
       // inc_locked=1 (لوحة المزوّد): المحجوز لمزوّد آخر يطلع مقفول (بطاقة «طلبه العميل بالاسم») بدل ما يختفي
-      if (req.query.inc_locked === '1' && _vid) query += ` AND (COALESCE(r.invite_state,'') <> 'exclusive' OR r.status='open')`;
+      if (req.query.inc_locked === '1') query += ` AND (COALESCE(r.invite_state,'') <> 'exclusive' OR r.status='open')`;
       else query += ` AND (COALESCE(r.invite_state,'') <> 'exclusive' OR r.invited_provider_id=$${params.length} OR r.client_id=$${params.length})`;
       // المشاريع الموقوفة مؤقتاً (صاحبها يتفاوض) ما تطلع للمزوّدين
       query += ` AND (r.paused_at IS NULL OR r.status <> 'open' OR r.client_id=$${params.length})`; }
