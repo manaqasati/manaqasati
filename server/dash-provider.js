@@ -352,7 +352,7 @@ function prefetchPage(page){
   if(_cacheGet(page==='home'?'home_data':page))return;
   clearTimeout(_prefetchTimer[page]);
   _prefetchTimer[page]=setTimeout(function(){
-    if(page==='browse')_api('/api/requests').then(function(d){if(d)_cacheSet('browse',d);});
+    if(page==='browse')_api('/api/requests?inc_locked=1').then(function(d){if(d)_cacheSet('browse',d);});
     else if(page==='works')Promise.all([_api('/api/provider/bids'),_api('/api/provider/projects')]).then(function(r){var hc=_cacheGet('home_data')||{profile:{}};_cacheSet('home_data',{profile:hc.profile,bids:r[0]||[],projs:r[1]||[]});});
     else if(page==='notifs')_api('/api/notifications').then(function(d){if(d)_cacheSet('notifs',d);});
   },150);
@@ -526,6 +526,7 @@ function _renderHome(data){
 }
 // سطر فرصة مختصر (الرئيسية)
 function _paRow(r,match){
+  if(r.invite_locked) return _lkCard(r,true);
   var bc=parseInt(r.bid_count||0)||0, did=(_myBids||[]).some(function(b){return b.request_id===r.id;}), ds=_tkDesc(r.description);
   return '<div class="pa-r" onclick="_viewProj('+r.id+')"><span class="pa-ri">'+catSvg(r.category,20)+'</span>'
     +'<div class="pa-rt"><b>'+_esc(r.title||'')+'</b>'+(ds?'<p>'+_esc(ds)+'</p>':'')
@@ -697,7 +698,7 @@ async function loadHome(){
   _loadInvites();
   var cached=_cacheGet('home_data');if(cached){_renderHome(cached);}else{pg.innerHTML=_skList(4);}
   try{
-    var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests'),_api('/api/saved-requests/ids')]);
+    var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests?inc_locked=1'),_api('/api/saved-requests/ids')]);
     // فشل شبكة (الملف ما رجع): لا نمسح البيانات المخزّنة ولا نرسم لوحة فاضية «0» مضلّلة
     if(!r[0]||!r[0].id){ if(!cached) pg.innerHTML='<div style="text-align:center;padding:50px 20px"><div style="font-size:15px;font-weight:800;color:var(--red);margin-bottom:6px">تعذّر التحميل</div><div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">تحقّق من اتصالك بالإنترنت</div><button type="button" onclick="loadHome()" style="background:var(--navy,#1e3a8a);color:#fff;border:0;border-radius:11px;padding:11px 22px;font-family:inherit;font-weight:800;cursor:pointer">إعادة المحاولة</button></div>'; return; }
     window._savedIds=Array.isArray(r[4])?r[4]:[];
@@ -749,7 +750,7 @@ async function loadBrowse(){
   var pg=_el('page-browse');if(!pg)return;
   if(!Array.isArray(_allProjs)||_allProjs.length===0){pg.innerHTML='<div class="pghd"><div class="pg-t">تصفح المشاريع</div></div>'+_skList(5);}
   var failed=false;
-  try{var fresh=await _api('/api/requests');if(fresh===null){failed=true;}else{_allProjs=Array.isArray(fresh)?fresh:[];}}catch(e){failed=true;}
+  try{var fresh=await _api('/api/requests?inc_locked=1');if(fresh===null){failed=true;}else{_allProjs=Array.isArray(fresh)?fresh:[];}}catch(e){failed=true;}
   if(!window._prof||!window._prof.city){ try{ var _p=await _api('/api/provider/profile'); if(_p&&_p.id)window._prof=_p; }catch(e){} }
   try{ await _loadSavedIds(); }catch(e){}
   // فشل شبكة حقيقي + لا بيانات مخزّنة → زر إعادة محاولة (بدل حالة فاضية مضلّلة)
@@ -861,11 +862,49 @@ function catSvg(cat,size){
 }
 // بطاقة «أمر عمل» (النموذج 4) — للتصفّح والرئيسية
 function _tkDesc(s){ s=String(s||'').replace(/https?:\/\/\S+/g,'').replace(/[#*_`>|]+/g,' ').replace(/^\s*[-•]\s*/gm,'').replace(/\s+/g,' ').trim(); return s.length>130?s.slice(0,130)+'…':s; }
+
+// ═══ مشروع محجوز لمزوّد طلبه العميل بالاسم: يطلع مقفول + عدّاد + «نبّهني» + «انسخ رابط صفحتي» ═══
+var _AS='https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611', _GP='https://play.google.com/store/apps/details?id=com.manaqasa.app';
+function _lkFmt(sec){ sec=Math.max(0,Math.floor(sec)); var h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),x=sec%60; return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(x<10?'0':'')+x; }
+function _lkTick(){ var now=Date.now(); [].forEach.call(document.querySelectorAll('[data-lk-end]'),function(el){ var left=(parseInt(el.getAttribute('data-lk-end'))-now)/1000; el.textContent=left>0?_lkFmt(left):'خلال دقائق'; }); }
+if(!window._lkT) window._lkT=setInterval(_lkTick,1000);
+function _lkCard(r,compact){
+  var end=(r.invite_left_sec>0)?(Date.now()+r.invite_left_sec*1000):0, w=!!r.watching;
+  var h='<div class="tk" style="border:1.5px solid #fcd34d;background:linear-gradient(180deg,rgba(254,243,199,.55),transparent 70%);'+(compact?'margin-bottom:10px;':'')+'" onclick="_viewProj('+r.id+')">'
+    +'<div class="tk-h"><span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:900">⭐ طلبه العميل بالاسم</span><span style="margin-inline-start:6px">'+_esc(r.category||'')+'</span><span class="tk-nw old">نزل '+timeAgoP(r.created_at)+'</span></div>'
+    +'<div class="tk-b"><div class="tk-tx"><b>'+_esc(r.title||'')+'</b><p style="color:#92400e;font-weight:800">🔒 محجوز لـ «'+_esc(r.invited_name||'مزوّد')+'» — العميل اختارهم من صفحتهم في مناقصة · 📍 '+_esc(r.city||'')+'</p></div></div>'
+    +(end?'<div style="display:flex;align-items:center;gap:8px;background:rgba(255,237,213,.7);border:1px dashed #fdba74;border-radius:12px;padding:8px 10px;margin:8px 12px 0;font-size:12.5px;font-weight:800;color:#9a3412">⏳ ينفتح لباقي المزوّدين إذا ما قدّموا خلال <b data-lk-end="'+end+'" style="font-family:Inter,sans-serif;font-size:14.5px;color:#c2410c;direction:ltr">'+_lkFmt(r.invite_left_sec)+'</b></div>':'<div style="margin:8px 12px 0;font-size:12.5px;font-weight:800;color:#9a3412">⏳ قدّموا عرضهم — ينفتح إذا العميل ما اختارهم</div>')
+    +'<div style="padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px">'
+      +'<button type="button" id="lkw-'+r.id+'" onclick="event.stopPropagation();_lkWatch('+r.id+',this)" style="border:1.5px solid #fcd34d;background:#fff;color:#92400e;border-radius:12px;padding:11px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer"'+(w?' disabled':'')+'>'+(w?'✓ بننبّهك أول ما ينفتح':'🔔 نبّهني إذا انفتح')+'</button>'
+      +'<div onclick="event.stopPropagation()" style="background:rgba(238,243,255,.9);border:1.5px solid #bfdbfe;border-radius:13px;padding:10px 11px;font-size:12.5px;font-weight:800;color:#1e3a8a;line-height:1.8">💡 تبي العملاء يطلبونك بالاسم؟ شارك رابط صفحتك — أي عميل يجي منه، مشروعه يوصلك أنت أول.<button type="button" onclick="_lkCopy()" style="display:block;width:100%;margin-top:7px;border:0;background:#1d4ed8;color:#fff;border-radius:11px;padding:9px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer">🔗 انسخ رابط صفحتي</button></div>'
+    +'</div></div>';
+  return h;
+}
+function _lkInApp(){ return !!(window.ReactNativeWebView||/ManaqasaApp|Expo/i.test(navigator.userAgent||'')); }
+function _lkWatch(id,btn){
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  _api('/api/requests/'+id+'/watch-open',{method:'POST'}).then(function(d){
+    if(d&&d.open){ if(btn){btn.disabled=false;btn.textContent='قدّم عرضك';btn.onclick=function(e){e.stopPropagation();openBidFormDirectly(id);};} showToast('المشروع انفتح — قدّم عرضك الحين','success'); return; }
+    if(btn){btn.textContent='✓ بننبّهك أول ما ينفتح';}
+    (_allProjs||[]).forEach(function(p){ if(p.id===id)p.watching=true; });
+    if(_lkInApp()){ showToast('🔔 بننبّهك أول ما ينفتح','success'); return; }
+    var o=document.createElement('div'); o.id='lk-ov'; o.style.cssText='position:fixed;inset:0;z-index:10050;background:rgba(10,20,45,.5);display:flex;align-items:flex-end;justify-content:center';
+    o.innerHTML='<div style="background:var(--white,#fff);color:var(--text,#0f1d3a);width:100%;max-width:470px;border-radius:24px 24px 0 0;padding:12px 18px calc(env(safe-area-inset-bottom,0px) + 20px);text-align:center;display:flex;flex-direction:column;gap:11px;font-family:inherit">'
+      +'<div style="width:44px;height:5px;border-radius:5px;background:#dbe2ee;margin:0 auto 4px"></div><div style="font-size:38px">🔔</div><div style="font-size:18px;font-weight:900">سجّلنا طلبك ✓</div>'
+      +'<div style="font-size:13.5px;color:var(--muted,#475569);font-weight:700;line-height:1.9">أول ما ينفتح المشروع نرسل لك تنبيه. <b>حمّل تطبيق مناقصة</b> عشان يوصلك فوراً على جوالك — المشاريع تروح لأول اللي يقدّمون.</div>'
+      +'<div style="display:flex;gap:10px"><a href="'+_AS+'" target="_blank" rel="noopener" style="flex:1;background:#0b1220;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13.5px;text-decoration:none"> App Store</a><a href="'+_GP+'" target="_blank" rel="noopener" style="flex:1;background:#0b1220;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13.5px;text-decoration:none">▶ Google Play</a></div>'
+      +'<button type="button" style="border:0;background:none;color:var(--muted,#64748b);font-family:inherit;font-weight:800;font-size:13px;text-decoration:underline;cursor:pointer;padding:6px">لاحقاً</button></div>';
+    o.onclick=function(e){ if(e.target===o||e.target.tagName==='BUTTON')o.remove(); };
+    document.body.appendChild(o);
+  }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='🔔 نبّهني إذا انفتح';} showToast('تعذّر — حاول مرة ثانية','error'); });
+}
+function _lkCopy(){ var id=(_me&&_me.id)||''; var u=location.origin+'/pro/'+id; try{ navigator.clipboard.writeText(u).then(function(){ showToast('نُسخ رابط صفحتك ✓ — شاركه مع عملائك','success'); },function(){ prompt('انسخ رابط صفحتك:',u); }); }catch(e){ prompt('انسخ رابط صفحتك:',u); } }
 function _renderBrowseList(list){
   if(!list||!list.length)return _empty('ما فيه مشاريع هنا الحين','غيّر الفلتر أو تفقّد لاحقاً — يوصلك إشعار أول ما ينزل مشروع يناسبك');
   var bidOn={}; (_myBids||[]).forEach(function(b){ bidOn[b.request_id]=1; });
   var BM='<svg width="18" height="18" viewBox="0 0 24 24" fill="FILL" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
   return '<div class="pb-list">'+list.map(function(r){
+    if(r.invite_locked) return _lkCard(r);
     var img=_safeUrl(r.thumbnail||r.image_url||(r.images&&r.images[0])||null);
     var bc=parseInt(r.bid_count||0)||0, fresh=(Date.now()-new Date(r.created_at))<86400000;
     var bTxt=bc===0?'كن الأول':(bc===1?'1 فقط':(bc===2?'عرضين':bc));

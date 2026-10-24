@@ -3463,6 +3463,7 @@ async function setupDatabase() {
     ];
     await _mig(`CREATE TABLE IF NOT EXISTS email_log (id SERIAL PRIMARY KEY, user_id INTEGER, to_email VARCHAR(200), subject VARCHAR(200), kind VARCHAR(30), resend_id VARCHAR(80), status VARCHAR(30) DEFAULT 'sent', error TEXT, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())`);
     try { await _mig('CREATE INDEX IF NOT EXISTS email_log_rid ON email_log(resend_id)'); await _mig('CREATE INDEX IF NOT EXISTS email_log_uid ON email_log(user_id, created_at DESC)'); } catch(e){}
+    await _mig(`CREATE TABLE IF NOT EXISTS invite_watch (request_id INTEGER NOT NULL, user_id INTEGER NOT NULL, created_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY (request_id, user_id))`);
     await _mig(`CREATE TABLE IF NOT EXISTS close_wa_log (id SERIAL PRIMARY KEY, request_id INTEGER, client_id INTEGER, tpl VARCHAR(30), admin_id INTEGER, created_at TIMESTAMP DEFAULT NOW())`);
     await _mig(`CREATE INDEX IF NOT EXISTS idx_close_wa_req ON close_wa_log(request_id)`);
     await _mig(`CREATE TABLE IF NOT EXISTS contract_downloads (id SERIAL PRIMARY KEY, user_id INTEGER, slug VARCHAR(60), created_at TIMESTAMP DEFAULT NOW())`);
@@ -4993,11 +4994,14 @@ app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;
     // يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
-    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.extra_categories,r.category_other,r.city,r.budget_max,r.deadline,r.status,r.client_id,COALESCE(r.published_at,r.created_at) AS created_at,r.created_at AS written_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail,(r.plan_status='has' OR (jsonb_typeof(r.attachments)='array' AND jsonb_array_length(r.attachments)>0)) AS has_plan FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
+    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.extra_categories,r.category_other,r.city,r.budget_max,r.deadline,r.status,r.client_id,COALESCE(r.published_at,r.created_at) AS created_at,r.created_at AS written_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail,(r.plan_status='has' OR (jsonb_typeof(r.attachments)='array' AND jsonb_array_length(r.attachments)>0)) AS has_plan,r.invite_state,r.invited_provider_id AS _ivp FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
     const params = [];
     // المشاريع الموجّهة لمزوّد محدد ما تظهر لغيره خلال المهلة
     { let _vid = 0; try { const _t = (req.headers.authorization||'').split(' ')[1]; if (_t) { const _p = jwt.verify(_t, JWT_SECRET); if (!_p.purpose) _vid = parseInt(_p.id)||0; } } catch(e){}
-      params.push(_vid); query += ` AND (COALESCE(r.invite_state,'') <> 'exclusive' OR r.invited_provider_id=$${params.length} OR r.client_id=$${params.length})`;
+      params.push(_vid);
+      // inc_locked=1 (لوحة المزوّد): المحجوز لمزوّد آخر يطلع مقفول (بطاقة «طلبه العميل بالاسم») بدل ما يختفي
+      if (req.query.inc_locked === '1' && _vid) query += ` AND (COALESCE(r.invite_state,'') <> 'exclusive' OR r.status='open')`;
+      else query += ` AND (COALESCE(r.invite_state,'') <> 'exclusive' OR r.invited_provider_id=$${params.length} OR r.client_id=$${params.length})`;
       // المشاريع الموقوفة مؤقتاً (صاحبها يتفاوض) ما تطلع للمزوّدين
       query += ` AND (r.paused_at IS NULL OR r.status <> 'open' OR r.client_id=$${params.length})`; }
     if (status && status !== 'all') {
@@ -5009,7 +5013,16 @@ app.get('/api/requests', async (req, res) => {
     // مشاريع صاحبها ما اطّلع على العروض (التسلسل الصامت بدأ) تنزل تحت
     query += ' ORDER BY (COALESCE(r.silent_stage,0) BETWEEN 1 AND 3 AND NOT EXISTS (SELECT 1 FROM bids sb WHERE sb.request_id=r.id AND sb.seen_at IS NOT NULL)) ASC, COALESCE(r.published_at, r.created_at) DESC LIMIT 100';
     const result = await pool.query(query, params);
-    res.json(result.rows.map(x => ({ ...x, status: normalizeStatus(x.status) })));
+    const _vid2 = params[0];
+    const _lk = result.rows.filter(x => x.invite_state === 'exclusive' && String(x._ivp) !== String(_vid2) && String(x.client_id) !== String(_vid2)).map(x => x.id);
+    let _lkI = {};
+    if (_lk.length) { try { (await pool.query(`SELECT r.id, COALESCE(NULLIF(u.business_name,''),u.name) AS nm, u.id AS pid FROM requests r JOIN users u ON u.id=r.invited_provider_id WHERE r.id = ANY($1::int[])`, [_lk])).rows.forEach(x => { _lkI[x.id] = x; });
+      for (const id of _lk) { if (_lkI[id]) _lkI[id].left = await _inviteLeft(id); }
+      if (_vid2) (await pool.query('SELECT request_id FROM invite_watch WHERE user_id=$1 AND request_id = ANY($2::int[])', [_vid2, _lk])).rows.forEach(x => { if (_lkI[x.request_id]) _lkI[x.request_id].w = true; });
+    } catch(e){} }
+    res.json(result.rows.map(x => { const o = { ...x, status: normalizeStatus(x.status) }; const L = _lkI[x.id];
+      if (L) { o.invite_locked = true; o.invited_name = L.nm; o.invited_pid = L.pid; o.invite_left_sec = L.left; o.watching = !!L.w; }
+      delete o._ivp; delete o.invite_state; return o; }));
   } catch(e) { console.error('/requests:', e); res.json([]); }
 });
 
@@ -7434,6 +7447,7 @@ app.get('/api/providers/:id', async (req, res) => {
       prov.portfolio_images = prov.portfolio_images.filter(img => img && img.length > 0);
     }
     try { const sp = await _replySpeed(prov.id); if (sp) prov.reply_speed = sp.label; } catch(e){}
+    try { prov.named_count = (await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE invited_provider_id=$1 AND status NOT IN ('pending_review','review','needs_edit','rejected','deleted')", [prov.id])).rows[0].n; } catch(e){}   // «طلبه العملاء بالاسم»
     res.json(prov);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -9125,6 +9139,7 @@ async function _openInvite(id, why){
   const x = r.rows[0]; if (!x) return false;
   addTimeline(id, 'invite_open', why === 'bid_timeout' ? ('انفتح لكل المزوّدين تلقائياً — المزوّد المطلوب قدّم، والعميل ما اختاره خلال ' + INVITE_BID_HOURS + ' ساعة') : ('انفتح لكل المزوّدين تلقائياً — المزوّد المطلوب ما قدّم خلال ' + INVITE_OPEN_HOURS + ' ساعات')).catch(()=>{});
   if (x.status === 'open') { try { await notifyMatchingProviders(x, true); } catch(e){} }
+  _notifyWatchers(id);
   return true;
 }
 setInterval(() => _jobLock('invite', async () => {
@@ -9147,6 +9162,24 @@ setInterval(() => _jobLock('invite', async () => {
     for (const x of due2.rows) { if (await _openInvite(x.id, 'bid_timeout')) notify(x.invited_provider_id, 'انفتح «' + x.title + '» لباقي المزوّدين', 'العميل ما اختار عرض للحين، فانفتح المشروع للباقين. عرضك باقي وأنت أول واحد قدّم — تواصل مع العميل وتابع معه.', 'request', x.id).catch(()=>{}); }
   } catch(e) { console.error('invite timer:', e.message); }
 }), 10*60*1000);
+// «🔔 نبّهني إذا انفتح» على مشروع محجوز لمزوّد آخر
+app.post('/api/requests/:id/watch-open', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const q = (await pool.query('SELECT invite_state, status FROM requests WHERE id=$1', [id])).rows[0];
+    if (!q) return res.status(404).json({ message: 'غير موجود' });
+    if (q.invite_state !== 'exclusive' || q.status !== 'open') return res.json({ ok: true, open: true });
+    await pool.query('INSERT INTO invite_watch (request_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [id, req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+async function _notifyWatchers(id){
+  try {
+    const r = (await pool.query('SELECT title FROM requests WHERE id=$1', [id])).rows[0] || {};
+    const w = (await pool.query('DELETE FROM invite_watch WHERE request_id=$1 RETURNING user_id', [id])).rows;
+    for (const x of w) await notify(x.user_id, '🔓 انفتح المشروع اللي تنتظره', '«' + (r.title || 'المشروع') + '» صار مفتوح لكل المزوّدين — قدّم عرضك الحين قبل غيرك.', 'request', id);
+  } catch(e){ console.error('watchers:', e.message); }
+}
 // العميل يفتح مشروعه الموجّه لباقي المزوّدين الآن
 app.post('/api/requests/:id/open-invite', auth, async (req, res) => {
   try {
@@ -9159,6 +9192,7 @@ app.post('/api/requests/:id/open-invite', auth, async (req, res) => {
     addTimeline(id, 'invite_open', String(q.client_id) === String(req.user.id) ? 'العميل فتحه لكل المزوّدين (كان محجوز لمزوّد طلبه بالاسم)' : 'الإدارة فتحته لكل المزوّدين (كان محجوز لمزوّد طلبه العميل بالاسم)').catch(()=>{});
     const x = (await pool.query('SELECT id, title, category, city, status FROM requests WHERE id=$1', [id])).rows[0];
     if (x && x.status === 'open') { try { await notifyMatchingProviders(x, true); } catch(e){} }
+    _notifyWatchers(id);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
