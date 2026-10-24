@@ -491,7 +491,7 @@ function _renderHome(data){
   // صفحتك: المشاهدات + شارك صفحتك
   html+='<div class="pa-share"><div class="pa-sh1"><span class="pa-eye">👁️</span><b id="pa-vt">صفحتك العامة</b></div>'
     +'<p>العملاء يثقون بالصفحة اللي فيها تقييماتك وأعمالك. شاركها مع عملائك — كل زيارة تقرّبك من عرض جديد.</p>'
-    +'<div class="pa-sh2"><button type="button" class="pa-wa" onclick="_paShareTo(&quot;wa&quot;)">'+_PA_IC.wa+' واتساب</button><button type="button" class="pa-sb" onclick="_paShare()">شارك صفحتي ↗</button></div>'
+    +'<div class="pa-sh2"><button type="button" class="pa-wa" onclick="_paShareTo(&quot;wa&quot;)">'+_PA_IC.wa+' واتساب</button><button type="button" class="pa-sb" onclick="_paShare()">شارك<span class="pa-sbx"> صفحتي</span> ↗</button></div>'
     +'<button type="button" class="pa-why" onclick="_paShare(1)">كيف يفيدني؟ اضغط للشرح</button></div>';
   html+='<div id="ph-qa-nudge"></div>';
   html+='<div class="nudges" id="ph-nudges"></div>';
@@ -521,6 +521,8 @@ function _renderHome(data){
   _renderProvAnswerNudge();
   _profileNudge(profile);
   _renderShareCard(profile);
+  // جوال: «صفحتك انشافت» تنزل تحت (بعد ارفعني)
+  try{ if(window.innerWidth<=768){ var _sh=pg.querySelector(':scope > .pa-share'), _sc=document.getElementById('ph-sharecard'); if(_sh&&_sc) _sc.parentNode.insertBefore(_sh,_sc.nextSibling); } }catch(e){}
   _paExtras();
 }
 // سطر فرصة مختصر (الرئيسية)

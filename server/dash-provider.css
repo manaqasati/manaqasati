@@ -913,3 +913,22 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
   .pa-sxs{grid-template-columns:repeat(3,1fr);row-gap:14px}
 }
 .pa-kt .pa-ks{display:block;margin-top:3px;text-align:start;font-size:11.5px;white-space:normal}
+/* رئيسية المزوّد (جوال): الأرقام بطاقة وحدة مقسومة 3 · «صفحتك انشافت» سطر صغير تحت */
+@media(max-width:768px){
+  .pa-kpis{display:flex!important;gap:0!important;background:var(--pa-c);border:1px solid var(--pa-b);border-radius:16px;padding:10px 4px;box-shadow:var(--pa-s)}
+  .pa-k{flex:1;min-width:0;display:block!important;background:none!important;border:0!important;box-shadow:none!important;border-radius:0!important;padding:2px 4px!important;text-align:center!important;transform:none!important}
+  .pa-k+.pa-k{border-inline-start:1px solid var(--pa-b)!important}
+  .pa-k .pa-ki,.pa-k .pa-ks{display:none!important}
+  .pa-k .pa-kt{display:flex;flex-direction:column-reverse;align-items:center}
+  .pa-k .pa-kt b{font-size:19px!important;margin:0}
+  .pa-k .pa-kt small{font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .pa-k:nth-child(1) .pa-kt b{color:#1d4ed8}.pa-k:nth-child(2) .pa-kt b{color:#b45309}.pa-k:nth-child(3) .pa-kt b{color:#15803d}
+  [data-theme="dark"] .pa-k:nth-child(1) .pa-kt b{color:#60a5fa}[data-theme="dark"] .pa-k:nth-child(2) .pa-kt b{color:#fbbf24}[data-theme="dark"] .pa-k:nth-child(3) .pa-kt b{color:#4ade80}
+  .pa-share{display:flex;align-items:center;gap:8px;padding:10px 12px}
+  .pa-share>p,.pa-share .pa-why,.pa-share .pa-wy{display:none!important}
+  .pa-sh1{flex:1;min-width:0;gap:7px}.pa-sh1 .pa-eye{font-size:17px}.pa-sh1 b{font-size:13px;line-height:1.5}
+  .pa-share .pa-sh2{margin-top:0;flex:0 0 auto;gap:6px}
+  .pa-share .pa-sh2 button{flex:0 0 auto;padding:8px 10px;font-size:12px;border-radius:10px}
+  .pa-share .pa-sh2 button svg{width:15px;height:15px}
+}
+@media(max-width:768px){.pa-sbx{display:none}}
