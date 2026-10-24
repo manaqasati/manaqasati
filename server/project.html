@@ -847,6 +847,7 @@ function _pjWatch(btn){ if(!getToken()){ location.href='/auth.html'; return; } b
 function _pjLockHtml(req){
   var u={}; try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}
   var tk=getToken(), isProv=tk&&(u.role==='provider'||u.can_provide);
+  if(isProv&&!window._pjLkV){ window._pjLkV=1; try{ fetch(API+'/api/lk/event',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({kind:'view',rid:req.id})}).catch(function(){}); }catch(e){} }
   var nm=req.invited_name?'<a href="/pro/'+(parseInt(req.invited_pid)||0)+'" style="color:#b45309;text-decoration:underline">'+esc(req.invited_name)+'</a>':'مزوّد محدد';
   var left=req.invite_left_sec>0?'ينفتح لباقي المزوّدين خلال <b>'+_pjLeft(req.invite_left_sec)+'</b> إذا ما قدّموا':(req.invite_left_sec===0?'ينفتح لباقي المزوّدين خلال دقائق':'ينفتح لباقي المزوّدين إذا العميل ما اختارهم');
   var btn=isProv?'<button type="button" class="pj-b" style="border-color:#f59e0b;color:#92400e;background:#fff" onclick="_pjWatch(this)">🔔 نبّهني إذا انفتح</button>'

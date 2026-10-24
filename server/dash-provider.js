@@ -869,6 +869,7 @@ function _lkFmt(sec){ sec=Math.max(0,Math.floor(sec)); var h=Math.floor(sec/3600
 function _lkTick(){ var now=Date.now(); [].forEach.call(document.querySelectorAll('[data-lk-end]'),function(el){ var left=(parseInt(el.getAttribute('data-lk-end'))-now)/1000; el.textContent=left>0?_lkFmt(left):'خلال دقائق'; }); }
 if(!window._lkT) window._lkT=setInterval(_lkTick,1000);
 function _lkCard(r,compact){
+  if(!window._lkSeen[r.id]){ window._lkSeen[r.id]=1; setTimeout(function(){ _lkLog('view',r.id); },0); }
   var end=(r.invite_left_sec>0)?(Date.now()+r.invite_left_sec*1000):0, w=!!r.watching;
   var h='<div class="tk" style="border:1.5px solid #fcd34d;background:linear-gradient(180deg,rgba(254,243,199,.55),transparent 70%);'+(compact?'margin-bottom:10px;':'')+'" onclick="_viewProj('+r.id+')">'
     +'<div class="tk-h"><span style="display:inline-flex;align-items:center;gap:4px;background:#fef3c7;color:#92400e;border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:900">⭐ طلبه العميل بالاسم</span><span style="margin-inline-start:6px">'+_esc(r.category||'')+'</span><span class="tk-nw old">نزل '+timeAgoP(r.created_at)+'</span></div>'
@@ -876,10 +877,12 @@ function _lkCard(r,compact){
     +(end?'<div style="display:flex;align-items:center;gap:8px;background:rgba(255,237,213,.7);border:1px dashed #fdba74;border-radius:12px;padding:8px 10px;margin:8px 12px 0;font-size:12.5px;font-weight:800;color:#9a3412">⏳ ينفتح لباقي المزوّدين إذا ما قدّموا خلال <b data-lk-end="'+end+'" style="font-family:Inter,sans-serif;font-size:14.5px;color:#c2410c;direction:ltr">'+_lkFmt(r.invite_left_sec)+'</b></div>':'<div style="margin:8px 12px 0;font-size:12.5px;font-weight:800;color:#9a3412">⏳ قدّموا عرضهم — ينفتح إذا العميل ما اختارهم</div>')
     +'<div style="padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px">'
       +'<button type="button" id="lkw-'+r.id+'" onclick="event.stopPropagation();_lkWatch('+r.id+',this)" style="border:1.5px solid #fcd34d;background:#fff;color:#92400e;border-radius:12px;padding:11px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer"'+(w?' disabled':'')+'>'+(w?'✓ بننبّهك أول ما ينفتح':'🔔 نبّهني إذا انفتح')+'</button>'
-      +'<div onclick="event.stopPropagation()" style="background:rgba(238,243,255,.9);border:1.5px solid #bfdbfe;border-radius:13px;padding:10px 11px;font-size:12.5px;font-weight:800;color:#1e3a8a;line-height:1.8">💡 تبي العملاء يطلبونك بالاسم؟ شارك رابط صفحتك — أي عميل يجي منه، مشروعه يوصلك أنت أول.<button type="button" onclick="_lkCopy()" style="display:block;width:100%;margin-top:7px;border:0;background:#1d4ed8;color:#fff;border-radius:11px;padding:9px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer">🔗 انسخ رابط صفحتي</button></div>'
+      +'<div onclick="event.stopPropagation()" style="background:rgba(238,243,255,.9);border:1.5px solid #bfdbfe;border-radius:13px;padding:10px 11px;font-size:12.5px;font-weight:800;color:#1e3a8a;line-height:1.8">💡 تبي العملاء يطلبونك بالاسم؟ شارك رابط صفحتك — أي عميل يجي منه، مشروعه يوصلك أنت أول.<button type="button" onclick="_lkCopy('+r.id+')" style="display:block;width:100%;margin-top:7px;border:0;background:#1d4ed8;color:#fff;border-radius:11px;padding:9px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer">🔗 انسخ رابط صفحتي</button></div>'
     +'</div></div>';
   return h;
 }
+window._lkSeen=window._lkSeen||{};
+function _lkLog(kind,rid){ try{ fetch((window.API||'')+'/api/lk/event',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('token')||'')},body:JSON.stringify({kind:kind,rid:rid||null}),keepalive:true}).catch(function(){}); }catch(e){} }
 function _lkInApp(){ return !!(window.ReactNativeWebView||/ManaqasaApp|Expo/i.test(navigator.userAgent||'')); }
 function _lkWatch(id,btn){
   if(btn){btn.disabled=true;btn.textContent='...';}
@@ -892,13 +895,13 @@ function _lkWatch(id,btn){
     o.innerHTML='<div style="background:var(--white,#fff);color:var(--text,#0f1d3a);width:100%;max-width:470px;border-radius:24px 24px 0 0;padding:12px 18px calc(env(safe-area-inset-bottom,0px) + 20px);text-align:center;display:flex;flex-direction:column;gap:11px;font-family:inherit">'
       +'<div style="width:44px;height:5px;border-radius:5px;background:#dbe2ee;margin:0 auto 4px"></div><div style="font-size:38px">🔔</div><div style="font-size:18px;font-weight:900">سجّلنا طلبك ✓</div>'
       +'<div style="font-size:13.5px;color:var(--muted,#475569);font-weight:700;line-height:1.9">أول ما ينفتح المشروع نرسل لك تنبيه. <b>حمّل تطبيق مناقصة</b> عشان يوصلك فوراً على جوالك — المشاريع تروح لأول اللي يقدّمون.</div>'
-      +'<div style="display:flex;gap:10px"><a href="'+_AS+'" target="_blank" rel="noopener" style="flex:1;background:#0b1220;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13.5px;text-decoration:none"> App Store</a><a href="'+_GP+'" target="_blank" rel="noopener" style="flex:1;background:#0b1220;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13.5px;text-decoration:none">▶ Google Play</a></div>'
+      +'<div style="display:flex;gap:10px"><a href="'+_AS+'" onclick="_lkLog(\'store_ios\','+id+')" target="_blank" rel="noopener" style="flex:1;background:#0b1220;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13.5px;text-decoration:none"> App Store</a><a href="'+_GP+'" onclick="_lkLog(\'store_android\','+id+')" target="_blank" rel="noopener" style="flex:1;background:#0b1220;color:#fff;border-radius:12px;padding:11px;font-weight:800;font-size:13.5px;text-decoration:none">▶ Google Play</a></div>'
       +'<button type="button" style="border:0;background:none;color:var(--muted,#64748b);font-family:inherit;font-weight:800;font-size:13px;text-decoration:underline;cursor:pointer;padding:6px">لاحقاً</button></div>';
     o.onclick=function(e){ if(e.target===o||e.target.tagName==='BUTTON')o.remove(); };
     document.body.appendChild(o);
   }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='🔔 نبّهني إذا انفتح';} showToast('تعذّر — حاول مرة ثانية','error'); });
 }
-function _lkCopy(){ var id=(_me&&_me.id)||''; var u=location.origin+'/pro/'+id; try{ navigator.clipboard.writeText(u).then(function(){ showToast('نُسخ رابط صفحتك ✓ — شاركه مع عملائك','success'); },function(){ prompt('انسخ رابط صفحتك:',u); }); }catch(e){ prompt('انسخ رابط صفحتك:',u); } }
+function _lkCopy(rid){ _lkLog('copy',rid); var id=(_me&&_me.id)||''; var u=location.origin+'/pro/'+id; try{ navigator.clipboard.writeText(u).then(function(){ showToast('نُسخ رابط صفحتك ✓ — شاركه مع عملائك','success'); },function(){ prompt('انسخ رابط صفحتك:',u); }); }catch(e){ prompt('انسخ رابط صفحتك:',u); } }
 function _renderBrowseList(list){
   if(!list||!list.length)return _empty('ما فيه مشاريع هنا الحين','غيّر الفلتر أو تفقّد لاحقاً — يوصلك إشعار أول ما ينزل مشروع يناسبك');
   var bidOn={}; (_myBids||[]).forEach(function(b){ bidOn[b.request_id]=1; });

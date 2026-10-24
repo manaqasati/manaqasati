@@ -69,7 +69,7 @@ function _navGroupsVis(){
   try{var mo=new MutationObserver(function(){_navSums();});document.querySelectorAll('.nav .ni-badge').forEach(function(b){mo.observe(b,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});});}catch(e){setInterval(_navSums,3000);}
 })();
 // ═══ الصفحات المدموجة: كل مجموعة صفحة وحدة بتبويبات فوق ═══
-var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','drafts','requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','nstats','invites','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
+var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','drafts','requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','nstats','invites','named','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
 var _PG2GRP={};Object.keys(GRPS).forEach(function(g){GRPS[g].t.forEach(function(t){var b=t.split('@')[0];if(!_PG2GRP[b])_PG2GRP[b]=g;});});
 function _gtVisible(g){var bar=document.querySelector('#gtabsHost .gtabs[data-grp="'+g+'"]');if(!bar)return [];return [].filter.call(bar.querySelectorAll('.gt'),function(b){return b.style.display!=='none';}).map(function(b){return b.getAttribute('data-tab');});}
 function showGroup(g){
@@ -119,6 +119,7 @@ function showPage(pg,el){
   var meta={vstats:['التسجيل والتفعيل','كيف سجّلوا (البريد · Google · Apple) — مين فعّل ومين علق'],appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],deals:['متابعة الصفقات','مين اختار · مين ألغى · مين خلّص · مين سدّد'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   meta.outcomes=['نتائج المشاريع','وين راح كل مشروع — الترسية والإغلاق والسعي، ووش يحتاج قرارك'];
   meta.nstats=['الإشعارات والإيميلات','مين وصله الإيميل وإشعار التطبيق — ومين فتح وتفاعل'];
+  meta.named=['⭐ المحجوزة بالاسم','مشاريع طلب فيها العميل مزوّد بالاسم — تفاعل المزوّد المطلوب والمزوّدين الثانيين'];
   meta.invites=['دعوات العملاء','العميل يشارك رابط مشروعه مع مقاولين يعرفهم — مين فتح ومين سجّل ومين قدّم ورسى عليه'];
   meta.drafts=['مشاريع ما اكتملت','ناس بدأوا يكتبون مشروع وطلعوا — نذكّرهم تلقائياً ونرجّعهم لمسودّتهم'];
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
@@ -133,6 +134,7 @@ function showPage(pg,el){
   if(pg==='vstats')setTimeout(_loadVStats,0);
   if(pg==='nstats')setTimeout(_loadNStats,0);
   if(pg==='invites')setTimeout(_loadInv,0);
+  if(pg==='named')setTimeout(_loadNamed,0);
   if(pg==='inbox')loadInbox();
   if(pg==='saai')loadSaaiAdmin();
   if(pg==='settings')loadSettings();
@@ -6163,7 +6165,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={nstats:'analytics.view',invites:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={nstats:'analytics.view',invites:'analytics.view',named:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
@@ -7482,3 +7484,48 @@ function _uWaList(){
 }
 function _uWaOne(id){ var u=(_allUsers||[]).find(function(x){return x.id===id;}); if(!u)return; var url=_uWaUrl(u,(document.getElementById('uwMsg')||{}).value||''); if(!url)return; window._uwSent[id]=1; window.open(url,'_blank','noopener'); _uWaList(); }
 function _uWaNext(){ var L=(_allUsers||[]).filter(function(u){return _selUsers[u.id]&&_waNorm(u.phone)&&!(window._uwSent||{})[u.id];}); if(!L.length){ toast('خلصت — انفتحت كل المحادثات ✓','success'); return; } _uWaOne(L[0].id); }
+
+// ═══ ⭐ المشاريع المحجوزة بالاسم — إحصائية ═══
+window._nmP=window._nmP||'7';
+function _nmRange(){ var d=new Date(Date.now()+3*3600e3), iso=function(x){return x.toISOString().slice(0,10);}; var t=iso(d);
+  if(_nmP==='1')return {from:t,to:t}; if(_nmP==='30')return {from:iso(new Date(d.getTime()-29*864e5)),to:t}; if(_nmP==='c')return {from:window._nmF||iso(new Date(d.getTime()-6*864e5)),to:window._nmT||t}; return {from:iso(new Date(d.getTime()-6*864e5)),to:t}; }
+function _loadNamed(){
+  var b=document.getElementById('dash-named'); if(!b)return; b.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  var r=_nmRange();
+  fetch(API+'/api/admin/named-stats?from='+r.from+'&to='+r.to,hdr()).then(function(x){return x.json();}).then(function(d){ _nmPaint(d,r); }).catch(function(){ b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>'; });
+}
+function _nmPaint(d,r){
+  var b=document.getElementById('dash-named'); if(!b||!d||!d.kpi)return; var k=d.kpi, n=k.reserved||0;
+  var pct=function(a,t){ return t?Math.round(a*100/t)+'%':'—'; };
+  var per=[['1','اليوم'],['7','7 أيام'],['30','30 يوم'],['c','مخصص']].map(function(p){ var on=_nmP===p[0]; return '<button type="button" onclick="_nmP=\''+p[0]+'\';_loadNamed()" style="border:1px solid '+(on?'#1d4ed8':'var(--border)')+';background:'+(on?'#1d4ed8':'var(--card)')+';color:'+(on?'#fff':'var(--text2)')+';border-radius:999px;padding:6px 13px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer">'+p[1]+'</button>'; }).join('');
+  if(_nmP==='c') per+='<input type="date" value="'+r.from+'" onchange="window._nmF=this.value;_loadNamed()" style="border:1px solid var(--border);border-radius:9px;padding:5px 8px;font-family:inherit;background:var(--card);color:var(--text)"><span style="color:var(--muted)">←</span><input type="date" value="'+r.to+'" onchange="window._nmT=this.value;_loadNamed()" style="border:1px solid var(--border);border-radius:9px;padding:5px 8px;font-family:inherit;background:var(--card);color:var(--text)">';
+  var K=function(v,l,sub,col){ return '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 15px"><b style="display:block;font-size:24px;font-weight:900;color:'+(col||'var(--text)')+'">'+v+'</b><small style="color:var(--muted);font-weight:800;font-size:12px">'+l+'</small>'+(sub?'<div style="font-size:11.5px;color:#15803d;font-weight:800;margin-top:3px">'+sub+'</div>':'')+'</div>'; };
+  var h='<style>#dash-named .nm-mc{display:none}@media(max-width:640px){#dash-named .tbl-wrap{display:none}#dash-named .nm-mc{display:block}#dash-named .nm-fl span{width:118px!important;font-size:12px}}</style><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:14px">'+per+'</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:11px;margin-bottom:14px">'
+    +K(n,'مشروع محجوز','طلبه العميل بالاسم')
+    +K(pct(k.bid,n),'المزوّد المطلوب قدّم',k.avg_h!=null?'متوسط '+k.avg_h+' ساعة':'','#15803d')
+    +K(k.won,'رسى على المطلوب',n?pct(k.won,n)+' من المحجوزة':'','#b45309')
+    +K(k.watch_u,'ضغطوا «🔔 نبّهني»',k.watch_c?k.watch_c+' ضغطة':'','#1d4ed8')
+    +K(k.copy_u,'نسخوا رابط صفحتهم',k.brought?k.brought+' منهم جابوا عميل':'','#7c3aed')+'</div>';
+  var mx=Math.max(1,k.view_u,k.watch_u,k.store_u,k.after_open_u,k.copy_u);
+  var F=function(l,v,col){ return '<div class="nm-fl" style="display:flex;align-items:center;gap:10px;font-size:13px;font-weight:800;margin-bottom:9px"><span style="width:170px;flex-shrink:0">'+l+'</span><i style="display:block;height:22px;border-radius:7px;background:'+col+';width:'+Math.max(2,Math.round(v*100/mx))+'%;flex:0 1 auto;max-width:calc(100% - 200px)"></i><b>'+v+'</b></div>'; };
+  h+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:14px">'
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px"><div style="font-weight:900;font-size:15px;margin-bottom:12px">رحلة المزوّدين الثانيين</div>'
+      +F('شافوا بطاقة «محجوز»',k.view_u,'#f59e0b')+F('ضغطوا «🔔 نبّهني»',k.watch_u,'#f59e0b')+F('— ضغطوا زر التطبيق',k.store_u,'#22c55e')+F('قدّموا لما انفتح',k.after_open_u,'#1d4ed8')+F('نسخوا رابط صفحتهم',k.copy_u,'#7c3aed')+F('— جابوا عميل بالاسم',k.brought,'#7c3aed')
+      +'<div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-top:4px">مزوّدين مختلفين · «زر التطبيق» = ضغط زر المتجر (التحميل نفسه ما نشوفه)</div></div>'
+    +'<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px"><div style="font-weight:900;font-size:15px;margin-bottom:10px">⭐ أكثر مزوّدين ينطلبون بالاسم</div>'
+      +((d.top||[]).length?'<table class="br-t" style="width:100%"><thead><tr><th>المزوّد</th><th>طُلب</th><th>قدّم</th><th>رسى</th></tr></thead><tbody>'+d.top.map(function(t){ return '<tr><td><a href="/pro/'+(parseInt(t.id)||0)+'" target="_blank" rel="noopener" style="color:var(--text);font-weight:800">'+esc(t.prov||'—')+'</a></td><td>'+t.asked+'</td><td>'+t.bid+'</td><td>'+t.won+'</td></tr>'; }).join('')+'</tbody></table>'
+        +d.top.filter(function(t){return t.asked>=2&&!t.bid;}).map(function(t){ return '<div style="margin-top:8px;font-size:12px;color:#b45309;font-weight:800">⚠️ «'+esc(t.prov)+'» طُلب '+t.asked+' مرات وما قدّم — كلّمه</div>'; }).join('')
+        :'<div style="color:var(--muted);font-size:13px;font-weight:700">ما فيه مشاريع محجوزة في هالفترة</div>')+'</div></div>';
+  var st=function(x){ if(x.state==='exclusive'&&x.status==='open') return ['⏳ محجوز'+(x.left!=null?' · باقي '+(x.left>=3600?Math.floor(x.left/3600)+'س '+Math.floor(x.left%3600/60)+'د':Math.ceil(x.left/60)+'د'):''),'#fef3c7','#92400e'];
+    if(x.bid_min!=null) return ['✓ قدّم خلال '+(x.bid_min<60?x.bid_min+' د':Math.round(x.bid_min/60)+' س'),'#dcfce7','#166534'];
+    if(x.state==='open') return ['🔓 انفتح — ما قدّم','#f1f5f9','#475569']; return [x.state||'—','#f1f5f9','#475569']; };
+  var WHY={timeout:'انفتح بعد 6س',bid_timeout:'انفتح بعد 24س',client:'العميل فتحه',admin:'الإدارة فتحته'};
+  h+='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px"><div style="font-weight:900;font-size:15px;margin-bottom:10px">المشاريع المحجوزة</div>'
+    +((d.list||[]).length?'<div class="tbl-wrap"><table class="br-t" style="width:100%"><thead><tr><th>المشروع</th><th>المطلوب</th><th>الحالة</th><th>النتيجة</th><th>👀</th><th>🔔</th><th>قدّموا بعد الفتح</th></tr></thead><tbody>'
+      +d.list.map(function(x){ var s=st(x); return '<tr style="cursor:pointer" onclick="gsOpenReq('+(parseInt(x.id)||0)+')"><td><b>'+esc(x.title||'')+'</b><div style="color:var(--muted);font-size:11.5px">'+esc(x.city||'')+'</div></td><td>'+esc(x.prov||'—')+'</td><td><span class="br-p" style="background:'+s[1]+';color:'+s[2]+'">'+s[0]+'</span></td><td>'+(x.won?'<b style="color:#15803d">رسى عليه ✓</b>':(x.opened?'🔓 '+(WHY[x.why]||'انفتح'):'—'))+'</td><td>'+(x.viewers||0)+'</td><td>'+(x.watchers||0)+'</td><td>'+(x.opened?(x.after_open||0):'—')+'</td></tr>'; }).join('')+'</tbody></table></div>'
+      +'<div class="nm-mc">'+d.list.map(function(x){ var s=st(x); return '<div onclick="gsOpenReq('+(parseInt(x.id)||0)+')" style="cursor:pointer;border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><b style="font-size:14px">'+esc(x.title||'')+'</b><span class="br-p" style="background:'+s[1]+';color:'+s[2]+';white-space:nowrap;font-size:11px">'+s[0]+'</span></div><div style="color:var(--muted);font-size:12px;font-weight:700;margin:4px 0 7px">'+esc(x.city||'')+' · ⭐ '+esc(x.prov||'—')+'</div><div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;font-weight:800;color:var(--text2)"><span>👀 '+(x.viewers||0)+'</span><span>🔔 '+(x.watchers||0)+'</span>'+(x.opened?'<span>قدّموا بعد الفتح: '+(x.after_open||0)+'</span>':'')+(x.won?'<span style="color:#15803d">رسى عليه ✓</span>':(x.opened?'<span>🔓 '+(WHY[x.why]||'انفتح')+'</span>':''))+'</div></div>'; }).join('')+'</div>'
+      :'<div style="color:var(--muted);font-size:13px;font-weight:700">ما فيه مشاريع محجوزة في هالفترة</div>')+'</div>';
+  h+='<div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-top:10px">المشاهدات والضغطات تتسجّل من 24 أكتوبر 2026 — قبلها ما فيه أرقام.</div>';
+  b.innerHTML=h;
+}

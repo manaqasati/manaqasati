@@ -3464,6 +3464,11 @@ async function setupDatabase() {
     ];
     await _mig(`CREATE TABLE IF NOT EXISTS email_log (id SERIAL PRIMARY KEY, user_id INTEGER, to_email VARCHAR(200), subject VARCHAR(200), kind VARCHAR(30), resend_id VARCHAR(80), status VARCHAR(30) DEFAULT 'sent', error TEXT, created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW())`);
     try { await _mig('CREATE INDEX IF NOT EXISTS email_log_rid ON email_log(resend_id)'); await _mig('CREATE INDEX IF NOT EXISTS email_log_uid ON email_log(user_id, created_at DESC)'); } catch(e){}
+    await _mig(`CREATE TABLE IF NOT EXISTS lk_events (id SERIAL PRIMARY KEY, request_id INTEGER, user_id INTEGER, kind VARCHAR(20) NOT NULL, day DATE DEFAULT CURRENT_DATE, created_at TIMESTAMP DEFAULT NOW())`);
+    await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS lk_events_view_uq ON lk_events(request_id, user_id, day) WHERE kind='view'`);
+    await _mig(`CREATE INDEX IF NOT EXISTS lk_events_created ON lk_events(created_at)`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_opened_at TIMESTAMP`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS invite_open_why VARCHAR(12)`);
     await _mig(`CREATE TABLE IF NOT EXISTS invite_watch (request_id INTEGER NOT NULL, user_id INTEGER NOT NULL, created_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY (request_id, user_id))`);
     await _mig(`CREATE TABLE IF NOT EXISTS close_wa_log (id SERIAL PRIMARY KEY, request_id INTEGER, client_id INTEGER, tpl VARCHAR(30), admin_id INTEGER, created_at TIMESTAMP DEFAULT NOW())`);
     await _mig(`CREATE INDEX IF NOT EXISTS idx_close_wa_req ON close_wa_log(request_id)`);
@@ -9136,7 +9141,7 @@ app.post('/api/admin/contact-unlocks/:rid/remind', requirePermission('requests.v
 const INVITE_REMIND_HOURS = 3, INVITE_OPEN_HOURS = 6, INVITE_BID_HOURS = 24;   // قدّم المزوّد المطلوب ← نعطي العميل 24 ساعة يختاره، وبعدها ينفتح للباقين
 async function _inviteLeft(id){ try { return (await pool.query(`SELECT GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + ((CASE WHEN EXISTS(SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id) THEN $3 ELSE $2 END) || ' hours')::interval - NOW())))::int AS s FROM requests r WHERE r.id=$1`, [id, String(INVITE_OPEN_HOURS), String(INVITE_BID_HOURS)])).rows[0].s; } catch(e) { return null; } }
 async function _openInvite(id, why){
-  const r = await pool.query(`UPDATE requests SET invite_state='open' WHERE id=$1 AND invite_state IS DISTINCT FROM 'open' RETURNING id, title, category, city, status`, [id]);
+  const r = await pool.query(`UPDATE requests SET invite_state='open', invite_opened_at=NOW(), invite_open_why=$2 WHERE id=$1 AND invite_state IS DISTINCT FROM 'open' RETURNING id, title, category, city, status`, [id, String(why||'timeout').slice(0,12)]);
   const x = r.rows[0]; if (!x) return false;
   addTimeline(id, 'invite_open', why === 'bid_timeout' ? ('انفتح لكل المزوّدين تلقائياً — المزوّد المطلوب قدّم، والعميل ما اختاره خلال ' + INVITE_BID_HOURS + ' ساعة') : ('انفتح لكل المزوّدين تلقائياً — المزوّد المطلوب ما قدّم خلال ' + INVITE_OPEN_HOURS + ' ساعات')).catch(()=>{});
   if (x.status === 'open') { try { await notifyMatchingProviders(x, true); } catch(e){} }
@@ -9171,8 +9176,53 @@ app.post('/api/requests/:id/watch-open', auth, async (req, res) => {
     if (!q) return res.status(404).json({ message: 'غير موجود' });
     if (q.invite_state !== 'exclusive' || q.status !== 'open') return res.json({ ok: true, open: true });
     await pool.query('INSERT INTO invite_watch (request_id, user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [id, req.user.id]);
+    pool.query("INSERT INTO lk_events (request_id, user_id, kind) VALUES ($1,$2,'watch')", [id, req.user.id]).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// تتبّع تفاعل المزوّدين مع بطاقة «محجوز» (مشاهدة/نسخ رابط/أزرار التطبيق)
+app.post('/api/lk/event', rateLimiter(120, 60000), optionalAuth, async (req, res) => {
+  try {
+    const kind = String((req.body && req.body.kind) || ''), rid = parseInt(req.body && req.body.rid) || null;
+    if (!['view','copy','store_ios','store_android'].includes(kind) || !req.user) return res.json({ ok: true });
+    if (kind === 'view') await pool.query("INSERT INTO lk_events (request_id, user_id, kind) VALUES ($1,$2,'view') ON CONFLICT DO NOTHING", [rid, req.user.id]);
+    else await pool.query('INSERT INTO lk_events (request_id, user_id, kind) VALUES ($1,$2,$3)', [rid, req.user.id, kind]);
+    res.json({ ok: true });
+  } catch(e) { res.json({ ok: true }); }
+});
+app.get('/api/admin/named-stats', requirePermission('analytics.view'), async (req, res) => {
+  try {
+    const _d = v => /^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null, _t = new Date(Date.now() + 3 * 36e5);
+    const to = _d(req.query.to) || _t.toISOString().slice(0, 10), from = _d(req.query.from) || new Date(_t - 6 * 864e5).toISOString().slice(0, 10);
+    const P = [from, to];
+    const rq = (await pool.query(`SELECT r.id, r.title, r.city, r.status, r.invite_state, r.invite_started_at, r.invite_opened_at, r.invite_open_why, r.invited_provider_id, r.assigned_provider_id,
+        COALESCE(NULLIF(u.business_name,''),u.name) AS prov,
+        (SELECT MIN(b.created_at) FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id) AS inv_bid_at,
+        (SELECT COUNT(DISTINCT b.provider_id) FROM bids b WHERE b.request_id=r.id AND b.provider_id<>r.invited_provider_id AND r.invite_opened_at IS NOT NULL AND b.created_at>=r.invite_opened_at)::int AS after_open,
+        (SELECT COUNT(DISTINCT e.user_id) FROM lk_events e WHERE e.request_id=r.id AND e.kind='watch')::int AS watchers,
+        (SELECT COUNT(DISTINCT e.user_id) FROM lk_events e WHERE e.request_id=r.id AND e.kind='view')::int AS viewers
+      FROM requests r JOIN users u ON u.id=r.invited_provider_id
+      WHERE r.invited_provider_id IS NOT NULL AND r.invite_started_at >= $1::date AND r.invite_started_at < $2::date + 1 ORDER BY r.invite_started_at DESC LIMIT 200`, P)).rows;
+    for (const x of rq) if (x.invite_state === 'exclusive' && x.status === 'open') x.left = await _inviteLeft(x.id);
+    const n = rq.length, bid = rq.filter(x => x.inv_bid_at), won = rq.filter(x => x.assigned_provider_id && String(x.assigned_provider_id) === String(x.invited_provider_id));
+    const avgH = bid.length ? Math.round(bid.reduce((a, x) => a + (new Date(x.inv_bid_at) - new Date(x.invite_started_at)) / 36e5, 0) / bid.length * 10) / 10 : null;
+    const ev = (await pool.query(`SELECT kind, COUNT(*)::int AS c, COUNT(DISTINCT user_id)::int AS u FROM lk_events WHERE created_at >= $1::date AND created_at < $2::date + 1 GROUP BY kind`, P)).rows;
+    const E = {}; ev.forEach(x => { E[x.kind] = x; });
+    const storeU = (await pool.query(`SELECT COUNT(DISTINCT user_id)::int AS u FROM lk_events WHERE kind IN ('store_ios','store_android') AND created_at >= $1::date AND created_at < $2::date + 1`, P)).rows[0].u;
+    const afterOpenBidders = (await pool.query(`SELECT COUNT(DISTINCT b.provider_id)::int AS u FROM bids b JOIN requests r ON r.id=b.request_id
+        WHERE r.invited_provider_id IS NOT NULL AND r.invite_opened_at IS NOT NULL AND r.invite_started_at >= $1::date AND r.invite_started_at < $2::date + 1 AND b.provider_id<>r.invited_provider_id AND b.created_at>=r.invite_opened_at`, P)).rows[0].u;
+    // نسخوا رابط صفحتهم ← جاهم مشروع طلبهم بالاسم بعدها
+    const brought = (await pool.query(`SELECT COUNT(DISTINCT e.user_id)::int AS u FROM lk_events e WHERE e.kind='copy' AND e.created_at >= $1::date AND e.created_at < $2::date + 1
+        AND EXISTS (SELECT 1 FROM requests r WHERE r.invited_provider_id=e.user_id AND r.created_at > e.created_at)`, P)).rows[0].u;
+    const top = (await pool.query(`SELECT COALESCE(NULLIF(u.business_name,''),u.name) AS prov, u.id, COUNT(*)::int AS asked,
+        COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=r.invited_provider_id))::int AS bid,
+        COUNT(*) FILTER (WHERE r.assigned_provider_id=r.invited_provider_id)::int AS won
+      FROM requests r JOIN users u ON u.id=r.invited_provider_id WHERE r.invite_started_at >= $1::date AND r.invite_started_at < $2::date + 1 GROUP BY 1,2 ORDER BY 3 DESC, 5 DESC LIMIT 10`, P)).rows;
+    res.json({ from, to, kpi: { reserved: n, bid: bid.length, avg_h: avgH, won: won.length, watch_u: (E.watch||{}).u||0, watch_c: (E.watch||{}).c||0, copy_u: (E.copy||{}).u||0, brought, view_u: (E.view||{}).u||0, store_u: storeU, after_open_u: afterOpenBidders },
+      top, list: rq.map(x => ({ id: x.id, title: x.title, city: x.city, prov: x.prov, state: x.invite_state, status: x.status, started: x.invite_started_at, opened: x.invite_opened_at, why: x.invite_open_why,
+        bid_min: x.inv_bid_at ? Math.round((new Date(x.inv_bid_at) - new Date(x.invite_started_at)) / 60000) : null, won: !!(x.assigned_provider_id && String(x.assigned_provider_id) === String(x.invited_provider_id)),
+        watchers: x.watchers, viewers: x.viewers, after_open: x.after_open, left: x.left != null ? x.left : null })) });
+  } catch(e) { console.error('named-stats:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 async function _notifyWatchers(id){
   try {
@@ -9189,7 +9239,7 @@ app.post('/api/requests/:id/open-invite', auth, async (req, res) => {
     if (!q) return res.status(404).json({ message: 'غير موجود' });
     if (String(q.client_id) !== String(req.user.id) && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
     if (q.invite_state === 'open' || !q.invite_state) return res.json({ ok: true, already: true });
-    await pool.query("UPDATE requests SET invite_state='open' WHERE id=$1", [id]);
+    await pool.query("UPDATE requests SET invite_state='open', invite_opened_at=NOW(), invite_open_why=$2 WHERE id=$1", [id, String(q.client_id) === String(req.user.id) ? 'client' : 'admin']);
     addTimeline(id, 'invite_open', String(q.client_id) === String(req.user.id) ? 'العميل فتحه لكل المزوّدين (كان محجوز لمزوّد طلبه بالاسم)' : 'الإدارة فتحته لكل المزوّدين (كان محجوز لمزوّد طلبه العميل بالاسم)').catch(()=>{});
     const x = (await pool.query('SELECT id, title, category, city, status FROM requests WHERE id=$1', [id])).rows[0];
     if (x && x.status === 'open') { try { await notifyMatchingProviders(x, true); } catch(e){} }
