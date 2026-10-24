@@ -792,6 +792,8 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   if(b.note_locked)h+='<div class="pj-lock">🔒 التفاصيل والسعر تظهر لصاحب المشروع فقط</div>';
   if(_safeUrl(b.attachment_url))h+='<a href="'+esc(_safeUrl(b.attachment_url))+'" target="_blank" rel="noopener" class="pj-att">📄 عرض السعر</a>';
   if(window._bxShow)h+=_bxShow(b);
+  if(window._ndBidRow&&isOwner&&!isAcc&&!isRej)h+=_ndBidRow(b,_rid);
+  else if(isMine&&Array.isArray(b.need_items)&&b.need_items.length&&window._ND_L)h+='<div style="margin-top:8px;font-size:12px;font-weight:800;color:#92400e">📋 طلبت من العميل: '+esc(b.need_items.filter(function(k){return _ND_L[k]&&k!=='other';}).map(function(k){return _ND_L[k][1];}).concat(b.need_other?['«'+b.need_other+'»']:[]).join(' · '))+'</div>';
   h+='<div class="pj-acts">';
   if(isOwner&&_pjCanAccept(reqStatus)&&!isAcc&&!isRej)h+='<button class="pj-b ok" onclick="acceptBid('+b.id+')">قبول العرض</button>';
   if(provPhone&&!isMine){

@@ -396,6 +396,7 @@ window._nsoMount=function(radioName,reqId){
   W._bxRender=render;
   // يركّب الخانات داخل #bx-box. bid (اختياري) = عرض قائم للتعديل
   W._bxMount=function(bid){
+    try{ if(W._ndMount)W._ndMount(bid); }catch(e){}
     var S=W._bxSt; S.imgs=[]; S.on=true; S.won=true;
     var go=function(p){ S.prof=p||{};
       if(bid){ S.on=!!bid.show_profile||(bid.show_profile==null); S.imgs=Array.isArray(bid.work_images)?bid.work_images.filter(safe).slice(0,6):[]; S.won=S.imgs.length>0; }
@@ -419,7 +420,7 @@ window._nsoMount=function(radioName,reqId){
       +im.map(function(u){return '<img loading="lazy" src="'+esc(u)+'" alt="من أعمال المزوّد" onclick="window.open(this.src,\'_blank\')" style="width:60px;height:60px;object-fit:cover;border-radius:9px;cursor:pointer;border:1px solid #e1e9f6">';}).join('')+'</div></div>';
     return h;
   };
-  W._bxGet=function(){ var S=W._bxSt; if(!document.getElementById('bx-box')||!S.prof)return {}; return { show_profile: !!(S.on && S.prof && safe(S.prof.company_profile_url)), work_images: S.won ? S.imgs.slice(0,6) : [] }; };
+  W._bxGet=function(){ var S=W._bxSt, nd=(W._ndGet?W._ndGet():{}); if(!document.getElementById('bx-box')||!S.prof)return nd; return Object.assign({ show_profile: !!(S.on && S.prof && safe(S.prof.company_profile_url)), work_images: S.won ? S.imgs.slice(0,6) : [] },nd); };
 })();
 
 /* ═══ بعد إغلاق العميل لمشروعه: «عروضك باقية» + متى ترجع له (للمؤجّل) ═══ */
@@ -602,4 +603,124 @@ window._nsoMount=function(radioName,reqId){
         .then(function(){ o.remove(); cb(); }).catch(function(){ o.remove(); cb(); });
     });
   }
+})();
+
+/* ═══ «سعري مبدئي — ناقصني معلومات» ═══
+   المزوّد: خانة داخل نموذج العرض (#nd-box بعد #bx-box) — يختار وش ناقصه حسب نوع المشروع
+   العميل: _ndCard(reqId) بطاقة مجمّعة فوق العروض + _ndSheet(reqId) لإضافة المعلومات */
+(function(){
+  var W=window;
+  function api(){ return (typeof W.API==='string'&&W.API)||''; }
+  function tok(){ try{return localStorage.getItem('token')||'';}catch(e){return '';} }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+  var L={plan:['📐','المخطط'],photos:['📷','صور الموقع'],area:['📏','المساحة / المقاسات'],qty:['🔢','الكمية / العدد'],material:['🧱','نوع المواد والمواصفات'],location:['📍','الموقع بالتحديد'],date:['📅','موعد التنفيذ'],budget:['💰','الميزانية التقريبية'],soil:['🧪','تقرير التربة'],deed:['📄','الصك أو الكروكي'],scope:['📝','تفاصيل الشغل المطلوب'],access:['🏢','الدور ووجود مصعد'],other:['＋','شي ثاني']};
+  W._ND_L=L;
+  var G=[
+    [['بناء'],['plan','photos','area','soil','material','date']],
+    [['ترميم مبانٍ','تشطيبات ومقاولات عامة','هدم'],['plan','photos','area','material','scope','date']],
+    [['مكاتب هندسية','تصاميم داخلي وخارجي','design'],['area','deed','plan','photos','scope']],
+    [['كلادينج وواجهات','إنشاءات معدنية وهناجر','مظلات وسواتر','ألمنيوم','زجاج ومرايا','حدادة','أبواب وبوابات','تركيب مطابخ'],['area','photos','plan','material','qty']],
+    [['دهانات وديكور','عزل حراري','بلاط ورخام','جبس','أرضيات خشبية وباركيه','تنظيف واجهات المباني','تنسيق حدائق','مسابح'],['area','photos','material','scope']],
+    [['تبريد وتكييف','كهرباء','سباكة','كشف تسربات المياه','كاميرات مراقبة','شبكات وإنترنت','أنظمة الحريق والسلامة','تركيب وصيانة مصاعد','حفر آبار ومضخات','نجارة','تركيب أثاث'],['photos','qty','scope','location']],
+    [['نقل عفش'],['qty','access','location','date']],
+    [['تنظيف','تنظيف خزانات','تنظيف سجاد وكنب','مكافحة حشرات'],['area','qty','photos','date']]
+  ];
+  function keysFor(cat){ for(var i=0;i<G.length;i++) if(G[i][0].indexOf(cat)>=0) return G[i][1].slice(); return ['photos','scope','area','location','date']; }
+  W._ndSt={on:false,sel:[],other:'',keys:[],rid:null};
+  function css(){ if(document.getElementById('nd-css'))return; var st=document.createElement('style'); st.id='nd-css';
+    st.textContent='.nd-w{margin-top:11px;border:1px solid #fde68a;background:#fffbeb;border-radius:13px;padding:11px 12px}'
+    +'.nd-h{display:flex;align-items:center;gap:9px;cursor:pointer;user-select:none}.nd-h i{width:20px;height:20px;border-radius:6px;border:1.5px solid #d6b25e;background:#fff;display:flex;align-items:center;justify-content:center;font-style:normal;font-size:13px;color:#fff;flex-shrink:0}'
+    +'.nd-w.on .nd-h i{background:#b45309;border-color:#b45309}.nd-h b{font-size:13.5px;font-weight:900;color:#78350f}'
+    +'.nd-s{font-size:11.5px;color:#92400e;font-weight:700;line-height:1.7;margin:5px 0 0}'
+    +'.nd-c{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.nd-c button{border:1px solid #f1d58a;background:#fff;color:#334766;border-radius:999px;padding:7px 11px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer}'
+    +'.nd-c button.on{border-color:#1d4ed8;background:#eff6ff;color:#1d4ed8}'
+    +'.nd-o{width:100%;margin-top:8px;border:1px solid #f1d58a;border-radius:10px;padding:9px 11px;font-family:inherit;font-size:13px;background:#fff;color:#0f1d3a}'
+    +'[data-theme="dark"] .nd-w{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.35)}[data-theme="dark"] .nd-h b{color:#fcd34d}[data-theme="dark"] .nd-s{color:#fbbf24}'
+    +'[data-theme="dark"] .nd-c button,[data-theme="dark"] .nd-o{background:#111827;color:#e5e7eb;border-color:rgba(148,163,184,.3)}[data-theme="dark"] .nd-c button.on{background:rgba(59,130,246,.18);color:#93c5fd;border-color:#3b82f6}'
+    +'.nd-pre{display:inline-block;background:#fef3c7;color:#92400e;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:900;margin-top:4px}'
+    +'.nd-row{margin-top:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:9px 11px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:800;color:#92400e;line-height:1.6}'
+    +'.nd-row button,.nd-cb{border:0;background:#b45309;color:#fff;border-radius:9px;padding:7px 12px;font-family:inherit;font-weight:900;font-size:12px;cursor:pointer;white-space:nowrap}'
+    +'.nd-card{border:1px solid #fde68a;background:linear-gradient(180deg,#fffbeb,#fff 75%);border-radius:14px;padding:13px 14px;margin-bottom:11px}'
+    +'[data-theme="dark"] .nd-row,[data-theme="dark"] .nd-card{background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.35);color:#fcd34d}[data-theme="dark"] .nd-pre{background:rgba(245,158,11,.18);color:#fcd34d}';
+    document.head.appendChild(st); }
+  function render(){
+    var bx=document.getElementById('bx-box'); if(!bx)return; var S=W._ndSt;
+    var box=document.getElementById('nd-box'); if(!box){ box=document.createElement('div'); box.id='nd-box';
+      var a=document.getElementById('bid-days')||document.getElementById('bid-price'), host=bx.parentNode;
+      if(a&&host.contains(a)){ while(a.parentNode&&a.parentNode!==host)a=a.parentNode; host.insertBefore(box,a.nextSibling); box.style.marginBottom='12px'; } else host.insertBefore(box,bx); }
+    if(!S.keys.length){ box.innerHTML=''; return; }
+    var h='<div class="nd-w'+(S.on?' on':'')+'"><div class="nd-h" role="switch" aria-checked="'+(S.on?'true':'false')+'" onclick="_ndSt.on=!_ndSt.on;_ndRender()"><i>'+(S.on?'✓':'')+'</i><b>سعري مبدئي — ناقصني معلومات</b></div>';
+    if(S.on){ h+='<div class="nd-s">نطلبها من العميل بدون اسمك، وإذا أضافها يجيك إشعار تعدّل سعرك</div><div class="nd-c">'
+      +S.keys.concat(['other']).map(function(k){ var on=S.sel.indexOf(k)>=0; return '<button type="button" class="'+(on?'on':'')+'" onclick="_ndTog(\''+k+'\')">'+(on?'✓ ':'')+L[k][0]+' '+L[k][1]+'</button>'; }).join('')+'</div>'
+      +(S.sel.indexOf('other')>=0?'<input class="nd-o" id="nd-other" maxlength="100" placeholder="وش تحتاج تعرف؟ مثلاً: هل السطح فيه عزل قديم؟" value="'+esc(S.other)+'" oninput="_ndSt.other=this.value">':''); }
+    else h+='<div class="nd-s">لو ناقصك المخطط أو المساحة أو صور — قدّم سعر تقريبي وحدّد وش ناقصك</div>';
+    box.innerHTML=h+'</div>';
+  }
+  W._ndRender=render;
+  W._ndTog=function(k){ var S=W._ndSt, i=S.sel.indexOf(k); if(i>=0)S.sel.splice(i,1); else if(S.sel.length<6)S.sel.push(k); render(); if(k==='other'&&i<0)setTimeout(function(){var o=document.getElementById('nd-other');if(o)o.focus();},30); };
+  W._ndMount=function(bid){
+    css(); var S=W._ndSt; S.on=false; S.sel=[]; S.other=''; S.keys=[];
+    if(!bid&&Array.isArray(W._bids)) bid=W._bids.filter(function(b){return b&&b.is_mine;})[0]||null;
+    var rid=(bid&&bid.request_id)||W._ndRid||(typeof W.getReqId==='function'?W.getReqId():null); S.rid=rid;
+    if(bid&&Array.isArray(bid.need_items)&&bid.need_items.length){ S.on=true; S.sel=bid.need_items.filter(function(k){return L[k];}); S.other=bid.need_other||''; }
+    var bx=document.getElementById('nd-box'); if(bx)bx.innerHTML='';
+    if(!rid)return;
+    fetch(api()+'/api/requests/'+rid,{headers:{'Authorization':'Bearer '+tok()},cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(r){
+      if(!r||String(S.rid)!==String(rid))return; var ks=keysFor(r.category||''), done=r.need_done||{};
+      var att=r.attachments; try{ if(typeof att==='string')att=JSON.parse(att); }catch(e){ att=[]; }
+      var hasAtt=Array.isArray(att)&&att.length>0, hasImg=Array.isArray(r.images)&&r.images.length>0;
+      S.keys=ks.filter(function(k){ if(S.sel.indexOf(k)>=0)return true; if(done[k]&&done[k].how==='added')return false; if(k==='photos'&&(hasImg||hasAtt))return false; if((k==='plan'||k==='soil'||k==='deed')&&hasAtt)return false; return true; });
+      render();
+    }).catch(function(){});
+  };
+  W._ndGet=function(){ var S=W._ndSt; if(!document.getElementById('nd-box')||!S.keys.length)return {};
+    if(!S.on||!S.sel.length) return {need_items:[]};
+    var o=String(S.other||'').trim(), sel=S.sel.filter(function(k){return k!=='other'||o.length>=3;});
+    return {need_items:sel, need_other:o||null}; };
+  // ── العميل ──
+  W._ndBidRow=function(b,rid){
+    var it=Array.isArray(b&&b.need_items)?b.need_items.filter(function(k){return L[k]&&k!=='other';}):[];
+    if(!it.length&&!(b&&b.need_other))return '';
+    var t=it.map(function(k){return L[k][1];}).join(' · ')+(b.need_other?(it.length?' · ':'')+'«'+b.need_other+'»':'');
+    css(); return '<div class="nd-row"><span>📋</span><div style="flex:1">يحتاج منك: '+esc(t)+'</div>'+(b.status==='pending'||!b.status?'<button type="button" onclick="_ndSheet('+(parseInt(rid)||0)+')">أضفها</button>':'')+'</div>';
+  };
+  W._ndPre=function(b){ return (Array.isArray(b&&b.need_items)&&b.need_items.length)?'<span class="nd-pre">سعر مبدئي</span>':''; };
+  W._ndCard=function(rid,slot){
+    if(!slot)return; css();
+    fetch(api()+'/api/requests/'+rid+'/needs',{headers:{'Authorization':'Bearer '+tok()},cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){
+      W._ndLast=d; if(!d||(!d.items.length&&!d.others.length)){ slot.innerHTML=''; return; }
+      try{ var pl=d.items.filter(function(x){return x.k==='plan';})[0], ps=document.querySelector('.dh-plan small'); if(pl&&ps) ps.textContent=(pl.n===1?'طلبه مزوّد':'طلبه '+pl.n+' مزوّدين')+' — أرفقه عشان يعطونك سعر دقيق'; }catch(e){}
+      var n=d.provs, t=d.items.slice(0,3).map(function(x){return L[x.k][1]+(x.n>1?' (طلبها '+x.n+')':'');}).join(' · ')+(d.others.length?(d.items.length?' · ':'')+(d.others.length===1?'سؤال':d.others.length+' أسئلة'):'');
+      slot.innerHTML='<div class="nd-card"><div style="display:flex;gap:9px;align-items:flex-start"><span style="font-size:19px">💡</span><div style="flex:1"><b style="font-size:14.5px;font-weight:900;color:var(--text,#0f1d3a)">'+(n===1?'مزوّد يحتاج':(n===2?'مزوّدين يحتاجون':n+' مزوّدين يحتاجون'))+' منك معلومات</b><div style="font-size:12.5px;color:var(--muted,#64748b);font-weight:700;margin-top:3px;line-height:1.7">'+esc(t)+' — أضفها وتتحدّث الأسعار وتصير أدق</div></div></div>'
+        +'<button type="button" class="nd-cb" style="width:100%;margin-top:10px;padding:10px" onclick="_ndSheet('+(parseInt(rid)||0)+')">أضف المعلومات</button></div>';
+    }).catch(function(){});
+  };
+  W._ndSheet=function(rid){
+    css(); var old=document.getElementById('ndSheet'); if(old)old.remove();
+    var ov=document.createElement('div'); ov.id='ndSheet';
+    ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.5);display:flex;align-items:flex-end;justify-content:center';
+    ov.innerHTML='<div role="dialog" aria-label="معلومات يطلبها المزوّدين" style="background:var(--white,#fff);color:var(--text,#0f1d3a);width:100%;max-width:520px;max-height:86vh;overflow:auto;border-radius:22px 22px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))"><div style="width:42px;height:5px;border-radius:5px;background:#dbe3ef;margin:0 auto 12px"></div><div id="nd-sb"><div style="padding:20px;text-align:center;color:#64748b">…</div></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click',function(e){ if(e.target===ov)ov.remove(); });
+    var paint=function(d){
+      var b=document.getElementById('nd-sb'); if(!b)return;
+      if(!d||(!d.items.length&&!d.others.length)){ b.innerHTML='<b style="font-family:Cairo,sans-serif;font-size:17px">✅ ما فيه معلومات ناقصة</b><div style="font-size:13px;color:#64748b;margin-top:6px">شكراً — المزوّدين وصلهم إشعار يراجعون أسعارهم.</div><button type="button" class="nd-cb" style="width:100%;margin-top:14px;padding:11px" onclick="document.getElementById(\'ndSheet\').remove()">تم</button>'; return; }
+      var row=function(k,lbl,ic,sub,file){ return '<div style="border:1px solid var(--border,#e3eaf6);border-radius:13px;padding:11px 12px;margin-bottom:9px"><div style="display:flex;align-items:center;gap:9px"><span style="font-size:18px">'+ic+'</span><div style="flex:1"><b style="font-size:13.5px">'+esc(lbl)+'</b>'+(sub?'<div style="font-size:11.5px;color:#64748b;font-weight:700">'+esc(sub)+'</div>':'')+'</div>'
+        +(file?'<button type="button" class="nd-cb" onclick="_ndFile('+rid+',\''+k+'\')">أرفقه</button>':'')+'</div>'
+        +(file?'':'<div style="display:flex;gap:7px;margin-top:9px"><input id="nd-v-'+k+'" maxlength="300" placeholder="اكتب هنا…" style="flex:1;min-width:0;border:1px solid var(--border,#dbe5f5);border-radius:10px;padding:9px 11px;font-family:inherit;font-size:13.5px;background:var(--white,#fff);color:inherit"><button type="button" class="nd-cb" onclick="_ndSave('+rid+',\''+k+'\',this)">حفظ</button></div>')
+        +'<button type="button" onclick="_ndSkip('+rid+',\''+k+'\')" style="border:0;background:none;color:#64748b;font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;padding:6px 0 0">ما عندي الحين</button></div>'; };
+      b.innerHTML='<b style="font-family:Cairo,sans-serif;font-size:17px">معلومات يطلبها المزوّدين</b><div style="font-size:12.5px;color:#64748b;font-weight:700;margin:3px 0 12px">كل ما كمّلتها جتك أسعار أدق — ونبلّغ المزوّدين يحدّثون عروضهم</div>'
+        +d.items.map(function(x){ return row(x.k,L[x.k][1],L[x.k][0],x.n>1?'طلبها '+x.n+' مزوّدين':'طلبها مزوّد',x.file); }).join('')
+        +d.others.map(function(o){ return row(o.id,'«'+o.t+'»','💬','سؤال من مزوّد',false); }).join('');
+    };
+    var load=function(){ fetch(api()+'/api/requests/'+rid+'/needs',{headers:{'Authorization':'Bearer '+tok()},cache:'no-store'}).then(function(r){return r.ok?r.json():null;}).then(function(d){ W._ndLast=d; paint(d); }).catch(function(){ paint(null); }); };
+    W._ndReload=function(){ load(); try{ var s=document.getElementById('bids-needs'); if(s)W._ndCard(rid,s); }catch(e){} };
+    load();
+  };
+  function post(rid,body){ return fetch(api()+'/api/requests/'+rid+'/needs',{method:'POST',headers:{'Authorization':'Bearer '+tok(),'Content-Type':'application/json'},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){ if(!r.ok)throw new Error(j&&j.message||'خطأ'); return j; });}); }
+  function toast(m,t){ try{ if(typeof W.showToast==='function')return W.showToast(m,t||'success'); }catch(e){} }
+  W._ndSave=function(rid,k,btn){ var i=document.getElementById('nd-v-'+k), v=i?String(i.value||'').trim():''; if(v.length<2){ if(i)i.focus(); return; } if(btn){btn.disabled=true;}
+    post(rid,{k:k,value:v}).then(function(){ toast('تمت الإضافة — وصل المزوّدين إشعار'); W._ndReload(); }).catch(function(e){ toast(e.message,'error'); if(btn)btn.disabled=false; }); };
+  W._ndSkip=function(rid,k){ post(rid,{k:k,action:'skip'}).then(function(){ W._ndReload(); }).catch(function(){}); };
+  W._ndFile=function(rid,k){ var s=document.getElementById('ndSheet'); if(s)s.remove(); if(typeof W._rpPlan==='function') W._rpPlan(rid); else if(typeof W.openEditReq==='function') W.openEditReq(rid); };
 })();

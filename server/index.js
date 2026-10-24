@@ -1078,6 +1078,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean OR b.provider_id = $4::int THEN b.attachment_url ELSE NULL END as attachment_url,
         b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode,
         CASE WHEN $3::boolean THEN COALESCE(b.invited,FALSE) ELSE FALSE END AS invited,
+        CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.need_items ELSE NULL END as need_items, CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.need_other ELSE NULL END as need_other,
         b.price as _p,
         b.note as proposal,
         u.id as provider_id,
@@ -3043,6 +3044,7 @@ async function setupDatabase() {
     // بروفايل الشركة (يرفعه المزوّد مرة وحدة) + اختيار إرفاقه وصور الأعمال مع كل عرض
     try { await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS company_profile_url TEXT`); await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS company_profile_name TEXT`); } catch(e){}
     try { await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS revisit_at TIMESTAMP`); await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS revisit_sent BOOLEAN DEFAULT FALSE`); await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS revisit_unknown BOOLEAN DEFAULT FALSE`); } catch(e){}
+    try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS need_items TEXT[]`); await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS need_other VARCHAR(120)`); await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS need_done JSONB`); await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS need_notified_at TIMESTAMP`); } catch(e){}
     try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS show_profile BOOLEAN DEFAULT FALSE`); await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS work_images TEXT[]`); await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS area_mode VARCHAR(10)`); } catch(e){}
     try { await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); } catch(e){}
     // طلب اعتماد العرض: المزوّد يطلب من العميل يعتمد عرضه داخل المنصة بعد ما اتفقوا
@@ -4810,7 +4812,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.show_profile, b.work_images, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.status AS req_status, (r.assigned_provider_id IS NULL) AS unassigned, cc.status AS claim_status, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.show_profile, b.work_images, b.need_items, b.need_other, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.status AS req_status, (r.assigned_provider_id IS NULL) AS unassigned, cc.status AS claim_status, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
       CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
       ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted') as contact_unlocked
       , (${_REAL_BID_SQL}) AS real_bid, (${_ASKABLE_REQ_SQL}) AS askable_req, ak.id AS ask_id, ak.status AS ask_status, ak.sends AS ask_sends, ak.last_sent_at AS ask_last_at
@@ -5292,7 +5294,7 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     if (req.body.title != null) req.body.title = _cleanTxt(req.body.title, 150);
     if (req.body.description != null) req.body.description = String(req.body.description).slice(0, 5000);
     const id = parseInt(req.params.id);
-    const own = await pool.query('SELECT client_id, status FROM requests WHERE id=$1', [id]);
+    const own = await pool.query('SELECT client_id, status, images, attachments FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
     await _geoFill(req.body);
@@ -5359,6 +5361,10 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     }
     params.push(id);
     const r = await pool.query(`UPDATE requests SET ${sets.join(', ')} WHERE id=$${i} RETURNING *`, params);
+    try { const nr = r.rows[0] || {}, ni = Array.isArray(nr.images) ? nr.images.length : 0; let na = 0; try { const at = typeof nr.attachments === 'string' ? JSON.parse(nr.attachments) : nr.attachments; na = Array.isArray(at) ? at.length : 0; } catch(_){}
+      const _o = own.rows[0], _oi = Array.isArray(_o.images) ? _o.images.length : 0; let _oa = 0; try { const at0 = typeof _o.attachments === 'string' ? JSON.parse(_o.attachments) : _o.attachments; _oa = Array.isArray(at0) ? at0.length : 0; } catch(_){}
+      const ks = []; if (na > _oa) ks.push('plan', 'soil', 'deed', 'photos'); else if (ni > _oi) ks.push('photos');
+      if (ks.length) _needMark(id, ks, 'added'); } catch(e){}
     if (String(own.rows[0].client_id)===String(req.user.id)) _clientNoteDone(id); res.json(Object.assign({}, r.rows[0], req._attDbg && req._attDbg.length ? { _attDebug: req._attDbg } : {}));
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -5396,6 +5402,7 @@ app.post('/api/requests/:id/images', auth, async (req, res) => {
     if (!_img || !/^https?:/.test(_img)) return res.status(400).json({ message: 'تعذّر رفع الصورة' });
     current.push(_img);
     await pool.query('UPDATE requests SET images=$1 WHERE id=$2', [current, id]);
+    _needMark(id, ['photos'], 'added');
     _clientNoteDone(parseInt(req.params.id)); res.json({ ok: true, count: current.length });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -5607,7 +5614,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
              b.status, b.created_at, COALESCE(b.price_unit,'total') as price_unit, b.attachment_url,
-             b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode, COALESCE(b.invited,FALSE) AS invited,
+             b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode, COALESCE(b.invited,FALSE) AS invited, b.need_items, b.need_other,
         u.name as provider_name, u.phone as provider_phone,
         u.last_seen_at as provider_last_seen,
         u.city as provider_city, u.service_cities AS _sc, COALESCE(u.serves_all_cities,FALSE) AS _sa, u.badge as provider_badge, u.tier as provider_tier,
@@ -5655,6 +5662,84 @@ app.post('/api/provider/service-city', auth, async (req, res) => {
     res.json({ ok: true, city: c });
   } catch(e) { console.error('service-city:', e.message); res.status(500).json({ message: 'تعذّر الحفظ' }); }
 });
+// ═══ «سعري مبدئي — ناقصني معلومات»: المزوّد يحدد داخل عرضه وش ناقصه، والعميل يشوفها مجمّعة ═══
+const NEED_L = { plan:'المخطط', photos:'صور الموقع', area:'المساحة / المقاسات', qty:'الكمية / العدد', material:'نوع المواد والمواصفات', location:'الموقع بالتحديد', date:'موعد التنفيذ', budget:'الميزانية التقريبية', soil:'تقرير التربة', deed:'الصك أو الكروكي', scope:'تفاصيل الشغل المطلوب', access:'الدور ووجود مصعد', other:'شي ثاني' };
+const NEED_FILE = ['plan','photos','soil','deed'];
+function _needTxt(v, max){ return _cleanTxt(String(v==null?'':v).replace(/https?:\/\/\S+|www\.\S+/gi,' ').replace(/(?:\+?\d[\s-]?){7,}/g,' '), max||200); }
+// إشعار العميل — مرة وحدة كل 20 ساعة كحد أقصى لكل مشروع
+async function _needNotify(rid){
+  try {
+    const q = (await pool.query(`UPDATE requests SET need_notified_at=NOW() WHERE id=$1 AND (need_notified_at IS NULL OR need_notified_at < NOW() - INTERVAL '20 hours') RETURNING client_id, title, need_done`, [rid])).rows[0];
+    if (!q) return;
+    const ag = await _needAgg(rid, q.need_done);
+    if (!ag.items.length) { await pool.query('UPDATE requests SET need_notified_at=NULL WHERE id=$1', [rid]); return; }
+    const n = ag.provs, top = ag.items.slice(0, 2).map(x => '«' + x.label + '»').join(' و');
+    await notify(q.client_id, '📋 ' + (n === 1 ? 'مزوّد يحتاج' : n === 2 ? 'مزوّدين يحتاجون' : n + ' مزوّدين يحتاجون') + ' منك معلومات', top + ' — أضفها في «' + (q.title || 'مشروعك') + '» عشان توصلك أسعار أدق', 'bid', rid);
+  } catch(e){ console.error('need-notify:', e.message); }
+}
+async function _needAgg(rid, done){
+  done = done || {};
+  const rows = (await pool.query(`SELECT provider_id, need_items, need_other FROM bids WHERE request_id=$1 AND need_items IS NOT NULL AND COALESCE(status,'pending') NOT IN ('rejected','withdrawn') AND COALESCE(hold_state,'') <> 'held'`, [rid])).rows;
+  const C = {}, P = new Set(), others = [];
+  for (const r of rows) for (const k of (r.need_items || [])) {
+    if (!NEED_L[k] || done[k]) continue;
+    if (k === 'other') { if (r.need_other && !done['o' + r.provider_id]) { others.push({ id: 'o' + r.provider_id, t: r.need_other }); P.add(r.provider_id); } continue; }
+    C[k] = (C[k] || 0) + 1; P.add(r.provider_id);
+  }
+  const items = Object.keys(C).map(k => ({ k, label: NEED_L[k], n: C[k], file: NEED_FILE.includes(k) })).sort((a, b) => b.n - a.n);
+  return { items, others: others.slice(0, 5), provs: P.size };
+}
+// العميل أضاف/تجاهل معلومة → نسجّلها، ولو أضافها نبلّغ اللي طلبوها
+async function _needMark(rid, keys, how, val){
+  try {
+    const q = (await pool.query('SELECT title, need_done FROM requests WHERE id=$1', [rid])).rows[0]; if (!q) return [];
+    const d = q.need_done || {}, fresh = [];
+    for (const k of keys) { if (d[k] && d[k].how === 'added') continue; if (how === 'added' || !d[k]) { d[k] = { how, at: new Date().toISOString() }; if (how === 'added') fresh.push(k); } }
+    await pool.query('UPDATE requests SET need_done=$1 WHERE id=$2', [JSON.stringify(d), rid]);
+    if (fresh.length) {
+      const ps = (await pool.query(`SELECT DISTINCT provider_id, need_items FROM bids WHERE request_id=$1 AND need_items && $2::text[] AND COALESCE(status,'pending') NOT IN ('rejected','withdrawn')`, [rid, fresh])).rows;
+      for (const p of ps) { const ks = fresh.filter(k => (p.need_items || []).includes(k)); if (!ks.length) continue;
+        notify(p.provider_id, '✅ العميل أضاف ' + ks.map(k => '«' + NEED_L[k] + '»').join(' و'), 'في «' + (q.title || 'المشروع') + '»' + (val ? ': ' + String(val).slice(0, 120) : '') + ' — راجع سعرك وحدّثه إذا تغيّر', 'bid', rid).catch(()=>{}); }
+    }
+    return fresh;
+  } catch(e){ console.error('need-mark:', e.message); return []; }
+}
+app.get('/api/requests/:id/needs', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const q = (await pool.query('SELECT client_id, need_done FROM requests WHERE id=$1', [id])).rows[0];
+    if (!q) return res.status(404).json({ message: 'غير موجود' });
+    if (String(q.client_id) !== String(req.user.id) && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
+    res.json(await _needAgg(id, q.need_done));
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/requests/:id/needs', auth, rateLimiter(40, 60000), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), k = String((req.body && req.body.k) || ''), act = req.body && req.body.action === 'skip' ? 'skip' : 'added';
+    const q = (await pool.query('SELECT client_id, description FROM requests WHERE id=$1', [id])).rows[0];
+    if (!q) return res.status(404).json({ message: 'غير موجود' });
+    if (String(q.client_id) !== String(req.user.id)) return res.status(403).json({ message: 'ليس مشروعك' });
+    const isO = /^o\d+$/.test(k);
+    if (!NEED_L[k] && !isO) return res.status(400).json({ message: 'غير معروف' });
+    if (act === 'added' && !NEED_FILE.includes(k)) {
+      const v = _needTxt(req.body.value, 300);
+      if (v.length < 2) return res.status(400).json({ message: 'اكتب المعلومة' });
+      const lbl = isO ? 'رد على سؤال مزوّد' : NEED_L[k];
+      const desc = String(q.description || '').trim() + '\n\n• ' + lbl + ': ' + v;
+      await pool.query('UPDATE requests SET description=$1 WHERE id=$2', [desc.slice(0, 5000), id]);
+      try { addTimeline(id, 'need_added', 'العميل أضاف «' + lbl + '» بطلب من المزوّدين'); } catch(e){}
+      if (isO) { const pid = parseInt(k.slice(1)); const d = (await pool.query('SELECT need_done, title FROM requests WHERE id=$1', [id])).rows[0]; const dd = d.need_done || {}; dd[k] = { how: 'added', at: new Date().toISOString() }; await pool.query('UPDATE requests SET need_done=$1 WHERE id=$2', [JSON.stringify(dd), id]);
+        notify(pid, '✅ العميل رد على سؤالك', 'في «' + (d.title || 'المشروع') + '»: ' + v.slice(0, 120) + ' — راجع سعرك', 'bid', id).catch(()=>{}); }
+      else await _needMark(id, [k], 'added', v);
+      return res.json({ ok: true });
+    }
+    if (act === 'added') { await _needMark(id, [k], 'added'); return res.json({ ok: true }); }
+    const d = (await pool.query('SELECT need_done FROM requests WHERE id=$1', [id])).rows[0].need_done || {};
+    if (!d[k]) d[k] = { how: 'skip', at: new Date().toISOString() };
+    await pool.query('UPDATE requests SET need_done=$1 WHERE id=$2', [JSON.stringify(d), id]);
+    res.json({ ok: true });
+  } catch(e) { console.error('needs post:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 // إضافات العرض: إرفاق بروفايل الشركة + صور من مشاريع سابقة (روابط من ملفه أو صور جديدة)
 async function _bidExtras(bidId, providerId, body){
   try {
@@ -5663,6 +5748,12 @@ async function _bidExtras(bidId, providerId, body){
       await pool.query('UPDATE bids SET show_profile=$1 WHERE id=$2', [!!body.show_profile && !!(has && has.company_profile_url), bidId]);
     }
     if (body.area_mode !== undefined) await pool.query('UPDATE bids SET area_mode=$1 WHERE id=$2', [body.area_mode === 'travel' ? 'travel' : null, bidId]);
+    if (body.need_items !== undefined) {
+      const it = Array.isArray(body.need_items) ? [...new Set(body.need_items.map(String).filter(k => NEED_L[k]))].slice(0, 6) : [];
+      const ot = it.includes('other') ? (_needTxt(body.need_other, 100) || null) : null;
+      const it2 = ot ? it : it.filter(k => k !== 'other');
+      await pool.query('UPDATE bids SET need_items=$1, need_other=$2 WHERE id=$3', [it2.length ? it2 : null, ot, bidId]);
+    }
     if (Array.isArray(body.work_images)) {
       const out = [];
       for (const im of body.work_images.slice(0, 6)) {
@@ -5784,6 +5875,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     const inAppTitle = isUpdate ? '✏️ تم تحديث عرض' : (isFirst ? '🎉 وصلك أول عرض!' : '💼 عرض جديد');
     const inAppBody = isUpdate ? `قام ${eEsc(provName)} بتحديث عرضه على "${projTitle}"` : (isFirst ? `وصلك أول عرض من ${eEsc(provName)} على "${projTitle}" — بداية موفقة! قارن العروض القادمة واختر الأنسب` : `تلقيت عرضاً من ${eEsc(provName)} على "${projTitle}"`);
     if (!_held) await notify(reqRow.rows[0].client_id, inAppTitle, inAppBody, 'bid', requestId);
+    if (!_held && Array.isArray(req.body.need_items) && req.body.need_items.length) _needNotify(requestId);
     if (clientInfo.rows.length && clientInfo.rows[0].email && !isUpdate && !_held) {
       const subject = `💼 عرض جديد على مشروع "${projTitle}"`;
       const body = `<p>عزيزي <strong>${eEsc(clientInfo.rows[0].name)}</strong>،</p><p>تلقيت عرضاً جديداً من <strong>${eEsc(provName)}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>السعر:</strong> ${Number(price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${days} يوم</div>${note?`<div><strong>ملاحظة:</strong> ${eEsc(note).replace(/\n/g,'<br>')}</div>`:''}</div></div>`;
@@ -5839,6 +5931,7 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
       [price||null, days||null, note||null, priceVis, attUrl||null, id, attHash]);
     if (req.body.materials !== undefined) { try { await pool.query('UPDATE bids SET materials=$1 WHERE id=$2', [_matVal(req.body.materials), id]); if(r.rows[0]) r.rows[0].materials=_matVal(req.body.materials); } catch(e){} }
     if (r.rows[0]) await _bidExtras(id, req.user.id, req.body);
+    if (r.rows[0] && Array.isArray(req.body.need_items) && req.body.need_items.length) _needNotify(r.rows[0].request_id);
     try {
       if (await _provUnderReview(req.user.id)) { await _holdBid(id); if (r.rows[0]) r.rows[0].hold_state = 'held'; }
       else { await pool.query(`UPDATE bids SET hold_state=NULL, hold_reason=NULL WHERE id=$1 AND hold_state='rejected'`, [id]); }
