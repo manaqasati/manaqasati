@@ -6025,7 +6025,16 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
       const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
     const _isTotal = !acceptedBid.price_unit || acceptedBid.price_unit === 'total';
-    const _cval = _isTotal ? (parseFloat(acceptedBid.price)||0) : 0;   // سعر المتر/الوحدة ليس قيمة العقد
+    let _cval = _isTotal ? (parseFloat(acceptedBid.price)||0) : 0;   // سعر المتر/الوحدة ليس قيمة العقد
+    // سعر «إجمالي» غير منطقي (غالباً سعر متر انكتب كإجمالي — مثل 100 على فيلا 700م²) ← نخليه «يحتاج مبلغ» للإدارة بدل سعي 3 ريال
+    if (_cval > 0) { try {
+      const _rq = (await pool.query('SELECT budget_max FROM requests WHERE id=$1', [acceptedBid.request_id])).rows[0] || {};
+      const _bs = (await pool.query("SELECT price, price_unit, status FROM bids WHERE request_id=$1", [acceptedBid.request_id])).rows;
+      const _sg = _saaiSuggest(_rq, _bs);
+      const _ac = (_sg.options || []).find(o => o.key === 'accepted');
+      const _bud = parseFloat(_rq.budget_max) || 0;
+      if ((_ac && _ac.ok === false) || (_bud >= 5000 && _cval < _bud * 0.1)) _cval = 0;
+    } catch(e){} }
     const _fee = Math.round(_cval * 0.03);
     // تراكم السعي: أنشئ سجلاً معلّقاً للمزوّد (لا يكرّر لو أُعيد القبول)
     try {

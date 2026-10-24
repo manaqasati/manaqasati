@@ -2599,6 +2599,14 @@ function _saOpenProj(rid,edit){
   var n=0;(function f(){var b=document.querySelector('#rqDrawer [id^="sa-edb-"]');if(b){b.click();b.scrollIntoView({block:'center',behavior:'smooth'});return;}if(++n<40)setTimeout(f,150);})();
 }
 function _saEditShow(sid,hide){var f=document.getElementById('sa-ed-'+sid),b=document.getElementById('sa-edb-'+sid);if(f)f.style.display=hide?'none':'block';if(b)b.style.display=hide?'':'none';if(!hide){var i=document.getElementById('sa-e-cv-'+sid);if(i){i.focus();try{i.select();}catch(e){}}}}
+function _saEditMeter(sid){
+  var on=(document.getElementById('sa-e-mt-'+sid)||{}).checked, w=document.getElementById('sa-e-mw-'+sid); if(w)w.style.display=on?'flex':'none'; if(!on)return;
+  var up=parseFloat((document.getElementById('sa-e-up-'+sid)||{}).value)||0, ar=parseFloat((document.getElementById('sa-e-ar-'+sid)||{}).value)||0, r=document.getElementById('sa-e-mr-'+sid);
+  if(!(up>0&&ar>0)){ if(r)r.textContent=''; return; }
+  var v=Math.round(up*ar); if(r)r.textContent='= '+fmtNum(v)+' ر.س';
+  var cv=document.getElementById('sa-e-cv-'+sid); if(cv){ cv.value=v; _saEditCalc(sid); }
+  var nt=document.getElementById('sa-e-nt-'+sid); if(nt&&(!nt.value||nt.getAttribute('data-auto'))){ nt.value='الاتفاق بالمتر: '+fmtNum(up)+' ر.س × '+fmtNum(ar)+' م² = '+fmtNum(v)+' ر.س'; nt.setAttribute('data-auto','1'); }
+}
 function _saEditCalc(sid){var cv=document.getElementById('sa-e-cv-'+sid),am=document.getElementById('sa-e-am-'+sid);if(!cv||!am)return;var c=parseFloat(cv.value)||0;am.textContent=c>=50?fmtNum(Math.round(c*0.03))+' ر.س':'—';}
 function _saEditSave(sid,rid){
   var c=Math.round(parseFloat((document.getElementById('sa-e-cv-'+sid)||{}).value)||0);
@@ -2627,6 +2635,8 @@ function _saSection(r,sa,sg){
     var edit=(sa.status!=='approved'&&sa.status!=='cancelled')?('<button type="button" class="btn-g" id="sa-edb-'+sa.id+'" style="margin-top:10px;width:100%" onclick="_saEditShow('+sa.id+')">✏️ تعديل قيمة العقد</button>'
       +'<div id="sa-ed-'+sa.id+'" style="display:none;margin-top:10px;background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:12px">'
       +'<label style="font-size:12px;font-weight:800;display:block">قيمة العقد النهائية (ر.س)<input id="sa-e-cv-'+sa.id+'" type="number" inputmode="numeric" min="50" value="'+Math.round(sa.contract_value)+'" oninput="_saEditCalc('+sa.id+')" style="width:100%;margin-top:4px;padding:9px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:14px;box-sizing:border-box"></label>'
+      +'<div style="margin-top:8px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:9px 10px"><label style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:900;color:#1e40af;cursor:pointer"><input type="checkbox" id="sa-e-mt-'+sa.id+'" onchange="_saEditMeter('+sa.id+')" style="width:16px;height:16px;accent-color:#1d4ed8"> 🧮 الاتفاق بالمتر — احسبها لي</label>'
+      +'<div id="sa-e-mw-'+sa.id+'" style="display:none;margin-top:8px;align-items:center;gap:6px;flex-wrap:wrap;font-size:12.5px;font-weight:800"><input id="sa-e-up-'+sa.id+'" type="number" inputmode="decimal" min="1" placeholder="سعر المتر" value="'+(sa.contract_value>0&&sa.contract_value<1000?Math.round(sa.contract_value):'')+'" oninput="_saEditMeter('+sa.id+')" style="width:100px;padding:8px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:14px"> ر.س × <input id="sa-e-ar-'+sa.id+'" type="number" inputmode="decimal" min="1" placeholder="المساحة" oninput="_saEditMeter('+sa.id+')" style="width:100px;padding:8px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:14px"> م² <span id="sa-e-mr-'+sa.id+'" style="color:#1e40af"></span></div></div>'
       +'<div style="margin-top:8px;font-size:13px;font-weight:800">السعي (3%): <b id="sa-e-am-'+sa.id+'" style="color:#15803d;font-size:15px">'+fmtNum(Math.round(sa.contract_value*0.03))+' ر.س</b></div>'
       +'<input id="sa-e-nt-'+sa.id+'" placeholder="سبب التعديل (اختياري — يوصل للمزوّد)" style="width:100%;margin-top:8px;padding:9px;border:1px solid var(--border);border-radius:9px;font-family:inherit;font-size:13px;box-sizing:border-box">'
       +'<div style="display:flex;gap:8px;margin-top:10px"><button type="button" id="sa-e-sv-'+sa.id+'" onclick="_saEditSave('+sa.id+','+r.id+')" style="flex:1;border:0;background:#1e3a8a;color:#fff;border-radius:10px;padding:10px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer">حفظ ويوصل المزوّد إشعار</button><button type="button" class="btn-g" onclick="_saEditShow('+sa.id+',1)">إلغاء</button></div></div>'):'';
@@ -2638,6 +2648,8 @@ function _saSection(r,sa,sg){
     return '<button type="button" class="ftab" onclick="_saPick('+r.id+','+Number(o.value)+')" style="border:1.5px solid #bbf7d0;background:#f0fdf4;color:#166534">'+esc(o.label)+' · '+fmtNum(o.value)+'</button>';
   }).join('');
   var v=sg.best||'';
+  // عرض «إجمالي» غير منطقي (غالباً سعر متر) ← نعامله كسعر متر في الحاسبة
+  if(!(sg.unit&&sg.unit!=='total'&&sg.unit_price)){ var _ao=(sg.options||[]).filter(function(o){return o.key==='accepted'&&!o.ok&&o.raw>0;})[0]; if(_ao) sg=Object.assign({},sg,{unit:'meter',unit_price:_ao.raw}); }
   return '<div class="rq-ds" style="border:1.5px solid #fecaca;background:#fffafa;border-radius:14px;padding:12px 14px"><h4 style="color:#b91c1c">💰 بدون سعي<span style="font-size:11px;color:#64748b;font-weight:700">المزوّد: '+esc(sg.provider_name||r.provider_name||'—')+'</span></h4>'
     +'<div style="font-size:12.5px;color:var(--muted);font-weight:700">المشروع انقبل وما له سجل سعي. اختر اقتراح أو اكتب قيمة العقد الحقيقية:</div>'
     +(opts?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">'+opts+'</div>':'')
