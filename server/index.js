@@ -10365,11 +10365,13 @@ app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (r
         (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count, r.close_missing, COALESCE(r.close_help,FALSE) AS close_help, COALESCE(r.close_help_done,FALSE) AS close_help_done, u.phone AS client_phone, r.city, r.category,
         r.revisit_at, (SELECT string_agg(kind, ',') FROM reminders_log rl WHERE rl.ref_id=r.id AND rl.user_id=r.client_id AND rl.kind IN ('closed_offers','closed_offers_2d','closed_offers_7d')) AS reminded,
         (SELECT json_build_object('name', COALESCE(NULLIF(pu.business_name,''),pu.name), 'status', s.status, 'amount', s.contract_value) FROM saai_ledger s JOIN users pu ON pu.id=s.provider_id
-           WHERE s.request_id=r.id AND s.source='self' AND s.status IN ('submitted','approved') ORDER BY s.id DESC LIMIT 1) AS self_pay
+           WHERE s.request_id=r.id AND s.source='self' AND s.status IN ('submitted','approved') ORDER BY s.id DESC LIMIT 1) AS self_pay,
+        (SELECT MIN(price) FROM bids b WHERE b.request_id=r.id AND b.price>=50 AND COALESCE(b.price_unit,'total')='total') AS min_price,
+        (SELECT json_build_object('tpl', l.tpl, 'at', l.created_at) FROM close_wa_log l WHERE l.request_id=r.id ORDER BY l.id DESC LIMIT 1) AS last_wa
       FROM requests r JOIN users u ON u.id=r.client_id WHERE ${WHERE} ORDER BY COALESCE(r.closed_at, r.completed_at, r.close_at, r.created_at) DESC NULLS LAST LIMIT 300`);
     const rows = list.rows.map(x => {
       const info = x.status === 'completed' ? { by:'done', short:'تمت الترسية', text:'اختار مزوّد وتمت الترسية' } : _closeInfo({ status: x.status, created_at: x.created_at, close_at: x.close_at, close_set_by: x.close_set_by, close_auto_kind: x.close_auto_kind, close_auto_days: x.close_auto_days, close_reason: x.raw_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at_raw });
-      return { id: x.id, title: x.title, close_reason: x.close_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at, client_name: x.client_name, bid_count: x.bid_count, created_at: x.created_at, close_info: info, close_missing: x.close_missing, close_help: x.close_help, close_help_done: x.close_help_done, client_phone: x.client_phone, city: x.city, category: x.category, status: x.status, revisit_at: x.revisit_at, reminded: x.reminded ? String(x.reminded).split(',') : [], self_pay: x.self_pay };
+      return { id: x.id, title: x.title, close_reason: x.close_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at, client_name: x.client_name, bid_count: x.bid_count, created_at: x.created_at, close_info: info, close_missing: x.close_missing, close_help: x.close_help, close_help_done: x.close_help_done, client_phone: x.client_phone, city: x.city, category: x.category, status: x.status, revisit_at: x.revisit_at, reminded: x.reminded ? String(x.reminded).split(',') : [], self_pay: x.self_pay, min_price: x.min_price ? Number(x.min_price) : null, last_wa: x.last_wa || null };
     });
     // اتفاقات انلغت بعد الترسية (المزوّد بلّغ ← العميل/الإدارة أكّد) — ما كانت تطلع هنا أبداً
     try {
