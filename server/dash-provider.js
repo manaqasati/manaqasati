@@ -489,9 +489,9 @@ function _renderHome(data){
     +_kp('works','✅','gr','أعمال مقبولة',(_accVal?fmtN(_accVal):'0')+' <i>ر.س</i>',acc?(acc===1?'صفقة واحدة':acc+' صفقات'):'',' gr')
   +'</div>';
   // صفحتك: المشاهدات + شارك صفحتك
-  html+='<div class="pa-share"><div class="pa-sh1"><span class="pa-eye">👁️</span><b id="pa-vt">صفحتك العامة</b></div>'
+  html+='<div class="pa-share"><div class="pa-sh1"><span class="pa-eye"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></span><div class="pa-sht"><b id="pa-vt">صفحتك العامة</b><small class="pa-shs">شاركها مع عملائك تجيك عروض أكثر</small></div></div>'
     +'<p>العملاء يثقون بالصفحة اللي فيها تقييماتك وأعمالك. شاركها مع عملائك — كل زيارة تقرّبك من عرض جديد.</p>'
-    +'<div class="pa-sh2"><button type="button" class="pa-wa" onclick="_paShareTo(&quot;wa&quot;)">'+_PA_IC.wa+' واتساب</button><button type="button" class="pa-sb" onclick="_paShare()">شارك<span class="pa-sbx"> صفحتي</span> ↗</button></div>'
+    +'<div class="pa-sh2"><button type="button" class="pa-wa" onclick="_paShareTo(&quot;wa&quot;)" aria-label="واتساب">'+_PA_IC.wa+'<span class="pa-wat"> واتساب</span></button><button type="button" class="pa-sb" onclick="_paShare()">شارك<span class="pa-sbx"> صفحتي ↗</span></button></div>'
     +'<button type="button" class="pa-why" onclick="_paShare(1)">كيف يفيدني؟ اضغط للشرح</button></div>';
   html+='<div id="ph-qa-nudge"></div>';
   html+='<div class="nudges" id="ph-nudges"></div>';
@@ -522,7 +522,7 @@ function _renderHome(data){
   _profileNudge(profile);
   _renderShareCard(profile);
   // جوال: «صفحتك انشافت» تنزل تحت (بعد ارفعني)
-  try{ if(window.innerWidth<=768){ var _sh=pg.querySelector(':scope > .pa-share'), _sc=document.getElementById('ph-sharecard'); if(_sh&&_sc) _sc.parentNode.insertBefore(_sh,_sc.nextSibling); } }catch(e){}
+  try{ if(window.innerWidth<=768){ var _sh=pg.querySelector(':scope > .pa-share'), _sc=document.getElementById('ph-sharecard'); if(_sh&&_sc){ var _gw=document.createElement('div'); _gw.className='pa-grow'; _gw.innerHTML='<b class="pa-gh">كبّر حضورك</b><div class="pa-gc"></div>'; _sc.parentNode.insertBefore(_gw,_sc); var _gc=_gw.querySelector('.pa-gc'); _gc.appendChild(_sc); _gc.appendChild(_sh); } } }catch(e){}
   _paExtras();
 }
 // سطر فرصة مختصر (الرئيسية)

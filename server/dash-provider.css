@@ -932,3 +932,24 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
   .pa-share .pa-sh2 button svg{width:15px;height:15px}
 }
 @media(max-width:768px){.pa-sbx{display:none}}
+/* «صفحتك» على الكمبيوتر: الأيقونة + العنوان */
+.pa-sht{min-width:0}.pa-shs{display:none}
+.pa-share .pa-eye{width:38px;height:38px;border-radius:12px;background:#fef3c7;color:#b45309;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0}
+[data-theme="dark"] .pa-share .pa-eye{background:rgba(245,158,11,.16);color:#fbbf24}
+/* جوال — نموذج A: بطاقة «كبّر حضورك» فيها سطرين */
+@media(max-width:768px){
+  .pa-grow{margin-bottom:14px}
+  .pa-gh{display:block;font-size:16px;font-weight:900;color:var(--text);margin:0 2px 8px}
+  .pa-gc{background:var(--pa-c,#fff);border:1px solid var(--pa-b,var(--border));border-radius:16px;padding:2px 14px;box-shadow:var(--pa-s)}
+  .pa-gc #ph-sharecard .bump-row,.pa-gc .pa-share{background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;margin:0!important;padding:12px 0!important}
+  .pa-gc .pa-share{border-top:1px solid var(--pa-b,var(--border))!important}
+  .pa-gc .bump-row b{font-size:14px}.pa-gc .bump-ic{width:38px;height:38px}
+  .pa-gc .bump-row button{min-height:38px;padding:9px 15px;font-size:12.5px;background:#0b1f4d}
+  .pa-gc .pa-sh1{gap:11px;align-items:center}
+  .pa-gc .pa-sh1 b{font-size:14px;line-height:1.4}
+  .pa-gc .pa-shs{display:block;font-size:12px;color:var(--muted);font-weight:600;margin-top:2px;line-height:1.5}
+  .pa-gc .pa-wat{display:none}
+  .pa-gc .pa-sh2 button{min-height:38px;padding:8px 11px!important}
+  .pa-gc .pa-sb{background:transparent!important;color:var(--text)!important;border:1px solid var(--pa-b,var(--border))!important}
+  [data-theme="dark"] .pa-gc .bump-row button{background:#1e3a8a}
+}
