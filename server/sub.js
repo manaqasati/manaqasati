@@ -11,6 +11,10 @@
   function ago(d){ try{ return W.timeAgoP?W.timeAgoP(d):''; }catch(e){ return ''; } }
   function wa(ph,txt){ var n=String(ph||'').replace(/\D/g,'').replace(/^00/,'').replace(/^0/,'966'); if(!n)return ''; var u='https://wa.me/'+n+(txt?'?text='+encodeURIComponent(txt):''); try{ if(W._waFix)u=W._waFix(u); }catch(e){} return u; }
   function waT(txt){ var u='https://wa.me/?text='+encodeURIComponent(txt); try{ if(W._waFix)u=W._waFix(u); }catch(e){} return u; }
+  function isNew(){ try{ if(Date.now()>new Date('2026-12-15').getTime())return false; return !localStorage.getItem('mnq_sub_seen'); }catch(e){ return false; } }
+  var NEWB='<span class="sb-new">جديد</span>';
+  W._subIsNew=isNew;
+  function markNav(){ var n=document.getElementById('ni-sub'); if(!n)return; var b=n.querySelector('.sb-new'); if(isNew()&&!b){ n.insertAdjacentHTML('beforeend','<span class="sb-new" style="margin-inline-start:auto">جديد</span>'); } else if(!isNew()&&b) b.remove(); }
   var S={hub:null,tab:'feed'};
   function css(){ if(document.getElementById('sub-css'))return; var st=document.createElement('style'); st.id='sub-css';
     st.textContent='.sb-card{background:var(--white,#fff);border:1px solid var(--border,#e3eaf6);border-radius:16px;padding:14px;margin-bottom:12px}'
@@ -41,6 +45,7 @@
     +'[data-theme="dark"] .sb-up{background:rgba(139,92,246,.1);border-color:rgba(139,92,246,.45)}[data-theme="dark"] .sb-upt b{color:#c4b5fd}'
     +'.sb-fi{display:flex;align-items:center;gap:10px;border:1px solid var(--border,#e3eaf6);border-radius:12px;padding:8px 10px;margin-top:8px;background:var(--white,#fff)}.sb-fi img,.sb-fx{width:42px;height:42px;border-radius:9px;object-fit:cover;flex-shrink:0;background:#eef2f9;display:flex;align-items:center;justify-content:center;font-size:20px}'
     +'.sb-fi b{display:block;font-size:12.5px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}.sb-fi small{font-size:11.5px;color:var(--muted);font-weight:700}.sb-fi button{border:0;background:#fee2e2;color:#b91c1c;width:28px;height:28px;border-radius:8px;cursor:pointer;font-weight:900}'
+    +'.sb-new{display:inline-block;background:linear-gradient(135deg,#ef4444,#f97316);color:#fff;font-size:10.5px;font-weight:900;border-radius:999px;padding:2px 8px;line-height:1.5;vertical-align:middle;margin-inline-start:6px;animation:sbPulse 2s ease-in-out infinite}@keyframes sbPulse{50%{transform:scale(1.08)}}@media(prefers-reduced-motion:reduce){.sb-new{animation:none}}'
     +'.sb-emp{text-align:center;padding:26px 10px;color:var(--muted);font-weight:700;font-size:13px}';
     document.head.appendChild(st); }
   function sr(r){ r=r||{}; return (parseInt(r.n)>0)?'<span title="تقييم المقاولين" style="color:#6d28d9;font-weight:900">🤝 ★ '+r.avg+' ('+r.n+')</span>':''; }
@@ -53,7 +58,7 @@
     var box=document.getElementById('sb-home'); if(!box){ box=document.createElement('div'); box.id='sb-home'; k.parentNode.insertBefore(box,k.nextSibling); }
     hub(true).then(function(d){
       var open=(d.feed||[]).filter(function(x){return x.status==='open'&&!x.my_offer;});
-      var h='<div class="sb-card sb-hero"><div class="sb-row"><span class="sb-ic">🤝</span><div style="flex:1;min-width:0"><div class="sb-t">تحتاج مقاول باطن؟</div><div class="sb-s">كهربائي، سبّاك، عازل… من مزوّدين في مدينتك مسجّلين في المنصة</div></div></div>'
+      var h='<div class="sb-card sb-hero"><div class="sb-row"><span class="sb-ic">🤝</span><div style="flex:1;min-width:0"><div class="sb-t">تحتاج مقاول باطن؟'+(isNew()?NEWB:'')+'</div><div class="sb-s">كهربائي، سبّاك، عازل… من مزوّدين في مدينتك مسجّلين في المنصة</div></div></div>'
         +'<div class="sb-row" style="gap:8px;margin-top:12px"><button type="button" class="sb-b sb-v" style="flex:1" onclick="SubC.form()">＋ اطلب مقاول باطن</button><button type="button" class="sb-b sb-o" onclick="SubC.go(\'partners\')">شركائي'+((d.partners||[]).length?' ('+d.partners.length+')':'')+'</button></div></div>';
       if(open.length) h+='<div class="sb-card"><div class="sb-row" style="justify-content:space-between"><span class="sb-t">🤝 طلبات من مقاولين تناسبك</span><button type="button" class="sb-b" style="padding:4px;background:none;color:#7c3aed;font-size:12.5px" onclick="SubC.go(\'feed\')">الكل ›</button></div>'
         +open.slice(0,2).map(function(x){ return '<div class="sb-it sb-row" onclick="SubC.open('+x.id+')"><div style="flex:1;min-width:0"><div class="sb-t" style="font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+(x.from_partner?'⭐ ':'')+esc(x.description)+'</div><div class="sb-s">'+esc(x.category)+' · من '+esc(x.owner_name||'مقاول')+(x.city?' · '+esc(x.city):'')+'</div></div><span class="sb-b sb-v" style="padding:8px 12px;font-size:12px">قدّم عرض</span></div>'; }).join('')+'</div>';
@@ -62,7 +67,7 @@
   }
   // ── صفحة #sub ──
   function go(tab){ S.tab=tab||'feed'; if(W._curPage==='sub') render(); else W.gotoPage('sub'); }
-  function load(){ css(); var pg=document.getElementById('page-sub'); if(!pg)return; pg.innerHTML='<div class="loading">جاري التحميل...</div>';
+  function load(){ css(); try{ localStorage.setItem('mnq_sub_seen','1'); }catch(e){} setTimeout(markNav,0); var pg=document.getElementById('page-sub'); if(!pg)return; pg.innerHTML='<div class="loading">جاري التحميل...</div>';
     hub(true).then(function(){ render(); if(W._subOpen){ var i=W._subOpen; W._subOpen=0; open(i); } }).catch(function(){ pg.innerHTML='<div class="sb-emp">تعذّر التحميل</div>'; }); }
   function render(){
     var pg=document.getElementById('page-sub'); if(!pg||!S.hub)return; var d=S.hub;
@@ -248,5 +253,6 @@
   function back(){ clearInterval(CH.t); open(CH.sid); }
   // جا من رابط مشاركة وسجّل/دخل → افتح الطلب
   setTimeout(function(){ try{ var pd=localStorage.getItem('mnq_sub_pending'); if(pd){ localStorage.removeItem('mnq_sub_pending'); var id=parseInt(pd); if(id){ W._subOpen=id; if(W._curPage==='sub') open(id); else if(W.gotoPage) W.gotoPage('sub'); } } }catch(e){} },1200);
+  setTimeout(function(){ css(); markNav(); },300);
   W.SubC={homeCard:homeCard,load:load,go:go,form:form,send:send,open:open,offer:offer,acc:acc,addp:addp,unp:unp,close:close,rate:rate,rmF:rmF,rmK:rmK,edit:edit,wd:wd,cp:cp,chat:chat,say:say,back:back,x:function(){ clearInterval(CH.t); closeSheet(); }};
 })();

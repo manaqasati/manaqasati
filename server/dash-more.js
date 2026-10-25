@@ -67,7 +67,7 @@
     var due = state.saai && state.saai.pending_total > 0 ? state.saai.pending_total : 0;
     return tile('c1', 'search', 'تصفح المشاريع', nOpen ? nOpen + ' مشروع يناسبك' : 'مشاريع تناسب تخصصك', nOpen, 'pg:browse')
       + tile('c2', 'doc', 'عروضي ومشاريعي', 'عروضك وحالة كل واحد', 0, 'pg:works')
-      + tile('c6', 'team', 'مقاول باطن', 'اطلب أو قدّم · شركائي', 0, 'pg:sub')
+      + tile('c6', 'team', 'مقاول باطن', 'اطلب أو قدّم · شركائي', (W._subIsNew && W._subIsNew()) ? 'جديد' : 0, 'pg:sub')
       + tile('c3', 'money', 'محفظة السعي', due ? 'عليك ' + fmt(due) + ' ريال — سدّد' : 'ما عليك شي ✓', due ? '!' : 0, 'pg:saai', !!due)
       + tile('c4', 'star', 'تقييماتي', rat ? '★ ' + rat.toFixed(1) + ' من عملائك' : 'تقييمات عملائك', 0, 'pg:reviews')
       + tile('c5', 'bell', 'الإشعارات', nNot ? nNot + ' جديدة' : 'كل التنبيهات', nNot, 'pg:notifs')
