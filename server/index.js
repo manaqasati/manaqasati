@@ -3138,6 +3138,7 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS rate_nudged BOOLEAN DEFAULT FALSE`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS share_key VARCHAR(24)`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP`);
+    await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS nudge_noof BOOLEAN DEFAULT FALSE`);
     await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sub_share ON sub_requests(share_key)`);
     await _mig(`CREATE TABLE IF NOT EXISTS sub_msgs (id SERIAL PRIMARY KEY, sub_id INTEGER NOT NULL REFERENCES sub_requests(id) ON DELETE CASCADE, sender_id INTEGER NOT NULL, receiver_id INTEGER NOT NULL, body TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW(), read_at TIMESTAMP)`);
     await _mig(`CREATE INDEX IF NOT EXISTS idx_sub_msgs ON sub_msgs(sub_id, created_at)`);
@@ -4012,6 +4013,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
       await _fkClear(client, 'requests', _ownIds);
       await client.query('DELETE FROM requests WHERE client_id=$1', [userId]); // العروض والرسائل والأسئلة تنحذف معها تلقائياً
       await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [userId]);
+      try { await client.query('DELETE FROM sub_msgs WHERE sender_id=$1 OR receiver_id=$1', [userId]); await client.query('DELETE FROM sub_ratings WHERE rater_id=$1 OR rated_id=$1', [userId]); await client.query('DELETE FROM sub_offers WHERE provider_id=$1', [userId]); await client.query('DELETE FROM sub_requests WHERE provider_id=$1', [userId]); await client.query('DELETE FROM partners WHERE owner_id=$1 OR partner_id=$1', [userId]); } catch(e){ console.error('del sub:', e.message); }
       _step = 'users';
       await _fkClear(client, 'users', [userId]);
       const del = await client.query('DELETE FROM users WHERE id=$1', [userId]);
@@ -9052,6 +9054,7 @@ app.delete('/api/admin/users/:id', requirePermission('users.delete'), async (req
       for (const r of urs.rows) await client.query('DELETE FROM bids WHERE request_id=$1', [r.id]);
       await client.query('DELETE FROM requests WHERE client_id=$1', [uid]);
       await client.query('UPDATE requests SET assigned_provider_id=NULL WHERE assigned_provider_id=$1', [uid]);
+      try { await client.query('DELETE FROM sub_msgs WHERE sender_id=$1 OR receiver_id=$1', [uid]); await client.query('DELETE FROM sub_ratings WHERE rater_id=$1 OR rated_id=$1', [uid]); await client.query('DELETE FROM sub_offers WHERE provider_id=$1', [uid]); await client.query('DELETE FROM sub_requests WHERE provider_id=$1', [uid]); await client.query('DELETE FROM partners WHERE owner_id=$1 OR partner_id=$1', [uid]); } catch(e){}
       const del = await client.query('DELETE FROM users WHERE id=$1', [uid]);
       if (del.rowCount===0) throw new Error('فشل الحذف');
       await client.query('COMMIT');
@@ -12128,10 +12131,10 @@ wss.on('close', () => clearInterval(_wsBeat));
 
 
 // ═══ 🤝 مقاول باطن + شركائي: المزوّدين يكمّلون بعض (يشوفه المزوّدين فقط — العملاء ما يشوفونه) ═══
-const SUB_PARTNER_HOURS = 2, SUB_MONTH_MAX = 10;
+const SUB_PARTNER_HOURS = 2, SUB_MONTH_MAX = 10, SUB_EXPIRE_DAYS = 30;
 const _subMatchSQL = `u.role='provider' AND u.is_active=TRUE AND u.id<>$3
   AND (COALESCE(u.specialties, ARRAY[]::text[]) && ARRAY[$1]::text[] OR COALESCE(u.notify_categories, ARRAY[]::text[]) && ARRAY[$1]::text[])
-  AND (COALESCE(u.serves_all_cities,FALSE) OR $2::text IS NULL OR u.city = $2 OR $2 = ANY(COALESCE(u.service_cities,ARRAY[]::text[])))`;
+  AND (COALESCE(u.serves_all_cities,FALSE) OR $2::text IS NULL OR (u.city IS NULL AND (u.service_cities IS NULL OR cardinality(u.service_cities)=0)) OR u.city = $2 OR $2 = ANY(COALESCE(u.service_cities,ARRAY[]::text[])))`;
 async function _subNotify(sub, partnersOnly){
   try {
     const own = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [sub.provider_id])).rows[0] || {};
@@ -12146,6 +12149,10 @@ async function _subNotify(sub, partnersOnly){
 setInterval(async () => { try {
   const L = (await pool.query(`UPDATE sub_requests SET notified_all=TRUE WHERE status='open' AND notified_all=FALSE AND created_at < NOW() - INTERVAL '${SUB_PARTNER_HOURS} hours' RETURNING *`)).rows;
   for (const s of L) await _subNotify(s, false);
+  const X = (await pool.query(`UPDATE sub_requests SET status='closed', closed_at=NOW() WHERE status='open' AND created_at < NOW() - INTERVAL '${SUB_EXPIRE_DAYS} days' RETURNING id, provider_id, description`)).rows;
+  for (const x of X) notify(x.provider_id, '⌛ انتهت مدة طلبك', '«' + String(x.description).slice(0, 60) + '» انقفل بعد ' + SUB_EXPIRE_DAYS + ' يوم — لو لسا تحتاجه انشره من جديد', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
+  const N0 = (await pool.query(`UPDATE sub_requests s SET nudge_noof=TRUE WHERE s.status='open' AND s.nudge_noof=FALSE AND s.created_at < NOW() - INTERVAL '24 hours' AND NOT EXISTS(SELECT 1 FROM sub_offers o WHERE o.sub_id=s.id) RETURNING id, provider_id, description`)).rows;
+  for (const x of N0) notify(x.provider_id, '💡 ما وصلك عرض للحين', 'على «' + String(x.description).slice(0, 50) + '» — تعرف فني؟ أرسل له رابط الطلب من صفحة الطلب، يسجّل مجاناً ويقدّم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
   const R = (await pool.query(`UPDATE sub_requests s SET rate_nudged=TRUE FROM sub_offers o WHERE o.id=s.awarded_offer_id AND s.status='awarded' AND s.rate_nudged=FALSE AND s.closed_at < NOW() - INTERVAL '3 days' RETURNING s.id, s.provider_id, s.description, o.provider_id AS sub_pid`)).rows;
   for (const x of R) for (const [u, o] of [[x.provider_id, x.sub_pid], [x.sub_pid, x.provider_id]]) {
     const done = (await pool.query('SELECT 1 FROM sub_ratings WHERE sub_id=$1 AND rater_id=$2', [x.id, u])).rows.length; if (done) continue;
@@ -12192,15 +12199,15 @@ app.get('/api/sub/hub', auth, providerOnly, async (req, res) => {
         (SELECT row_to_json(x) FROM (SELECT id, price, days, status FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) x) AS my_offer,
         (SELECT COUNT(*)::int FROM sub_offers WHERE sub_id=s.id) AS offers
       FROM sub_requests s JOIN users o ON o.id=s.provider_id
-      WHERE s.provider_id<>$1 AND (EXISTS(SELECT 1 FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) OR (s.status='open' AND s.category = ANY($2::text[])
-        AND ($5::boolean OR s.city IS NULL OR s.city=$3 OR s.city = ANY($4::text[]))
+      WHERE s.provider_id<>$1 AND o.is_active=TRUE AND (EXISTS(SELECT 1 FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) OR (s.status='open' AND s.category = ANY($2::text[])
+        AND ($5::boolean OR s.city IS NULL OR ($3::text IS NULL AND cardinality($4::text[])=0) OR s.city=$3 OR s.city = ANY($4::text[]))
         AND (NOT s.partners_first OR s.created_at < NOW() - INTERVAL '${SUB_PARTNER_HOURS} hours' OR EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=s.provider_id AND p.partner_id=$1))))
       ORDER BY (s.status='open') DESC, s.created_at DESC LIMIT 40`, [me, cats, u.city || null, u.service_cities || [], !!u.serves_all_cities])).rows
       .map(r => Object.assign(_subRow(r), { owner_name: r.owner_name, owner_image: r.owner_image, owner_rating: r.owner_rating, owner_done: r.owner_done, owner_srate: r.owner_srate, from_partner: r.from_partner, my_offer: r.my_offer, offers: r.offers }));
     const partners = (await pool.query(`SELECT u.id, COALESCE(NULLIF(u.business_name,''),u.name) AS name, u.specialties, u.city, u.profile_image, u.phone,
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS rating, ${_subRateSQL('u.id')} AS srate
       FROM partners p JOIN users u ON u.id=p.partner_id WHERE p.owner_id=$1 ORDER BY p.created_at DESC`, [me])).rows;
-    res.json({ mine, feed, partners, month_left: Math.max(0, SUB_MONTH_MAX - mine.filter(x => Date.now() - new Date(x.created_at) < 30 * 864e5).length) });
+    res.json({ mine, feed, partners, no_spec: cats.length === 0, month_left: Math.max(0, SUB_MONTH_MAX - mine.filter(x => Date.now() - new Date(x.created_at) < 30 * 864e5).length) });
   } catch(e) { console.error('sub hub:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // تفاصيل طلب: صاحبه يشوف العروض بأرقامهم، والمزوّد يشوف رقم صاحب الطلب بعد ما يقدّم
@@ -12210,7 +12217,7 @@ app.get('/api/sub/:id', auth, providerOnly, async (req, res) => {
     const s = (await pool.query(`SELECT s.*, COALESCE(NULLIF(o.business_name,''),o.name) AS owner_name, o.phone AS owner_phone, o.profile_image AS owner_image FROM sub_requests s JOIN users o ON o.id=s.provider_id WHERE s.id=$1`, [id])).rows[0];
     if (!s) return res.status(404).json({ message: 'الطلب غير موجود' });
     const isOwner = String(s.provider_id) === String(me) || req.user.role === 'admin';
-    const out = Object.assign(_subRow(s), { owner_name: s.owner_name, owner_image: s.owner_image, is_owner: isOwner, edited_at: s.edited_at, owner_id: s.provider_id });
+    const out = Object.assign(_subRow(s), { owner_name: s.owner_name, owner_image: s.owner_image, is_owner: isOwner, edited_at: s.edited_at, owner_id: s.provider_id, expires_days: s.status === 'open' ? Math.max(0, Math.ceil((new Date(s.created_at).getTime() + SUB_EXPIRE_DAYS * 864e5 - Date.now()) / 864e5)) : null });
     if (isOwner) {
       let k = s.share_key; if (!k) { k = crypto.randomBytes(6).toString('hex'); await pool.query('UPDATE sub_requests SET share_key=$1 WHERE id=$2 AND share_key IS NULL', [k, id]); k = (await pool.query('SELECT share_key FROM sub_requests WHERE id=$1', [id])).rows[0].share_key; }
       out.share_url = SITE_URL + '/s/' + k;
@@ -12247,6 +12254,7 @@ app.post('/api/sub/:id/offers', auth, providerOnly, rateLimiter(30, 3600000), as
     const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
     if (!s || s.status !== 'open') return res.status(400).json({ message: 'الطلب مغلق' });
     if (String(s.provider_id) === String(me)) return res.status(400).json({ message: 'هذا طلبك' });
+    if (!(await pool.query('SELECT 1 FROM users WHERE id=$1 AND is_active=TRUE', [s.provider_id])).rows.length) return res.status(400).json({ message: 'الطلب غير متاح' });
     const price = parseInt(String(b.price || '').replace(/[^\d]/g, '')), days = parseInt(b.days) || null;
     if (!price || price < 50 || price > 1e9) return res.status(400).json({ message: 'اكتب سعرك (50 ريال أو أكثر)' });
     if (!b.fee_ok) return res.status(400).json({ message: 'لازم توافق على عمولة المنصة 3%' });
