@@ -3140,6 +3140,7 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS nudge_noof BOOLEAN DEFAULT FALSE`);
     await _mig(`ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS sub_id INTEGER`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_seen_at TIMESTAMP`);
     await _mig(`ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS sub_reminded BOOLEAN DEFAULT FALSE`);
     await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS idx_saai_sub ON saai_ledger(sub_id) WHERE sub_id IS NOT NULL`);
     await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sub_share ON sub_requests(share_key)`);
@@ -12141,10 +12142,12 @@ const _subMatchSQL = `u.role='provider' AND u.is_active=TRUE AND u.id<>$3
 async function _subNotify(sub, partnersOnly){
   try {
     const own = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [sub.provider_id])).rows[0] || {};
-    const rows = (await pool.query(`SELECT u.id, EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$3 AND p.partner_id=u.id) AS is_p FROM users u WHERE ${_subMatchSQL}`, [sub.category, sub.city || null, sub.provider_id])).rows;
+    const rows = (await pool.query(`SELECT u.id, u.email, COALESCE(NULLIF(u.business_name,''),u.name) AS nm, EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$3 AND p.partner_id=u.id) AS is_p FROM users u WHERE ${_subMatchSQL} AND NOT EXISTS(SELECT 1 FROM user_blocks b WHERE (b.blocker_id=u.id AND b.blocked_id=$3) OR (b.blocker_id=$3 AND b.blocked_id=u.id))`, [sub.category, sub.city || null, sub.provider_id])).rows;
     for (const u of rows) {
       if (partnersOnly && !u.is_p) continue;
       if (!partnersOnly && u.is_p && sub.partners_first) continue; // وصلهم من قبل
+      if (u.email && !/@manaqasa\.local$/i.test(u.email)) { const t = '🤝 ' + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category + (sub.city ? ' في ' + sub.city : '');
+        sendEmail(u.email, t, emailTpl(t, `<p>مرحباً${u.nm ? ' ' + eEsc(u.nm) : ''}،</p><p><strong>${eEsc(own.nm || 'مقاول')}</strong> يحتاج <strong>${eEsc(sub.category)}</strong>${sub.city ? ' في ' + eEsc(sub.city) : ''}:</p><div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:14px;margin:14px 0">${eEsc(String(sub.description).slice(0, 300))}</div><p>قدّم سعرك من حسابك — ويظهر لك رقمه بعد العرض.</p>`, 'شوف الطلب وقدّم', SITE_URL + '/dashboard-provider.html#sub/' + sub.id)).catch(()=>{}); }
       notify(u.id, '🤝 ' + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category, '«' + String(sub.description).slice(0, 70) + '»' + (sub.city ? ' · ' + sub.city : '') + ' — من ' + (own.nm || 'مقاول') + '. قدّم عرضك', 'sub', sub.id, { kind: 'sub_new', url: '/dashboard-provider.html#sub/' + sub.id }).catch(()=>{});
     }
   } catch(e){ console.error('sub-notify:', e.message); }
@@ -12204,7 +12207,7 @@ app.get('/api/sub/hub', auth, providerOnly, async (req, res) => {
         (SELECT row_to_json(x) FROM (SELECT id, price, days, status FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) x) AS my_offer,
         (SELECT COUNT(*)::int FROM sub_offers WHERE sub_id=s.id) AS offers
       FROM sub_requests s JOIN users o ON o.id=s.provider_id
-      WHERE s.provider_id<>$1 AND o.is_active=TRUE AND (EXISTS(SELECT 1 FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) OR (s.status='open' AND s.category = ANY($2::text[])
+      WHERE s.provider_id<>$1 AND o.is_active=TRUE AND NOT EXISTS(SELECT 1 FROM user_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=s.provider_id) OR (b.blocker_id=s.provider_id AND b.blocked_id=$1)) AND (EXISTS(SELECT 1 FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) OR (s.status='open' AND s.category = ANY($2::text[])
         AND ($5::boolean OR s.city IS NULL OR ($3::text IS NULL AND cardinality($4::text[])=0) OR s.city=$3 OR s.city = ANY($4::text[]))
         AND (NOT s.partners_first OR s.created_at < NOW() - INTERVAL '${SUB_PARTNER_HOURS} hours' OR EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=s.provider_id AND p.partner_id=$1))))
       ORDER BY (s.status='open') DESC, s.created_at DESC LIMIT 40`, [me, cats, u.city || null, u.service_cities || [], !!u.serves_all_cities])).rows
@@ -12212,6 +12215,7 @@ app.get('/api/sub/hub', auth, providerOnly, async (req, res) => {
     const partners = (await pool.query(`SELECT u.id, COALESCE(NULLIF(u.business_name,''),u.name) AS name, u.specialties, u.city, u.profile_image, u.phone,
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS rating, ${_subRateSQL('u.id')} AS srate
       FROM partners p JOIN users u ON u.id=p.partner_id WHERE p.owner_id=$1 ORDER BY p.created_at DESC`, [me])).rows;
+    if (req.query.seen) pool.query('UPDATE users SET sub_seen_at=NOW() WHERE id=$1', [me]).catch(()=>{});
     res.json({ mine, feed, partners, no_spec: cats.length === 0, month_left: Math.max(0, SUB_MONTH_MAX - mine.filter(x => Date.now() - new Date(x.created_at) < 30 * 864e5).length) });
   } catch(e) { console.error('sub hub:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -12261,6 +12265,7 @@ app.post('/api/sub/:id/offers', auth, providerOnly, rateLimiter(30, 3600000), as
     if (!s || s.status !== 'open') return res.status(400).json({ message: 'الطلب مغلق' });
     if (String(s.provider_id) === String(me)) return res.status(400).json({ message: 'هذا طلبك' });
     if (!(await pool.query('SELECT 1 FROM users WHERE id=$1 AND is_active=TRUE', [s.provider_id])).rows.length) return res.status(400).json({ message: 'الطلب غير متاح' });
+    if ((await pool.query('SELECT 1 FROM user_blocks WHERE (blocker_id=$1 AND blocked_id=$2) OR (blocker_id=$2 AND blocked_id=$1) LIMIT 1', [me, s.provider_id])).rows.length) return res.status(403).json({ message: 'ما تقدر تقدّم على هذا الطلب' });
     const price = parseInt(String(b.price || '').replace(/[^\d]/g, '')), days = parseInt(b.days) || null;
     if (!price || price < 50 || price > 1e9) return res.status(400).json({ message: 'اكتب سعرك (50 ريال أو أكثر)' });
     if (!b.fee_ok) return res.status(400).json({ message: 'لازم توافق على عمولة المنصة 3%' });
@@ -12345,6 +12350,38 @@ app.post('/api/sub/:id/nodeal-answer', auth, providerOnly, async (req, res) => {
     res.json({ ok: true });
   } catch(e) { console.error('sub nodeal ans:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+
+// عدّاد «مقاول باطن»: رسائل ما انقرت + عروض جديدة على طلباتي + طلبات جديدة تناسبني — من آخر زيارة للصفحة
+app.get('/api/sub-count', auth, async (req, res) => {
+  try {
+    const me = req.user.id;
+    const u = (await pool.query('SELECT role, can_provide, specialties, notify_categories, city, service_cities, serves_all_cities, COALESCE(sub_seen_at, NOW() - INTERVAL \'3 days\') AS seen FROM users WHERE id=$1', [me])).rows[0];
+    if (!u || !(u.role === 'provider' || u.can_provide)) return res.json({ n: 0 });
+    const cats = [...new Set([].concat(u.specialties || [], u.notify_categories || []))];
+    const r = (await pool.query(`SELECT
+        (SELECT COUNT(*)::int FROM sub_msgs WHERE receiver_id=$1 AND read_at IS NULL) AS msgs,
+        (SELECT COUNT(*)::int FROM sub_offers o JOIN sub_requests s ON s.id=o.sub_id WHERE s.provider_id=$1 AND s.status='open' AND o.created_at > $2) AS offers,
+        (SELECT COUNT(*)::int FROM sub_requests s JOIN users o ON o.id=s.provider_id WHERE s.status='open' AND s.provider_id<>$1 AND o.is_active=TRUE AND s.created_at > $2 AND s.category = ANY($3::text[])
+          AND ($6::boolean OR s.city IS NULL OR ($4::text IS NULL AND cardinality($5::text[])=0) OR s.city=$4 OR s.city = ANY($5::text[]))
+          AND (NOT s.partners_first OR s.created_at < NOW() - INTERVAL '${SUB_PARTNER_HOURS} hours' OR EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=s.provider_id AND p.partner_id=$1))
+          AND NOT EXISTS(SELECT 1 FROM sub_offers x WHERE x.sub_id=s.id AND x.provider_id=$1)) AS feed`, [me, u.seen, cats, u.city || null, u.service_cities || [], !!u.serves_all_cities])).rows[0];
+    res.json({ n: r.msgs + r.offers + r.feed, msgs: r.msgs, offers: r.offers, feed: r.feed });
+  } catch(e) { console.error('sub count:', e.message); res.json({ n: 0 }); }
+});
+// بلاغ على طلب أو مزوّد (يوصل صفحة البلاغات في الإدارة)
+app.post('/api/sub/:id/report', auth, providerOnly, rateLimiter(10, 600000), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), b = req.body || {};
+    const s = (await pool.query('SELECT id, provider_id, description FROM sub_requests WHERE id=$1', [id])).rows[0];
+    if (!s) return res.status(404).json({ message: 'غير موجود' });
+    const who = parseInt(b.user_id) || s.provider_id;
+    if (String(who) === String(req.user.id)) return res.status(400).json({ message: 'غير صالح' });
+    const reason = _cleanTxt(b.reason, 60) || 'أخرى';
+    await pool.query(`INSERT INTO reports (reporter_id, reported_id, request_id, type, reason, details, created_at) VALUES ($1,$2,NULL,$3,$4,$5,NOW())`,
+      [req.user.id, who, b.user_id ? 'مقاول باطن — محادثة' : 'مقاول باطن — طلب', (reason + ' · طلب #' + id + ': ' + String(s.description).slice(0, 120)).slice(0, 250), _needTxt(b.details, 500) || null]);
+    res.json({ ok: true });
+  } catch(e) { console.error('sub report:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 // تعديل الطلب (صاحبه، وهو مفتوح) — التخصص ثابت عشان ما يتغيّر جمهوره
 app.put('/api/sub/:id', auth, providerOnly, rateLimiter(30, 3600000), async (req, res) => {
   try {
@@ -12399,7 +12436,8 @@ app.get('/api/sub/:id/msgs', auth, providerOnly, async (req, res) => {
     const L = (await pool.query('SELECT id, sender_id, body, created_at FROM sub_msgs WHERE sub_id=$1 AND ((sender_id=$2 AND receiver_id=$3) OR (sender_id=$3 AND receiver_id=$2)) ORDER BY id ASC LIMIT 300', [id, me, P.other])).rows;
     await pool.query('UPDATE sub_msgs SET read_at=NOW() WHERE sub_id=$1 AND sender_id=$2 AND receiver_id=$3 AND read_at IS NULL', [id, P.other, me]);
     const u = (await pool.query("SELECT id, COALESCE(NULLIF(business_name,''),name) AS name, profile_image FROM users WHERE id=$1", [P.other])).rows[0] || {};
-    res.json({ me, other: u, msgs: L.map(m => ({ id: m.id, mine: String(m.sender_id) === String(me), body: m.body, at: m.created_at })) });
+    const blk = (await pool.query('SELECT 1 FROM user_blocks WHERE blocker_id=$1 AND blocked_id=$2', [me, P.other])).rows.length > 0;
+    res.json({ me, other: u, blocked: blk, msgs: L.map(m => ({ id: m.id, mine: String(m.sender_id) === String(me), body: m.body, at: m.created_at })) });
   } catch(e) { console.error('sub msgs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/sub/:id/msgs', auth, providerOnly, rateLimiter(40, 600000), async (req, res) => {
