@@ -384,7 +384,7 @@ function _saRow(x){
   if(x.status==='approved'&&x.proof_url) act='<a class="sa-proof" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener" title="الإيصال">'+(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(x.proof_url)?'<img src="'+esc(_safeUrl(x.proof_url))+'" alt="إيصال">':'PDF')+'</a>';
   return '<div class="sa-it'+(need==='big'?' wrn':'')+'">'
     +'<div class="sa-who">'+_saWho(x)+' ↗'
-      +'<div>'+(x.request_id?'<button type="button" class="sa-pj" onclick="_saOpenProj('+x.request_id+')">'+esc(x.project_title||'مشروع')+'</button>':'<b>'+esc(x.project_title||'مشروع')+'</b>')+' · '+(x.request_id?'#'+x.request_id:'خارج القائمة')+(x.city?' · '+esc(x.city):'')+(x.source==='self'?' · <span style="color:#7c3aed;font-weight:800">سداد ذاتي</span>':'')+'</div>'
+      +'<div>'+(x.request_id?'<button type="button" class="sa-pj" onclick="_saOpenProj('+x.request_id+')">'+esc(x.project_title||'مشروع')+'</button>':'<b>'+esc(x.project_title||'مشروع')+'</b>')+' · '+(x.request_id?'#'+x.request_id:(x.source==='sub'?'بين مزوّدين':'خارج القائمة'))+(x.city?' · '+esc(x.city):'')+(x.source==='self'?' · <span style="color:#7c3aed;font-weight:800">سداد ذاتي</span>':'')+(x.source==='sub'?' · <span style="color:#7c3aed;font-weight:800">🤝 مقاول باطن</span>':'')+'</div>'
       +'<div class="sa-sub">'+(x.client_name?'العميل: '+esc(x.client_name)+' · ':'')+(x.provider_paid_n?'سدّد '+x.provider_paid_n+' مرات قبل':'أول سداد له')+'</div>'+when+'</div>'
     +'<div class="sa-amt"><b>'+(need==='unit'?'—':fmtNum(x.saai_amount))+' <small>ر.س</small></b><div>'+src+'</div></div>'
     +dt+'<div class="sa-act">'+act+'</div></div>';

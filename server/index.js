@@ -3139,6 +3139,9 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS share_key VARCHAR(24)`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS nudge_noof BOOLEAN DEFAULT FALSE`);
+    await _mig(`ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS sub_id INTEGER`);
+    await _mig(`ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS sub_reminded BOOLEAN DEFAULT FALSE`);
+    await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS idx_saai_sub ON saai_ledger(sub_id) WHERE sub_id IS NOT NULL`);
     await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS idx_sub_share ON sub_requests(share_key)`);
     await _mig(`CREATE TABLE IF NOT EXISTS sub_msgs (id SERIAL PRIMARY KEY, sub_id INTEGER NOT NULL REFERENCES sub_requests(id) ON DELETE CASCADE, sender_id INTEGER NOT NULL, receiver_id INTEGER NOT NULL, body TEXT NOT NULL, created_at TIMESTAMP DEFAULT NOW(), read_at TIMESTAMP)`);
     await _mig(`CREATE INDEX IF NOT EXISTS idx_sub_msgs ON sub_msgs(sub_id, created_at)`);
@@ -7036,7 +7039,7 @@ app.get('/api/provider/saai', auth, async (req, res) => {
     const r = await pool.query(
       `SELECT s.id, s.request_id, s.contract_value, s.saai_amount, s.status, s.proof_url, s.created_at, s.submitted_at, s.approved_at,
               COALESCE(s.due_from,s.created_at) AS due_from, s.defer_kind, s.defer_until, s.defer_state, s.client_answer, COALESCE(s.defer_count,0) AS defer_count,
-              COALESCE(r.title, s.self_title) AS project_title, r.category, r.city, s.source
+              COALESCE(r.title, s.self_title) AS project_title, r.category, r.city, s.source, s.sub_id
        FROM saai_ledger s LEFT JOIN requests r ON r.id=s.request_id
        WHERE s.provider_id=$1 ORDER BY s.created_at DESC`, [pid]);
     let pending=0, approved=0, contract=0;
@@ -12152,6 +12155,8 @@ setInterval(async () => { try {
   const X = (await pool.query(`UPDATE sub_requests SET status='closed', closed_at=NOW() WHERE status='open' AND created_at < NOW() - INTERVAL '${SUB_EXPIRE_DAYS} days' RETURNING id, provider_id, description`)).rows;
   for (const x of X) notify(x.provider_id, '⌛ انتهت مدة طلبك', '«' + String(x.description).slice(0, 60) + '» انقفل بعد ' + SUB_EXPIRE_DAYS + ' يوم — لو لسا تحتاجه انشره من جديد', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
   const N0 = (await pool.query(`UPDATE sub_requests s SET nudge_noof=TRUE WHERE s.status='open' AND s.nudge_noof=FALSE AND s.created_at < NOW() - INTERVAL '24 hours' AND NOT EXISTS(SELECT 1 FROM sub_offers o WHERE o.sub_id=s.id) RETURNING id, provider_id, description`)).rows;
+  const SR = (await pool.query(`UPDATE saai_ledger SET sub_reminded=TRUE WHERE source='sub' AND status='pending' AND sub_reminded=FALSE AND COALESCE(due_from,created_at) < NOW() - INTERVAL '7 days' RETURNING id, provider_id, saai_amount, self_title`)).rows;
+  for (const x of SR) notify(x.provider_id, '💰 تذكير بالسعي', Math.round(x.saai_amount) + ' ر.س على «' + String(x.self_title || '').replace('🤝 مقاول باطن: ', '').slice(0, 50) + '» — سدّد من محفظة السعي، أو بلّغ لو ما تم الاتفاق', 'saai', null, { url: '/dashboard-provider.html#saai' }).catch(()=>{});
   for (const x of N0) notify(x.provider_id, '💡 ما وصلك عرض للحين', 'على «' + String(x.description).slice(0, 50) + '» — تعرف فني؟ أرسل له رابط الطلب من صفحة الطلب، يسجّل مجاناً ويقدّم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
   const R = (await pool.query(`UPDATE sub_requests s SET rate_nudged=TRUE FROM sub_offers o WHERE o.id=s.awarded_offer_id AND s.status='awarded' AND s.rate_nudged=FALSE AND s.closed_at < NOW() - INTERVAL '3 days' RETURNING s.id, s.provider_id, s.description, o.provider_id AS sub_pid`)).rows;
   for (const x of R) for (const [u, o] of [[x.provider_id, x.sub_pid], [x.sub_pid, x.provider_id]]) {
@@ -12221,6 +12226,7 @@ app.get('/api/sub/:id', auth, providerOnly, async (req, res) => {
     if (isOwner) {
       let k = s.share_key; if (!k) { k = crypto.randomBytes(6).toString('hex'); await pool.query('UPDATE sub_requests SET share_key=$1 WHERE id=$2 AND share_key IS NULL', [k, id]); k = (await pool.query('SELECT share_key FROM sub_requests WHERE id=$1', [id])).rows[0].share_key; }
       out.share_url = SITE_URL + '/s/' + k;
+      if (s.status === 'awarded') { const l = (await pool.query("SELECT defer_state, status FROM saai_ledger WHERE sub_id=$1", [id])).rows[0]; if (l && l.status === 'deferred' && l.defer_state === 'asked') out.nodeal_ask = true; }
       out.threads = (await pool.query(`SELECT m.other, COALESCE(NULLIF(u.business_name,''),u.name) AS name, u.profile_image, MAX(m.created_at) AS last_at, COUNT(*) FILTER (WHERE m.receiver_id=$2 AND m.read_at IS NULL)::int AS unread,
           (SELECT body FROM sub_msgs z WHERE z.sub_id=$1 AND (z.sender_id=m.other OR z.receiver_id=m.other) ORDER BY z.id DESC LIMIT 1) AS last_body
         FROM (SELECT CASE WHEN sender_id=$2 THEN receiver_id ELSE sender_id END AS other, created_at, receiver_id, read_at FROM sub_msgs WHERE sub_id=$1) m JOIN users u ON u.id=m.other
@@ -12277,8 +12283,9 @@ app.post('/api/sub/:id/accept', auth, providerOnly, async (req, res) => {
     if (!o) return res.status(404).json({ message: 'العرض غير موجود' });
     await pool.query("UPDATE sub_offers SET status=CASE WHEN id=$1 THEN 'accepted' ELSE 'rejected' END WHERE sub_id=$2", [oid, id]);
     await pool.query("UPDATE sub_requests SET status='awarded', awarded_offer_id=$1, closed_at=NOW() WHERE id=$2", [oid, id]);
+    await _subSaai(s, o);
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [req.user.id])).rows[0].nm;
-    notify(o.provider_id, '🎉 ' + (nm || 'المقاول') + ' اعتمد عرضك', 'على «' + String(s.description).slice(0, 60) + '» — تواصلوا واتفقوا على التفاصيل. عمولة المنصة 3% عند الاتفاق', 'sub', id, { kind: 'sub_won', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+    notify(o.provider_id, '🎉 ' + (nm || 'المقاول') + ' اعتمد عرضك', 'على «' + String(s.description).slice(0, 60) + '» — تواصلوا واتفقوا. سعي المنصة 3% انضاف في محفظة السعي حقتك', 'sub', id, { kind: 'sub_won', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
     const others = (await pool.query("SELECT provider_id FROM sub_offers WHERE sub_id=$1 AND id<>$2", [id, oid])).rows;
     for (const x of others) notify(x.provider_id, 'ℹ️ طلب المقاول اكتمل', 'اختار عرض ثاني على «' + String(s.description).slice(0, 50) + '» — شكراً لعرضك', 'sub', id, { url: '/dashboard-provider.html#sub' }).catch(()=>{});
     res.json({ ok: true, provider_id: o.provider_id });
@@ -12293,6 +12300,51 @@ app.post('/api/sub/:id/close', auth, providerOnly, async (req, res) => {
 });
 
 
+
+// العمولة 3% على الفني اللي انعتمد عرضه — تنضاف في «محفظة السعي» حقته مثل مشاريع العملاء
+async function _subSaai(s, o){
+  try {
+    const val = parseInt(o.price) || 0, fee = Math.round(val * 0.03);
+    const title = '🤝 مقاول باطن: ' + s.category + ' — ' + String(s.description).slice(0, 60);
+    await pool.query(`INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status, due_from, source, self_title, sub_id)
+      VALUES (NULL,$1,NULL,$2,$3,'pending',NOW(),'sub',$4,$5) ON CONFLICT (sub_id) WHERE sub_id IS NOT NULL DO UPDATE SET provider_id=EXCLUDED.provider_id, contract_value=EXCLUDED.contract_value, saai_amount=EXCLUDED.saai_amount, status='pending', defer_kind=NULL, defer_state=NULL
+      WHERE saai_ledger.status IN ('pending','cancelled','deferred')`, [o.provider_id, val, fee, title, s.id]);
+  } catch(e){ console.error('sub saai:', e.message); }
+}
+// الفني: «ما تم الاتفاق» → المقاول يأكّد. لو أكّد ينلغي السعي وينفتح الطلب من جديد، ولو رفض يرجع مستحق ويتعلّم للإدارة
+app.post('/api/sub/saai/:lid/nodeal', auth, providerOnly, async (req, res) => {
+  try {
+    const lid = parseInt(req.params.lid);
+    const x = (await pool.query("SELECT l.*, s.provider_id AS owner_id, s.description FROM saai_ledger l JOIN sub_requests s ON s.id=l.sub_id WHERE l.id=$1 AND l.provider_id=$2 AND l.source='sub'", [lid, req.user.id])).rows[0];
+    if (!x) return res.status(404).json({ message: 'السجل غير موجود' });
+    if (x.status !== 'pending') return res.status(400).json({ message: 'ما تقدر الحين' });
+    if (x.defer_state === 'conflict') return res.status(400).json({ message: 'المقاول أكّد إن الاتفاق تم — تواصل مع الإدارة' });
+    await pool.query("UPDATE saai_ledger SET status='deferred', defer_kind='cancel', defer_state='asked', defer_at=NOW(), defer_note=$2, defer_count=COALESCE(defer_count,0)+1 WHERE id=$1", [lid, _needTxt(req.body && req.body.note, 200) || null]);
+    const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [req.user.id])).rows[0].nm;
+    notify(x.owner_id, '❓ ' + (nm || 'الفني') + ' يقول ما تم الاتفاق', 'على «' + String(x.description).slice(0, 50) + '» — أكّد من صفحة الطلب، ولو صحيح ينفتح طلبك من جديد', 'sub', x.sub_id, { url: '/dashboard-provider.html#sub/' + x.sub_id }).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e) { console.error('sub nodeal:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/sub/:id/nodeal-answer', auth, providerOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), yes = !!(req.body && req.body.yes);
+    const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1 AND provider_id=$2', [id, req.user.id])).rows[0];
+    if (!s) return res.status(403).json({ message: 'ليس طلبك' });
+    const l = (await pool.query("SELECT * FROM saai_ledger WHERE sub_id=$1 AND status='deferred' AND defer_state='asked'", [id])).rows[0];
+    if (!l) return res.status(400).json({ message: 'ما فيه سؤال معلّق' });
+    if (yes) {
+      await pool.query("UPDATE saai_ledger SET status='cancelled', defer_state='confirmed', client_answer='yes', decided_at=NOW() WHERE id=$1", [l.id]);
+      await pool.query("UPDATE sub_offers SET status='rejected' WHERE id=$1", [s.awarded_offer_id]);
+      await pool.query("UPDATE sub_offers SET status='pending' WHERE sub_id=$1 AND id<>$2 AND status='rejected'", [id, s.awarded_offer_id]);
+      await pool.query("UPDATE sub_requests SET status='open', awarded_offer_id=NULL, closed_at=NULL, created_at=NOW(), nudge_noof=TRUE WHERE id=$1", [id]);
+      notify(l.provider_id, 'ℹ️ المقاول أكّد إن ما تم الاتفاق', 'انلغى السعي على «' + String(s.description).slice(0, 50) + '»', 'sub', id, { url: '/dashboard-provider.html#saai' }).catch(()=>{});
+    } else {
+      await pool.query("UPDATE saai_ledger SET status='pending', defer_state='conflict', client_answer='no' WHERE id=$1", [l.id]);
+      notify(l.provider_id, '⚠️ المقاول يقول الاتفاق تم', 'على «' + String(s.description).slice(0, 50) + '» — السعي باقي مستحق. لو فيه خلاف تواصل مع الإدارة', 'saai', id).catch(()=>{});
+    }
+    res.json({ ok: true });
+  } catch(e) { console.error('sub nodeal ans:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 // تعديل الطلب (صاحبه، وهو مفتوح) — التخصص ثابت عشان ما يتغيّر جمهوره
 app.put('/api/sub/:id', auth, providerOnly, rateLimiter(30, 3600000), async (req, res) => {
   try {
