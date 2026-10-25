@@ -114,15 +114,18 @@
   function paintF(){ var L=document.getElementById('sb-fl'), T=document.getElementById('sb-ft'); if(!L)return;
     L.innerHTML=(F.keep||[]).map(function(a,i){ return '<div class="sb-fi">'+(isImg(a)?'<img src="'+esc(a.url)+'" alt="">':'<span class="sb-fx">📄</span>')+'<div style="flex:1;min-width:0"><b>'+esc(a.name||'مرفق')+'</b><small>مرفوع</small></div><button type="button" aria-label="إزالة" onclick="SubC.rmK('+i+')">✕</button></div>'; }).join('')+F.atts.map(function(a,i){ return '<div class="sb-fi">'+(a.kind==='img'&&a.data?'<img src="'+a.data+'" alt="">':'<span class="sb-fx">'+(a.kind==='img'?'🖼️':'📄')+'</span>')+'<div style="flex:1;min-width:0"><b>'+esc(a.name)+'</b><small>'+(a.data?sz(a.size):'جاري التجهيز…')+'</small></div><button type="button" aria-label="إزالة" onclick="SubC.rmF('+i+')">✕</button></div>'; }).join('');
     var tot=F.atts.reduce(function(s,a){return s+(a.size||0);},0); if(T) T.textContent=F.atts.length?('المجموع: '+F.atts.length+' ملف · '+sz(tot)+(tot>25*1048576?' — كبير، ممكن يتأخر الرفع':'')):''; }
+  function cityHtml(v){ var R=W._PROV_REGIONS||{}, has=false, h='';
+    Object.keys(R).forEach(function(r){ h+='<optgroup label="'+esc('منطقة '+r)+'">'+R[r].map(function(c){ if(c===v)has=true; return '<option'+(c===v?' selected':'')+'>'+esc(c)+'</option>'; }).join('')+'</optgroup>'; });
+    return '<select class="sb-f" id="sb-city"><option value="">— اختر المدينة —</option>'+(v&&!has?'<option selected>'+esc(v)+'</option>':'')+h+'</select>'; }
   function form(ed){
     F={cat:ed?ed.category:'',atts:[],keep:ed?(ed.attachments||[]).slice():[],edit:ed?ed.id:0}; var d=S.hub||{partners:[]}, me=W._prof||{};
     var o=sheet('<div class="sb-row" style="justify-content:space-between"><b style="font-family:Cairo,sans-serif;font-size:18px">'+(ed?'تعديل الطلب':'اطلب مقاول باطن')+'</b><button type="button" class="sb-b sb-o" style="padding:6px 10px" onclick="SubC.x()">✕</button></div>'
       +'<div class="sb-s">يشوفه المزوّدين بس — العملاء ما يشوفونه</div>'
       +(ed?'<label class="sb-l">التخصص</label><span class="sb-tag" style="font-size:12.5px;padding:6px 12px">🤝 '+esc(ed.category)+'</span><div class="sb-s" style="margin-top:4px">التخصص ما يتغيّر — لو تبي تخصص ثاني انشر طلب جديد</div><div id="sb-cats" style="display:none"></div><select id="sb-cat-all" style="display:none"></select>':'<label class="sb-l">وش التخصص اللي تحتاجه؟</label><div class="sb-chips" id="sb-cats">'+TOP.map(function(c){return '<button type="button" data-c="'+esc(c[1])+'">'+c[0]+' '+esc(c[1])+'</button>';}).join('')
-        +'<button type="button" data-c="_more">＋ غيرها</button></div><select class="sb-f" id="sb-cat-all" style="display:none;margin-top:8px"><option value="">— اختر التخصص —</option>'+CATS.map(function(c){return '<option>'+esc(c)+'</option>';}).join('')+'</select>')
-      +'<div class="sb-row" style="gap:8px"><div style="flex:1"><label class="sb-l">المدينة</label><input class="sb-f" id="sb-city" maxlength="60" value="'+esc(ed?(ed.city||''):(me.city||''))+'"></div><div style="flex:1"><label class="sb-l">الحي (اختياري)</label><input class="sb-f" id="sb-dist" maxlength="60" value="'+esc(ed&&ed.district||'')+'"></div></div>'
+        +'<button type="button" data-c="_more">＋ غيرها</button></div><div id="sb-cat-all" style="display:none;margin-top:8px"><input class="sb-f" id="sb-cq" placeholder="🔍 اكتب التخصص… مثلاً: مصاعد" autocomplete="off"><div class="sb-chips" id="sb-cl" style="margin-top:8px;max-height:190px;overflow:auto"></div></div>')
+      +'<div class="sb-row" style="gap:8px"><div style="flex:1"><label class="sb-l">المدينة</label>'+cityHtml(ed?(ed.city||''):(me.city||''))+'</div><div style="flex:1"><label class="sb-l">الحي (اختياري)</label><input class="sb-f" id="sb-dist" maxlength="60" value="'+esc(ed&&ed.district||'')+'"></div></div>'
       +'<label class="sb-l">وش الشغل؟</label><textarea class="sb-f" id="sb-desc" rows="3" maxlength="1500" placeholder="مثلاً: تمديدات كهرباء كاملة لفيلا دورين 400م، المخطط جاهز">'+esc(ed&&ed.description||'')+'</textarea>'
-      +'<div class="sb-row" style="gap:8px"><div style="flex:1"><label class="sb-l">متى تبدأ؟</label><input class="sb-f" id="sb-start" maxlength="60" placeholder="بعد أسبوعين" value="'+esc(ed&&ed.start_text||'')+'"></div><div style="flex:1"><label class="sb-l">الميزانية (اختياري)</label><input class="sb-f" id="sb-bud" inputmode="numeric" placeholder="ر.س" value="'+(ed&&ed.budget?ed.budget:'')+'"></div></div>'
+      +'<div class="sb-row" style="gap:8px"><div style="flex:1"><label class="sb-l">متى تبدأ؟</label><input class="sb-f" id="sb-start" maxlength="60" placeholder="بعد أسبوعين" value="'+esc(ed&&ed.start_text||'')+'"></div><div style="flex:1"><label class="sb-l">الميزانية (اختياري)</label><input class="sb-f" id="sb-bud" inputmode="numeric" placeholder="ر.س" oninput="var d=this.value.replace(/[٠-٩]/g,function(x){return \'٠١٢٣٤٥٦٧٨٩\'.indexOf(x);}).replace(/[^0-9]/g,\'\');this.value=d?Number(d).toLocaleString(\'en-US\'):\'\'" value="'+(ed&&ed.budget?ed.budget:'')+'"></div></div>'
       +'<label class="sb-l">📎 المرفقات (اختياري) — تساعد الفني يعطيك سعر دقيق</label>'
       +'<label class="sb-up"><input type="file" id="sb-img" accept="image/*" multiple><span class="sb-upi">🖼️</span><span class="sb-upt"><b>اضغط لإضافة صور</b><small>صور الموقع أو الشغل · حتى 6 صور</small></span></label>'
       +'<label class="sb-up" style="margin-top:8px"><input type="file" id="sb-doc" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.rar"><span class="sb-upi">📐</span><span class="sb-upt"><b>ارفع المخطط أو الملفات</b><small>PDF · DWG · Excel · Word · ZIP — حتى 4 ملفات</small></span><span class="sb-upb">مهم للأسعار</span></label>'
@@ -131,8 +134,14 @@
       +'<button type="button" class="sb-b sb-v" id="sb-send" style="width:100%;margin-top:14px;padding:13px" onclick="SubC.send()">'+(ed?'احفظ التعديل':'انشر الطلب')+'</button>'
       +'<div class="sb-s" style="text-align:center;margin-top:7px">'+(ed?'اللي قدّموا عروض يوصلهم إن الطلب تعدّل':'يوصل الفنيين المناسبين في مدينتك إشعار')+'</div>');
     paintF();
-    if(!ed) o.querySelector('#sb-cats').addEventListener('click',function(e){ var b=e.target.closest('button[data-c]'); if(!b)return; var c=b.getAttribute('data-c'); [].forEach.call(this.children,function(x){x.classList.remove('on');}); b.classList.add('on'); var sel=document.getElementById('sb-cat-all'); if(c==='_more'){ sel.style.display=''; F.cat=sel.value; } else { sel.style.display='none'; F.cat=c; } });
-    if(!ed) o.querySelector('#sb-cat-all').addEventListener('change',function(){ F.cat=this.value; });
+    var nz=function(t){ return String(t||'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/^ال/,'').trim(); };
+    var topN=TOP.map(function(t){return t[1];});
+    var paintCL=function(){ var q=nz((document.getElementById('sb-cq')||{}).value||''), L=document.getElementById('sb-cl'); if(!L)return;
+      var arr=CATS.filter(function(c){ return topN.indexOf(c)<0&&(!q||nz(c).indexOf(q)>=0||c.split(' ').some(function(w){return nz(w).indexOf(q)===0;})); });
+      L.innerHTML=arr.length?arr.map(function(c){ return '<button type="button" data-k="'+esc(c)+'" class="'+(F.cat===c?'on':'')+'">'+(F.cat===c?'✓ ':'')+esc(c)+'</button>'; }).join(''):'<div class="sb-s">ما لقينا تخصص بهالاسم — اختر «أخرى» واكتبه في وصف الشغل</div>'; };
+    if(!ed) o.querySelector('#sb-cats').addEventListener('click',function(e){ var b=e.target.closest('button[data-c]'); if(!b)return; var c=b.getAttribute('data-c'); [].forEach.call(this.children,function(x){x.classList.remove('on');}); b.classList.add('on'); var box=document.getElementById('sb-cat-all');
+      if(c==='_more'){ box.style.display=''; F.cat=''; paintCL(); setTimeout(function(){ var q=document.getElementById('sb-cq'); if(q)q.focus(); },30); } else { box.style.display='none'; F.cat=c; } });
+    if(!ed){ o.querySelector('#sb-cq').addEventListener('input',paintCL); o.querySelector('#sb-cl').addEventListener('click',function(e){ var b=e.target.closest('button[data-k]'); if(!b)return; F.cat=b.getAttribute('data-k'); paintCL(); var mb=o.querySelector('#sb-cats button[data-c="_more"]'); if(mb) mb.textContent='✓ '+F.cat; }); }
     var add=function(inp,kind){ var fs=[].slice.call(inp.files||[]); inp.value='';
       fs.forEach(function(f){
         var n=F.atts.filter(function(a){return a.kind===kind;}).length+(kind==='img'?F.keep.filter(isImg).length:F.keep.filter(function(a){return !isImg(a);}).length); if(n>=(kind==='img'?6:4)){ toast(kind==='img'?'الحد 6 صور':'الحد 4 ملفات','error'); return; }
@@ -144,12 +153,13 @@
         r.readAsDataURL(f); }); };
     o.querySelector('#sb-img').addEventListener('change',function(){ add(this,'img'); });
     o.querySelector('#sb-doc').addEventListener('change',function(){ add(this,'doc'); });
-    if(!me.city) api('/api/provider/profile').then(function(p){ W._prof=W._prof||p; var c=document.getElementById('sb-city'); if(c&&!c.value&&p&&p.city)c.value=p.city; }).catch(function(){});
+    if(!ed&&!me.city) api('/api/provider/profile').then(function(p){ W._prof=W._prof||p; var c=document.getElementById('sb-city'); if(c&&!c.value&&p&&p.city){ c.value=p.city; try{ c.dispatchEvent(new Event('change')); }catch(e){} } }).catch(function(){});
   }
   function send(){
     var v=function(id){ var e=document.getElementById(id); return e?String(e.value||'').trim():''; };
     if(!F.cat){ toast('اختر التخصص اللي تحتاجه','error'); return; }
     if(F.atts.some(function(a){return !a.data;})){ toast('لحظات — نجهّز الملفات','error'); return; }
+    if(!v('sb-city')){ toast('اختر المدينة','error'); return; }
     if(v('sb-desc').length<10){ toast('اكتب وش الشغل بالتفصيل','error'); var t=document.getElementById('sb-desc'); if(t)t.focus(); return; }
     var b=document.getElementById('sb-send'); if(b){ b.disabled=true; b.textContent='جاري النشر...'; }
     var pf=document.getElementById('sb-pf');
@@ -192,7 +202,7 @@
         else if(m&&m.status==='rejected') h+='<div class="sb-card" style="margin-top:12px"><div class="sb-s">اختار عرض ثاني — شكراً لعرضك.</div></div>';
         else if(x.status==='open'){
           h+='<div class="sb-t" style="margin:16px 0 0">'+(m?'عرضك (تقدر تعدّله)':'قدّم عرضك')+'</div>'
-            +'<div class="sb-row" style="gap:8px"><div style="flex:1"><label class="sb-l">السعر (ر.س)</label><input class="sb-f" id="sb-p" inputmode="numeric" value="'+(m?m.price:'')+'"></div><div style="flex:1"><label class="sb-l">المدة (أيام)</label><input class="sb-f" id="sb-d" inputmode="numeric" value="'+(m&&m.days?m.days:'')+'"></div></div>'
+            +'<div class="sb-row" style="gap:8px"><div style="flex:1"><label class="sb-l">السعر (ر.س)</label><input class="sb-f" id="sb-p" inputmode="numeric" oninput="this.value=this.value.replace(/[٠-٩]/g,function(x){return \'٠١٢٣٤٥٦٧٨٩\'.indexOf(x);}).replace(/[^0-9]/g,\'\')" value="'+(m?m.price:'')+'"></div><div style="flex:1"><label class="sb-l">المدة (أيام)</label><input class="sb-f" id="sb-d" inputmode="numeric" oninput="this.value=this.value.replace(/[٠-٩]/g,function(x){return \'٠١٢٣٤٥٦٧٨٩\'.indexOf(x);}).replace(/[^0-9]/g,\'\')" value="'+(m&&m.days?m.days:'')+'"></div></div>'
             +'<label class="sb-l">ملاحظة للمقاول (اختياري)</label><textarea class="sb-f" id="sb-n" rows="2" maxlength="1000" placeholder="خبرتك، وش يشمل سعرك…">'+esc(m&&m.note||'')+'</textarea>'
             +'<label class="sb-row" style="gap:9px;margin-top:10px;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:10px;cursor:pointer"><input type="checkbox" id="sb-fee" style="width:18px;height:18px;accent-color:#d97706"'+(m?' checked':'')+'><span class="sb-s" style="color:#92400e">أتعهد بسداد سعي المنصة 3% من قيمة الاتفاق إذا انعتمد عرضي — ينضاف في محفظة السعي</span></label>'
             +'<button type="button" class="sb-b sb-v" id="sb-ob" style="width:100%;margin-top:12px;padding:13px" onclick="SubC.offer('+x.id+')">'+(m?'حدّث عرضك':'أرسل العرض ← ويظهر لك رقمه')+'</button>'+(m?'<button type="button" class="sb-b sb-o" style="width:100%;margin-top:8px;color:#b91c1c" onclick="SubC.wd('+x.id+')">↩️ اسحب عرضي</button>':'');
