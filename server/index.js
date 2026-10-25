@@ -12511,12 +12511,29 @@ app.get('/api/admin/sub', requirePermission('requests.view'), async (req, res) =
     const list = (await pool.query(`SELECT s.id, s.category, s.city, s.description, s.status, s.created_at, s.budget,
         COALESCE(NULLIF(u.business_name,''),u.name) AS owner, u.phone AS owner_phone, u.id AS owner_id,
         (SELECT COUNT(*)::int FROM sub_offers o WHERE o.sub_id=s.id) AS offers,
-        (SELECT json_build_object('name', COALESCE(NULLIF(w.business_name,''),w.name), 'price', o.price, 'id', w.id) FROM sub_offers o JOIN users w ON w.id=o.provider_id WHERE o.id=s.awarded_offer_id) AS winner
+        (SELECT json_build_object('name', COALESCE(NULLIF(w.business_name,''),w.name), 'price', o.price, 'id', w.id) FROM sub_offers o JOIN users w ON w.id=o.provider_id WHERE o.id=s.awarded_offer_id) AS winner,
+        (SELECT COUNT(*)::int FROM sub_msgs m WHERE m.sub_id=s.id) AS msgs,
+        (SELECT COUNT(*)::int FROM reports r WHERE r.type LIKE 'مقاول باطن%' AND r.reason LIKE '%طلب #' || s.id || ':%') AS reports,
+        (SELECT status FROM saai_ledger l WHERE l.sub_id=s.id) AS saai_status
       FROM sub_requests s JOIN users u ON u.id=s.provider_id
       WHERE ($1::text IS NULL OR s.status=$1) AND ($2='' OR s.description ILIKE '%'||$2||'%' OR s.category ILIKE '%'||$2||'%' OR u.name ILIKE '%'||$2||'%' OR u.business_name ILIKE '%'||$2||'%')
       ORDER BY s.created_at DESC LIMIT 200`, [st, q])).rows;
     res.json({ kpi: Object.assign(k, { fee: Math.round((parseInt(k.value) || 0) * 0.03) }), list });
   } catch(e) { console.error('admin sub:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// الإدارة: كل تفاصيل الطلب — الرسائل (قراءة فقط)، التقييمات، السعي، البلاغات
+app.get('/api/admin/sub/:id/full', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const s = (await pool.query(`SELECT s.*, COALESCE(NULLIF(u.business_name,''),u.name) AS owner_name, u.phone AS owner_phone FROM sub_requests s JOIN users u ON u.id=s.provider_id WHERE s.id=$1`, [id])).rows[0];
+    if (!s) return res.status(404).json({ message: 'غير موجود' });
+    const offers = (await pool.query(`SELECT o.id, o.provider_id, o.price, o.days, o.note, o.status, o.created_at, COALESCE(NULLIF(u.business_name,''),u.name) AS name, u.phone, u.city FROM sub_offers o JOIN users u ON u.id=o.provider_id WHERE o.sub_id=$1 ORDER BY o.created_at`, [id])).rows;
+    const msgs = (await pool.query(`SELECT m.id, m.sender_id, m.receiver_id, m.body, m.created_at, m.read_at, COALESCE(NULLIF(a.business_name,''),a.name) AS sender FROM sub_msgs m JOIN users a ON a.id=m.sender_id WHERE m.sub_id=$1 ORDER BY m.id`, [id])).rows;
+    const ratings = (await pool.query(`SELECT r.stars, r.comment, r.created_at, COALESCE(NULLIF(a.business_name,''),a.name) AS rater, COALESCE(NULLIF(b.business_name,''),b.name) AS rated FROM sub_ratings r JOIN users a ON a.id=r.rater_id JOIN users b ON b.id=r.rated_id WHERE r.sub_id=$1`, [id])).rows;
+    const saai = (await pool.query(`SELECT l.id, l.contract_value, l.saai_amount, l.status, l.defer_state, l.defer_note, l.proof_url, l.submitted_at, l.approved_at, COALESCE(NULLIF(u.business_name,''),u.name) AS provider FROM saai_ledger l JOIN users u ON u.id=l.provider_id WHERE l.sub_id=$1`, [id])).rows[0] || null;
+    const reports = (await pool.query(`SELECT r.reason, r.details, r.type, r.status, r.created_at, COALESCE(NULLIF(u.business_name,''),u.name) AS reporter FROM reports r LEFT JOIN users u ON u.id=r.reporter_id WHERE r.type LIKE 'مقاول باطن%' AND r.reason LIKE '%طلب #' || $1 || ':%' ORDER BY r.id DESC`, [String(id)])).rows;
+    res.json({ sub: Object.assign(_subRow(s), { owner_name: s.owner_name, owner_phone: s.owner_phone, owner_id: s.provider_id, edited_at: s.edited_at, closed_at: s.closed_at, share: !!s.share_key }), offers, msgs, ratings, saai, reports });
+  } catch(e) { console.error('admin sub full:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/admin/sub/:id/close', requirePermission('requests.edit'), async (req, res) => {
   try {
