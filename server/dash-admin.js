@@ -1314,10 +1314,17 @@ function remindProvider(id,btn){
 
 function enterClientAccount(uid){
   fetch(API+'/api/admin/users/'+uid+'/magic-link',hdr()).then(function(r){return r.json();}).then(function(d){
-    if(!d||!d.magic_link){toast((d&&d.message)||'تعذّر توليد الرابط','error');return;}
-    var wa='https://wa.me/'+(d.phone_norm||'')+'?text='+encodeURIComponent('رابط حسابك في منصة مناقصة (سجّل دخولك برقمك أو إيميلك):\n'+d.magic_link);
-    _showProxyDone(d.magic_link, wa);
-    toast('افتح الرابط في نافذة متخفّية حتى لا تُخرج نفسك من حساب الإدارة','info');
+    if(!d||!d.admin_link){toast((d&&d.message)||'تعذّر توليد الرابط','error');return;}
+    var old=document.getElementById('impOv'); if(old)old.remove();
+    var ov=document.createElement('div'); ov.id='impOv'; ov.className='overlay show'; ov.style.zIndex='400';
+    ov.innerHTML='<div class="modal" style="max-width:440px"><div class="modal-body" style="padding:20px">'
+      +'<div style="font-family:Cairo;font-size:17px;font-weight:900;margin-bottom:6px">🔑 دخول حساب «'+esc(d.name||'')+'» للتجربة</div>'
+      +'<div style="font-size:12.5px;color:var(--muted);line-height:1.9;margin-bottom:12px">انسخ الرابط وافتحه في <b>نافذة متخفّية</b> (Command+Shift+N) عشان ما تطلع من حساب الإدارة.<br>⏱ صالح <b>'+(d.minutes||10)+' دقائق</b> ولـ<b>مرة وحدة</b> فقط — <b style="color:#b91c1c">لا ترسله للعميل</b>.</div>'
+      +'<input id="imp-l" readonly value="'+esc(d.admin_link)+'" style="width:100%;direction:ltr;font-size:12px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text)">'
+      +'<div style="display:flex;gap:8px;margin-top:12px"><button class="act-btn ab-default" style="flex:1;justify-content:center;background:var(--p);color:#fff" onclick="var i=document.getElementById(\'imp-l\');i.select();try{navigator.clipboard.writeText(i.value);}catch(e){document.execCommand(\'copy\');}toast(\'تم النسخ — افتحه في نافذة متخفّية\',\'success\')">📋 نسخ الرابط</button>'
+      +'<button class="act-btn ab-default" style="flex:1;justify-content:center" onclick="document.getElementById(\'impOv\').remove()">إغلاق</button></div></div></div>';
+    ov.addEventListener('click',function(e){ if(e.target===ov)ov.remove(); });
+    document.body.appendChild(ov);
   }).catch(function(){toast('تعذّر الاتصال','error');});
 }
 function addProjectForClient(uid){

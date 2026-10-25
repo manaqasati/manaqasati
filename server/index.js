@@ -3129,6 +3129,7 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_expires TIMESTAMP`);
     await _mig(`CREATE INDEX IF NOT EXISTS idx_users_magic ON users(magic_token)`);
     await _mig(`UPDATE users SET magic_token=NULL, magic_expires=NULL WHERE magic_token IS NOT NULL`);
+    await _mig(`CREATE TABLE IF NOT EXISTS admin_imp (token VARCHAR(64) PRIMARY KEY, user_id INTEGER NOT NULL, admin_id INTEGER, expires_at TIMESTAMP NOT NULL, used_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
     // موقع المشروع: الحي (عام) + الإحداثيات (للمزوّد المقبول فقط — حماية خصوصية العميل)
     await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
     await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
@@ -3907,7 +3908,15 @@ async function getMagicToken(clientId) { return null; }
 
 app.post('/api/auth/magic-login', rateLimiter(10, 300000), async (req, res) => {
   try {
-    return res.status(410).json({ message: 'هذا الرابط ما عاد يدخل مباشرة — سجّل دخولك بحسابك' });
+    const _t = String((req.body && req.body.token) || '').slice(0, 64);
+    const _im = _t ? (await pool.query("UPDATE admin_imp SET used_at=NOW() WHERE token=$1 AND used_at IS NULL AND expires_at > NOW() RETURNING user_id", [_t])).rows[0] : null;
+    if (!_im) return res.status(410).json({ message: 'هذا الرابط ما عاد يدخل مباشرة — سجّل دخولك بحسابك' });
+    { const r = await pool.query('SELECT * FROM users WHERE id=$1', [_im.user_id]);
+      const user = r.rows[0]; if (!user) return res.status(404).json({ message: 'الحساب غير موجود' });
+      if (user.role === 'admin') return res.status(403).json({ message: 'حسابات الإدارة تدخل بكلمة المرور فقط' });
+      const sessionToken = _sessSign(user);
+      ['password','password_hash','reset_token','reset_expires','magic_token','magic_expires','verify_code','verify_code_exp','google_sub','apple_sub','token_ver'].forEach(k => { delete user[k]; });
+      return res.json({ user, token: sessionToken }); }
     const { token } = req.body;
     if (!token) return res.status(400).json({ message: 'الرابط غير صالح' });
     let userId = null;
@@ -8623,10 +8632,12 @@ app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), asyn
     if (!u) return res.status(404).json({ message: 'المستخدم غير موجود' });
     // رابط الدخول المباشر ممنوع لحسابات الإدارة (يمنع أي مشرف يدخل حساب المالك أو مشرف أعلى)
     if (u.role === 'admin') return res.status(403).json({ message: 'لا يمكن إنشاء رابط دخول لحساب إدارة' });
-    const tok = await getMagicToken(u.id);
-    logAdmin(req, 'magic_link', 'user', u.id, u.name).catch(()=>{});
-    const phoneNorm = String(u.phone || '').replace(/\D/g, '').replace(/^0/, '966');
-    res.json({ ok: true, magic_link: SITE_URL + (u.role === 'provider' ? '/dashboard-provider.html' : '/dashboard-client.html'), phone_norm: phoneNorm, name: u.name });
+    // رابط للإدارة فقط: مرة وحدة، ينتهي خلال 10 دقائق — لتجربة حساب المستخدم (ما يُرسل للعميل)
+    const tok = crypto.randomBytes(20).toString('hex');
+    await pool.query("DELETE FROM admin_imp WHERE expires_at < NOW() - INTERVAL '1 day'");
+    await pool.query("INSERT INTO admin_imp (token, user_id, admin_id, expires_at) VALUES ($1,$2,$3,NOW()+INTERVAL '10 minutes')", [tok, u.id, req.user.id]);
+    logAdmin(req, 'impersonate_link', 'user', u.id, u.name).catch(()=>{});
+    res.json({ ok: true, admin_link: SITE_URL + '/auth.html?magic=' + tok, name: u.name, role: u.role, minutes: 10 });
   } catch(e) { console.error('admin user magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
