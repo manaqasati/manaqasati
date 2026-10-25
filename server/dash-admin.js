@@ -69,7 +69,7 @@ function _navGroupsVis(){
   try{var mo=new MutationObserver(function(){_navSums();});document.querySelectorAll('.nav .ni-badge').forEach(function(b){mo.observe(b,{attributes:true,attributeFilter:['style'],childList:true,characterData:true,subtree:true});});}catch(e){setInterval(_navSums,3000);}
 })();
 // ═══ الصفحات المدموجة: كل مجموعة صفحة وحدة بتبويبات فوق ═══
-var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','drafts','requests','deals','closereasons']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','nstats','invites','named','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
+var GRPS={mod:{l:'البلاغات والمحتوى',t:['reports','questions','reviews']},projects:{l:'المشاريع',t:['outcomes','drafts','requests','deals','closereasons','subc']},bidsg:{l:'العروض',t:['bids','offerwatch','bids@prov','bidreasons']},saaig:{l:'السعي',t:['saai','claims','contactlog']},follow:{l:'المتابعة',t:['inbox','engagement','followup']},analyticsg:{l:'التحليلات',t:['analytics','nstats','invites','named','marketing','appstats','ctstats','vstats']},outreachg:{l:'الاستقطاب',t:['outreach','agents']},syslog:{l:'سجل النظام',t:['logs','health']}};
 var _PG2GRP={};Object.keys(GRPS).forEach(function(g){GRPS[g].t.forEach(function(t){var b=t.split('@')[0];if(!_PG2GRP[b])_PG2GRP[b]=g;});});
 function _gtVisible(g){var bar=document.querySelector('#gtabsHost .gtabs[data-grp="'+g+'"]');if(!bar)return [];return [].filter.call(bar.querySelectorAll('.gt'),function(b){return b.style.display!=='none';}).map(function(b){return b.getAttribute('data-tab');});}
 function showGroup(g){
@@ -119,6 +119,7 @@ function showPage(pg,el){
   var meta={vstats:['التسجيل والتفعيل','كيف سجّلوا (البريد · Google · Apple) — مين فعّل ومين علق'],appstats:['التطبيق','كم واحد عنده التطبيق ومن وين ضغطوا «حمّل»'],ctstats:['عقود المقاولات','مين حمّل العقود — للتسويق'],dashboard:['لوحة المعلومات','نظرة عامة على المنصة'],users:['المستخدمون','إدارة العملاء والمزودين'],requests:['المشاريع','جميع المشاريع المنشورة'],projreview:['مراجعة المشاريع','اعتماد المشاريع الجديدة أو إعادتها للتعديل قبل النشر'],bids:['العروض','جميع العروض المقدّمة من المزودين'],questions:['الأسئلة','أسئلة وتوضيحات المنصة'],logs:['سجل النشاط','سجل إجراءات المدراء'],reviews:['التقييمات','تقييمات المستخدمين'],reports:['البلاغات','البلاغات المقدمة'],analytics:['التحليلات','إحصائيات وتقارير المنصة'],settings:['الإعدادات','إعدادات المنصة'],admins:['المشرفون','إدارة المشرفين والصلاحيات'],marketing:['التسويق','البكسلات وإحصائيات التسويق'],health:['صحة النظام','حالة الأنظمة الحيوية'],outreach:['الاستقطاب','صيد العملاء والمزودين وتتبّع التواصل'],followup:['متابعة العملاء','تذكير العملاء حسب مرحلة مشروعهم عبر واتساب'],claims:['المشاريع الموثّقة','مشاريع طلب المزوّد تأكيدها — وسعيها'],bidreasons:['ليش ما انختارت العروض؟','أسباب عدم اختيار العروض والفرص الثانية'],deals:['متابعة الصفقات','مين اختار · مين ألغى · مين خلّص · مين سدّد'],closereasons:['أسباب إغلاق المشاريع','لماذا يغلق العملاء مشاريعهم — لكشف التسريب وتحسين المنصة'],agents:['المناديب','المناديب وعمولاتهم على المشاريع'],inbox:['رسائل العملاء','ردود العملاء على رسائلك في مكان واحد'],saai:['سداد السعي','اعتماد سداد عمولة المزوّدين'],offerwatch:['تحتاج قرارك','عروض معلّقة قبل النشر · بلاغات العملاء · الرصد التلقائي'],engagement:['متابعة التفاعل','من وصله عرض/رسالة ولم يفتحها، مع تنبيه يدوي'],contactlog:['سجل التواصل','سجل فتح أرقام العملاء للمزوّدين — حماية العمولة']};
   meta.outcomes=['نتائج المشاريع','وين راح كل مشروع — الترسية والإغلاق والسعي، ووش يحتاج قرارك'];
   meta.nstats=['الإشعارات والإيميلات','مين وصله الإيميل وإشعار التطبيق — ومين فتح وتفاعل'];
+  meta.subc=['🤝 مقاول باطن','طلبات المزوّدين من بعض — مين طلب، كم عرض، ومين اعتُمد'];
   meta.named=['⭐ المحجوزة بالاسم','مشاريع طلب فيها العميل مزوّد بالاسم — تفاعل المزوّد المطلوب والمزوّدين الثانيين'];
   meta.invites=['دعوات العملاء','العميل يشارك رابط مشروعه مع مقاولين يعرفهم — مين فتح ومين سجّل ومين قدّم ورسى عليه'];
   meta.drafts=['مشاريع ما اكتملت','ناس بدأوا يكتبون مشروع وطلعوا — نذكّرهم تلقائياً ونرجّعهم لمسودّتهم'];
@@ -135,6 +136,7 @@ function showPage(pg,el){
   if(pg==='nstats')setTimeout(_loadNStats,0);
   if(pg==='invites')setTimeout(_loadInv,0);
   if(pg==='named')setTimeout(_loadNamed,0);
+  if(pg==='subc')setTimeout(_loadSubc,0);
   if(pg==='inbox')loadInbox();
   if(pg==='saai')loadSaaiAdmin();
   if(pg==='settings')loadSettings();
@@ -6172,7 +6174,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={nstats:'analytics.view',invites:'analytics.view',named:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={subc:'requests.view',nstats:'analytics.view',invites:'analytics.view',named:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
@@ -7536,3 +7538,51 @@ function _nmPaint(d,r){
   h+='<div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-top:10px">المشاهدات والضغطات تتسجّل من 24 أكتوبر 2026 — قبلها ما فيه أرقام.</div>';
   b.innerHTML=h;
 }
+
+// ═══ 🤝 مقاول باطن — الإدارة ═══
+window._scSt=window._scSt||'';window._scQ=window._scQ||'';
+function _loadSubc(){
+  var b=document.getElementById('dash-subc'); if(!b)return; if(!b.innerHTML)b.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  fetch(API+'/api/admin/sub?status='+encodeURIComponent(_scSt)+'&q='+encodeURIComponent(_scQ),hdr()).then(function(r){return r.json();}).then(_scPaint).catch(function(){ b.innerHTML='<div style="padding:30px;text-align:center;color:var(--muted)">تعذّر التحميل</div>'; });
+}
+function _scPaint(d){
+  var b=document.getElementById('dash-subc'); if(!b||!d||!d.kpi)return; var k=d.kpi, f=function(n){return (parseInt(n)||0).toLocaleString('en-US');};
+  var K=function(v,l,sub,c){ return '<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:13px 15px"><b style="display:block;font-size:23px;font-weight:900;color:'+(c||'var(--text)')+'">'+v+'</b><small style="color:var(--muted);font-weight:800;font-size:12px">'+l+'</small>'+(sub?'<div style="font-size:11.5px;color:#15803d;font-weight:800;margin-top:3px">'+sub+'</div>':'')+'</div>'; };
+  var h='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:11px;margin-bottom:14px">'
+    +K(f(k.total),'طلب مقاول باطن',k.last30?f(k.last30)+' آخر 30 يوم':'')
+    +K(f(k.open),'مفتوح الحين','','#1d4ed8')
+    +K(f(k.offers),'عرض',k.total?(Math.round(k.offers/k.total*10)/10)+' لكل طلب':'','#7c3aed')
+    +K(f(k.awarded),'اعتُمد فيه عرض',k.total?Math.round(k.awarded*100/k.total)+'% من الطلبات':'','#15803d')
+    +K(f(k.value)+' <small style="font-size:12px">ر.س</small>','قيمة العروض المعتمدة','عمولة 3% ≈ '+f(k.fee)+' ر.س','#b45309')
+    +K(f(k.partners),'علاقة «شريك»',f(k.owners)+' مقاول طلب')
+    +K(k.avg_rate?'★ '+k.avg_rate:'—','تقييم بين المزوّدين',k.rates?f(k.rates)+' تقييم':'')+'</div>';
+  var chip=function(v,l){ var on=_scSt===v; return '<button type="button" onclick="_scSt=\''+v+'\';_loadSubc()" style="border:1px solid '+(on?'#7c3aed':'var(--border)')+';background:'+(on?'#7c3aed':'var(--card)')+';color:'+(on?'#fff':'var(--text2)')+';border-radius:999px;padding:6px 13px;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer">'+l+'</button>'; };
+  h+='<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-bottom:12px">'+chip('','الكل')+chip('open','مفتوح')+chip('awarded','اعتُمد')+chip('closed','مغلق')
+    +'<input type="search" placeholder="بحث: تخصص، مقاول، نص…" value="'+esc(_scQ)+'" onkeydown="if(event.key===\'Enter\'){_scQ=this.value;_loadSubc()}" style="margin-inline-start:auto;min-width:200px;border:1px solid var(--border);border-radius:10px;padding:7px 11px;font-family:inherit;background:var(--card);color:var(--text)"></div>';
+  var ST={open:['مفتوح','#dcfce7','#166534'],awarded:['✓ اعتُمد','#e0ecff','#1d4ed8'],closed:['مغلق','#f1f5f9','#475569']};
+  h+='<div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:6px 14px">'+((d.list||[]).length?d.list.map(function(x){ var s=ST[x.status]||['—','#f1f5f9','#475569'];
+    return '<div onclick="_scOpen('+(parseInt(x.id)||0)+')" style="display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--border);cursor:pointer;flex-wrap:wrap">'
+      +'<div style="flex:1;min-width:220px"><b style="font-size:14px">'+esc(x.description||'').slice(0,90)+'</b><div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:3px">'+esc(x.category)+(x.city?' · '+esc(x.city):'')+' · من <b>'+esc(x.owner||'—')+'</b> · '+(function(){try{return new Date(x.created_at).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'});}catch(e){return '';}})()+'</div></div>'
+      +'<div style="text-align:center;min-width:52px"><b style="font-size:17px;color:#7c3aed">'+(x.offers||0)+'</b><div style="font-size:11px;color:var(--muted)">عرض</div></div>'
+      +(x.winner?'<div style="font-size:12.5px;font-weight:800;min-width:150px">✓ '+esc(x.winner.name)+'<div style="color:#b45309">'+f(x.winner.price)+' ر.س</div></div>':'<div style="min-width:150px"></div>')
+      +'<span style="border-radius:999px;padding:3px 10px;font-size:11.5px;font-weight:900;background:'+s[1]+';color:'+s[2]+'">'+s[0]+'</span></div>'; }).join(''):'<div style="padding:26px;text-align:center;color:var(--muted);font-weight:700">ما فيه طلبات'+(_scSt||_scQ?' بهالفلتر':' للحين')+'</div>')+'</div>';
+  b.innerHTML=h;
+}
+function _scOpen(id){
+  var old=document.getElementById('scOv'); if(old)old.remove();
+  var ov=document.createElement('div'); ov.id='scOv'; ov.className='overlay show'; ov.style.zIndex='400';
+  ov.innerHTML='<div class="modal" style="max-width:560px"><div class="modal-body" style="padding:18px" id="scB"><div class="loading"><div class="spinner"></div></div></div></div>';
+  ov.addEventListener('click',function(e){ if(e.target===ov)ov.remove(); }); document.body.appendChild(ov);
+  fetch(API+'/api/sub/'+id,hdr()).then(function(r){return r.json();}).then(function(x){
+    var B=document.getElementById('scB'); if(!B)return; if(!x||!x.id){ B.innerHTML='تعذّر التحميل'; return; }
+    var f=function(n){return (parseInt(n)||0).toLocaleString('en-US');}, ph=function(p){ var n=String(p||'').replace(/\D/g,'').replace(/^0/,'966'); return n?'<a href="https://wa.me/'+n+'" target="_blank" rel="noopener" style="color:#15803d;font-weight:800">'+esc(p)+'</a>':''; };
+    B.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-family:Cairo;font-size:16px">🤝 '+esc(x.category)+'</b><button type="button" class="act-btn ab-default" onclick="document.getElementById(\'scOv\').remove()">✕</button></div>'
+      +'<div style="font-size:14px;font-weight:800;line-height:1.8;margin-top:8px">'+esc(x.description)+'</div>'
+      +'<div style="font-size:12px;color:var(--muted);font-weight:700">'+(x.city?'📍 '+esc(x.city)+(x.district?' · '+esc(x.district):''):'')+(x.start_text?' · يبدأ '+esc(x.start_text):'')+(x.budget?' · ميزانية '+f(x.budget)+' ر.س':'')+' · صاحب الطلب: <b>'+esc(x.owner_name||'')+'</b></div>'
+      +((x.attachments||[]).length?'<div style="margin-top:8px">'+x.attachments.map(function(a){return '<a href="'+esc(a.url)+'" target="_blank" rel="noopener" style="margin-left:8px">📎 '+esc(a.name||'مرفق')+'</a>';}).join('')+'</div>':'')
+      +'<div style="font-weight:900;margin:14px 0 6px">العروض ('+(x.offers||[]).length+')</div>'
+      +((x.offers||[]).map(function(o){ return '<div style="border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:8px'+(o.status==='accepted'?';border-color:#86efac;background:rgba(34,197,94,.06)':'')+'"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(o.name)+(o.status==='accepted'?' ✓':'')+'</b><b>'+f(o.price)+' ر.س'+(o.days?' · '+o.days+' يوم':'')+'</b></div><div style="font-size:12px;color:var(--muted)">'+ph(o.phone)+(o.city?' · '+esc(o.city):'')+'</div>'+(o.note?'<div style="font-size:12.5px;margin-top:5px;white-space:pre-wrap">'+esc(o.note)+'</div>':'')+'</div>'; }).join('')||'<div style="color:var(--muted);font-size:13px">ما فيه عروض</div>')
+      +(x.status==='open'?'<button type="button" class="act-btn ab-default" style="width:100%;justify-content:center;margin-top:8px;color:#b91c1c" onclick="_scClose('+x.id+')">إغلاق الطلب (مخالف)</button>':'');
+  });
+}
+function _scClose(id){ if(!confirm('تقفل الطلب؟ يوصل صاحبه إشعار.'))return; fetch(API+'/api/admin/sub/'+id+'/close',Object.assign({method:'POST',body:'{}'},hdr())).then(function(r){return r.json();}).then(function(d){ if(d&&d.ok){ toast('تم الإغلاق','success'); var o=document.getElementById('scOv'); if(o)o.remove(); _loadSubc(); } else toast((d&&d.message)||'تعذّر','error'); }); }

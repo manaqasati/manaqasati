@@ -36,6 +36,7 @@
     +'.sb-av{width:40px;height:40px;border-radius:12px;background:#e0ecff;color:#1e3a8a;display:flex;align-items:center;justify-content:center;font-weight:900;flex-shrink:0;overflow:hidden}.sb-av img{width:100%;height:100%;object-fit:cover}'
     +'.sb-emp{text-align:center;padding:26px 10px;color:var(--muted);font-weight:700;font-size:13px}';
     document.head.appendChild(st); }
+  function sr(r){ r=r||{}; return (parseInt(r.n)>0)?'<span title="تقييم المقاولين" style="color:#6d28d9;font-weight:900">🤝 ★ '+r.avg+' ('+r.n+')</span>':''; }
   function av(name,img){ return '<span class="sb-av">'+(img&&/^https?:/.test(img)?'<img src="'+esc(img)+'" alt="">':esc(String(name||'م').charAt(0)))+'</span>'; }
   function hub(force){ if(S.hub&&!force)return Promise.resolve(S.hub); return api('/api/sub/hub').then(function(d){ if(d&&d.feed){ S.hub=d; } return S.hub||{mine:[],feed:[],partners:[]}; }); }
   // ── بطاقة الرئيسية ──
@@ -66,7 +67,7 @@
       h+=d.feed.length?d.feed.map(function(x){ var st=x.my_offer?(x.my_offer.status==='accepted'?'<span class="sb-tag" style="background:#dcfce7;color:#166534">🎉 اعتمد عرضك</span>':(x.my_offer.status==='rejected'?'<span class="sb-tag" style="background:#f1f5f9;color:#64748b">اختار غيرك</span>':'<span class="sb-tag" style="background:#e0ecff;color:#1d4ed8">✓ قدّمت '+fmt(x.my_offer.price)+'</span>')):'';
         return '<div class="sb-card" style="cursor:pointer" onclick="SubC.open('+x.id+')"><div class="sb-row" style="justify-content:space-between"><span class="sb-tag">'+(x.from_partner?'⭐ من شريكك':'🤝 مقاول باطن')+'</span><span class="sb-s">'+esc(ago(x.created_at))+'</span></div>'
           +'<div class="sb-t" style="margin-top:8px">'+esc(x.description)+'</div><div class="sb-s">'+esc(x.category)+(x.city?' · 📍 '+esc(x.city)+(x.district?' · '+esc(x.district):''):'')+(x.start_text?' · يبدأ '+esc(x.start_text):'')+((x.attachments||[]).length?' · 📎 مرفقات':'')+'</div>'
-          +'<div class="sb-row" style="margin-top:10px;background:var(--bg,#f8fafc);border-radius:12px;padding:9px">'+av(x.owner_name,x.owner_image)+'<div style="flex:1;min-width:0"><div class="sb-t" style="font-size:13px">'+esc(x.owner_name||'مقاول')+'</div><div class="sb-s">'+(parseFloat(x.owner_rating)>0?'⭐ '+x.owner_rating+' · ':'')+(x.owner_done?x.owner_done+' مشروع على المنصة':'عضو في المنصة')+'</div></div>'+(st||'<span class="sb-b sb-v" style="padding:8px 12px;font-size:12.5px">قدّم عرضك</span>')+'</div></div>'; }).join('')
+          +'<div class="sb-row" style="margin-top:10px;background:var(--bg,#f8fafc);border-radius:12px;padding:9px">'+av(x.owner_name,x.owner_image)+'<div style="flex:1;min-width:0"><div class="sb-t" style="font-size:13px">'+esc(x.owner_name||'مقاول')+'</div><div class="sb-s">'+(parseFloat(x.owner_rating)>0?'⭐ '+x.owner_rating+' · ':'')+(x.owner_done?x.owner_done+' مشروع على المنصة':'عضو في المنصة')+(sr(x.owner_srate)?' · '+sr(x.owner_srate):'')+'</div></div>'+(st||'<span class="sb-b sb-v" style="padding:8px 12px;font-size:12.5px">قدّم عرضك</span>')+'</div></div>'; }).join('')
         :'<div class="sb-card sb-emp">ما فيه طلبات من مقاولين في تخصصك ومدينتك الحين.<br>يوصلك إشعار أول ما ينزل طلب.</div>';
       h+='<div class="sb-card" style="background:#f0fdf4;border-color:#bbf7d0"><div class="sb-t" style="color:#166534">💡 ليش تقدّم؟</div><div class="sb-s">المقاول اللي يرتاح لك يحفظك في «شركائي» — وتوصلك طلباته قبل غيرك بساعتين</div></div>';
     } else if(S.tab==='mine'){
@@ -75,7 +76,7 @@
         +'<div class="sb-s" style="text-align:center">باقي لك '+(d.month_left||0)+' طلبات هالشهر</div>'
         :'<div class="sb-card sb-emp">ما طلبت مقاول باطن للحين.<br><button type="button" class="sb-b sb-v" style="margin-top:12px" onclick="SubC.form()">＋ اطلب أول طلب</button></div>';
     } else {
-      h+=d.partners.length?'<div class="sb-card">'+d.partners.map(function(p){ return '<div class="sb-it sb-row" style="cursor:default">'+av(p.name,p.profile_image)+'<div style="flex:1;min-width:0"><div class="sb-t" style="font-size:13.5px">'+esc(p.name)+'</div><div class="sb-s">'+esc((p.specialties||[]).slice(0,2).join('، '))+(p.city?' · '+esc(p.city):'')+(parseFloat(p.rating)>0?' · ⭐ '+p.rating:'')+'</div></div>'
+      h+=d.partners.length?'<div class="sb-card">'+d.partners.map(function(p){ return '<div class="sb-it sb-row" style="cursor:default">'+av(p.name,p.profile_image)+'<div style="flex:1;min-width:0"><div class="sb-t" style="font-size:13.5px">'+esc(p.name)+'</div><div class="sb-s">'+esc((p.specialties||[]).slice(0,2).join('، '))+(p.city?' · '+esc(p.city):'')+(parseFloat(p.rating)>0?' · ⭐ '+p.rating:'')+(sr(p.srate)?' · '+sr(p.srate):'')+'</div></div>'
           +(p.phone?'<a class="sb-b sb-g" style="padding:8px 11px" href="'+esc(wa(p.phone,'السلام عليكم، معك من منصة مناقصة'))+'" target="_blank" rel="noopener" aria-label="واتساب">واتساب</a>':'')
           +'<button type="button" class="sb-b sb-o" style="padding:8px 10px" onclick="SubC.unp('+p.id+')" aria-label="إزالة">✕</button></div>'; }).join('')+'</div>'
         +'<div class="sb-s" style="text-align:center">شركاؤك توصلهم طلباتك قبل غيرهم بساعتين</div>'
@@ -129,7 +130,7 @@
       if(x.is_owner){
         var acc=(x.offers||[]).filter(function(o){return o.status==='accepted';})[0];
         h+='<div class="sb-t" style="margin:16px 0 8px">'+(x.offers.length?'العروض ('+x.offers.length+')':'ما وصلت عروض للحين')+'</div>';
-        h+=(x.offers||[]).map(function(o){ return '<div class="sb-card" style="margin-bottom:9px'+(o.status==='accepted'?';border-color:#86efac':'')+'"><div class="sb-row">'+av(o.name,o.profile_image)+'<div style="flex:1;min-width:0"><div class="sb-t" style="font-size:13.5px">'+esc(o.name)+(o.is_partner?' <span class="sb-tag">⭐ شريكك</span>':'')+'</div><div class="sb-s">'+(parseFloat(o.rating)>0?'⭐ '+o.rating+' · ':'')+(o.done?o.done+' مشروع':'جديد')+(o.city?' · '+esc(o.city):'')+'</div></div><div style="text-align:left"><b style="font-size:17px">'+fmt(o.price)+'</b><div class="sb-s">ر.س'+(o.days?' · '+o.days+' يوم':'')+'</div></div></div>'
+        h+=(x.offers||[]).map(function(o){ return '<div class="sb-card" style="margin-bottom:9px'+(o.status==='accepted'?';border-color:#86efac':'')+'"><div class="sb-row">'+av(o.name,o.profile_image)+'<div style="flex:1;min-width:0"><div class="sb-t" style="font-size:13.5px">'+esc(o.name)+(o.is_partner?' <span class="sb-tag">⭐ شريكك</span>':'')+'</div><div class="sb-s">'+(parseFloat(o.rating)>0?'⭐ '+o.rating+' · ':'')+(o.done?o.done+' مشروع':'جديد')+(o.city?' · '+esc(o.city):'')+(sr(o.srate)?' · '+sr(o.srate):'')+'</div></div><div style="text-align:left"><b style="font-size:17px">'+fmt(o.price)+'</b><div class="sb-s">ر.س'+(o.days?' · '+o.days+' يوم':'')+'</div></div></div>'
           +(o.note?'<div class="sb-s" style="margin-top:8px;background:var(--bg,#f8fafc);border-radius:10px;padding:8px 10px;white-space:pre-wrap">'+esc(o.note)+'</div>':'')
           +'<div class="sb-row" style="gap:7px;margin-top:10px;flex-wrap:wrap">'
             +(x.status==='open'?'<button type="button" class="sb-b sb-v" style="flex:1" onclick="SubC.acc('+x.id+','+o.id+','+o.provider_id+')">اعتمد العرض</button>':(o.status==='accepted'?'<span class="sb-tag" style="background:#dcfce7;color:#166534;padding:7px 11px">✓ اعتمدته</span>':''))
@@ -138,7 +139,7 @@
           +'</div></div>'; }).join('');
         if(x.status==='open') h+='<button type="button" class="sb-b sb-o" style="width:100%;margin-top:6px;color:#b91c1c" onclick="SubC.close('+x.id+')">إغلاق الطلب</button>';
       } else {
-        h+='<div class="sb-row" style="margin-top:12px;background:var(--bg,#f8fafc);border-radius:12px;padding:10px">'+av(x.owner_name,x.owner_image)+'<div style="flex:1"><div class="sb-t" style="font-size:13.5px">'+esc(x.owner_name||'مقاول')+'</div><div class="sb-s">صاحب الطلب'+(x.owner_phone?'':' · رقمه يظهر لك بعد ما تقدّم')+'</div></div>'
+        h+='<div class="sb-row" style="margin-top:12px;background:var(--bg,#f8fafc);border-radius:12px;padding:10px">'+av(x.owner_name,x.owner_image)+'<div style="flex:1"><div class="sb-t" style="font-size:13.5px">'+esc(x.owner_name||'مقاول')+'</div><div class="sb-s">صاحب الطلب'+(sr(x.owner_srate)?' · '+sr(x.owner_srate):'')+(x.owner_phone?'':' · رقمه يظهر لك بعد ما تقدّم')+'</div></div>'
           +(x.owner_phone?'<a class="sb-b sb-g" style="padding:9px 12px" href="'+esc(wa(x.owner_phone,'السلام عليكم، قدّمت عرض على طلبك في منصة مناقصة'))+'" target="_blank" rel="noopener">واتساب</a>':'')+'</div>';
         var m=x.my_offer;
         if(m&&m.status==='accepted') h+='<div class="sb-card" style="margin-top:12px;background:#f0fdf4;border-color:#bbf7d0"><div class="sb-t" style="color:#166534">🎉 اعتمد عرضك — '+fmt(m.price)+' ر.س</div><div class="sb-s">تواصلوا واتفقوا على التفاصيل. عمولة المنصة 3% عند الاتفاق.</div></div>';
@@ -151,7 +152,14 @@
             +'<button type="button" class="sb-b sb-v" id="sb-ob" style="width:100%;margin-top:12px;padding:13px" onclick="SubC.offer('+x.id+')">'+(m?'حدّث عرضك':'أرسل العرض ← ويظهر لك رقمه')+'</button>';
         }
       }
+      if(x.rate){
+        if(x.rate.can) h+='<div class="sb-card" style="margin-top:12px;border-color:#ddd6fe" id="sb-rate"><div class="sb-t">⭐ قيّم تعاملك</div><div class="sb-s">'+(x.is_owner?'كيف كان شغل المقاول؟':'كيف كان التعامل مع صاحب الطلب؟')+' — يطلع للمزوّدين، ومنفصل عن تقييم العملاء</div>'
+          +'<div id="sb-stars" style="display:flex;gap:4px;margin:10px 0">'+[1,2,3,4,5].map(function(i){return '<button type="button" data-s="'+i+'" aria-label="'+i+' نجوم" style="border:0;background:none;font-size:30px;cursor:pointer;color:#cbd5e1;padding:0 2px">★</button>';}).join('')+'</div>'
+          +'<textarea class="sb-f" id="sb-rc" rows="2" maxlength="300" placeholder="كلمة عن التعامل (اختياري)"></textarea><button type="button" class="sb-b sb-v" style="width:100%;margin-top:10px" onclick="SubC.rate('+x.id+')">أرسل التقييم</button></div>';
+        else if(x.rate.mine) h+='<div class="sb-s" style="margin-top:12px;text-align:center">قيّمت هذا التعامل <span style="color:#f59e0b">'+'★'.repeat(x.rate.mine.stars)+'</span></div>';
+      }
       var sh=document.querySelector('#sbOv .sb-sh'); if(sh) sh.innerHTML='<div class="sb-grab"></div>'+h;
+      var stb=document.getElementById('sb-stars'); if(stb) stb.addEventListener('click',function(e){ var b=e.target.closest('button[data-s]'); if(!b)return; S.stars=parseInt(b.getAttribute('data-s')); [].forEach.call(stb.children,function(c){ c.style.color=parseInt(c.getAttribute('data-s'))<=S.stars?'#f59e0b':'#cbd5e1'; }); });
     }).catch(function(){ closeSheet(); toast('تعذّر التحميل','error'); });
   }
   function offer(id){
@@ -175,5 +183,7 @@
   function addp(pid,sid){ api('/api/partners',{method:'POST',body:JSON.stringify({id:pid})}).then(function(r){ if(r&&r.ok){ toast('⭐ صار من شركائك'); S.hub=null; if(sid)open(sid); if(W._curPage==='sub')load(); } else toast((r&&r.message)||'تعذّر','error'); }); }
   function unp(pid){ if(!confirm('تشيله من شركائك؟'))return; api('/api/partners/'+pid,{method:'DELETE'}).then(function(){ S.hub=null; load(); }); }
   function close(id){ if(!confirm('تقفل الطلب؟ ما عاد يقدر أحد يقدّم عليه.'))return; api('/api/sub/'+id+'/close',{method:'POST',body:'{}'}).then(function(r){ if(r&&r.ok){ toast('تم إغلاق الطلب'); closeSheet(); S.hub=null; load(); } else toast((r&&r.message)||'تعذّر','error'); }); }
-  W.SubC={homeCard:homeCard,load:load,go:go,form:form,send:send,open:open,offer:offer,acc:acc,addp:addp,unp:unp,close:close,x:closeSheet};
+  function rate(id){ if(!S.stars){ toast('اختر عدد النجوم','error'); return; }
+    api('/api/sub/'+id+'/rate',{method:'POST',body:JSON.stringify({stars:S.stars,comment:(document.getElementById('sb-rc')||{}).value||''})}).then(function(r){ if(r&&r.ok){ toast('شكراً — وصل تقييمك'); S.stars=0; open(id); } else toast((r&&r.message)||'تعذّر','error'); }); }
+  W.SubC={homeCard:homeCard,load:load,go:go,form:form,send:send,open:open,offer:offer,acc:acc,addp:addp,unp:unp,close:close,rate:rate,x:closeSheet};
 })();
