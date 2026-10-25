@@ -12159,8 +12159,8 @@ app.post('/api/sub', auth, providerOnly, rateLimiter(20, 3600000), async (req, r
     const n = (await pool.query("SELECT COUNT(*)::int c FROM sub_requests WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '30 days'", [req.user.id])).rows[0].c;
     if (n >= SUB_MONTH_MAX) return res.status(429).json({ message: 'وصلت الحد: ' + SUB_MONTH_MAX + ' طلبات في الشهر' });
     const atts = [];
-    for (const a of (Array.isArray(b.attachments) ? b.attachments.slice(0, 4) : [])) {
-      try { if (a && typeof a.data === 'string' && /^data:(image\/|application\/pdf)/.test(a.data)) { const u = await uploadToCloud(a.data, 'manaqasa/sub', a.name); if (u && /^https?:/.test(u)) atts.push({ url: u, name: _cleanTxt(a.name, 80) || 'مرفق' }); } } catch(e){}
+    for (const a of (Array.isArray(b.attachments) ? b.attachments.slice(0, 10) : [])) {
+      try { if (a && typeof a.data === 'string' && /^data:/.test(a.data) && (/^data:image\//.test(a.data) || /\.(pdf|dwg|dxf|xlsx?|docx?|zip|rar)$/i.test(String(a.name || '')))) { const u = await uploadToCloud(a.data, 'manaqasa/sub', a.name); if (u && /^https?:/.test(u)) atts.push({ url: u, name: _cleanTxt(a.name, 80) || 'مرفق' }); } } catch(e){}
     }
     const budget = parseInt(String(b.budget || '').replace(/[^\d]/g, '')) || null;
     const pf = b.partners_first !== false;

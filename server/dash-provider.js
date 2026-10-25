@@ -659,7 +659,7 @@ function _renderProvNudges(bids,pool,matchedBySpec){
       +'<div class="nudge-cta">عروضي '+chev+'</div></div>');
   if(!matchedBySpec) reqItems.push('<div class="nudge" style="border-right-color:#6366f1" onclick="gotoPage(\'profile\')">'
       +'<div class="nudge-ic" style="background:#e0e7ff;color:#3730a3"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div>'
-      +'<div class="nudge-body"><div class="nudge-t">حدّد تخصصاتك ومدنك</div><div class="nudge-s">يطلع لك المشاريع اللي تناسبك أول</div></div>'
+      +'<div class="nudge-body"><div class="nudge-t">حدّد تخصصاتك والمدن اللي تخدمها</div><div class="nudge-s">يطلع لك المشاريع اللي تناسبك أول</div></div>'
       +'<div class="nudge-cta">حسابي '+chev+'</div></div>');
   accepted.slice(0,2).forEach(function(b){
     reqItems.push('<div class="nudge" style="border-right-color:var(--green)" onclick="_viewProj('+b.request_id+')">'
