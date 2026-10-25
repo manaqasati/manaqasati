@@ -649,7 +649,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
   <div class="modal">
     <div class="modal-head"><h3>🔗 رابط دخول العميل</h3><button class="modal-x" onclick="closeModal('proxyDoneModal')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
     <div class="modal-body">
-      <p style="font-size:13px;color:#64748b;line-height:1.85;margin-bottom:12px">أرسل هذا الرابط للعميل عبر واتساب — يفتحه فيدخل حسابه مباشرة ويشوف مشروعه والعروض <b>بدون كلمة مرور</b>. صالح ٣٠ يوماً.</p>
+      <p style="font-size:13px;color:#64748b;line-height:1.85;margin-bottom:12px">أرسل هذا الرابط للعميل عبر واتساب — يفتحه ويسجّل دخوله ويشوف مشروعه والعروض.</p>
       <div style="display:flex;gap:8px;align-items:center;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:11px;padding:11px 12px;margin-bottom:14px">
         <input id="pd-link" readonly onclick="this.select()" style="flex:1;min-width:0;border:none;background:transparent;font-size:12px;color:#334155;font-family:monospace;outline:none">
       </div>
@@ -666,7 +666,7 @@ var _pdWaUrl='';
 function _pdCopy(){var i=document.getElementById('pd-link');var l=i.value;if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(l).then(function(){toast('تم نسخ الرابط','success');}).catch(function(){i.select();document.execCommand('copy');toast('تم نسخ الرابط','success');});}else{i.select();document.execCommand('copy');toast('تم نسخ الرابط','success');}}
 function _pdWa(){if(_pdWaUrl)window.open(_pdWaUrl,'_blank');}
 function _showProxyDone(link,wa){document.getElementById('pd-link').value=link;_pdWaUrl=wa;document.getElementById('proxyDoneModal').classList.add('show');}
-function _clientLoginLink(id){fetch(API+'/api/admin/requests/'+id+'/magic-link',hdr()).then(function(r){return r.json();}).then(function(d){if(!d||!d.ok||!d.magic_link){toast((d&&d.message)||'تعذّر توليد الرابط','error');return;}var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم'+(d.client_name?' '+d.client_name:'')+'، للدخول لحسابك في منصة مناقصة ومتابعة مشروعك «'+d.title+'» والعروض، افتح الرابط التالي مباشرة (بدون كلمة مرور):\n'+d.magic_link);_showProxyDone(d.magic_link,wa);}).catch(function(){toast('تعذّر الاتصال','error');});}
+function _clientLoginLink(id){fetch(API+'/api/admin/requests/'+id+'/magic-link',hdr()).then(function(r){return r.json();}).then(function(d){if(!d||!d.ok||!d.magic_link){toast((d&&d.message)||'تعذّر توليد الرابط','error');return;}var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم'+(d.client_name?' '+d.client_name:'')+'، للدخول لحسابك في منصة مناقصة ومتابعة مشروعك «'+d.title+'» والعروض، افتح الرابط التالي وسجّل دخولك:\n'+d.magic_link);_showProxyDone(d.magic_link,wa);}).catch(function(){toast('تعذّر الاتصال','error');});}
 </script>
 
 <script src="/dash-admin.js"></script>

@@ -953,3 +953,13 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
   .pa-gc .pa-sb{background:transparent!important;color:var(--text)!important;border:1px solid var(--pa-b,var(--border))!important}
   [data-theme="dark"] .pa-gc .bump-row button{background:#1e3a8a}
 }
+/* الشريط العلوي في الجوالات الصغيرة (آيفون SE وأصغر): نصغّر المسافات، وزر الخروج موجود في «المزيد» */
+@media(max-width:400px){
+  .mob-head{padding:0 10px}
+  .mob-head .mob-logo{font-size:16.5px}
+  .mob-right{gap:5px}
+  .mob-right .mob-notif{padding:6px}
+  .mob-right .my-page-btn{padding:6px 9px;font-size:11.5px}
+  .mob-right .mob-out{display:none}
+}
+@media(max-width:340px){ .mob-right .mob-av{display:none} }

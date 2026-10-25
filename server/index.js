@@ -774,9 +774,10 @@ app.get('/auth.html',              (req, res) => res.sendFile(__dirname + '/auth
 // رابط الدخول القصير: /m/الرمز → صفحة الدخول السحري
 // ?n= وجهة بعد الدخول (صفحات اللوحات فقط)
 function _magicNext(n){ n = String(n||''); return (/^\/(dashboard-client|dashboard-provider)\.html(#[a-z]+(\/\d+)?)?$/.test(n) || /^\/new\.html\?draft=[a-f0-9]{32}$/.test(n) || /^\/new\.html\?exec=\d{1,10}$/.test(n) || /^\/dashboard-client\.html\?edit=\d{1,10}$/.test(n)) ? n : ''; }
-app.get('/m/:token',               (req, res) => { const n = _magicNext(req.query.n); res.redirect(302, '/auth.html?magic=' + encodeURIComponent(req.params.token) + (n ? '&next=' + encodeURIComponent(n) : '')); });
+// أُلغي الدخول المباشر: الرابط القديم يودّي للصفحة نفسها، واللي مو مسجّل دخول يطلب منه تسجيل الدخول
+app.get('/m/:token',               (req, res) => { const n = _magicNext(req.query.n); res.redirect(302, n || '/auth.html'); });
 // رابط دخول مباشر لصفحة محددة (للتذكيرات)
-async function _magicUrl(uid, next){ try { const t = await getMagicToken(uid); const n = _magicNext(next); return SITE_URL + '/m/' + t + (n ? '?n=' + encodeURIComponent(n) : ''); } catch(e){ return SITE_URL + (next||''); } }
+async function _magicUrl(uid, next){ const n = _magicNext(next); return SITE_URL + (n || '/dashboard-client.html'); }
 // ═══ صفحة تحميل التطبيق: manaqasa.com/app (رابط مختصر للرسائل والإيميلات) ═══
 const APP_STORE_URL = 'https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611';
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.manaqasa.app';
@@ -3127,6 +3128,7 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_token TEXT`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_expires TIMESTAMP`);
     await _mig(`CREATE INDEX IF NOT EXISTS idx_users_magic ON users(magic_token)`);
+    await _mig(`UPDATE users SET magic_token=NULL, magic_expires=NULL WHERE magic_token IS NOT NULL`);
     // موقع المشروع: الحي (عام) + الإحداثيات (للمزوّد المقبول فقط — حماية خصوصية العميل)
     await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
     await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS geo_lat DOUBLE PRECISION`);
@@ -3900,21 +3902,12 @@ app.post('/api/auth/reset-password', rateLimiter(10, 600000), async (req, res) =
 
 // ═══ الدخول السحري: رابط قصير يُرسل للعميل عبر واتساب فيدخله مباشرة بلا كلمة مرور ═══
 // يُنشئ رمزاً قصيراً ويعيد استعماله ما دام صالحاً (فتبقى الروابط المُرسلة سابقاً تعمل)
-async function getMagicToken(clientId) {
-  const cur = await pool.query('SELECT magic_token, magic_expires FROM users WHERE id=$1', [clientId]);
-  if (!cur.rows.length) return null;
-  let tok = cur.rows[0].magic_token;
-  const exp = cur.rows[0].magic_expires;
-  // الرابط يعيش 14 يوم وما يتمدّد: نعيد استخدام الحالي لو باقي له أسبوع أو أكثر، وإلا نسوي جديد
-  const stillValid = tok && exp && (new Date(exp) - Date.now()) > 7 * 864e5;
-  if (stillValid) return tok;
-  tok = crypto.randomBytes(12).toString('hex'); // 24 حرفاً
-  await pool.query("UPDATE users SET magic_token=$1, magic_expires=NOW()+INTERVAL '14 days' WHERE id=$2", [tok, clientId]);
-  return tok;
-}
+// أُلغي: ما عاد فيه روابط تدخل الحساب بدون كلمة مرور
+async function getMagicToken(clientId) { return null; }
 
 app.post('/api/auth/magic-login', rateLimiter(10, 300000), async (req, res) => {
   try {
+    return res.status(410).json({ message: 'هذا الرابط ما عاد يدخل مباشرة — سجّل دخولك بحسابك' });
     const { token } = req.body;
     if (!token) return res.status(400).json({ message: 'الرابط غير صالح' });
     let userId = null;
@@ -5173,7 +5166,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
 
     // 3) رابط دخول سحري قصير: يُرسل للعميل بالواتساب فيدخل مباشرة ويشوف مشروعه وعروضه بلا كلمة مرور
     const magicTok = await getMagicToken(clientId);
-    const magicLink = SITE_URL + '/m/' + magicTok;
+    const magicLink = SITE_URL + '/dashboard-client.html';
     // 4) سجّل العملية للمساءلة
     res.json({ ok: true, request_id: r.rows[0].id, client_id: clientId, is_new_client: isNew, phone_norm: phoneNorm, magic_link: magicLink });
   } catch(e) {
@@ -6453,7 +6446,7 @@ async function _silentClientJob(){
   // 1) اليوم 2
   const s1 = await pool.query(`UPDATE requests r SET silent_stage=1, silent_at=NOW() WHERE ${SILENT_SQL} AND COALESCE(r.silent_stage,0)=0 AND ${FB} <= NOW() - INTERVAL '2 days' RETURNING r.id, r.title, r.client_id`);
   for (const x of s1.rows) { try {
-    const k = await info(x.id); const tok = await getMagicToken(x.client_id); const link = SITE_URL + '/m/' + tok;
+    const k = await info(x.id); const tok = await getMagicToken(x.client_id); const link = SITE_URL + '/dashboard-client.html';
     const pr = k.minp ? Number(k.minp).toLocaleString('en-US') + ' ر.س' : '';
     const line = k.n === 1 ? `وصلك عرض على «${x.title}»${pr ? ' بسعر ' + pr : ''}.` : `وصلك ${k.n === 2 ? 'عرضين' : k.n + ' عروض'} على «${x.title}»${pr ? '، أقلها ' + pr : ''}.`;
     await notifyWithEmail(x.client_id, '📬 ' + line, line + ' شوفها وقارن بينها بضغطة.', 'request', x.id, '📬 ' + line,
@@ -6462,7 +6455,7 @@ async function _silentClientJob(){
   // 2) اليوم 10: رسالة أخيرة
   const s3 = await pool.query(`UPDATE requests r SET silent_stage=3, silent_at=NOW() WHERE ${SILENT_SQL} AND COALESCE(r.silent_stage,0) IN (1,2) AND r.silent_at <= NOW() - INTERVAL '3 days' AND ${FB} <= NOW() - INTERVAL '10 days' RETURNING r.id, r.title, r.client_id`);
   for (const x of s3.rows) { try {
-    const k = await info(x.id); const tok = await getMagicToken(x.client_id); const link = SITE_URL + '/m/' + tok;
+    const k = await info(x.id); const tok = await getMagicToken(x.client_id); const link = SITE_URL + '/dashboard-client.html';
     await notifyWithEmail(x.client_id, '⏳ مشروعك بينقفل بعد 4 أيام', `«${x.title}» عليه ${k.n === 1 ? 'عرض ما شفته' : (k.n === 2 ? 'عرضين ما شفتها' : k.n + ' عروض ما شفتها')}. إذا ما تحتاجه بنقفله بعد 4 أيام — وإذا تبيه يبقى، افتح العروض وبس.`, 'request', x.id,
       `⏳ «${x.title}» بينقفل بعد 4 أيام`, `<p>مشروعك «<strong>${eEsc(x.title)}</strong>» عليه ${k.n === 1 ? 'عرض ما اطّلعت عليه' : (k.n === 2 ? 'عرضين ما اطّلعت عليها' : k.n + ' عروض ما اطّلعت عليها')}.</p><p>إذا ما عاد تحتاجه، بنقفله تلقائياً بعد 4 أيام عشان ما ينتظر المزوّدين. وإذا تبيه يبقى مفتوح: افتح العروض وبس.</p>`, 'افتح العروض', link);
   } catch(e){} }
@@ -8633,7 +8626,7 @@ app.get('/api/admin/users/:id/magic-link', requirePermission('users.edit'), asyn
     const tok = await getMagicToken(u.id);
     logAdmin(req, 'magic_link', 'user', u.id, u.name).catch(()=>{});
     const phoneNorm = String(u.phone || '').replace(/\D/g, '').replace(/^0/, '966');
-    res.json({ ok: true, magic_link: SITE_URL + '/m/' + tok, phone_norm: phoneNorm, name: u.name });
+    res.json({ ok: true, magic_link: SITE_URL + (u.role === 'provider' ? '/dashboard-provider.html' : '/dashboard-client.html'), phone_norm: phoneNorm, name: u.name });
   } catch(e) { console.error('admin user magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -10652,7 +10645,7 @@ app.get('/api/admin/requests/:id/magic-link', requirePermission('requests.edit')
     if (row.client_role === 'admin') return res.status(403).json({ message: 'لا يمكن إنشاء رابط دخول لحساب إدارة' });
     const phoneNorm = String(row.client_phone || '').replace(/\D/g, '').replace(/^0/, '966');
     const magicTok = await getMagicToken(row.client_id);
-    res.json({ ok: true, magic_link: SITE_URL + '/m/' + magicTok, phone_norm: phoneNorm, client_name: row.client_name, title: row.title });
+    res.json({ ok: true, magic_link: SITE_URL + '/dashboard-client.html', phone_norm: phoneNorm, client_name: row.client_name, title: row.title });
   } catch(e) { console.error('admin magic-link:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 

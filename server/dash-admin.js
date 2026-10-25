@@ -1315,7 +1315,7 @@ function remindProvider(id,btn){
 function enterClientAccount(uid){
   fetch(API+'/api/admin/users/'+uid+'/magic-link',hdr()).then(function(r){return r.json();}).then(function(d){
     if(!d||!d.magic_link){toast((d&&d.message)||'تعذّر توليد الرابط','error');return;}
-    var wa='https://wa.me/'+(d.phone_norm||'')+'?text='+encodeURIComponent('رابط الدخول لحسابك في منصة مناقصة (بدون كلمة مرور):\n'+d.magic_link);
+    var wa='https://wa.me/'+(d.phone_norm||'')+'?text='+encodeURIComponent('رابط حسابك في منصة مناقصة (سجّل دخولك برقمك أو إيميلك):\n'+d.magic_link);
     _showProxyDone(d.magic_link, wa);
     toast('افتح الرابط في نافذة متخفّية حتى لا تُخرج نفسك من حساب الإدارة','info');
   }).catch(function(){toast('تعذّر الاتصال','error');});
@@ -1395,7 +1395,7 @@ function submitProxyPost(){
       closeModal('userModal');
       toast('تم إرسال المشروع للمراجعة'+(d.is_new_client?' وإنشاء حساب للعميل':'')+' ✓','success');
       var _entry=d.magic_link||('https://manaqasa.com/project/m-'+d.request_id+'?id='+d.request_id);
-      var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم، استلمنا مشروعك «'+data.title+'» في منصة مناقصة ✓\nهو الآن قيد المراجعة، وسيُنشر للمنفذين فور اعتماده وتصلك عروضهم.\n\nلمتابعة مشروعك، ادخل من الرابط التالي مباشرة (بدون كلمة مرور):\n'+_entry);
+      var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم، استلمنا مشروعك «'+data.title+'» في منصة مناقصة ✓\nهو الآن قيد المراجعة، وسيُنشر للمنفذين فور اعتماده وتصلك عروضهم.\n\nلمتابعة مشروعك ادخل من هذا الرابط وسجّل دخولك:\n'+_entry);
       _showProxyDone(_entry, wa);
       loadRequests();
     })
