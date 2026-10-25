@@ -19,6 +19,7 @@
     eye:'<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>',
     contract:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/>',
     user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>',
+    team:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><circle cx="17" cy="9" r="2.8"/><path d="M16.5 14.6c3 .2 5 2 5 5"/>',
     chat:'<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>',
     map:'<path d="M12 22s7-6.4 7-12a7 7 0 10-14 0c0 5.6 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
     help:'<circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01"/>'
@@ -66,6 +67,7 @@
     var due = state.saai && state.saai.pending_total > 0 ? state.saai.pending_total : 0;
     return tile('c1', 'search', 'تصفح المشاريع', nOpen ? nOpen + ' مشروع يناسبك' : 'مشاريع تناسب تخصصك', nOpen, 'pg:browse')
       + tile('c2', 'doc', 'عروضي ومشاريعي', 'عروضك وحالة كل واحد', 0, 'pg:works')
+      + tile('c6', 'team', 'مقاول باطن', 'اطلب أو قدّم · شركائي', 0, 'pg:sub')
       + tile('c3', 'money', 'محفظة السعي', due ? 'عليك ' + fmt(due) + ' ريال — سدّد' : 'ما عليك شي ✓', due ? '!' : 0, 'pg:saai', !!due)
       + tile('c4', 'star', 'تقييماتي', rat ? '★ ' + rat.toFixed(1) + ' من عملائك' : 'تقييمات عملائك', 0, 'pg:reviews')
       + tile('c5', 'bell', 'الإشعارات', nNot ? nNot + ' جديدة' : 'كل التنبيهات', nNot, 'pg:notifs')

@@ -345,7 +345,7 @@ function _setAvatar(img){
   });
 })();
 
-var _pages={home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي'};
+var _pages={sub:'🤝 مقاول باطن',home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي'};
 
 var _prefetchTimer={};
 function prefetchPage(page){
@@ -385,12 +385,13 @@ function _gotoPageInner(page){
   else if(page==='profile')loadProfile();
   else if(page==='chat'){loadChat();}
   else if(page==='saai')loadSaai();
+  else if(page==='sub'){ if(window.SubC)SubC.load(); else setTimeout(function(){ if(window.SubC)SubC.load(); },400); }
   if(page!=='chat'){clearInterval(_provConvPolling);}
 }
 // زر رجوع المتصفّح: يرجّع للقسم السابق داخل لوحة المزوّد بدل الخروج
 window.addEventListener('popstate',function(){
   var h=(location.hash||'').replace('#','');
-  var known=['home','browse','works','notifs','profile','chat','saai'];
+  var known=['home','browse','works','notifs','profile','chat','saai','sub'];
   var target=known.indexOf(h)>=0?h:'home';
   window._pSkipHash=true; gotoPage(target); window._pSkipHash=false;
 });
@@ -524,6 +525,7 @@ function _renderHome(data){
   // جوال: «صفحتك انشافت» تنزل تحت (بعد ارفعني)
   try{ if(window.innerWidth<=768){ var _sh=pg.querySelector(':scope > .pa-share'), _sc=document.getElementById('ph-sharecard'); if(_sh&&_sc){ var _gw=document.createElement('div'); _gw.className='pa-grow'; _gw.innerHTML='<b class="pa-gh">كبّر حضورك</b><div class="pa-gc"></div>'; _sc.parentNode.insertBefore(_gw,_sc); var _gc=_gw.querySelector('.pa-gc'); _gc.appendChild(_sc); _gc.appendChild(_sh); } } }catch(e){}
   _paExtras();
+  try{ if(window.SubC)SubC.homeCard(); else setTimeout(function(){ if(window.SubC)SubC.homeCard(); },500); }catch(e){}
 }
 // سطر فرصة مختصر (الرئيسية)
 function _paRow(r,match){
@@ -2435,6 +2437,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var saved=sessionStorage.getItem('mnq_prov_page');
   // رابط مباشر لقسم (مثل #saai من صفحة السداد) يتقدّم على آخر قسم محفوظ
   var _h=(location.hash||'').replace('#','');
+  if(/^sub\/\d+$/.test(_h)){ window._subOpen=parseInt(_h.split('/')[1]); _h='sub'; }
   var pg=(_h&&_pages[_h])?_h:((saved&&_pages[saved])?saved:'home');
   gotoPage(pg);
 });
@@ -2670,6 +2673,7 @@ var _NF_I={
 function _nfKind(t){
   t=String(t||'');
   if(t==='verify_email')return {g:'system',i:'q',c:'#b45309',b:'#fef3c7'};
+  if(t==='sub')return {g:'projects',i:'hand',c:'#6d28d9',b:'#ede9fe'};
   if(t==='accept_ask')return {g:'offers',i:'hand',c:'#b45309',b:'#fef3c7'};
   if(t==='bid_rejected')return {g:'offers',i:'x',c:'#b91c1c',b:'#fee2e2'};
   if(t==='bid_accepted'||t==='completed')return {g:t==='completed'?'projects':'offers',i:'check',c:'#15803d',b:'#dcfce7'};
@@ -2740,6 +2744,7 @@ function _nfOpenP(id){
   if(t==='verify_email'){ try{_vbShow();}catch(e){} return; }
   if(t==='message'||t==='admin_message'){ gotoPage('chat'); return; }
   if(t==='saai'){ gotoPage('saai'); return; }
+  if(t==='sub'){ window._subOpen=n.ref_id||0; if(_curPage==='sub'&&window.SubC){ if(n.ref_id)SubC.open(n.ref_id); } else gotoPage('sub'); return; }
   if(t==='review'||t==='review_reply'){ gotoPage('reviews'); return; }
   if(k==='offers'||t==='accept_ask'||t==='pause'||t==='pause_chosen'||t==='req_updated'){ gotoPage('works'); return; }
   if(n.ref_id&&(t==='new_request'||t==='request'||t==='new_question'||t==='question_answered')&&typeof _viewProj==='function'){ _viewProj(n.ref_id); return; }

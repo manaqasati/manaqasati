@@ -188,7 +188,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/sub.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -2097,6 +2097,7 @@ async function notify(userId, title, body, type, refId, opts) {
     const url = opts.url || (() => {
       if (!type) return '/';
       if (type === 'becomeprov') return '/dashboard-client.html#becomeprov';
+      if (type === 'sub') return '/dashboard-provider.html#sub' + (refId ? '/' + refId : '');
       if (type === 'pause' || type === 'pause_chosen') return '/dashboard-provider.html#bids';
       if (type === 'pause_ask' || type === 'req_dup') return '/dashboard-client.html#detail/' + refId;
       if (type === 'exec_draft') return '/new.html?exec=' + refId;
@@ -3129,6 +3130,10 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS magic_expires TIMESTAMP`);
     await _mig(`CREATE INDEX IF NOT EXISTS idx_users_magic ON users(magic_token)`);
     await _mig(`UPDATE users SET magic_token=NULL, magic_expires=NULL WHERE magic_token IS NOT NULL`);
+    await _mig(`CREATE TABLE IF NOT EXISTS sub_requests (id SERIAL PRIMARY KEY, provider_id INTEGER NOT NULL, category VARCHAR(100) NOT NULL, city VARCHAR(100), district VARCHAR(100), description TEXT NOT NULL, start_text VARCHAR(80), budget INTEGER, attachments JSONB, partners_first BOOLEAN DEFAULT TRUE, status VARCHAR(12) DEFAULT 'open', awarded_offer_id INTEGER, notified_all BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW(), closed_at TIMESTAMP)`);
+    await _mig(`CREATE TABLE IF NOT EXISTS sub_offers (id SERIAL PRIMARY KEY, sub_id INTEGER NOT NULL REFERENCES sub_requests(id) ON DELETE CASCADE, provider_id INTEGER NOT NULL, price INTEGER NOT NULL, days INTEGER, note TEXT, status VARCHAR(12) DEFAULT 'pending', fee_ok BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(sub_id, provider_id))`);
+    await _mig(`CREATE TABLE IF NOT EXISTS partners (owner_id INTEGER NOT NULL, partner_id INTEGER NOT NULL, created_at TIMESTAMP DEFAULT NOW(), PRIMARY KEY(owner_id, partner_id))`);
+    await _mig(`CREATE INDEX IF NOT EXISTS idx_sub_open ON sub_requests(status, created_at)`);
     await _mig(`CREATE TABLE IF NOT EXISTS admin_imp (token VARCHAR(64) PRIMARY KEY, user_id INTEGER NOT NULL, admin_id INTEGER, expires_at TIMESTAMP NOT NULL, used_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
     // موقع المشروع: الحي (عام) + الإحداثيات (للمزوّد المقبول فقط — حماية خصوصية العميل)
     await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS district TEXT`);
@@ -12114,6 +12119,158 @@ const _wsBeat = setInterval(() => {
 }, 30000);
 wss.on('close', () => clearInterval(_wsBeat));
 
+
+// ═══ 🤝 مقاول باطن + شركائي: المزوّدين يكمّلون بعض (يشوفه المزوّدين فقط — العملاء ما يشوفونه) ═══
+const SUB_PARTNER_HOURS = 2, SUB_MONTH_MAX = 10;
+const _subMatchSQL = `u.role='provider' AND u.is_active=TRUE AND u.id<>$3
+  AND (COALESCE(u.specialties, ARRAY[]::text[]) && ARRAY[$1]::text[] OR COALESCE(u.notify_categories, ARRAY[]::text[]) && ARRAY[$1]::text[])
+  AND (COALESCE(u.serves_all_cities,FALSE) OR $2::text IS NULL OR u.city = $2 OR $2 = ANY(COALESCE(u.service_cities,ARRAY[]::text[])))`;
+async function _subNotify(sub, partnersOnly){
+  try {
+    const own = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [sub.provider_id])).rows[0] || {};
+    const rows = (await pool.query(`SELECT u.id, EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$3 AND p.partner_id=u.id) AS is_p FROM users u WHERE ${_subMatchSQL}`, [sub.category, sub.city || null, sub.provider_id])).rows;
+    for (const u of rows) {
+      if (partnersOnly && !u.is_p) continue;
+      if (!partnersOnly && u.is_p && sub.partners_first) continue; // وصلهم من قبل
+      notify(u.id, '🤝 ' + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category, '«' + String(sub.description).slice(0, 70) + '»' + (sub.city ? ' · ' + sub.city : '') + ' — من ' + (own.nm || 'مقاول') + '. قدّم عرضك', 'sub', sub.id, { kind: 'sub_new', url: '/dashboard-provider.html#sub/' + sub.id }).catch(()=>{});
+    }
+  } catch(e){ console.error('sub-notify:', e.message); }
+}
+setInterval(async () => { try {
+  const L = (await pool.query(`UPDATE sub_requests SET notified_all=TRUE WHERE status='open' AND notified_all=FALSE AND created_at < NOW() - INTERVAL '${SUB_PARTNER_HOURS} hours' RETURNING *`)).rows;
+  for (const s of L) await _subNotify(s, false);
+} catch(e){ console.error('sub-job:', e.message); } }, 10 * 60 * 1000);
+function _subRow(r){ return { id: r.id, category: r.category, city: r.city, district: r.district, description: r.description, start_text: r.start_text, budget: r.budget, attachments: r.attachments || [], status: r.status, created_at: r.created_at, partners_first: r.partners_first }; }
+// نشر طلب
+app.post('/api/sub', auth, providerOnly, rateLimiter(20, 3600000), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const cat = _cleanTxt(b.category, 100), city = _cleanTxt(b.city, 100) || null, desc = _needTxt(b.description, 1500);
+    if (!cat) return res.status(400).json({ message: 'اختر التخصص اللي تحتاجه' });
+    if (desc.length < 10) return res.status(400).json({ message: 'اكتب وش الشغل بالتفصيل (10 أحرف على الأقل)' });
+    const n = (await pool.query("SELECT COUNT(*)::int c FROM sub_requests WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '30 days'", [req.user.id])).rows[0].c;
+    if (n >= SUB_MONTH_MAX) return res.status(429).json({ message: 'وصلت الحد: ' + SUB_MONTH_MAX + ' طلبات في الشهر' });
+    const atts = [];
+    for (const a of (Array.isArray(b.attachments) ? b.attachments.slice(0, 4) : [])) {
+      try { if (a && typeof a.data === 'string' && /^data:(image\/|application\/pdf)/.test(a.data)) { const u = await uploadToCloud(a.data, 'manaqasa/sub', a.name); if (u && /^https?:/.test(u)) atts.push({ url: u, name: _cleanTxt(a.name, 80) || 'مرفق' }); } } catch(e){}
+    }
+    const budget = parseInt(String(b.budget || '').replace(/[^\d]/g, '')) || null;
+    const pf = b.partners_first !== false;
+    const hasP = (await pool.query('SELECT 1 FROM partners WHERE owner_id=$1 LIMIT 1', [req.user.id])).rows.length > 0;
+    const r = (await pool.query(`INSERT INTO sub_requests (provider_id, category, city, district, description, start_text, budget, attachments, partners_first, notified_all) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+      [req.user.id, cat, city, _cleanTxt(b.district, 100) || null, desc, _cleanTxt(b.start_text, 80) || null, budget && budget < 1e9 ? budget : null, JSON.stringify(atts), pf && hasP, !(pf && hasP)])).rows[0];
+    _subNotify(r, r.partners_first);
+    res.json({ ok: true, id: r.id, partners_first: r.partners_first });
+  } catch(e) { console.error('sub post:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// طلباتي + الطلبات اللي تناسبني + شركائي (صفحة وحدة)
+app.get('/api/sub/hub', auth, providerOnly, async (req, res) => {
+  try {
+    const me = req.user.id;
+    const mine = (await pool.query(`SELECT s.*, (SELECT COUNT(*)::int FROM sub_offers o WHERE o.sub_id=s.id) AS offers FROM sub_requests s WHERE s.provider_id=$1 ORDER BY s.created_at DESC LIMIT 30`, [me])).rows
+      .map(r => Object.assign(_subRow(r), { offers: r.offers }));
+    const u = (await pool.query('SELECT specialties, notify_categories, city, service_cities, serves_all_cities FROM users WHERE id=$1', [me])).rows[0] || {};
+    const cats = [...new Set([].concat(u.specialties || [], u.notify_categories || []))];
+    const feed = (await pool.query(`SELECT s.*, COALESCE(NULLIF(o.business_name,''),o.name) AS owner_name, o.profile_image AS owner_image,
+        COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=o.id),0) AS owner_rating,
+        (SELECT COUNT(*)::int FROM bids b WHERE b.provider_id=o.id AND b.status='accepted') AS owner_done,
+        EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=s.provider_id AND p.partner_id=$1) AS from_partner,
+        (SELECT row_to_json(x) FROM (SELECT id, price, days, status FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) x) AS my_offer,
+        (SELECT COUNT(*)::int FROM sub_offers WHERE sub_id=s.id) AS offers
+      FROM sub_requests s JOIN users o ON o.id=s.provider_id
+      WHERE s.provider_id<>$1 AND (EXISTS(SELECT 1 FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) OR (s.status='open' AND s.category = ANY($2::text[])
+        AND ($5::boolean OR s.city IS NULL OR s.city=$3 OR s.city = ANY($4::text[]))
+        AND (NOT s.partners_first OR s.created_at < NOW() - INTERVAL '${SUB_PARTNER_HOURS} hours' OR EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=s.provider_id AND p.partner_id=$1))))
+      ORDER BY (s.status='open') DESC, s.created_at DESC LIMIT 40`, [me, cats, u.city || null, u.service_cities || [], !!u.serves_all_cities])).rows
+      .map(r => Object.assign(_subRow(r), { owner_name: r.owner_name, owner_image: r.owner_image, owner_rating: r.owner_rating, owner_done: r.owner_done, from_partner: r.from_partner, my_offer: r.my_offer, offers: r.offers }));
+    const partners = (await pool.query(`SELECT u.id, COALESCE(NULLIF(u.business_name,''),u.name) AS name, u.specialties, u.city, u.profile_image, u.phone,
+        COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS rating
+      FROM partners p JOIN users u ON u.id=p.partner_id WHERE p.owner_id=$1 ORDER BY p.created_at DESC`, [me])).rows;
+    res.json({ mine, feed, partners, month_left: Math.max(0, SUB_MONTH_MAX - mine.filter(x => Date.now() - new Date(x.created_at) < 30 * 864e5).length) });
+  } catch(e) { console.error('sub hub:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// تفاصيل طلب: صاحبه يشوف العروض بأرقامهم، والمزوّد يشوف رقم صاحب الطلب بعد ما يقدّم
+app.get('/api/sub/:id', auth, providerOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), me = req.user.id;
+    const s = (await pool.query(`SELECT s.*, COALESCE(NULLIF(o.business_name,''),o.name) AS owner_name, o.phone AS owner_phone, o.profile_image AS owner_image FROM sub_requests s JOIN users o ON o.id=s.provider_id WHERE s.id=$1`, [id])).rows[0];
+    if (!s) return res.status(404).json({ message: 'الطلب غير موجود' });
+    const isOwner = String(s.provider_id) === String(me) || req.user.role === 'admin';
+    const out = Object.assign(_subRow(s), { owner_name: s.owner_name, owner_image: s.owner_image, is_owner: isOwner });
+    if (isOwner) {
+      out.offers = (await pool.query(`SELECT o.id, o.provider_id, o.price, o.days, o.note, o.status, o.created_at, COALESCE(NULLIF(u.business_name,''),u.name) AS name, u.phone, u.city, u.profile_image,
+          COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS rating, (SELECT COUNT(*)::int FROM bids b WHERE b.provider_id=u.id AND b.status='accepted') AS done,
+          EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$2 AND p.partner_id=u.id) AS is_partner
+        FROM sub_offers o JOIN users u ON u.id=o.provider_id WHERE o.sub_id=$1 ORDER BY (o.status='accepted') DESC, is_partner DESC, o.price ASC`, [id, s.provider_id])).rows;
+    } else {
+      const my = (await pool.query('SELECT id, price, days, note, status FROM sub_offers WHERE sub_id=$1 AND provider_id=$2', [id, me])).rows[0] || null;
+      if (!my && s.status !== 'open') return res.status(404).json({ message: 'الطلب مغلق' });
+      out.my_offer = my; if (my) out.owner_phone = s.owner_phone;
+    }
+    res.json(out);
+  } catch(e) { console.error('sub get:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/sub/:id/offers', auth, providerOnly, rateLimiter(30, 3600000), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), me = req.user.id, b = req.body || {};
+    const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
+    if (!s || s.status !== 'open') return res.status(400).json({ message: 'الطلب مغلق' });
+    if (String(s.provider_id) === String(me)) return res.status(400).json({ message: 'هذا طلبك' });
+    const price = parseInt(String(b.price || '').replace(/[^\d]/g, '')), days = parseInt(b.days) || null;
+    if (!price || price < 50 || price > 1e9) return res.status(400).json({ message: 'اكتب سعرك (50 ريال أو أكثر)' });
+    if (!b.fee_ok) return res.status(400).json({ message: 'لازم توافق على عمولة المنصة 3%' });
+    const note = _needTxt(b.note, 1000);
+    const ex = (await pool.query('SELECT id FROM sub_offers WHERE sub_id=$1 AND provider_id=$2', [id, me])).rows[0];
+    await pool.query(`INSERT INTO sub_offers (sub_id, provider_id, price, days, note, fee_ok) VALUES ($1,$2,$3,$4,$5,TRUE) ON CONFLICT (sub_id, provider_id) DO UPDATE SET price=$3, days=$4, note=$5, created_at=NOW()`, [id, me, price, days, note || null]);
+    const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [me])).rows[0].nm;
+    notify(s.provider_id, ex ? '✏️ تحديث عرض على طلبك' : '🤝 عرض جديد على طلبك', (nm || 'مزوّد') + ' — ' + price.toLocaleString('en-US') + ' ر.س على «' + String(s.description).slice(0, 50) + '»', 'sub', id, { kind: 'sub_offer', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+    const ph = (await pool.query('SELECT phone FROM users WHERE id=$1', [s.provider_id])).rows[0];
+    res.json({ ok: true, owner_phone: ph && ph.phone });
+  } catch(e) { console.error('sub offer:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/sub/:id/accept', auth, providerOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), oid = parseInt(req.body && req.body.offer_id);
+    const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
+    if (!s || String(s.provider_id) !== String(req.user.id)) return res.status(403).json({ message: 'ليس طلبك' });
+    if (s.status !== 'open') return res.status(400).json({ message: 'الطلب مغلق' });
+    const o = (await pool.query('SELECT * FROM sub_offers WHERE id=$1 AND sub_id=$2', [oid, id])).rows[0];
+    if (!o) return res.status(404).json({ message: 'العرض غير موجود' });
+    await pool.query("UPDATE sub_offers SET status=CASE WHEN id=$1 THEN 'accepted' ELSE 'rejected' END WHERE sub_id=$2", [oid, id]);
+    await pool.query("UPDATE sub_requests SET status='awarded', awarded_offer_id=$1, closed_at=NOW() WHERE id=$2", [oid, id]);
+    const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [req.user.id])).rows[0].nm;
+    notify(o.provider_id, '🎉 ' + (nm || 'المقاول') + ' اعتمد عرضك', 'على «' + String(s.description).slice(0, 60) + '» — تواصلوا واتفقوا على التفاصيل. عمولة المنصة 3% عند الاتفاق', 'sub', id, { kind: 'sub_won', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+    const others = (await pool.query("SELECT provider_id FROM sub_offers WHERE sub_id=$1 AND id<>$2", [id, oid])).rows;
+    for (const x of others) notify(x.provider_id, 'ℹ️ طلب المقاول اكتمل', 'اختار عرض ثاني على «' + String(s.description).slice(0, 50) + '» — شكراً لعرضك', 'sub', id, { url: '/dashboard-provider.html#sub' }).catch(()=>{});
+    res.json({ ok: true, provider_id: o.provider_id });
+  } catch(e) { console.error('sub accept:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/sub/:id/close', auth, providerOnly, async (req, res) => {
+  try {
+    const r = await pool.query("UPDATE sub_requests SET status='closed', closed_at=NOW() WHERE id=$1 AND provider_id=$2 AND status='open' RETURNING id", [parseInt(req.params.id), req.user.id]);
+    if (!r.rows.length) return res.status(400).json({ message: 'تعذّر الإغلاق' });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// شركائي: يضيف مزوّد اشتغل معه (عرض على طلب له) — أو يشيله
+app.post('/api/partners', auth, providerOnly, async (req, res) => {
+  try {
+    const pid = parseInt(req.body && req.body.id), me = req.user.id;
+    if (!pid || pid === me) return res.status(400).json({ message: 'غير صالح' });
+    const ok = (await pool.query(`SELECT 1 FROM sub_offers o JOIN sub_requests s ON s.id=o.sub_id WHERE s.provider_id=$1 AND o.provider_id=$2 LIMIT 1`, [me, pid])).rows.length;
+    if (!ok) return res.status(403).json({ message: 'تقدر تضيف المزوّدين اللي قدّموا على طلباتك' });
+    const n = (await pool.query('SELECT COUNT(*)::int c FROM partners WHERE owner_id=$1', [me])).rows[0].c;
+    if (n >= 50) return res.status(400).json({ message: 'الحد 50 شريك' });
+    const ins = await pool.query('INSERT INTO partners (owner_id, partner_id) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING owner_id', [me, pid]);
+    if (ins.rows.length) { const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [me])).rows[0].nm;
+      notify(pid, '⭐ صرت من شركاء ' + (nm || 'مقاول'), 'بتوصلك طلباته قبل غيرك بساعتين', 'sub', null, { url: '/dashboard-provider.html#sub' }).catch(()=>{}); }
+    res.json({ ok: true });
+  } catch(e) { console.error('partners add:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.delete('/api/partners/:id', auth, providerOnly, async (req, res) => {
+  try { await pool.query('DELETE FROM partners WHERE owner_id=$1 AND partner_id=$2', [req.user.id, parseInt(req.params.id)]); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 // ═══ START ═══
 // ═══ catch-all 404 ═══
 app.get('/404.html', (req, res) => res.sendFile(__dirname + '/404.html'));
