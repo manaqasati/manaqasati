@@ -163,7 +163,7 @@ function showPage(pg,el){
   if(pg==='reviews')loadReviews();
   if(pg==='questions')loadQuestions();
   if(pg==='reports')loadReports();
-  if(!window._skipHash){var _cur=(location.hash||'').replace('#','').split('?')[0];if(_cur!==pg){history.replaceState(null,'','#'+pg);}}
+  if(!window._skipHash){var _cur=(location.hash||'').replace('#','').split('?')[0];if(_cur!==pg){history.pushState({pg:pg},'','#'+pg);}}
 }
 function logout(){
   try{
@@ -3095,6 +3095,7 @@ function restoreAdminHash(){
 loadMe();
 restoreAdminHash();
 window.addEventListener('hashchange',restoreAdminHash);
+window.addEventListener('popstate',function(){ var h=(location.hash||'').replace('#','').split('?')[0]; var cur=(document.querySelector('.page.on')||{}).id; if('page-'+(h||'dashboard')!==cur) restoreAdminHash(); });
 
 // ═══ إدارة العروض (الإدارة) ═══
 function fmtN(n){if(n==null||n==='')return'';return Number(n).toLocaleString('en-US');}
@@ -5588,7 +5589,7 @@ function _refreshHealth(btn){
 // بطاقة «حماية المتصفح (CSP)» — وضع المراقبة: تعرض أي مصدر غير متوقع حاولت صفحة تحمّله
 function _loadCsp(){
   var box=document.getElementById('csp-card'); if(!box)return;
-  fetch(API+'/api/admin/csp-reports',hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
+  fetch(API+'/api/admin/csp-reports'+(window._cspAll?'?all=1':''),hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){
     if(!d){box.innerHTML='';return;}
     var DN={'script-src-elem':'سكربت','script-src':'سكربت','script-src-attr':'سكربت داخلي','style-src-elem':'تنسيق','style-src':'تنسيق','img-src':'صورة','connect-src':'اتصال','font-src':'خط','frame-src':'إطار','media-src':'صوت/فيديو','worker-src':'عامل خلفي','form-action':'نموذج','frame-ancestors':'تضمين الموقع','base-uri':'رابط أساسي','object-src':'كائن'};
     var rows=(d.rows||[]).slice(0,30).map(function(r){
@@ -5602,6 +5603,9 @@ function _loadCsp(){
       +'<div style="font-size:12.5px;color:var(--muted);line-height:1.8;margin-bottom:10px">المتصفح يبلّغنا إذا صفحة حاولت تحمّل شي من مصدر غير معروف (بدون ما يمنعه). إذا ظهر مصدر تعرفه (أداة تحليل أضفتها مثلاً) نضيفه للقائمة المسموحة. وإذا ظهر مصدر غريب، هذا مؤشر محاولة اختراق.</div>'
       +(ok?'<div style="color:#16a34a;font-weight:800;font-size:13px">✓ ما فيه أي تنبيه</div>'
         :'<div style="font-size:12.5px;margin-bottom:8px"><b>'+d.kinds+'</b> نوع · <b>'+d.total+'</b> تنبيه</div><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="color:var(--muted);font-size:11.5px;text-align:right"><th style="padding:6px">النوع</th><th style="padding:6px">المصدر</th><th style="padding:6px">الصفحة</th><th style="padding:6px">مرات</th><th style="padding:6px">آخر مرة</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+        +'')
+      +(d.hidden?'<div style="font-size:12px;color:var(--muted);margin-top:8px">'+(d.all?'تعرض الكل':'مخفي '+d.hidden+' تنبيه من برامج حماية وإضافات متصفح الزوار (مو من موقعك)')+' · <a href="#" onclick="event.preventDefault();window._cspAll=!window._cspAll;_loadCsp()">'+(d.all?'إخفاء تنبيهات الإضافات':'عرضها')+'</a></div>':'')
+      +(ok?'':''
         +'<button onclick="_clearCsp()" style="margin-top:10px;background:#fff;border:1px solid var(--border);border-radius:9px;padding:7px 14px;font-weight:700;font-size:12px;cursor:pointer;font-family:Tajawal">مسح التنبيهات</button>')
       +'</div>';
   }).catch(function(){});

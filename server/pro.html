@@ -566,6 +566,8 @@ function _smartBack(){
   var same = ref && ref.indexOf(location.origin)===0 && ref!==location.href;
   if(same && history.length>1){ history.back(); return; }
   // بديل نادر: لا تاريخ صالح — استبدل الصفحة (replace يمنع تراكم التاريخ)
+  // جا من رابط مباشر (واتساب/إشعار) وهو مسجّل دخول → لوحته بدل الرئيسية
+  if(!same){ try{ var _u=JSON.parse(localStorage.getItem('user')||'null'); if(_u&&localStorage.getItem('token')){ var _m=localStorage.getItem('activeMode')||_u.role; location.replace(_u.role==='admin'?'/dashboard-admin.html':((_m==='provider'&&(_u.role==='provider'||_u.can_provide))?'/dashboard-provider.html':'/dashboard-client.html')); return; } }catch(e){} }
   location.replace(same?ref:'/');
 }
 // اضبط نص الزر حسب مصدر الزيارة
@@ -574,10 +576,10 @@ function _smartBack(){
   var ref=document.referrer||'';
   if(ref.indexOf(location.origin)===0){
     if(/\/project\//.test(ref)) lbl.textContent='المشروع';
-    else if(/\/dashboard-client/.test(ref)) lbl.textContent='لوحتي';
+    else if(/\/dashboard-/.test(ref)) lbl.textContent='لوحتي';
     else if(/\/chat/.test(ref)) lbl.textContent='المحادثة';
     else lbl.textContent='رجوع';
-  } else lbl.textContent='الرئيسية';
+  } else { var _li=false; try{ _li=!!(localStorage.getItem('token')&&JSON.parse(localStorage.getItem('user')||'null')); }catch(e){} lbl.textContent=_li?'لوحتي':'الرئيسية'; }
 })();
 </script>
 <script>

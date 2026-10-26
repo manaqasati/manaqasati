@@ -1737,6 +1737,8 @@ function _smartBack(){
   var ref=document.referrer||'';
   var same = ref && ref.indexOf(location.origin)===0 && ref!==location.href;
   if(same && history.length>1){ history.back(); return; }
+  // جا من رابط مباشر (واتساب/إشعار) وهو مسجّل دخول → لوحته بدل الرئيسية
+  if(!same){ try{ var _u=JSON.parse(localStorage.getItem('user')||'null'); if(_u&&localStorage.getItem('token')){ var _m=localStorage.getItem('activeMode')||_u.role; location.replace(_u.role==='admin'?'/dashboard-admin.html':((_m==='provider'&&(_u.role==='provider'||_u.can_provide))?'/dashboard-provider.html':'/dashboard-client.html')); return; } }catch(e){} }
   location.replace(same?ref:'/');
 }
 (function(){
@@ -1748,7 +1750,7 @@ function _smartBack(){
     else if(/\/chat/.test(ref)) lbl.textContent='المحادثة';
     else if(/\/dalil\//.test(ref)) lbl.textContent='الدليل';
     else lbl.textContent='رجوع';
-  } else lbl.textContent='الرئيسية';
+  } else { var _li=false; try{ _li=!!(localStorage.getItem('token')&&JSON.parse(localStorage.getItem('user')||'null')); }catch(e){} lbl.textContent=_li?'لوحتي':'الرئيسية'; }
 })();
 
 // ── تنسيق النص المعروض (آمن — يهرّب أولاً) ──

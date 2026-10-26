@@ -203,6 +203,9 @@ app.use((req, res, next) => {
 // Railway يمرّر الطلبات عبر بروكسي — بدون هذا كل الزوار لهم نفس الـ IP وحد المحاولات يصير مشترك للجميع
 app.set('trust proxy', 1);
 // استقبال تقارير CSP (عامة، صغيرة، محدودة المعدل) — تُجمّع حسب (القاعدة، المصدر، الصفحة) بدون الاستعلامات
+// تنبيهات CSP مصدرها جهاز الزائر نفسه (برامج حماية، إضافات متصفح، ترجمة) — مو من الموقع ولا هجوم
+const _CSP_NOISE_SQL = `(blocked ~* '(kaspersky-labs|kis\\.v2\\.scr|scite\\.ai|grammarly|lastpass|dashlane|bitwarden|1password|honey\\.io|joinhoney|avast|avg\\.com|norton|bitdefender|eset\\.com|adguard|ghostery|dark-?reader|loom\\.com|workers\\.dev|translate\\.goog)' OR (blocked = 'data' AND directive LIKE 'style-src%'))`;
+const _CSP_NOISE_RE = /(kaspersky-labs|kis\.v2\.scr|scite\.ai|grammarly|lastpass|dashlane|bitwarden|1password|honey\.io|joinhoney|avast|avg\.com|norton|bitdefender|eset\.com|adguard|ghostery|dark-?reader|loom\.com|workers\.dev|translate\.goog)/i;
 app.post('/api/csp-report', rateLimiter(40, 60000), express.json({ type: ['application/csp-report','application/reports+json','application/json'], limit: '16kb' }), async (req, res) => {
   res.status(204).end();
   try {
@@ -218,6 +221,7 @@ app.post('/api/csp-report', rateLimiter(40, 60000), express.json({ type: ['appli
       if (dir.startsWith('frame-src') && /^(null|about|)$/i.test(blocked)) continue; // إطارات فاضية تسويها سكربتات التتبّع — ما تحمّل شي
       if (dir.startsWith('script-src') && /^(wasm-)?eval$/i.test(blocked)) continue; // eval من سكربتات التتبّع (GTM/البكسلات) — مو من كود الموقع
       if (/^https:\/\/(www|translate)\.(gstatic|googleapis)\.com\/_\/translate_http/i.test(blocked)) continue; // ترجمة Google اللي يشغّلها الزائر بنفسه
+      if (_CSP_NOISE_RE.test(blocked) || (blocked === 'data' && dir.startsWith('style-src'))) continue; // من جهاز الزائر
       let page = strip(r['document-uri'] || r.documentURL || ''); try { page = new URL(page).pathname.slice(0, 120); } catch(e) {}
       const sample = String(r['script-sample'] || r.sample || (r['source-file'] || r.sourceFile ? 'من: ' + strip(r['source-file'] || r.sourceFile) : '')).slice(0, 80);
       const up = await pool.query(`UPDATE csp_reports SET n=n+1, last_at=NOW() WHERE directive=$1 AND blocked=$2 AND page=$3`, [dir, blocked, page]);
@@ -3055,6 +3059,7 @@ async function setupDatabase() {
     await _mig('ALTER TABLE bids ADD COLUMN IF NOT EXISTS ask_nudged BOOLEAN DEFAULT FALSE');
     // زيارات صفحة المشروع: الإجمالي + زوّار مختلفين + كم منهم مزوّدين (بدون صاحب المشروع والإدارة والروبوتات)
     await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS views_total INTEGER DEFAULT 0');
+    try { await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS budget_min DECIMAL(10,2)'); } catch(e){}
     await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS views_unique INTEGER DEFAULT 0');
     await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS views_prov INTEGER DEFAULT 0');
     await _mig(`CREATE TABLE IF NOT EXISTS project_visits (request_id INTEGER NOT NULL, vkey VARCHAR(40) NOT NULL, is_prov BOOLEAN DEFAULT FALSE, first_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (request_id, vkey))`);
@@ -10902,9 +10907,11 @@ app.post('/api/admin/offsite-backups/run', requirePermission('settings.manage'),
 });
 app.get('/api/admin/csp-reports', requirePermission('settings.manage'), async (req, res) => {
   try {
-    const r = await pool.query(`SELECT directive, blocked, page, sample, n, first_at, last_at FROM csp_reports ORDER BY last_at DESC LIMIT 100`);
-    const t = (await pool.query(`SELECT COUNT(*)::int AS kinds, COALESCE(SUM(n),0)::int AS total FROM csp_reports`)).rows[0];
-    res.json({ mode: _CSP_RO ? 'report-only' : 'off', ...t, rows: r.rows });
+    const all = req.query.all === '1', W = all ? '' : `WHERE NOT ${_CSP_NOISE_SQL}`;
+    const r = await pool.query(`SELECT directive, blocked, page, sample, n, first_at, last_at FROM csp_reports ${W} ORDER BY last_at DESC LIMIT 100`);
+    const t = (await pool.query(`SELECT COUNT(*)::int AS kinds, COALESCE(SUM(n),0)::int AS total FROM csp_reports ${W}`)).rows[0];
+    const hid = (await pool.query(`SELECT COUNT(*)::int AS n FROM csp_reports WHERE ${_CSP_NOISE_SQL}`)).rows[0].n;
+    res.json({ mode: _CSP_RO ? 'report-only' : 'off', ...t, hidden: hid, all, rows: r.rows });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.delete('/api/admin/csp-reports', requirePermission('settings.manage'), async (req, res) => {
