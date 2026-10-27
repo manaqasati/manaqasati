@@ -3145,6 +3145,9 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS nudge_noof BOOLEAN DEFAULT FALSE`);
     // مراجعة طلبات مقاول باطن قبل النشر (مثل مشاريع العملاء)
+    for (const c of ['work_state VARCHAR(12)','started_at TIMESTAMP','done_at TIMESTAMP','fu_next TIMESTAMP'])
+      { try { await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS ${c}`); } catch(e){} }
+    try { await _mig(`ALTER TABLE sub_offers ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); await _mig(`ALTER TABLE sub_offers ADD COLUMN IF NOT EXISTS photos JSONB`); } catch(e){}
     for (const c of ['submitted_at TIMESTAMP','reviewed_at TIMESTAMP','review_note TEXT','approve_note TEXT','reject_kind VARCHAR(20)','pending_desc TEXT','pending_at TIMESTAMP','dup_of INTEGER','notify_scope VARCHAR(10)','notify_cities TEXT[]'])
       { try { await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS ${c}`); } catch(e){} }
     await _mig(`ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS sub_id INTEGER`);
@@ -12208,6 +12211,9 @@ setInterval(async () => { try {
   const SR = (await pool.query(`UPDATE saai_ledger SET sub_reminded=TRUE WHERE source='sub' AND status='pending' AND sub_reminded=FALSE AND COALESCE(due_from,created_at) < NOW() - INTERVAL '7 days' RETURNING id, provider_id, saai_amount, self_title`)).rows;
   for (const x of SR) notify(x.provider_id, '💰 تذكير بالسعي', Math.round(x.saai_amount) + ' ر.س على «' + String(x.self_title || '').replace('🤝 مقاول باطن: ', '').slice(0, 50) + '» — سدّد من محفظة السعي، أو بلّغ لو ما تم الاتفاق', 'saai', null, { url: '/dashboard-provider.html#saai' }).catch(()=>{});
   for (const x of N0) notify(x.provider_id, '💡 ما وصلك عرض للحين', 'على «' + String(x.description).slice(0, 50) + '» — تعرف فني؟ أرسل له رابط الطلب من صفحة الطلب، يسجّل مجاناً ويقدّم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
+  // متابعة الشغل بعد الاعتماد: «بدأ الشغل؟» بعد 3 أيام، و«خلص؟» بعد أسبوع من البدء — للطرفين، مرة لكل مرحلة
+  const FU = (await pool.query(`UPDATE sub_requests s SET fu_next=NULL FROM sub_offers o WHERE o.id=s.awarded_offer_id AND s.status='awarded' AND s.fu_next IS NOT NULL AND s.fu_next < NOW() AND COALESCE(s.work_state,'') <> 'done' RETURNING s.id, s.provider_id, s.description, s.work_state, o.provider_id AS sub_pid`)).rows;
+  for (const x of FU) for (const u of [x.provider_id, x.sub_pid]) notify(u, x.work_state === 'started' ? '🛠️ خلص الشغل؟' : '🛠️ بدأ الشغل؟', '«' + String(x.description).slice(0, 50) + '» — حدّث الحالة بضغطة', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
   const R = (await pool.query(`UPDATE sub_requests s SET rate_nudged=TRUE FROM sub_offers o WHERE o.id=s.awarded_offer_id AND s.status='awarded' AND s.rate_nudged=FALSE AND s.closed_at < NOW() - INTERVAL '3 days' RETURNING s.id, s.provider_id, s.description, o.provider_id AS sub_pid`)).rows;
   for (const x of R) for (const [u, o] of [[x.provider_id, x.sub_pid], [x.sub_pid, x.provider_id]]) {
     const done = (await pool.query('SELECT 1 FROM sub_ratings WHERE sub_id=$1 AND rater_id=$2', [x.id, u])).rows.length; if (done) continue;
@@ -12215,7 +12221,7 @@ setInterval(async () => { try {
   }
 } catch(e){ console.error('sub-job:', e.message); } }, 10 * 60 * 1000);
 const _subRateSQL = (col) => `(SELECT json_build_object('avg', ROUND(AVG(stars)::numeric,1), 'n', COUNT(*)) FROM sub_ratings WHERE rated_id=${col})`;
-function _subRow(r){ return { id: r.id, category: r.category, city: r.city, district: r.district, description: r.description, start_text: r.start_text, budget: r.budget, attachments: r.attachments || [], status: r.status, created_at: r.created_at, partners_first: r.partners_first, review_note: r.review_note || null, approve_note: r.approve_note || null, pending_desc: r.pending_desc || null, reject_kind: r.reject_kind || null, submitted_at: r.submitted_at || null }; }
+function _subRow(r){ return { id: r.id, category: r.category, city: r.city, district: r.district, description: r.description, start_text: r.start_text, budget: r.budget, attachments: r.attachments || [], status: r.status, created_at: r.created_at, partners_first: r.partners_first, review_note: r.review_note || null, approve_note: r.approve_note || null, pending_desc: r.pending_desc || null, reject_kind: r.reject_kind || null, submitted_at: r.submitted_at || null, work_state: r.work_state || null, started_at: r.started_at || null, done_at: r.done_at || null }; }
 // نشر طلب
 app.post('/api/sub', auth, providerOnly, rateLimiter(20, 3600000), async (req, res) => {
   try {
@@ -12252,7 +12258,7 @@ app.get('/api/sub/hub', auth, providerOnly, async (req, res) => {
         (SELECT COUNT(*)::int FROM bids b WHERE b.provider_id=o.id AND b.status='accepted') AS owner_done,
         ${_subRateSQL('o.id')} AS owner_srate,
         EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=s.provider_id AND p.partner_id=$1) AS from_partner,
-        (SELECT row_to_json(x) FROM (SELECT id, price, days, status FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) x) AS my_offer,
+        (SELECT row_to_json(x) FROM (SELECT id, price, days, status, seen_at FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) x) AS my_offer,
         (SELECT COUNT(*)::int FROM sub_offers WHERE sub_id=s.id) AS offers
       FROM sub_requests s JOIN users o ON o.id=s.provider_id
       WHERE s.provider_id<>$1 AND o.is_active=TRUE AND NOT EXISTS(SELECT 1 FROM user_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=s.provider_id) OR (b.blocker_id=s.provider_id AND b.blocked_id=$1)) AND (EXISTS(SELECT 1 FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) OR (s.status='open' AND s.category = ANY($2::text[])
@@ -12289,10 +12295,13 @@ app.get('/api/sub/:id', auth, providerOnly, async (req, res) => {
     if (isOwner) {
       out.offers = (await pool.query(`SELECT o.id, o.provider_id, o.price, o.days, o.note, o.status, o.created_at, COALESCE(NULLIF(u.business_name,''),u.name) AS name, u.phone, u.city, u.profile_image,
           COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS rating, (SELECT COUNT(*)::int FROM bids b WHERE b.provider_id=u.id AND b.status='accepted') AS done,
-          EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$2 AND p.partner_id=u.id) AS is_partner, ${_subRateSQL('u.id')} AS srate
+          EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$2 AND p.partner_id=u.id) AS is_partner, ${_subRateSQL('u.id')} AS srate,
+          (u.badge IN ('verified','موثق')) AS verified, COALESCE(o.photos,'[]'::jsonb) AS photos
         FROM sub_offers o JOIN users u ON u.id=o.provider_id WHERE o.sub_id=$1 ORDER BY (o.status='accepted') DESC, is_partner DESC, o.price ASC`, [id, s.provider_id])).rows;
+      // «👀 شاف عرضك»: أول ما يفتح صاحب الطلب التفاصيل (مو الإدارة)
+      if (String(s.provider_id) === String(me)) pool.query('UPDATE sub_offers SET seen_at=NOW() WHERE sub_id=$1 AND seen_at IS NULL', [id]).catch(()=>{});
     } else {
-      const my = (await pool.query('SELECT id, price, days, note, status FROM sub_offers WHERE sub_id=$1 AND provider_id=$2', [id, me])).rows[0] || null;
+      const my = (await pool.query("SELECT id, price, days, note, status, seen_at, COALESCE(photos,'[]'::jsonb) AS photos FROM sub_offers WHERE sub_id=$1 AND provider_id=$2", [id, me])).rows[0] || null;
       if (!my && s.status !== 'open') return res.status(404).json({ message: 'الطلب مغلق' });
       out.my_offer = my; if (my) out.owner_phone = s.owner_phone;
       out.owner_srate = (await pool.query(`SELECT ${_subRateSQL('$1')} AS r`, [s.provider_id])).rows[0].r;
@@ -12301,7 +12310,10 @@ app.get('/api/sub/:id', auth, providerOnly, async (req, res) => {
       const ao = (await pool.query('SELECT provider_id FROM sub_offers WHERE id=$1', [s.awarded_offer_id])).rows[0];
       const other = ao ? (String(me) === String(s.provider_id) ? ao.provider_id : (String(me) === String(ao.provider_id) ? s.provider_id : null)) : null;
       if (other) { const mr = (await pool.query('SELECT stars, comment FROM sub_ratings WHERE sub_id=$1 AND rater_id=$2', [id, me])).rows[0];
-        out.rate = { can: !mr, mine: mr || null, other_id: other }; }
+        out.rate = { can: !mr, mine: mr || null, other_id: other };
+        out.party = true; // طرف في الاتفاق → تطلع له بطاقة متابعة الشغل
+        if (ao && String(me) === String(ao.provider_id)) { const l = (await pool.query("SELECT id FROM saai_ledger WHERE sub_id=$1 AND provider_id=$2 AND status='pending'", [id, me])).rows[0]; out.saai_lid = l ? l.id : null; }
+        if (ao) out.peer_name = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [other])).rows[0].nm; }
     }
     res.json(out);
   } catch(e) { console.error('sub get:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -12318,8 +12330,15 @@ app.post('/api/sub/:id/offers', auth, providerOnly, rateLimiter(30, 3600000), as
     if (!price || price < 50 || price > 1e9) return res.status(400).json({ message: 'اكتب سعرك (50 ريال أو أكثر)' });
     if (!b.fee_ok) return res.status(400).json({ message: 'لازم توافق على عمولة المنصة 3%' });
     const note = _needTxt(b.note, 1000);
-    const ex = (await pool.query('SELECT id FROM sub_offers WHERE sub_id=$1 AND provider_id=$2', [id, me])).rows[0];
-    await pool.query(`INSERT INTO sub_offers (sub_id, provider_id, price, days, note, fee_ok) VALUES ($1,$2,$3,$4,$5,TRUE) ON CONFLICT (sub_id, provider_id) DO UPDATE SET price=$3, days=$4, note=$5, created_at=NOW()`, [id, me, price, days, note || null]);
+    const ex = (await pool.query("SELECT id, COALESCE(photos,'[]'::jsonb) AS photos FROM sub_offers WHERE sub_id=$1 AND provider_id=$2", [id, me])).rows[0];
+    // صور من أعمال سابقة (حد 3): يبقى اللي اختار يخليه + الجديد
+    let photos = ex ? (Array.isArray(ex.photos) ? ex.photos : []) : [];
+    if (Array.isArray(b.keep_photos)) photos = photos.filter(u => b.keep_photos.includes(u));
+    for (const d of (Array.isArray(b.photos) ? b.photos.slice(0, 3) : [])) {
+      if (photos.length >= 3) break;
+      try { if (typeof d === 'string' && /^data:image\//.test(d)) { const u = await uploadToCloud(d, 'manaqasa/sub-offers', 'work.jpg'); if (u && /^https?:/.test(u)) photos.push(u); } } catch(e){}
+    }
+    await pool.query(`INSERT INTO sub_offers (sub_id, provider_id, price, days, note, fee_ok, photos) VALUES ($1,$2,$3,$4,$5,TRUE,$6) ON CONFLICT (sub_id, provider_id) DO UPDATE SET price=$3, days=$4, note=$5, photos=$6, created_at=NOW(), seen_at=NULL`, [id, me, price, days, note || null, JSON.stringify(photos)]);
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [me])).rows[0].nm;
     notify(s.provider_id, ex ? '✏️ تحديث عرض على طلبك' : '🤝 عرض جديد على طلبك', (nm || 'مزوّد') + ' — ' + price.toLocaleString('en-US') + ' ر.س على «' + String(s.description).slice(0, 50) + '»', 'sub', id, { kind: 'sub_offer', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
     const ph = (await pool.query('SELECT phone FROM users WHERE id=$1', [s.provider_id])).rows[0];
@@ -12335,7 +12354,7 @@ app.post('/api/sub/:id/accept', auth, providerOnly, async (req, res) => {
     const o = (await pool.query('SELECT * FROM sub_offers WHERE id=$1 AND sub_id=$2', [oid, id])).rows[0];
     if (!o) return res.status(404).json({ message: 'العرض غير موجود' });
     await pool.query("UPDATE sub_offers SET status=CASE WHEN id=$1 THEN 'accepted' ELSE 'rejected' END WHERE sub_id=$2", [oid, id]);
-    await pool.query("UPDATE sub_requests SET status='awarded', awarded_offer_id=$1, closed_at=NOW() WHERE id=$2", [oid, id]);
+    await pool.query("UPDATE sub_requests SET status='awarded', awarded_offer_id=$1, closed_at=NOW(), work_state=NULL, started_at=NULL, done_at=NULL, fu_next=NOW() + INTERVAL '3 days' WHERE id=$2", [oid, id]);
     await _subSaai(s, o);
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [req.user.id])).rows[0].nm;
     notify(o.provider_id, '🎉 ' + (nm || 'المقاول') + ' اعتمد عرضك', 'على «' + String(s.description).slice(0, 60) + '» — تواصلوا واتفقوا. سعي المنصة 3% انضاف في محفظة السعي حقتك', 'sub', id, { kind: 'sub_won', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
@@ -12389,7 +12408,7 @@ app.post('/api/sub/:id/nodeal-answer', auth, providerOnly, async (req, res) => {
       await pool.query("UPDATE saai_ledger SET status='cancelled', defer_state='confirmed', client_answer='yes', decided_at=NOW() WHERE id=$1", [l.id]);
       await pool.query("UPDATE sub_offers SET status='rejected' WHERE id=$1", [s.awarded_offer_id]);
       await pool.query("UPDATE sub_offers SET status='pending' WHERE sub_id=$1 AND id<>$2 AND status='rejected'", [id, s.awarded_offer_id]);
-      await pool.query("UPDATE sub_requests SET status='open', awarded_offer_id=NULL, closed_at=NULL, created_at=NOW(), nudge_noof=TRUE WHERE id=$1", [id]);
+      await pool.query("UPDATE sub_requests SET status='open', awarded_offer_id=NULL, closed_at=NULL, created_at=NOW(), nudge_noof=TRUE, work_state=NULL, started_at=NULL, done_at=NULL, fu_next=NULL WHERE id=$1", [id]);
       notify(l.provider_id, 'ℹ️ المقاول أكّد إن ما تم الاتفاق', 'انلغى السعي على «' + String(s.description).slice(0, 50) + '»', 'sub', id, { url: '/dashboard-provider.html#saai' }).catch(()=>{});
     } else {
       await pool.query("UPDATE saai_ledger SET status='pending', defer_state='conflict', client_answer='no' WHERE id=$1", [l.id]);
@@ -12415,6 +12434,23 @@ app.get('/api/sub-count', auth, async (req, res) => {
           AND NOT EXISTS(SELECT 1 FROM sub_offers x WHERE x.sub_id=s.id AND x.provider_id=$1)) AS feed`, [me, u.seen, cats, u.city || null, u.service_cities || [], !!u.serves_all_cities])).rows[0];
     res.json({ n: r.msgs + r.offers + r.feed, msgs: r.msgs, offers: r.offers, feed: r.feed });
   } catch(e) { console.error('sub count:', e.message); res.json({ n: 0 }); }
+});
+// متابعة الشغل بعد الاعتماد (صاحب الطلب أو الفني المعتمد): بدأ / لسا / خلص
+app.post('/api/sub/:id/progress', auth, providerOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), me = req.user.id, st = String((req.body || {}).state || '');
+    if (!['started','later','done'].includes(st)) return res.status(400).json({ message: 'غير صالح' });
+    const s = (await pool.query("SELECT s.*, o.provider_id AS sub_pid FROM sub_requests s JOIN sub_offers o ON o.id=s.awarded_offer_id WHERE s.id=$1 AND s.status='awarded'", [id])).rows[0];
+    if (!s) return res.status(400).json({ message: 'الطلب ما اعتُمد فيه عرض' });
+    const other = String(me) === String(s.provider_id) ? s.sub_pid : (String(me) === String(s.sub_pid) ? s.provider_id : null);
+    if (!other) return res.status(403).json({ message: 'ليس طلبك' });
+    if (st === 'later') { await pool.query("UPDATE sub_requests SET fu_next=NOW() + INTERVAL '3 days' WHERE id=$1", [id]); return res.json({ ok: true }); }
+    if (st === 'started') await pool.query("UPDATE sub_requests SET work_state='started', started_at=COALESCE(started_at,NOW()), fu_next=NOW() + INTERVAL '7 days' WHERE id=$1", [id]);
+    else await pool.query("UPDATE sub_requests SET work_state='done', started_at=COALESCE(started_at,NOW()), done_at=NOW(), fu_next=NULL WHERE id=$1", [id]);
+    const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [me])).rows[0].nm;
+    notify(other, st === 'done' ? '✅ ' + (nm || 'الطرف الثاني') + ': خلص الشغل' : '🛠️ ' + (nm || 'الطرف الثاني') + ': بدأ الشغل', '«' + String(s.description).slice(0, 50) + '»' + (st === 'done' ? ' — قيّم تعاملك' : ''), 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e) { console.error('sub progress:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // بلاغ على طلب أو مزوّد (يوصل صفحة البلاغات في الإدارة)
 app.post('/api/sub/:id/report', auth, providerOnly, rateLimiter(10, 600000), async (req, res) => {
