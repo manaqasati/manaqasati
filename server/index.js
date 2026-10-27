@@ -3144,6 +3144,9 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS share_key VARCHAR(24)`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS nudge_noof BOOLEAN DEFAULT FALSE`);
+    // مراجعة طلبات مقاول باطن قبل النشر (مثل مشاريع العملاء)
+    for (const c of ['submitted_at TIMESTAMP','reviewed_at TIMESTAMP','review_note TEXT','approve_note TEXT','reject_kind VARCHAR(20)','pending_desc TEXT','pending_at TIMESTAMP','dup_of INTEGER','notify_scope VARCHAR(10)','notify_cities TEXT[]'])
+      { try { await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS ${c}`); } catch(e){} }
     await _mig(`ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS sub_id INTEGER`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_seen_at TIMESTAMP`);
     await _mig(`ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS sub_reminded BOOLEAN DEFAULT FALSE`);
@@ -12168,10 +12171,23 @@ const SUB_PARTNER_HOURS = 2, SUB_MONTH_MAX = 10, SUB_EXPIRE_DAYS = 30;
 const _subMatchSQL = `u.role='provider' AND u.is_active=TRUE AND u.id<>$3
   AND (COALESCE(u.specialties, ARRAY[]::text[]) && ARRAY[$1]::text[] OR COALESCE(u.notify_categories, ARRAY[]::text[]) && ARRAY[$1]::text[])
   AND (COALESCE(u.serves_all_cities,FALSE) OR $2::text IS NULL OR (u.city IS NULL AND (u.service_cities IS NULL OR cardinality(u.service_cities)=0)) OR u.city = $2 OR $2 = ANY(COALESCE(u.service_cities,ARRAY[]::text[])))`;
+// المزوّدين اللي يوصلهم الطلب حسب اختيار الإدارة: مدينته (الافتراضي) / المنطقة / مدن محددة / كل المملكة — والشركاء دايم
+async function _subAudRows(sub, scope, cities){
+  const a = _audOf({ city: sub.city }, scope || sub.notify_scope || 'city', cities || sub.notify_cities || null, false);
+  const isP = `EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$2 AND p.partner_id=u.id)`;
+  const cat = `(COALESCE(u.specialties, ARRAY[]::text[]) && ARRAY[$1]::text[] OR COALESCE(u.notify_categories, ARRAY[]::text[]) && ARRAY[$1]::text[])`;
+  let cityC, params = [sub.category, sub.provider_id];
+  if (a.allCities) cityC = 'TRUE';
+  else if (a.scope === 'city') { cityC = `(COALESCE(u.serves_all_cities,FALSE) OR $3::text IS NULL OR (u.city IS NULL AND (u.service_cities IS NULL OR cardinality(u.service_cities)=0)) OR u.city = $3 OR $3 = ANY(COALESCE(u.service_cities,ARRAY[]::text[])))`; params.push(sub.city || null); }
+  else { cityC = `(COALESCE(u.serves_all_cities,FALSE) OR u.city = ANY($3::text[]) OR (u.service_cities && $3::text[]))`; params.push(a.cities || []); }
+  return (await pool.query(`SELECT u.id, u.email, COALESCE(NULLIF(u.business_name,''),u.name) AS nm, ${isP} AS is_p FROM users u
+    WHERE u.role='provider' AND u.is_active=TRUE AND u.id<>$2 AND ${cat} AND (${cityC} OR ${isP})
+      AND NOT EXISTS(SELECT 1 FROM user_blocks b WHERE (b.blocker_id=u.id AND b.blocked_id=$2) OR (b.blocker_id=$2 AND b.blocked_id=u.id))`, params)).rows;
+}
 async function _subNotify(sub, partnersOnly){
   try {
     const own = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [sub.provider_id])).rows[0] || {};
-    const rows = (await pool.query(`SELECT u.id, u.email, COALESCE(NULLIF(u.business_name,''),u.name) AS nm, EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$3 AND p.partner_id=u.id) AS is_p FROM users u WHERE ${_subMatchSQL} AND NOT EXISTS(SELECT 1 FROM user_blocks b WHERE (b.blocker_id=u.id AND b.blocked_id=$3) OR (b.blocker_id=$3 AND b.blocked_id=u.id))`, [sub.category, sub.city || null, sub.provider_id])).rows;
+    const rows = await _subAudRows(sub);
     for (const u of rows) {
       if (partnersOnly && !u.is_p) continue;
       if (!partnersOnly && u.is_p && sub.partners_first) continue; // وصلهم من قبل
@@ -12197,7 +12213,7 @@ setInterval(async () => { try {
   }
 } catch(e){ console.error('sub-job:', e.message); } }, 10 * 60 * 1000);
 const _subRateSQL = (col) => `(SELECT json_build_object('avg', ROUND(AVG(stars)::numeric,1), 'n', COUNT(*)) FROM sub_ratings WHERE rated_id=${col})`;
-function _subRow(r){ return { id: r.id, category: r.category, city: r.city, district: r.district, description: r.description, start_text: r.start_text, budget: r.budget, attachments: r.attachments || [], status: r.status, created_at: r.created_at, partners_first: r.partners_first }; }
+function _subRow(r){ return { id: r.id, category: r.category, city: r.city, district: r.district, description: r.description, start_text: r.start_text, budget: r.budget, attachments: r.attachments || [], status: r.status, created_at: r.created_at, partners_first: r.partners_first, review_note: r.review_note || null, approve_note: r.approve_note || null, pending_desc: r.pending_desc || null, reject_kind: r.reject_kind || null, submitted_at: r.submitted_at || null }; }
 // نشر طلب
 app.post('/api/sub', auth, providerOnly, rateLimiter(20, 3600000), async (req, res) => {
   try {
@@ -12214,10 +12230,11 @@ app.post('/api/sub', auth, providerOnly, rateLimiter(20, 3600000), async (req, r
     const budget = parseInt(String(b.budget || '').replace(/[^\d]/g, '')) || null;
     const pf = b.partners_first !== false;
     const hasP = (await pool.query('SELECT 1 FROM partners WHERE owner_id=$1 LIMIT 1', [req.user.id])).rows.length > 0;
-    const r = (await pool.query(`INSERT INTO sub_requests (provider_id, category, city, district, description, start_text, budget, attachments, partners_first, notified_all) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [req.user.id, cat, city, _cleanTxt(b.district, 100) || null, desc, _cleanTxt(b.start_text, 80) || null, budget && budget < 1e9 ? budget : null, JSON.stringify(atts), pf && hasP, !(pf && hasP)])).rows[0];
-    _subNotify(r, r.partners_first);
-    res.json({ ok: true, id: r.id, partners_first: r.partners_first });
+    // ما ينشر مباشرة: يدخل طابور المراجعة عند الإدارة، والإشعارات تطلع وقت الاعتماد
+    const r = (await pool.query(`INSERT INTO sub_requests (provider_id, category, city, district, description, start_text, budget, attachments, partners_first, notified_all, status, submitted_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE,'review',NOW()) RETURNING *`,
+      [req.user.id, cat, city, _cleanTxt(b.district, 100) || null, desc, _cleanTxt(b.start_text, 80) || null, budget && budget < 1e9 ? budget : null, JSON.stringify(atts), pf && hasP])).rows[0];
+    _notifyAdmins('🤝 طلب مقاول باطن ينتظر المراجعة', cat + (city ? ' · ' + city : '') + ' — «' + desc.slice(0, 60) + '»', 'sub_review', r.id).catch(()=>{});
+    res.json({ ok: true, id: r.id, partners_first: r.partners_first, review: true });
   } catch(e) { console.error('sub post:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // طلباتي + الطلبات اللي تناسبني + شركائي (صفحة وحدة)
@@ -12417,7 +12434,8 @@ app.put('/api/sub/:id', auth, providerOnly, rateLimiter(30, 3600000), async (req
     const id = parseInt(req.params.id), b = req.body || {};
     const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
     if (!s || String(s.provider_id) !== String(req.user.id)) return res.status(403).json({ message: 'ليس طلبك' });
-    if (s.status !== 'open') return res.status(400).json({ message: 'الطلب مغلق' });
+    const inRev = ['review','needs_edit'].includes(s.status);
+    if (s.status !== 'open' && !inRev) return res.status(400).json({ message: 'الطلب مغلق' });
     const desc = _needTxt(b.description, 1500);
     if (desc.length < 10) return res.status(400).json({ message: 'اكتب وش الشغل بالتفصيل' });
     let atts = Array.isArray(s.attachments) ? s.attachments : [];
@@ -12427,11 +12445,22 @@ app.put('/api/sub/:id', auth, providerOnly, rateLimiter(30, 3600000), async (req
       try { if (a && typeof a.data === 'string' && /^data:/.test(a.data) && (/^data:image\//.test(a.data) || /\.(pdf|dwg|dxf|xlsx?|docx?|zip|rar)$/i.test(String(a.name || '')))) { const u = await uploadToCloud(a.data, 'manaqasa/sub', a.name); if (u && /^https?:/.test(u)) atts.push({ url: u, name: _cleanTxt(a.name, 80) || 'مرفق' }); } } catch(e){}
     }
     const budget = parseInt(String(b.budget || '').replace(/[^\d]/g, '')) || null;
-    await pool.query('UPDATE sub_requests SET description=$1, city=$2, district=$3, start_text=$4, budget=$5, attachments=$6, edited_at=NOW() WHERE id=$7',
-      [desc, _cleanTxt(b.city, 100) || s.city, _cleanTxt(b.district, 100) || null, _cleanTxt(b.start_text, 80) || null, budget && budget < 1e9 ? budget : null, JSON.stringify(atts), id]);
-    const ps = (await pool.query("SELECT provider_id FROM sub_offers WHERE sub_id=$1 AND status='pending'", [id])).rows;
-    for (const p of ps) notify(p.provider_id, '✏️ المقاول عدّل طلبه', '«' + desc.slice(0, 60) + '» — راجع عرضك وحدّثه إذا تغيّر شي', 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
-    res.json({ ok: true });
+    const city2 = _cleanTxt(b.city, 100) || s.city, dist2 = _cleanTxt(b.district, 100) || null, start2 = _cleanTxt(b.start_text, 80) || null, bud2 = budget && budget < 1e9 ? budget : null;
+    if (inRev) { // قبل النشر: التعديل يمشي مباشرة ويرجع للطابور (لو كان «يحتاج تعديل» ينحسب إرسال جديد)
+      await pool.query(`UPDATE sub_requests SET description=$1, city=$2, district=$3, start_text=$4, budget=$5, attachments=$6, edited_at=NOW(), status='review', submitted_at=CASE WHEN status='needs_edit' THEN NOW() ELSE submitted_at END WHERE id=$7`,
+        [desc, city2, dist2, start2, bud2, JSON.stringify(atts), id]);
+      if (s.status === 'needs_edit') _notifyAdmins('🤝 طلب مقاول باطن رجع بعد التعديل', s.category + ' — «' + desc.slice(0, 60) + '»', 'sub_review', id).catch(()=>{});
+      return res.json({ ok: true, review: true });
+    }
+    // بعد النشر: تغيير الوصف يراجعه فريق مناقصة (الطلب يبقى ظاهر بالوصف القديم)، والباقي يمشي مباشرة
+    const descChanged = _arNorm(desc) !== _arNorm(s.description);
+    await pool.query(`UPDATE sub_requests SET city=$1, district=$2, start_text=$3, budget=$4, attachments=$5, edited_at=NOW(), pending_desc=$6, pending_at=CASE WHEN $6::text IS NULL THEN pending_at ELSE NOW() END WHERE id=$7`,
+      [city2, dist2, start2, bud2, JSON.stringify(atts), descChanged ? desc : (s.pending_desc || null), id]);
+    if (descChanged) _notifyAdmins('✏️ مقاول عدّل وصف طلبه بعد النشر', s.category + ' — «' + desc.slice(0, 60) + '»', 'sub_review', id).catch(()=>{});
+    const otherChanged = city2 !== s.city || (dist2 || null) !== (s.district || null) || (start2 || null) !== (s.start_text || null) || (bud2 || null) !== (s.budget || null) || JSON.stringify(atts) !== JSON.stringify(s.attachments || []);
+    if (otherChanged) { const ps = (await pool.query("SELECT provider_id FROM sub_offers WHERE sub_id=$1 AND status='pending'", [id])).rows;
+      for (const p of ps) notify(p.provider_id, '✏️ المقاول عدّل طلبه', '«' + String(s.description).slice(0, 60) + '» — راجع عرضك وحدّثه إذا تغيّر شي', 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{}); }
+    res.json({ ok: true, pending: descChanged });
   } catch(e) { console.error('sub put:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // سحب العرض (قبل الاعتماد)
@@ -12491,7 +12520,7 @@ app.get('/s/:key', async (req, res) => {
     const k = String(req.params.key || '').replace(/[^a-f0-9]/g, '').slice(0, 24);
     const s = k ? (await pool.query(`SELECT s.id, s.category, s.city, s.district, s.description, s.start_text, s.status, s.attachments, COALESCE(NULLIF(u.business_name,''),u.name) AS owner,
         (SELECT COUNT(*)::int FROM sub_offers WHERE sub_id=s.id) AS offers FROM sub_requests s JOIN users u ON u.id=s.provider_id WHERE s.share_key=$1`, [k])).rows[0] : null;
-    if (!s) return res.status(404).sendFile(__dirname + '/404.html');
+    if (!s || ['review','needs_edit','rejected'].includes(s.status)) return res.status(404).sendFile(__dirname + '/404.html');
     const E = eEsc, open = s.status === 'open', na = Array.isArray(s.attachments) ? s.attachments.length : 0;
     const t = 'مطلوب ' + s.category + (s.city ? ' في ' + s.city : '') + ' — مقاول باطن';
     const d = String(s.description).slice(0, 150);
@@ -12531,7 +12560,7 @@ app.post('/api/sub/:id/rate', auth, providerOnly, rateLimiter(20, 3600000), asyn
 // ═══ الإدارة: طلبات مقاول باطن ═══
 app.get('/api/admin/sub', requirePermission('requests.view'), async (req, res) => {
   try {
-    const st = ['open','awarded','closed'].includes(req.query.status) ? req.query.status : null, q = String(req.query.q || '').trim().slice(0, 60);
+    const st = ['open','awarded','closed','review','needs_edit','rejected'].includes(req.query.status) ? req.query.status : null, q = String(req.query.q || '').trim().slice(0, 60);
     const k = (await pool.query(`SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE status='open')::int AS open, COUNT(*) FILTER (WHERE status='awarded')::int AS awarded,
         COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days')::int AS last30,
         (SELECT COUNT(*)::int FROM sub_offers) AS offers, (SELECT COALESCE(SUM(o.price),0)::bigint FROM sub_requests s2 JOIN sub_offers o ON o.id=s2.awarded_offer_id) AS value,
@@ -12572,6 +12601,186 @@ app.post('/api/admin/sub/:id/close', requirePermission('requests.edit'), async (
     notify(r.rows[0].provider_id, 'ℹ️ الإدارة أغلقت طلبك', '«' + String(r.rows[0].description).slice(0, 60) + '» — تواصل مع الدعم لو عندك سؤال', 'sub', parseInt(req.params.id)).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ الإدارة: مراجعة طلبات مقاول باطن قبل النشر (مثل مراجعة مشاريع العملاء) ═══
+async function _subDups(s){
+  try {
+    const c = (await pool.query(`SELECT id, category, city, description, status, created_at, (SELECT COUNT(*)::int FROM sub_offers o WHERE o.sub_id=x.id) AS offers
+      FROM sub_requests x WHERE provider_id=$1 AND id<>$2 AND status NOT IN ('rejected') AND dup_of IS NULL AND COALESCE(submitted_at, created_at) > NOW() - INTERVAL '60 days' ORDER BY id DESC LIMIT 20`, [s.provider_id, s.id])).rows;
+    const out = [];
+    for (const x of c) {
+      const pct = Math.round(_dice(String(s.description).slice(0, 400), String(x.description).slice(0, 400)) * 100);
+      const sameCat = s.category === x.category, sameCity = !!(s.city && s.city === x.city);
+      if (!(pct >= 55 || (sameCat && sameCity && pct >= 30))) continue;
+      const why = []; if (sameCat) why.push('نفس التخصص: ' + x.category); if (sameCity) why.push('نفس المدينة: ' + x.city); if (pct >= 30) why.push('الكلام متشابه ' + pct + '%');
+      out.push({ id: x.id, category: x.category, city: x.city, description: x.description, status: x.status, created_at: x.created_at, offers: x.offers, pct, why,
+        can_merge: x.status === 'open', can_back: ['open','review','needs_edit'].includes(x.status) });
+    }
+    return out.sort((a, b) => b.pct - a.pct).slice(0, 3);
+  } catch(e) { console.error('sub dups:', e.message); return []; }
+}
+app.get('/api/admin/sub-review', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const rows = (await pool.query(`SELECT s.*, COALESCE(NULLIF(u.business_name,''),u.name) AS owner_name, u.phone AS owner_phone, u.profile_image AS owner_image,
+        (SELECT COUNT(*)::int FROM sub_requests z WHERE z.provider_id=s.provider_id AND z.id<>s.id AND z.status NOT IN ('review','needs_edit','rejected')) AS owner_prev,
+        (SELECT COUNT(*)::int FROM sub_requests z WHERE z.provider_id=s.provider_id AND z.id<>s.id AND z.status='rejected') AS owner_rej,
+        COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS owner_rating, ${_subRateSQL('u.id')} AS owner_srate,
+        (SELECT COUNT(*)::int FROM sub_offers o WHERE o.sub_id=s.id) AS offers,
+        EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=s.provider_id) AS has_partners
+      FROM sub_requests s JOIN users u ON u.id=s.provider_id
+      WHERE s.status='review' OR (s.status='open' AND s.pending_desc IS NOT NULL)
+      ORDER BY COALESCE(CASE WHEN s.status='review' THEN s.submitted_at ELSE s.pending_at END, s.created_at) ASC LIMIT 100`)).rows;
+    const today = (await pool.query(`SELECT COUNT(*)::int c FROM admin_logs WHERE action='sub_review' AND created_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'`)).rows[0].c;
+    if (req.query.count) return res.json({ n: rows.length, today });
+    const list = [];
+    for (const r of rows) list.push(Object.assign(_subRow(r), { kind: r.status === 'review' ? 'new' : 'edit', pending_at: r.pending_at, owner_id: r.provider_id, owner_name: r.owner_name, owner_phone: r.owner_phone, owner_image: r.owner_image,
+      owner_prev: r.owner_prev, owner_rej: r.owner_rej, owner_rating: r.owner_rating, owner_srate: r.owner_srate, offers: r.offers, has_partners: r.has_partners, notify_scope: r.notify_scope, notify_cities: r.notify_cities,
+      dups: r.status === 'review' ? await _subDups(r) : [] }));
+    res.json({ list, today });
+  } catch(e) { console.error('sub-review:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/sub/:id/audience', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const s = (await pool.query('SELECT id, provider_id, category, city FROM sub_requests WHERE id=$1', [parseInt(req.params.id)])).rows[0];
+    if (!s) return res.status(404).json({ message: 'غير موجود' });
+    const custom = String(req.query.cities || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 40);
+    const cnt = async (sc, cs) => { const L = await _subAudRows(s, sc, cs); return { n: L.length, p: L.filter(x => x.is_p).length }; };
+    const aR = _audOf({ city: s.city }, 'region', null, false);
+    const out = { city: s.city || null, region: aR.region || null, region_cities: aR.cities || [], cat: s.category,
+      n: { city: s.city ? await cnt('city') : null, region: (s.city && aR.region) ? await cnt('region') : null, all: await cnt('all'), cities: custom.length ? await cnt('cities', custom) : null } };
+    res.json(out);
+  } catch(e) { console.error('sub aud:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// تعديل الإدارة مكانه (تساعد صاحب الطلب يوضّحه)
+app.patch('/api/admin/sub/:id/quick', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), b = req.body || {};
+    const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
+    if (!s) return res.status(404).json({ message: 'غير موجود' });
+    const set = [], v = [];
+    const put = (col, val) => { v.push(val); set.push(col + '=$' + v.length); };
+    if ('description' in b) { const d = _needTxt(b.description, 1500); if (d.length < 10) return res.status(400).json({ message: 'الوصف قصير' }); put('description', d); }
+    if ('pending_desc' in b) { const d = _needTxt(b.pending_desc, 1500); if (d.length < 10) return res.status(400).json({ message: 'الوصف قصير' }); put('pending_desc', d); }
+    if ('category' in b) { const c = _cleanTxt(b.category, 100); if (!c) return res.status(400).json({ message: 'اختر التخصص' }); put('category', c); }
+    if ('city' in b) put('city', _cleanTxt(b.city, 100) || null);
+    if ('district' in b) put('district', _cleanTxt(b.district, 100) || null);
+    if ('start_text' in b) put('start_text', _cleanTxt(b.start_text, 80) || null);
+    if ('budget' in b) { const n = parseInt(String(b.budget || '').replace(/[^\d]/g, '')) || null; put('budget', n && n < 1e9 ? n : null); }
+    let dropped = 0;
+    if (Array.isArray(b.attachments)) {
+      const atts = [];
+      for (const a of b.attachments.slice(0, 10)) {
+        if (a && a.url && /^https?:/.test(a.url)) atts.push({ url: a.url, name: _cleanTxt(a.name, 80) || 'مرفق' });
+        else if (a && typeof a.data === 'string' && /^data:/.test(a.data)) { try { const u = await uploadToCloud(a.data, 'manaqasa/sub', a.name); if (u && /^https?:/.test(u)) atts.push({ url: u, name: _cleanTxt(a.name, 80) || 'مرفق' }); else dropped++; } catch(e) { dropped++; } }
+      }
+      put('attachments', JSON.stringify(atts));
+    }
+    if (!set.length) return res.status(400).json({ message: 'ما فيه تعديل' });
+    v.push(id);
+    const r = (await pool.query(`UPDATE sub_requests SET ${set.join(', ')} WHERE id=$${v.length} RETURNING *`, v)).rows[0];
+    logAdmin(req, 'sub_edit', 'sub', id, 'تعديل: ' + Object.keys(b).join('، ')).catch(()=>{});
+    res.json(Object.assign(_subRow(r), { _dropped: dropped }));
+  } catch(e) { console.error('sub quick:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+function _subWa(phone, nm, text){ const ph = normPhone(phone); return ph ? `https://wa.me/${ph}?text=${encodeURIComponent(`السلام عليكم ${nm || ''}، معك فريق منصة مناقصة 👋\n` + text)}` : null; }
+app.put('/api/admin/sub/:id/review', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), b = req.body || {}, act = String(b.action || '');
+    const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
+    if (!s) return res.status(404).json({ message: 'غير موجود' });
+    const ow = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm, phone, email FROM users WHERE id=$1", [s.provider_id])).rows[0] || {};
+    const nm = _drFirst(ow.nm), reason = _needTxt(b.reason, 1000), short = String(s.description).slice(0, 60);
+    const link = SITE_URL + '/dashboard-provider.html#sub/' + id;
+    const tell = (t, body, btn) => notifyWithEmail(s.provider_id, t, body, 'sub', id, t, `<p>مرحباً${nm ? ' ' + eEsc(nm) : ''}،</p><p>${eEsc(body).replace(/\n/g, '<br>')}</p>`, btn || 'افتح طلبك', link, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+    let wa = null, msg = '';
+    if (act === 'edit_ok' || act === 'edit_no') {
+      if (s.status !== 'open' || !s.pending_desc) return res.status(400).json({ message: 'ما فيه تعديل ينتظر' });
+      if (act === 'edit_ok') {
+        await pool.query('UPDATE sub_requests SET description=pending_desc, pending_desc=NULL, pending_at=NULL, edited_at=NOW() WHERE id=$1', [id]);
+        const ps = (await pool.query("SELECT provider_id FROM sub_offers WHERE sub_id=$1 AND status='pending'", [id])).rows;
+        for (const p of ps) notify(p.provider_id, '✏️ المقاول عدّل طلبه', '«' + String(s.pending_desc).slice(0, 60) + '» — راجع عرضك وحدّثه إذا تغيّر شي', 'sub', id, { url: link.replace(SITE_URL, '') }).catch(()=>{});
+        notify(s.provider_id, '✅ اعتمدنا تعديل طلبك', '«' + String(s.pending_desc).slice(0, 60) + '» — وبلّغنا اللي قدّموا عروض', 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+        msg = 'اعتمد التعديل';
+      } else {
+        await pool.query('UPDATE sub_requests SET pending_desc=NULL, pending_at=NULL WHERE id=$1', [id]);
+        tell('ℹ️ ما اعتمدنا تعديل طلبك', `تعديلك على «${short}» ما انعتمد${reason ? ': ' + reason : ''}.\nطلبك باقي منشور بالوصف السابق.`);
+        wa = _subWa(ow.phone, nm, `بخصوص تعديلك على طلب «مقاول باطن» («${short}») — ما اعتمدناه${reason ? ': ' + reason : ''}.\nطلبك باقي منشور بالوصف السابق.\n${link}`);
+        msg = 'رفض التعديل' + (reason ? ': ' + reason : '');
+      }
+    } else {
+      if (s.status !== 'review') return res.status(400).json({ message: 'الطلب مو تحت المراجعة' });
+      if (act === 'approve') {
+        const A = b.audience && typeof b.audience === 'object' ? b.audience : {};
+        const sc = ['city','region','cities','all'].includes(A.scope) ? A.scope : 'city';
+        const cl = sc === 'cities' && Array.isArray(A.cities) ? A.cities.map(c => String(c || '').trim().slice(0, 60)).filter(Boolean).slice(0, 40) : null;
+        // «شركاؤه أول»: بس لو عنده شريك بنفس التخصص — وإلا يوصل الكل مباشرة بدل ما ينتظر ساعتين على الفاضي
+        const pf = !!s.partners_first && (await _subAudRows(s, sc, cl)).some(x => x.is_p);
+        const note = _needTxt(b.note, 600) || null;
+        const r = (await pool.query(`UPDATE sub_requests SET status='open', created_at=NOW(), reviewed_at=NOW(), review_note=NULL, approve_note=$1, notify_scope=$2, notify_cities=$3, partners_first=$4, notified_all=$5 WHERE id=$6 AND status='review' RETURNING *`,
+          [note, sc, cl && cl.length ? cl : null, pf, !pf, id])).rows[0];
+        if (!r) return res.status(409).json({ message: 'انراجع من قبل' });
+        await _subNotify(r, pf);
+        const sent = (await _subAudRows(r)).filter(x => !pf || x.is_p).length;
+        tell('✅ نشرنا طلبك', `طلبك «${short}» انتشر ` + (pf ? 'لشركائك أول، وبعد ساعتين للفنيين المناسبين' : 'للفنيين المناسبين') + (r.city ? ' في ' + r.city : '') + '.' + (note ? '\n💡 ' + note : ''), 'شوف طلبك');
+        msg = 'اعتماد ونشر' + (note ? ' + ملاحظة' : '');
+        await logAdmin(req, 'sub_review', 'sub', id, msg);
+        return res.json({ ok: true, status: 'open', sent, partners_first: pf });
+      } else if (act === 'needs_edit') {
+        if (!reason) return res.status(400).json({ message: 'اكتب وش يحتاج يعدّل' });
+        await pool.query("UPDATE sub_requests SET status='needs_edit', review_note=$1, reviewed_at=NOW() WHERE id=$2", [reason, id]);
+        tell('📝 طلبك يحتاج تعديل بسيط', `طلبك «${short}» يحتاج توضيح قبل ما ننشره:\n${reason}`, 'عدّل طلبك');
+        wa = _subWa(ow.phone, nm, `بخصوص طلبك في «مقاول باطن» («${short}») — يحتاج توضيح بسيط قبل ما ننشره:\n${reason}\n\nعدّله من هنا:\n${link}`);
+        msg = 'طلب تعديل: ' + reason;
+      } else if (act === 'reject') {
+        const ad = b.kind === 'ad';
+        if (!reason && !ad) return res.status(400).json({ message: 'اكتب سبب الرفض' });
+        await pool.query("UPDATE sub_requests SET status='rejected', review_note=$1, reject_kind=$2, reviewed_at=NOW() WHERE id=$3", [reason || null, ad ? 'ad' : null, id]);
+        const pro = SITE_URL + '/pro/' + s.provider_id;
+        if (ad) {
+          tell('ℹ️ طلبك ما انتشر', `«مقاول باطن» مخصص لطلب مزوّد يكمّل معك شغل عندك (كهربائي، سبّاك، نجار…).\nالتعريف بخدماتك وأسعارك مكانه صفحتك العامة — شاركها مع عملائك: ${pro}`, 'صفحتي العامة');
+          wa = _subWa(ow.phone, nm, `شفنا طلبك في «مقاول باطن» — وواضح إنه تعريف بخدماتك، والخدمة مخصصة لطلب مزوّد يكمّل معك شغل.\nصفحتك العامة هي المكان المناسب للتعريف بشغلك، شاركها مع عملائك:\n${pro}`);
+        } else {
+          tell('ℹ️ طلبك ما انتشر', `طلبك «${short}» ما انتشر: ${reason}`);
+          wa = _subWa(ow.phone, nm, `بخصوص طلبك في «مقاول باطن» («${short}») — ما قدرنا ننشره: ${reason}`);
+        }
+        msg = ad ? 'رفض: إعلان مو طلب' : 'رفض: ' + reason;
+      } else if (act === 'dup_merge' || act === 'dup_back') {
+        const dupId = parseInt(b.dup_id) || 0;
+        const d = (await _subDups(s)).find(x => x.id === dupId);
+        if (!d) return res.status(400).json({ message: 'الطلب القديم مو لنفس المزوّد أو انحذف' });
+        if (act === 'dup_merge' && !d.can_merge) return res.status(400).json({ message: 'القديم مو مفتوح — ما نقدر نحدّثه' });
+        if (act === 'dup_back' && !d.can_back) return res.status(400).json({ message: 'القديم مقفل' });
+        if (act === 'dup_merge') {
+          const old = (await pool.query('SELECT attachments FROM sub_requests WHERE id=$1', [dupId])).rows[0] || {};
+          const atts = (Array.isArray(old.attachments) ? old.attachments : []).slice(); for (const a of (Array.isArray(s.attachments) ? s.attachments : [])) if (a && a.url && !atts.some(x => x.url === a.url)) atts.push(a);
+          await pool.query('UPDATE sub_requests SET description=$1, city=COALESCE($2,city), district=COALESCE($3,district), start_text=COALESCE($4,start_text), budget=COALESCE($5,budget), attachments=$6, edited_at=NOW() WHERE id=$7',
+            [s.description, s.city, s.district, s.start_text, s.budget, JSON.stringify(atts.slice(0, 10)), dupId]);
+          const ps = (await pool.query("SELECT provider_id FROM sub_offers WHERE sub_id=$1 AND status='pending'", [dupId])).rows;
+          for (const p of ps) notify(p.provider_id, '✏️ المقاول عدّل طلبه', '«' + short + '» — راجع عرضك وحدّثه إذا تغيّر شي', 'sub', dupId, { url: '/dashboard-provider.html#sub/' + dupId }).catch(()=>{});
+        }
+        await pool.query("UPDATE sub_requests SET status='rejected', dup_of=$1, review_note=$2, reviewed_at=NOW() WHERE id=$3", [dupId, act === 'dup_merge' ? 'حدّثنا طلبك السابق بالتفاصيل الجديدة' : 'طلبك موجود من قبل', id]);
+        const l2 = SITE_URL + '/dashboard-provider.html#sub/' + dupId;
+        if (act === 'dup_merge') { notify(s.provider_id, '✅ حدّثنا طلبك السابق', 'نفس طلبك «' + short + '» موجود — أضفنا التفاصيل الجديدة عليه' + (d.offers ? ' وعروضك (' + d.offers + ') محفوظة' : ''), 'sub', dupId, { url: '/dashboard-provider.html#sub/' + dupId }).catch(()=>{});
+          wa = _subWa(ow.phone, nm, `لاحظنا إنك نشرت نفس طلب «مقاول باطن» مرتين — أضفنا التفاصيل الجديدة على طلبك الأول عشان ما تتوزع العروض.\n${l2}`); }
+        else { notify(s.provider_id, '📂 طلبك موجود من قبل', '«' + String(d.description).slice(0, 60) + '»' + (d.offers ? ' وفيه ' + d.offers + ' عروض' : '') + ' — تابعه هناك', 'sub', dupId, { url: '/dashboard-provider.html#sub/' + dupId }).catch(()=>{});
+          wa = _subWa(ow.phone, nm, `لاحظنا إنك نشرت نفس طلب «مقاول باطن» مرة ثانية — طلبك الأول لسا موجود${d.offers ? ' وفيه ' + d.offers + ' عروض' : ''}:\n${l2}`); }
+        msg = act === 'dup_merge' ? 'مكرر — حدّثنا #' + dupId : 'مكرر — رجّعناه لـ #' + dupId;
+      } else return res.status(400).json({ message: 'إجراء غير صحيح' });
+    }
+    await logAdmin(req, 'sub_review', 'sub', id, msg);
+    res.json({ ok: true, wa_link: wa });
+  } catch(e) { console.error('sub review:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/sub-review-history', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const r = (await pool.query(`SELECT l.id, l.target_id AS sid, l.details, l.created_at, l.admin_name, s.category, s.city, s.description, s.status, s.review_note, s.reject_kind,
+        COALESCE(NULLIF(u.business_name,''),u.name) AS owner, u.phone, u.id AS owner_id
+      FROM admin_logs l JOIN sub_requests s ON s.id=l.target_id JOIN users u ON u.id=s.provider_id WHERE l.action='sub_review' ORDER BY l.id DESC LIMIT 40`)).rows;
+    res.json(r.map(x => { const d = String(x.details || ''); const act = /^اعتماد/.test(d) ? 'approve' : (/^طلب تعديل/.test(d) ? 'needs_edit' : (/^رفض: إعلان/.test(d) ? 'ad' : (/^رفض التعديل/.test(d) ? 'edit_no' : (/^اعتمد التعديل/.test(d) ? 'edit_ok' : (/^مكرر/.test(d) ? 'dup' : 'reject')))));
+      const nm = _drFirst(x.owner), short = String(x.description || '').slice(0, 60), link = SITE_URL + '/dashboard-provider.html#sub/' + x.sid;
+      const t = act === 'approve' ? `طلبك في «مقاول باطن» («${short}») انتشر — تابع العروض من هنا:\n${link}` : act === 'needs_edit' ? `بخصوص طلبك في «مقاول باطن» («${short}») — يحتاج توضيح بسيط:\n${x.review_note || ''}\n${link}` : act === 'ad' ? `بخصوص طلبك في «مقاول باطن» — الخدمة مخصصة لطلب مزوّد يكمّل معك شغل، والتعريف بشغلك مكانه صفحتك العامة:\n${SITE_URL}/pro/${x.owner_id}` : `بخصوص طلبك في «مقاول باطن» («${short}»):\n${link}`;
+      return { id: x.id, sid: x.sid, action: act, at: x.created_at, admin: x.admin_name, category: x.category, city: x.city, short, status: x.status, owner: x.owner, note: d, wa_link: _subWa(x.phone, nm, t) }; }));
+  } catch(e) { console.error('sub hist:', e.message); res.json([]); }
 });
 // شركائي: يضيف مزوّد اشتغل معه (عرض على طلب له) — أو يشيله
 app.post('/api/partners', auth, providerOnly, async (req, res) => {
