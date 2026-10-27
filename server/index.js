@@ -10157,8 +10157,7 @@ async function _dupFind(rq, opts){
       out.push({ id: x.id, title: x.title, description: x.description, category: x.category, city: x.city, district: x.district, status: normalizeStatus(x.status), raw_status: x.status,
         created_at: x.created_at, pub_at: x.pub_at, budget_max: x.budget_max, deadline: x.deadline, n_img: Array.isArray(x.images) ? x.images.length : 0, n_att: att.length,
         bid_count: x.bid_count, paused: !!x.paused_at, other_acct: x.other_acct, client_id: x.client_id, client_name: x.client_name, client_phone: x.client_phone, pct, why, score: pct + (sameCat?20:0) + (sameCity?10:0) + (sameDist?15:0),
-        can_merge: x.status === 'open' && !x.assigned_provider_id, can_back: ['open','pending_review','review','needs_edit'].includes(x.status) && !x.assigned_provider_id,
-        can_reopen: !x.assigned_provider_id && !['open','pending_review','review','needs_edit','in_progress','completed','rejected','deleted'].includes(x.status) });
+        can_merge: x.status === 'open' && !x.assigned_provider_id, can_back: ['open','pending_review','review','needs_edit'].includes(x.status) && !x.assigned_provider_id });
     }
     out.sort((a,b) => b.score - a.score);
     return out.slice(0, 3);
@@ -10242,14 +10241,12 @@ async function _reviewDup(req, res, id, action){
     if (!cand) return res.status(400).json({ message: 'المشروع القديم مو لنفس العميل أو انحذف' });
     if (action === 'dup_merge' && !cand.can_merge) return res.status(400).json({ message: 'المشروع القديم مو مفتوح — ما نقدر نحدّثه' });
     if (action === 'dup_back' && !cand.can_back) return res.status(400).json({ message: 'المشروع القديم مو مفتوح' });
-    if (action === 'dup_reopen' && !cand.can_reopen) return res.status(400).json({ message: 'المشروع القديم ما ينفع ينفتح (مفتوح أصلاً أو تمت ترسيته)' });
-    const RO = action === 'dup_reopen'; // «افتح القديم من جديد»: نفس التحديث + نفتحه ونطلّعه فوق
     const old = (await pool.query('SELECT * FROM requests WHERE id=$1', [dupId])).rows[0];
     const cu = (await pool.query('SELECT name, phone FROM users WHERE id=$1', [nw.client_id])).rows[0] || {};
     const nm = _drFirst(cu.name);
     const nb = cand.bid_count || 0;
     let changes = [];
-    if (action === 'dup_merge' || RO) {
+    if (action === 'dup_merge') {
       const imgs = [].concat(Array.isArray(old.images) ? old.images : []); for (const u of (Array.isArray(nw.images) ? nw.images : [])) if (u && !imgs.includes(u)) imgs.push(u);
       const oa = Array.isArray(old.attachments) ? old.attachments : [], na = Array.isArray(nw.attachments) ? nw.attachments : [];
       const atts = oa.slice(); for (const a of na) if (a && a.url && !atts.some(x => x && x.url === a.url)) atts.push(a);
@@ -10266,22 +10263,13 @@ async function _reviewDup(req, res, id, action){
           images=$12, attachments=$13::jsonb, published_at=NOW() WHERE id=$14`,
         [nw.title || old.title, nw.description || old.description, nw.category || null, nw.extra_categories || null, nw.category_other || null, nw.city || null, nw.district || null,
          nw.budget_max || null, nw.deadline || null, nw.geo_lat || null, nw.geo_lng || null, imgs.slice(0, 15), JSON.stringify(atts.slice(0, 20)), dupId]);
-      if (RO) {
-        const closeDays = Math.max(1, parseInt(await getSetting('lc_close_days','20'))||20);
-        await pool.query(`UPDATE requests SET status='open', close_at=$1, closed_at=NULL, close_set_by='admin', close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL, silent_stage=0, silent_at=NULL, published_at=NOW() WHERE id=$2`, [new Date(Date.now() + closeDays * 86400000), dupId]);
-        try { await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('offers_waiting','close_warn','closed_offers','closed_offers_2d')`, [dupId]); } catch(e){}
-      }
     }
-    const note = RO ? `فتحنا مشروعك #${dupId} من جديد وحدّثناه بالتفاصيل الجديدة — عروضك السابقة محفوظة.` : action === 'dup_merge' ? `دمجناه في مشروعك #${dupId} — التفاصيل الجديدة انضافت عليه وعروضك محفوظة.` : `مشروعك «${old.title}» (#${dupId}) موجود من قبل — تابع عروضك هناك.`;
+    const note = action === 'dup_merge' ? `دمجناه في مشروعك #${dupId} — التفاصيل الجديدة انضافت عليه وعروضك محفوظة.` : `مشروعك «${old.title}» (#${dupId}) موجود من قبل — تابع عروضك هناك.`;
     await pool.query(`UPDATE requests SET status='rejected', review_notes=$1, dup_of=$2 WHERE id=$3`, [note, dupId, id]);
     try { await pool.query("UPDATE post_drafts SET request_id=$1 WHERE request_id=$2", [dupId, id]); } catch(e){}
     const link = await _magicUrl(old.client_id, '/dashboard-client.html#detail/' + dupId);
     let t, b, eb;
-    if (RO) {
-      t = '🔓 فتحنا مشروعك #' + dupId + ' من جديد';
-      b = `مشروعك «${nw.title || old.title}» انفتح للعروض من جديد بالتفاصيل الجديدة، وطلع فوق في القائمة.` + (nb ? ` عروضك الـ${nb} السابقة محفوظة.` : '');
-      eb = `<p>مرحباً${nm ? ' ' + eEsc(nm) : ''}،</p><p>لاحظنا إنك نشرت «<strong>${eEsc(nw.title)}</strong>» وهو نفس مشروعك السابق اللي كان مقفل — عشان ما تبدأ من الصفر، <strong>فتحنا مشروعك الأول من جديد</strong> وحدّثناه بالتفاصيل الجديدة، وطلع فوق في قائمة المشاريع.</p>` + (nb ? `<p>عروضك الـ${nb} السابقة محفوظة، وبلّغنا المزوّدين اللي قدّموا إنه انفتح من جديد.</p>` : '<p>وبلّغنا المزوّدين المناسبين في تخصصك ومدينتك.</p>');
-    } else if (action === 'dup_merge') {
+    if (action === 'dup_merge') {
       t = '✅ حدّثنا مشروعك #' + dupId;
       b = `أضفنا التفاصيل الجديدة على مشروعك «${old.title}» وبلّغنا المزوّدين اللي قدّموا.` + (nb ? ` عروضك الـ${nb} محفوظة.` : '');
       eb = `<p>مرحباً${nm ? ' ' + eEsc(nm) : ''}،</p><p>لاحظنا إنك نشرت «<strong>${eEsc(nw.title)}</strong>» وهو نفس مشروعك السابق — عشان ما تتوزع العروض، <strong>أضفنا التفاصيل الجديدة على مشروعك الأول</strong> ورجّعناه فوق في القائمة.</p>` + (nb ? `<p>عروضك الـ${nb} محفوظة، وبلّغنا المزوّدين اللي قدّموا يراجعون عروضهم.</p>` : '');
@@ -10291,26 +10279,16 @@ async function _reviewDup(req, res, id, action){
       eb = `<p>مرحباً${nm ? ' ' + eEsc(nm) : ''}،</p><p>لاحظنا إنك نشرت «<strong>${eEsc(nw.title)}</strong>» مرة ثانية.</p><p>مشروعك الأول «${eEsc(old.title)}» لسا ${cand.status === 'open' ? 'مفتوح' : 'تحت المراجعة'}` + (nb ? ` وفيه <strong>${_nOffers(nb)}</strong> — شوفها قبل لا تضيع.` : '.') + `</p><p style="color:#64748b;font-size:13px">لو تبي تضيف تفاصيل (مخطط، مساحة…) عدّلها على نفس المشروع.</p>`;
     }
     await notifyWithEmail(old.client_id, t, b, 'req_dup', dupId, t, eb, nb ? 'شوف العروض' : 'افتح مشروعي', link).catch(()=>{});
-    let sent = 0;
-    if (RO) {
-      const ttl = nw.title || old.title;
-      const bs = (await pool.query(`SELECT DISTINCT provider_id FROM bids WHERE request_id=$1 AND COALESCE(status,'pending') NOT IN ('withdrawn')`, [dupId])).rows;
-      const bidders = new Set(bs.map(x => String(x.provider_id)));
-      for (const x of bs) { try { await notify(x.provider_id, '🔓 مشروع انفتح من جديد', `«${ttl}» رجع مفتوح للعروض وتحدّثت تفاصيله — راجع عرضك وحدّثه إذا يحتاج.`, 'req_updated', dupId); } catch(e){} }
-      try { const cat = nw.category || old.category, city = nw.city || old.city;
-        for (const pv of await matchingProviders(cat ? [cat] : [], city, false, null)) { if (bidders.has(String(pv.id)) || String(pv.id) === String(old.client_id)) continue; try { await notify(pv.id, '🆕 مشروع مفتوح للعروض', `«${ttl}»${city ? ' · ' + city : ''} — قدّم عرضك`, 'request', dupId); sent++; } catch(e){} } } catch(e) { console.error('reopen notify:', e.message); }
-      try { await addTimeline(dupId, 'updated', 'انفتح المشروع من جديد بالتفاصيل الجديدة'); } catch(e){}
-    }
     if (action === 'dup_merge') {
       const ch = changes.length ? changes.join('، ') : 'التفاصيل';
       const bs = (await pool.query(`SELECT DISTINCT provider_id FROM bids WHERE request_id=$1 AND COALESCE(status,'pending') NOT IN ('rejected','withdrawn')`, [dupId])).rows;
       for (const x of bs) { try { await notify(x.provider_id, '📝 صاحب المشروع حدّث التفاصيل', `«${nw.title || old.title}» — تغيّر: ${ch}. راجع عرضك إذا يحتاج تعديل.`, 'req_updated', dupId); } catch(e){} }
       try { await addTimeline(dupId, 'updated', 'حدّث صاحب المشروع التفاصيل'); } catch(e){}
     }
-    await logAdmin(req, 'review_request', 'request', id, RO ? `مكرر — فتحنا #${dupId} من جديد` : action === 'dup_merge' ? `مكرر — دُمج في #${dupId}` : `مكرر — رجّعناه لـ #${dupId}`);
+    await logAdmin(req, 'review_request', 'request', id, action === 'dup_merge' ? `مكرر — دُمج في #${dupId}` : `مكرر — رجّعناه لـ #${dupId}`);
     let wa_link = null; const ph = normPhone(cu.phone);
-    if (ph) wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(`السلام عليكم ${nm || ''}، معك فريق منصة مناقصة 👋\n` + (RO ? `لاحظنا إنك نشرت «${nw.title}» مرة ثانية — فتحنا مشروعك الأول من جديد وحدّثناه بالتفاصيل الجديدة، وطلع فوق في قائمة المشاريع` + (nb ? ` (عروضك الـ${nb} السابقة محفوظة)` : '') + '.' : action === 'dup_merge' ? `لاحظنا إنك نشرت «${nw.title}» مرة ثانية — أضفنا التفاصيل الجديدة على مشروعك الأول عشان ما تتوزع العروض` + (nb ? ` (فيه ${_nOffers(nb)})` : '') + '.' : `لاحظنا إنك نشرت «${nw.title}» مرة ثانية — مشروعك الأول لسا موجود` + (nb ? ` وفيه ${_nOffers(nb)}` : '') + '.') + `\n\n${SITE_URL}/dashboard-client.html#detail/${dupId}`)}`;
-    res.json({ ok: true, id, status: 'rejected', dup_of: dupId, changes, wa_link, sent });
+    if (ph) wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(`السلام عليكم ${nm || ''}، معك فريق منصة مناقصة 👋\n` + (action === 'dup_merge' ? `لاحظنا إنك نشرت «${nw.title}» مرة ثانية — أضفنا التفاصيل الجديدة على مشروعك الأول عشان ما تتوزع العروض` + (nb ? ` (فيه ${_nOffers(nb)})` : '') + '.' : `لاحظنا إنك نشرت «${nw.title}» مرة ثانية — مشروعك الأول لسا موجود` + (nb ? ` وفيه ${_nOffers(nb)}` : '') + '.') + `\n\n${SITE_URL}/dashboard-client.html#detail/${dupId}`)}`;
+    res.json({ ok: true, id, status: 'rejected', dup_of: dupId, changes, wa_link });
   } catch(e) { console.error('review dup:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 }
 // سجل آخر المراجعات (اعتماد / تعديل / رفض) مع رابط واتساب جاهز — للتواصل لاحقاً
@@ -10328,7 +10306,7 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
   try {
     const id = parseInt(req.params.id); const { action, reason } = req.body;
     if (action === 'is_provider') return _reviewIsProvider(req, res, id);
-    if (action === 'dup_back' || action === 'dup_merge' || action === 'dup_reopen') return _reviewDup(req, res, id, action);
+    if (action === 'dup_back' || action === 'dup_merge') return _reviewDup(req, res, id, action);
     if (!['approve','needs_edit','reject'].includes(action)) return res.status(400).json({ message: 'إجراء غير صحيح' });
     // «طلب تعديل» و«رفض نهائي» يتطلّبان ملاحظة/سبباً يصل للعميل
     if (action !== 'approve' && !String(reason||'').trim()) {

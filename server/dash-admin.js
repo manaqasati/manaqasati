@@ -2229,8 +2229,7 @@ function _prDupBox(sel,info){
     {k:'merge',ic:'🔁',bg:'#dbeafe',t:'انشره كتحديث للقديم',s:d.can_merge?('نحدّث #'+d.id+' بالتفاصيل الجديدة، يطلع فوق'+(nb?'، والـ'+nb+' مزوّد يوصلهم «حدّث التفاصيل»':'')):'القديم مو مفتوح — ما ينفع نحدّثه',dis:!d.can_merge},
     {k:'back',ic:'↩️',bg:'#ffedd5',t:'رجّعه للقديم',s:d.can_back?'ما ننشر الجديد، ونرسل للعميل رابط مشروعه'+(nb?' وعروضه':''):'القديم مقفل — ما ينفع نرجّعه له',dis:!d.can_back},
     {k:'new',ic:'➕',bg:'#f1f5f9',t:'مشروع مختلف',s:'انشره عادي كمشروع جديد',dis:false}];
-  if(d.can_reopen) acts.splice(2,0,{k:'reopen',ic:'🔓',bg:'#dcfce7',t:'افتح القديم من جديد',s:'نفتح #'+d.id+' بالتفاصيل الجديدة ويطلع فوق'+(nb?' — و'+_prOffN(nb)+' محفوظة':'')+'، ويوصل العميل إشعار وإيميل',dis:false});
-  var go=st.act==='reopen'?'تنفيذ: افتح #'+d.id+' من جديد':st.act==='merge'?'تنفيذ: تحديث #'+d.id:(st.act==='back'?'تنفيذ: رجّعه لـ #'+d.id:'✓ اعتماد ونشر كمشروع جديد');
+  var go=st.act==='merge'?'تنفيذ: تحديث #'+d.id:(st.act==='back'?'تنفيذ: رجّعه لـ #'+d.id:'✓ اعتماد ونشر كمشروع جديد');
   return '<div class="pr-dup" id="pr-dup-'+sel.id+'">'
     +'<div class="pr-dup-h">⚠️ يشبه مشروع سابق '+(d.other_acct?'لنفس الجوال (حساب ثاني)':'لنفس العميل')
       +(L.length>1?'<span class="pr-dup-tabs">'+L.map(function(x,i){return '<button type="button" class="'+(i===st.i?'on':'')+'" onclick="_prDupPick('+sel.id+','+i+')">#'+x.id+'</button>';}).join('')+'</span>':'')+'</div>'
@@ -2243,23 +2242,21 @@ function _prDupBox(sel,info){
   +'</div>';
 }
 function _prOffN(n){ n=parseInt(n)||0; return n===0?'بدون عروض':(n===1?'عرض واحد':(n===2?'عرضين':(n<=10?n+' عروض':n+' عرض'))); }
-function _prDupPick(id,i){ var st=_prDupSt(id); if(!st)return; st.i=i; var d=window._prInfo[id].duplicates[i]; if(st.act==='merge'&&!d.can_merge) st.act=d.can_back?'back':'new'; if(st.act==='back'&&!d.can_back) st.act='new'; if(st.act==='reopen'&&!d.can_reopen) st.act='new'; renderProjReview(); }
+function _prDupPick(id,i){ var st=_prDupSt(id); if(!st)return; st.i=i; var d=window._prInfo[id].duplicates[i]; if(st.act==='merge'&&!d.can_merge) st.act=d.can_back?'back':'new'; if(st.act==='back'&&!d.can_back) st.act='new'; renderProjReview(); }
 function _prDupAct(id,k){ var st=_prDupSt(id); if(!st)return; st.act=k; st.touched=true; renderProjReview(); }
 async function _prDupGo(id){
   var st=_prDupSt(id); if(!st)return;
   if(st.act==='new'){ reviewAct(id,'approve'); return; }
   var d=window._prInfo[id].duplicates[st.i]; var nb=parseInt(d.bid_count)||0;
-  var ok=await askConfirm(st.act==='reopen'
-    ?{title:'افتح القديم من جديد',message:'بنفتح مشروع #'+d.id+' للعروض من جديد ونحدّثه بالتفاصيل الجديدة، ويطلع فوق في القائمة'+(nb?'. العروض السابقة ('+_prOffN(nb)+') محفوظة ويوصل أصحابها إنه انفتح':'')+'. يوصل العميل إشعار وإيميل، وبعدها يطلع لك زر واتساب ترسله له. الجديد ما ينشر.',confirmText:'نعم، افتحه'}
-    :st.act==='merge'
+  var ok=await askConfirm(st.act==='merge'
     ?{title:'تحديث المشروع القديم',message:'بننقل التفاصيل الجديدة (العنوان، الوصف، الصور والملفات) لمشروع #'+d.id+' ويطلع فوق في القائمة'+(nb?'، ويوصل الـ'+nb+' مزوّد اللي قدّموا «صاحب المشروع حدّث التفاصيل»':'')+'. الجديد ما ينشر.',confirmText:'نعم، حدّث'}
     :{title:'رجّعه للقديم',message:'ما ننشر هذا المشروع، ونرسل للعميل إن مشروعه #'+d.id+' موجود'+(nb?' وفيه '+_prOffN(nb):'')+'.',confirmText:'نعم، أرسل'});
   if(!ok)return;
-  fetch(API+'/api/admin/requests/'+id+'/review',Object.assign({method:'PUT',body:JSON.stringify({action:st.act==='reopen'?'dup_reopen':(st.act==='merge'?'dup_merge':'dup_back'),dup_id:d.id})},hdr()))
+  fetch(API+'/api/admin/requests/'+id+'/review',Object.assign({method:'PUT',body:JSON.stringify({action:st.act==='merge'?'dup_merge':'dup_back',dup_id:d.id})},hdr()))
     .then(function(r){return r.json().then(function(x){return{ok:r.ok,d:x};});})
     .then(function(res){
       if(!res.ok){toast((res.d&&res.d.message)||'تعذّر التنفيذ','error');return;}
-      toast(st.act==='reopen'?'فتحنا #'+d.id+' من جديد ✓ — أرسل للعميل واتساب':st.act==='merge'?'حدّثنا #'+d.id+' وبلّغنا المزوّدين ✓':'أرسلنا للعميل رابط مشروعه ✓','success');
+      toast(st.act==='merge'?'حدّثنا #'+d.id+' وبلّغنا المزوّدين ✓':'أرسلنا للعميل رابط مشروعه ✓','success');
       if(res.d&&res.d.wa_link)showWaFollowup(res.d.wa_link);
       _projReview=(_projReview||[]).filter(function(x){return x.id!==id;}); delete window._prDupSel[id];
       setProjReviewBadge(_projReview.length); window._prDone=(window._prDone||0)+1; renderProjReview(); _prHist();
