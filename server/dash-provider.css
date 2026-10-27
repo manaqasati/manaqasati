@@ -963,3 +963,8 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
   .mob-right .mob-out{display:none}
 }
 @media(max-width:340px){ .mob-right .mob-av{display:none} }
+
+/* مربعات المخطط الهندسي — هوية مناقصة على الخلفيات الكحلية */
+.pa-focus{background:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(120deg,#0b1f4d,#1d4ed8)!important;background-size:22px 22px,22px 22px,auto!important}
+.pf-hero{background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:22px 22px}
+.hh-hero:not(.pv-hero){background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:22px 22px}

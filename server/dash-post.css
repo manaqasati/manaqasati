@@ -612,3 +612,6 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .rp-ft{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);margin:0 -14px -4px;padding:9px 14px 0}
 .rp-lk{border:0;background:none;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer;padding:6px 2px;min-height:34px}
 .rp-lk.pri{color:var(--p)}
+
+/* مربعات المخطط الهندسي — هوية مناقصة على الخلفيات الكحلية */
+.pr-hero{background:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(160deg,#1e3a8a,#1d4ed8);background-size:22px 22px,22px 22px,auto}

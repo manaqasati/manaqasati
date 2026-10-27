@@ -902,3 +902,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .inv-bt button{flex:1;border:0;border-radius:11px;padding:11px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer;min-height:44px;background:#eef3fb;color:#1d4ed8}
 .inv-bt button.wa{background:#25d366;color:#fff}
 [data-theme="dark"] .inv-bt button:not(.wa){background:rgba(59,130,246,.15);color:#93c5fd}
+
+/* مربعات المخطط الهندسي — هوية مناقصة على الخلفيات الكحلية */
+.hh-hero{background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:22px 22px}
+.hh-hero.has-cur{background:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(135deg,#0b1f4d,#1e3a8a);background-size:22px 22px,22px 22px,auto}
+.pr-hero{background:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(160deg,#1e3a8a,#1d4ed8);background-size:22px 22px,22px 22px,auto}
