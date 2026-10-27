@@ -3145,7 +3145,7 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS nudge_noof BOOLEAN DEFAULT FALSE`);
     // مراجعة طلبات مقاول باطن قبل النشر (مثل مشاريع العملاء)
-    for (const c of ['work_state VARCHAR(12)','started_at TIMESTAMP','done_at TIMESTAMP','fu_next TIMESTAMP'])
+    for (const c of ['title VARCHAR(150)','pending_title VARCHAR(150)','work_state VARCHAR(12)','started_at TIMESTAMP','done_at TIMESTAMP','fu_next TIMESTAMP'])
       { try { await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS ${c}`); } catch(e){} }
     try { await _mig(`ALTER TABLE sub_offers ADD COLUMN IF NOT EXISTS seen_at TIMESTAMP`); await _mig(`ALTER TABLE sub_offers ADD COLUMN IF NOT EXISTS photos JSONB`); } catch(e){}
     for (const c of ['submitted_at TIMESTAMP','reviewed_at TIMESTAMP','review_note TEXT','approve_note TEXT','reject_kind VARCHAR(20)','pending_desc TEXT','pending_at TIMESTAMP','dup_of INTEGER','notify_scope VARCHAR(10)','notify_cities TEXT[]'])
@@ -12172,6 +12172,7 @@ wss.on('close', () => clearInterval(_wsBeat));
 
 
 // ═══ 🤝 مقاول باطن + شركائي: المزوّدين يكمّلون بعض (يشوفه المزوّدين فقط — العملاء ما يشوفونه) ═══
+function _subT(x){ return String((x && (x.title || x.description)) || ''); }
 const SUB_PARTNER_HOURS = 2, SUB_MONTH_MAX = 10, SUB_EXPIRE_DAYS = 30;
 const _subMatchSQL = `u.role='provider' AND u.is_active=TRUE AND u.id<>$3
   AND (COALESCE(u.specialties, ARRAY[]::text[]) && ARRAY[$1]::text[] OR COALESCE(u.notify_categories, ARRAY[]::text[]) && ARRAY[$1]::text[])
@@ -12197,8 +12198,8 @@ async function _subNotify(sub, partnersOnly){
       if (partnersOnly && !u.is_p) continue;
       if (!partnersOnly && u.is_p && sub.partners_first) continue; // وصلهم من قبل
       if (u.email && !/@manaqasa\.local$/i.test(u.email)) { const t = '🤝 ' + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category + (sub.city ? ' في ' + sub.city : '');
-        sendEmail(u.email, t, emailTpl(t, `<p>مرحباً${u.nm ? ' ' + eEsc(u.nm) : ''}،</p><p><strong>${eEsc(own.nm || 'مقاول')}</strong> يحتاج <strong>${eEsc(sub.category)}</strong>${sub.city ? ' في ' + eEsc(sub.city) : ''}:</p><div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:14px;margin:14px 0">${eEsc(String(sub.description).slice(0, 300))}</div><p>قدّم سعرك من حسابك — ويظهر لك رقمه بعد العرض.</p>`, 'شوف الطلب وقدّم', SITE_URL + '/dashboard-provider.html#sub/' + sub.id)).catch(()=>{}); }
-      notify(u.id, '🤝 ' + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category, '«' + String(sub.description).slice(0, 70) + '»' + (sub.city ? ' · ' + sub.city : '') + ' — من ' + (own.nm || 'مقاول') + '. قدّم عرضك', 'sub', sub.id, { kind: 'sub_new', url: '/dashboard-provider.html#sub/' + sub.id }).catch(()=>{});
+        sendEmail(u.email, t, emailTpl(t, `<p>مرحباً${u.nm ? ' ' + eEsc(u.nm) : ''}،</p><p><strong>${eEsc(own.nm || 'مقاول')}</strong> يحتاج <strong>${eEsc(sub.category)}</strong>${sub.city ? ' في ' + eEsc(sub.city) : ''}:</p><div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:14px;margin:14px 0">${(sub.title ? '<b>' + eEsc(sub.title) + '</b><br>' : '') + eEsc(String(sub.description).slice(0, 300))}</div><p>قدّم سعرك من حسابك — ويظهر لك رقمه بعد العرض.</p>`, 'شوف الطلب وقدّم', SITE_URL + '/dashboard-provider.html#sub/' + sub.id)).catch(()=>{}); }
+      notify(u.id, '🤝 ' + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category, '«' + _subT(sub).slice(0, 70) + '»' + (sub.city ? ' · ' + sub.city : '') + ' — من ' + (own.nm || 'مقاول') + '. قدّم عرضك', 'sub', sub.id, { kind: 'sub_new', url: '/dashboard-provider.html#sub/' + sub.id }).catch(()=>{});
     }
   } catch(e){ console.error('sub-notify:', e.message); }
 }
@@ -12206,27 +12207,27 @@ setInterval(async () => { try {
   const L = (await pool.query(`UPDATE sub_requests SET notified_all=TRUE WHERE status='open' AND notified_all=FALSE AND created_at < NOW() - INTERVAL '${SUB_PARTNER_HOURS} hours' RETURNING *`)).rows;
   for (const s of L) await _subNotify(s, false);
   const X = (await pool.query(`UPDATE sub_requests SET status='closed', closed_at=NOW() WHERE status='open' AND created_at < NOW() - INTERVAL '${SUB_EXPIRE_DAYS} days' RETURNING id, provider_id, description`)).rows;
-  for (const x of X) notify(x.provider_id, '⌛ انتهت مدة طلبك', '«' + String(x.description).slice(0, 60) + '» انقفل بعد ' + SUB_EXPIRE_DAYS + ' يوم — لو لسا تحتاجه انشره من جديد', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
+  for (const x of X) notify(x.provider_id, '⌛ انتهت مدة طلبك', '«' + _subT(x).slice(0, 60) + '» انقفل بعد ' + SUB_EXPIRE_DAYS + ' يوم — لو لسا تحتاجه انشره من جديد', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
   const N0 = (await pool.query(`UPDATE sub_requests s SET nudge_noof=TRUE WHERE s.status='open' AND s.nudge_noof=FALSE AND s.created_at < NOW() - INTERVAL '24 hours' AND NOT EXISTS(SELECT 1 FROM sub_offers o WHERE o.sub_id=s.id) RETURNING id, provider_id, description`)).rows;
   const SR = (await pool.query(`UPDATE saai_ledger SET sub_reminded=TRUE WHERE source='sub' AND status='pending' AND sub_reminded=FALSE AND COALESCE(due_from,created_at) < NOW() - INTERVAL '7 days' RETURNING id, provider_id, saai_amount, self_title`)).rows;
   for (const x of SR) notify(x.provider_id, '💰 تذكير بالسعي', Math.round(x.saai_amount) + ' ر.س على «' + String(x.self_title || '').replace('🤝 مقاول باطن: ', '').slice(0, 50) + '» — سدّد من محفظة السعي، أو بلّغ لو ما تم الاتفاق', 'saai', null, { url: '/dashboard-provider.html#saai' }).catch(()=>{});
-  for (const x of N0) notify(x.provider_id, '💡 ما وصلك عرض للحين', 'على «' + String(x.description).slice(0, 50) + '» — تعرف فني؟ أرسل له رابط الطلب من صفحة الطلب، يسجّل مجاناً ويقدّم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
+  for (const x of N0) notify(x.provider_id, '💡 ما وصلك عرض للحين', 'على «' + _subT(x).slice(0, 50) + '» — تعرف فني؟ أرسل له رابط الطلب من صفحة الطلب، يسجّل مجاناً ويقدّم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
   // متابعة الشغل بعد الاعتماد: «بدأ الشغل؟» بعد 3 أيام، و«خلص؟» بعد أسبوع من البدء — للطرفين، مرة لكل مرحلة
   const FU = (await pool.query(`UPDATE sub_requests s SET fu_next=NULL FROM sub_offers o WHERE o.id=s.awarded_offer_id AND s.status='awarded' AND s.fu_next IS NOT NULL AND s.fu_next < NOW() AND COALESCE(s.work_state,'') <> 'done' RETURNING s.id, s.provider_id, s.description, s.work_state, o.provider_id AS sub_pid`)).rows;
-  for (const x of FU) for (const u of [x.provider_id, x.sub_pid]) notify(u, x.work_state === 'started' ? '🛠️ خلص الشغل؟' : '🛠️ بدأ الشغل؟', '«' + String(x.description).slice(0, 50) + '» — حدّث الحالة بضغطة', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
+  for (const x of FU) for (const u of [x.provider_id, x.sub_pid]) notify(u, x.work_state === 'started' ? '🛠️ خلص الشغل؟' : '🛠️ بدأ الشغل؟', '«' + _subT(x).slice(0, 50) + '» — حدّث الحالة بضغطة', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
   const R = (await pool.query(`UPDATE sub_requests s SET rate_nudged=TRUE FROM sub_offers o WHERE o.id=s.awarded_offer_id AND s.status='awarded' AND s.rate_nudged=FALSE AND s.closed_at < NOW() - INTERVAL '3 days' RETURNING s.id, s.provider_id, s.description, o.provider_id AS sub_pid`)).rows;
   for (const x of R) for (const [u, o] of [[x.provider_id, x.sub_pid], [x.sub_pid, x.provider_id]]) {
     const done = (await pool.query('SELECT 1 FROM sub_ratings WHERE sub_id=$1 AND rater_id=$2', [x.id, u])).rows.length; if (done) continue;
-    notify(u, '⭐ قيّم تعاملك', 'كيف كان الشغل على «' + String(x.description).slice(0, 50) + '»؟ تقييمك يساعد المزوّدين يختارون شركاءهم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
+    notify(u, '⭐ قيّم تعاملك', 'كيف كان الشغل على «' + _subT(x).slice(0, 50) + '»؟ تقييمك يساعد المزوّدين يختارون شركاءهم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
   }
 } catch(e){ console.error('sub-job:', e.message); } }, 10 * 60 * 1000);
 const _subRateSQL = (col) => `(SELECT json_build_object('avg', ROUND(AVG(stars)::numeric,1), 'n', COUNT(*)) FROM sub_ratings WHERE rated_id=${col})`;
-function _subRow(r){ return { id: r.id, category: r.category, city: r.city, district: r.district, description: r.description, start_text: r.start_text, budget: r.budget, attachments: r.attachments || [], status: r.status, created_at: r.created_at, partners_first: r.partners_first, review_note: r.review_note || null, approve_note: r.approve_note || null, pending_desc: r.pending_desc || null, reject_kind: r.reject_kind || null, submitted_at: r.submitted_at || null, work_state: r.work_state || null, started_at: r.started_at || null, done_at: r.done_at || null }; }
+function _subRow(r){ return { id: r.id, title: r.title || null, pending_title: r.pending_title || null, category: r.category, city: r.city, district: r.district, description: r.description, start_text: r.start_text, budget: r.budget, attachments: r.attachments || [], status: r.status, created_at: r.created_at, partners_first: r.partners_first, review_note: r.review_note || null, approve_note: r.approve_note || null, pending_desc: r.pending_desc || null, reject_kind: r.reject_kind || null, submitted_at: r.submitted_at || null, work_state: r.work_state || null, started_at: r.started_at || null, done_at: r.done_at || null }; }
 // نشر طلب
 app.post('/api/sub', auth, providerOnly, rateLimiter(20, 3600000), async (req, res) => {
   try {
     const b = req.body || {};
-    const cat = _cleanTxt(b.category, 100), city = _cleanTxt(b.city, 100) || null, desc = _needTxt(b.description, 1500);
+    const cat = _cleanTxt(b.category, 100), city = _cleanTxt(b.city, 100) || null, desc = _needTxt(b.description, 1500), title = _cleanTxt(b.title, 150) || null;
     if (!cat) return res.status(400).json({ message: 'اختر التخصص اللي تحتاجه' });
     if (desc.length < 10) return res.status(400).json({ message: 'اكتب وش الشغل بالتفصيل (10 أحرف على الأقل)' });
     const n = (await pool.query("SELECT COUNT(*)::int c FROM sub_requests WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '30 days'", [req.user.id])).rows[0].c;
@@ -12239,9 +12240,9 @@ app.post('/api/sub', auth, providerOnly, rateLimiter(20, 3600000), async (req, r
     const pf = b.partners_first !== false;
     const hasP = (await pool.query('SELECT 1 FROM partners WHERE owner_id=$1 LIMIT 1', [req.user.id])).rows.length > 0;
     // ما ينشر مباشرة: يدخل طابور المراجعة عند الإدارة، والإشعارات تطلع وقت الاعتماد
-    const r = (await pool.query(`INSERT INTO sub_requests (provider_id, category, city, district, description, start_text, budget, attachments, partners_first, notified_all, status, submitted_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE,'review',NOW()) RETURNING *`,
-      [req.user.id, cat, city, _cleanTxt(b.district, 100) || null, desc, _cleanTxt(b.start_text, 80) || null, budget && budget < 1e9 ? budget : null, JSON.stringify(atts), pf && hasP])).rows[0];
-    _notifyAdmins('🤝 طلب مقاول باطن ينتظر المراجعة', cat + (city ? ' · ' + city : '') + ' — «' + desc.slice(0, 60) + '»', 'sub_review', r.id).catch(()=>{});
+    const r = (await pool.query(`INSERT INTO sub_requests (provider_id, category, city, district, description, start_text, budget, attachments, partners_first, notified_all, status, submitted_at, title) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE,'review',NOW(),$10) RETURNING *`,
+      [req.user.id, cat, city, _cleanTxt(b.district, 100) || null, desc, _cleanTxt(b.start_text, 80) || null, budget && budget < 1e9 ? budget : null, JSON.stringify(atts), pf && hasP, title])).rows[0];
+    _notifyAdmins('🤝 طلب مقاول باطن ينتظر المراجعة', cat + (city ? ' · ' + city : '') + ' — «' + (title || desc).slice(0, 60) + '»', 'sub_review', r.id).catch(()=>{});
     res.json({ ok: true, id: r.id, partners_first: r.partners_first, review: true });
   } catch(e) { console.error('sub post:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -12270,7 +12271,11 @@ app.get('/api/sub/hub', auth, providerOnly, async (req, res) => {
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS rating, ${_subRateSQL('u.id')} AS srate
       FROM partners p JOIN users u ON u.id=p.partner_id WHERE p.owner_id=$1 ORDER BY p.created_at DESC`, [me])).rows;
     if (req.query.seen) pool.query('UPDATE users SET sub_seen_at=NOW() WHERE id=$1', [me]).catch(()=>{});
-    res.json({ mine, feed, partners, no_spec: cats.length === 0, month_left: Math.max(0, SUB_MONTH_MAX - mine.filter(x => Date.now() - new Date(x.created_at) < 30 * 864e5).length) });
+    const stats = (await pool.query(`SELECT
+        (SELECT COUNT(DISTINCT x)::int FROM (SELECT o.provider_id AS x FROM sub_requests s JOIN sub_offers o ON o.id=s.awarded_offer_id WHERE s.provider_id=$1 UNION SELECT s.provider_id FROM sub_requests s JOIN sub_offers o ON o.id=s.awarded_offer_id WHERE o.provider_id=$1) z) AS worked,
+        (SELECT COUNT(*)::int FROM partners WHERE partner_id=$1) AS saved_me,
+        (SELECT COUNT(*)::int FROM sub_offers WHERE provider_id=$1) AS offers_made`, [me])).rows[0];
+    res.json({ mine, feed, partners, stats, no_spec: cats.length === 0, month_left: Math.max(0, SUB_MONTH_MAX - mine.filter(x => Date.now() - new Date(x.created_at) < 30 * 864e5).length) });
   } catch(e) { console.error('sub hub:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // تفاصيل طلب: صاحبه يشوف العروض بأرقامهم، والمزوّد يشوف رقم صاحب الطلب بعد ما يقدّم
@@ -12305,6 +12310,10 @@ app.get('/api/sub/:id', auth, providerOnly, async (req, res) => {
       if (!my && s.status !== 'open') return res.status(404).json({ message: 'الطلب مغلق' });
       out.my_offer = my; if (my) out.owner_phone = s.owner_phone;
       out.owner_srate = (await pool.query(`SELECT ${_subRateSQL('$1')} AS r`, [s.provider_id])).rows[0].r;
+      out.offers_count = (await pool.query('SELECT COUNT(*)::int c FROM sub_offers WHERE sub_id=$1', [id])).rows[0].c;
+      out.from_partner = (await pool.query('SELECT 1 FROM partners WHERE owner_id=$1 AND partner_id=$2', [s.provider_id, me])).rows.length > 0;
+      out.owner_stats = (await pool.query(`SELECT (SELECT COUNT(*)::int FROM sub_requests WHERE provider_id=$1 AND status IN ('open','awarded','closed')) AS posted,
+          (SELECT COUNT(*)::int FROM sub_requests WHERE provider_id=$1 AND status='awarded') AS awarded, u.created_at AS since, u.city FROM users u WHERE u.id=$1`, [s.provider_id])).rows[0] || {};
     }
     if (s.status === 'awarded') {
       const ao = (await pool.query('SELECT provider_id FROM sub_offers WHERE id=$1', [s.awarded_offer_id])).rows[0];
@@ -12340,7 +12349,7 @@ app.post('/api/sub/:id/offers', auth, providerOnly, rateLimiter(30, 3600000), as
     }
     await pool.query(`INSERT INTO sub_offers (sub_id, provider_id, price, days, note, fee_ok, photos) VALUES ($1,$2,$3,$4,$5,TRUE,$6) ON CONFLICT (sub_id, provider_id) DO UPDATE SET price=$3, days=$4, note=$5, photos=$6, created_at=NOW(), seen_at=NULL`, [id, me, price, days, note || null, JSON.stringify(photos)]);
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [me])).rows[0].nm;
-    notify(s.provider_id, ex ? '✏️ تحديث عرض على طلبك' : '🤝 عرض جديد على طلبك', (nm || 'مزوّد') + ' — ' + price.toLocaleString('en-US') + ' ر.س على «' + String(s.description).slice(0, 50) + '»', 'sub', id, { kind: 'sub_offer', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+    notify(s.provider_id, ex ? '✏️ تحديث عرض على طلبك' : '🤝 عرض جديد على طلبك', (nm || 'مزوّد') + ' — ' + price.toLocaleString('en-US') + ' ر.س على «' + _subT(s).slice(0, 50) + '»', 'sub', id, { kind: 'sub_offer', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
     const ph = (await pool.query('SELECT phone FROM users WHERE id=$1', [s.provider_id])).rows[0];
     res.json({ ok: true, owner_phone: ph && ph.phone });
   } catch(e) { console.error('sub offer:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -12357,9 +12366,9 @@ app.post('/api/sub/:id/accept', auth, providerOnly, async (req, res) => {
     await pool.query("UPDATE sub_requests SET status='awarded', awarded_offer_id=$1, closed_at=NOW(), work_state=NULL, started_at=NULL, done_at=NULL, fu_next=NOW() + INTERVAL '3 days' WHERE id=$2", [oid, id]);
     await _subSaai(s, o);
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [req.user.id])).rows[0].nm;
-    notify(o.provider_id, '🎉 ' + (nm || 'المقاول') + ' اعتمد عرضك', 'على «' + String(s.description).slice(0, 60) + '» — تواصلوا واتفقوا. سعي المنصة 3% انضاف في محفظة السعي حقتك', 'sub', id, { kind: 'sub_won', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+    notify(o.provider_id, '🎉 ' + (nm || 'المقاول') + ' اعتمد عرضك', 'على «' + _subT(s).slice(0, 60) + '» — تواصلوا واتفقوا. سعي المنصة 3% انضاف في محفظة السعي حقتك', 'sub', id, { kind: 'sub_won', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
     const others = (await pool.query("SELECT provider_id FROM sub_offers WHERE sub_id=$1 AND id<>$2", [id, oid])).rows;
-    for (const x of others) notify(x.provider_id, 'ℹ️ طلب المقاول اكتمل', 'اختار عرض ثاني على «' + String(s.description).slice(0, 50) + '» — شكراً لعرضك', 'sub', id, { url: '/dashboard-provider.html#sub' }).catch(()=>{});
+    for (const x of others) notify(x.provider_id, 'ℹ️ طلب المقاول اكتمل', 'اختار عرض ثاني على «' + _subT(s).slice(0, 50) + '» — شكراً لعرضك', 'sub', id, { url: '/dashboard-provider.html#sub' }).catch(()=>{});
     res.json({ ok: true, provider_id: o.provider_id });
   } catch(e) { console.error('sub accept:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -12377,7 +12386,7 @@ app.post('/api/sub/:id/close', auth, providerOnly, async (req, res) => {
 async function _subSaai(s, o){
   try {
     const val = parseInt(o.price) || 0, fee = Math.round(val * 0.03);
-    const title = '🤝 مقاول باطن: ' + s.category + ' — ' + String(s.description).slice(0, 60);
+    const title = '🤝 مقاول باطن: ' + s.category + ' — ' + _subT(s).slice(0, 60);
     await pool.query(`INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status, due_from, source, self_title, sub_id)
       VALUES (NULL,$1,NULL,$2,$3,'pending',NOW(),'sub',$4,$5) ON CONFLICT (sub_id) WHERE sub_id IS NOT NULL DO UPDATE SET provider_id=EXCLUDED.provider_id, contract_value=EXCLUDED.contract_value, saai_amount=EXCLUDED.saai_amount, status='pending', defer_kind=NULL, defer_state=NULL
       WHERE saai_ledger.status IN ('pending','cancelled','deferred')`, [o.provider_id, val, fee, title, s.id]);
@@ -12393,7 +12402,7 @@ app.post('/api/sub/saai/:lid/nodeal', auth, providerOnly, async (req, res) => {
     if (x.defer_state === 'conflict') return res.status(400).json({ message: 'المقاول أكّد إن الاتفاق تم — تواصل مع الإدارة' });
     await pool.query("UPDATE saai_ledger SET status='deferred', defer_kind='cancel', defer_state='asked', defer_at=NOW(), defer_note=$2, defer_count=COALESCE(defer_count,0)+1 WHERE id=$1", [lid, _needTxt(req.body && req.body.note, 200) || null]);
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [req.user.id])).rows[0].nm;
-    notify(x.owner_id, '❓ ' + (nm || 'الفني') + ' يقول ما تم الاتفاق', 'على «' + String(x.description).slice(0, 50) + '» — أكّد من صفحة الطلب، ولو صحيح ينفتح طلبك من جديد', 'sub', x.sub_id, { url: '/dashboard-provider.html#sub/' + x.sub_id }).catch(()=>{});
+    notify(x.owner_id, '❓ ' + (nm || 'الفني') + ' يقول ما تم الاتفاق', 'على «' + _subT(x).slice(0, 50) + '» — أكّد من صفحة الطلب، ولو صحيح ينفتح طلبك من جديد', 'sub', x.sub_id, { url: '/dashboard-provider.html#sub/' + x.sub_id }).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { console.error('sub nodeal:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -12409,10 +12418,10 @@ app.post('/api/sub/:id/nodeal-answer', auth, providerOnly, async (req, res) => {
       await pool.query("UPDATE sub_offers SET status='rejected' WHERE id=$1", [s.awarded_offer_id]);
       await pool.query("UPDATE sub_offers SET status='pending' WHERE sub_id=$1 AND id<>$2 AND status='rejected'", [id, s.awarded_offer_id]);
       await pool.query("UPDATE sub_requests SET status='open', awarded_offer_id=NULL, closed_at=NULL, created_at=NOW(), nudge_noof=TRUE, work_state=NULL, started_at=NULL, done_at=NULL, fu_next=NULL WHERE id=$1", [id]);
-      notify(l.provider_id, 'ℹ️ المقاول أكّد إن ما تم الاتفاق', 'انلغى السعي على «' + String(s.description).slice(0, 50) + '»', 'sub', id, { url: '/dashboard-provider.html#saai' }).catch(()=>{});
+      notify(l.provider_id, 'ℹ️ المقاول أكّد إن ما تم الاتفاق', 'انلغى السعي على «' + _subT(s).slice(0, 50) + '»', 'sub', id, { url: '/dashboard-provider.html#saai' }).catch(()=>{});
     } else {
       await pool.query("UPDATE saai_ledger SET status='pending', defer_state='conflict', client_answer='no' WHERE id=$1", [l.id]);
-      notify(l.provider_id, '⚠️ المقاول يقول الاتفاق تم', 'على «' + String(s.description).slice(0, 50) + '» — السعي باقي مستحق. لو فيه خلاف تواصل مع الإدارة', 'saai', id).catch(()=>{});
+      notify(l.provider_id, '⚠️ المقاول يقول الاتفاق تم', 'على «' + _subT(s).slice(0, 50) + '» — السعي باقي مستحق. لو فيه خلاف تواصل مع الإدارة', 'saai', id).catch(()=>{});
     }
     res.json({ ok: true });
   } catch(e) { console.error('sub nodeal ans:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -12448,7 +12457,7 @@ app.post('/api/sub/:id/progress', auth, providerOnly, async (req, res) => {
     if (st === 'started') await pool.query("UPDATE sub_requests SET work_state='started', started_at=COALESCE(started_at,NOW()), fu_next=NOW() + INTERVAL '7 days' WHERE id=$1", [id]);
     else await pool.query("UPDATE sub_requests SET work_state='done', started_at=COALESCE(started_at,NOW()), done_at=NOW(), fu_next=NULL WHERE id=$1", [id]);
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [me])).rows[0].nm;
-    notify(other, st === 'done' ? '✅ ' + (nm || 'الطرف الثاني') + ': خلص الشغل' : '🛠️ ' + (nm || 'الطرف الثاني') + ': بدأ الشغل', '«' + String(s.description).slice(0, 50) + '»' + (st === 'done' ? ' — قيّم تعاملك' : ''), 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+    notify(other, st === 'done' ? '✅ ' + (nm || 'الطرف الثاني') + ': خلص الشغل' : '🛠️ ' + (nm || 'الطرف الثاني') + ': بدأ الشغل', '«' + _subT(s).slice(0, 50) + '»' + (st === 'done' ? ' — قيّم تعاملك' : ''), 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { console.error('sub progress:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -12462,7 +12471,7 @@ app.post('/api/sub/:id/report', auth, providerOnly, rateLimiter(10, 600000), asy
     if (String(who) === String(req.user.id)) return res.status(400).json({ message: 'غير صالح' });
     const reason = _cleanTxt(b.reason, 60) || 'أخرى';
     await pool.query(`INSERT INTO reports (reporter_id, reported_id, request_id, type, reason, details, created_at) VALUES ($1,$2,NULL,$3,$4,$5,NOW())`,
-      [req.user.id, who, b.user_id ? 'مقاول باطن — محادثة' : 'مقاول باطن — طلب', (reason + ' · طلب #' + id + ': ' + String(s.description).slice(0, 120)).slice(0, 250), _needTxt(b.details, 500) || null]);
+      [req.user.id, who, b.user_id ? 'مقاول باطن — محادثة' : 'مقاول باطن — طلب', (reason + ' · طلب #' + id + ': ' + _subT(s).slice(0, 120)).slice(0, 250), _needTxt(b.details, 500) || null]);
     res.json({ ok: true });
   } catch(e) { console.error('sub report:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -12483,21 +12492,24 @@ app.put('/api/sub/:id', auth, providerOnly, rateLimiter(30, 3600000), async (req
       try { if (a && typeof a.data === 'string' && /^data:/.test(a.data) && (/^data:image\//.test(a.data) || /\.(pdf|dwg|dxf|xlsx?|docx?|zip|rar)$/i.test(String(a.name || '')))) { const u = await uploadToCloud(a.data, 'manaqasa/sub', a.name); if (u && /^https?:/.test(u)) atts.push({ url: u, name: _cleanTxt(a.name, 80) || 'مرفق' }); } } catch(e){}
     }
     const budget = parseInt(String(b.budget || '').replace(/[^\d]/g, '')) || null;
+    const title2 = 'title' in b ? (_cleanTxt(b.title, 150) || null) : (s.title || null);
     const city2 = _cleanTxt(b.city, 100) || s.city, dist2 = _cleanTxt(b.district, 100) || null, start2 = _cleanTxt(b.start_text, 80) || null, bud2 = budget && budget < 1e9 ? budget : null;
     if (inRev) { // قبل النشر: التعديل يمشي مباشرة ويرجع للطابور (لو كان «يحتاج تعديل» ينحسب إرسال جديد)
-      await pool.query(`UPDATE sub_requests SET description=$1, city=$2, district=$3, start_text=$4, budget=$5, attachments=$6, edited_at=NOW(), status='review', submitted_at=CASE WHEN status='needs_edit' THEN NOW() ELSE submitted_at END WHERE id=$7`,
-        [desc, city2, dist2, start2, bud2, JSON.stringify(atts), id]);
+      await pool.query(`UPDATE sub_requests SET description=$1, city=$2, district=$3, start_text=$4, budget=$5, attachments=$6, edited_at=NOW(), status='review', submitted_at=CASE WHEN status='needs_edit' THEN NOW() ELSE submitted_at END, title=$8 WHERE id=$7`,
+        [desc, city2, dist2, start2, bud2, JSON.stringify(atts), id, title2]);
       if (s.status === 'needs_edit') _notifyAdmins('🤝 طلب مقاول باطن رجع بعد التعديل', s.category + ' — «' + desc.slice(0, 60) + '»', 'sub_review', id).catch(()=>{});
       return res.json({ ok: true, review: true });
     }
     // بعد النشر: تغيير الوصف يراجعه فريق مناقصة (الطلب يبقى ظاهر بالوصف القديم)، والباقي يمشي مباشرة
-    const descChanged = _arNorm(desc) !== _arNorm(s.description);
-    await pool.query(`UPDATE sub_requests SET city=$1, district=$2, start_text=$3, budget=$4, attachments=$5, edited_at=NOW(), pending_desc=$6, pending_at=CASE WHEN $6::text IS NULL THEN pending_at ELSE NOW() END WHERE id=$7`,
-      [city2, dist2, start2, bud2, JSON.stringify(atts), descChanged ? desc : (s.pending_desc || null), id]);
+    const titleChanged = _arNorm(title2 || '') !== _arNorm(s.title || '');
+    const descChanged = _arNorm(desc) !== _arNorm(s.description) || titleChanged;
+    // العنوان والوصف يتعدّلون مع بعض بعد المراجعة (pending_desc يمسك الوصف الجديد دايماً)
+    await pool.query(`UPDATE sub_requests SET city=$1, district=$2, start_text=$3, budget=$4, attachments=$5, edited_at=NOW(), pending_desc=$6, pending_title=CASE WHEN $6::text IS NULL THEN pending_title ELSE $8 END, pending_at=CASE WHEN $6::text IS NULL THEN pending_at ELSE NOW() END WHERE id=$7`,
+      [city2, dist2, start2, bud2, JSON.stringify(atts), descChanged ? desc : (s.pending_desc || null), id, title2]);
     if (descChanged) _notifyAdmins('✏️ مقاول عدّل وصف طلبه بعد النشر', s.category + ' — «' + desc.slice(0, 60) + '»', 'sub_review', id).catch(()=>{});
     const otherChanged = city2 !== s.city || (dist2 || null) !== (s.district || null) || (start2 || null) !== (s.start_text || null) || (bud2 || null) !== (s.budget || null) || JSON.stringify(atts) !== JSON.stringify(s.attachments || []);
     if (otherChanged) { const ps = (await pool.query("SELECT provider_id FROM sub_offers WHERE sub_id=$1 AND status='pending'", [id])).rows;
-      for (const p of ps) notify(p.provider_id, '✏️ المقاول عدّل طلبه', '«' + String(s.description).slice(0, 60) + '» — راجع عرضك وحدّثه إذا تغيّر شي', 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{}); }
+      for (const p of ps) notify(p.provider_id, '✏️ المقاول عدّل طلبه', '«' + _subT(s).slice(0, 60) + '» — راجع عرضك وحدّثه إذا تغيّر شي', 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{}); }
     res.json({ ok: true, pending: descChanged });
   } catch(e) { console.error('sub put:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -12510,7 +12522,7 @@ app.delete('/api/sub/:id/offers', auth, providerOnly, async (req, res) => {
     const r = await pool.query("DELETE FROM sub_offers WHERE sub_id=$1 AND provider_id=$2 AND status='pending' RETURNING id", [id, req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'ما عندك عرض على هذا الطلب' });
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [req.user.id])).rows[0].nm;
-    notify(s.provider_id, '↩️ ' + (nm || 'مزوّد') + ' سحب عرضه', 'على «' + String(s.description).slice(0, 60) + '»', 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+    notify(s.provider_id, '↩️ ' + (nm || 'مزوّد') + ' سحب عرضه', 'على «' + _subT(s).slice(0, 60) + '»', 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -12556,7 +12568,7 @@ app.post('/api/sub/:id/msgs', auth, providerOnly, rateLimiter(40, 600000), async
 app.get('/s/:key', async (req, res) => {
   try {
     const k = String(req.params.key || '').replace(/[^a-f0-9]/g, '').slice(0, 24);
-    const s = k ? (await pool.query(`SELECT s.id, s.category, s.city, s.district, s.description, s.start_text, s.status, s.attachments, COALESCE(NULLIF(u.business_name,''),u.name) AS owner,
+    const s = k ? (await pool.query(`SELECT s.id, s.title, s.category, s.city, s.district, s.description, s.start_text, s.status, s.attachments, COALESCE(NULLIF(u.business_name,''),u.name) AS owner,
         (SELECT COUNT(*)::int FROM sub_offers WHERE sub_id=s.id) AS offers FROM sub_requests s JOIN users u ON u.id=s.provider_id WHERE s.share_key=$1`, [k])).rows[0] : null;
     if (!s || ['review','needs_edit','rejected'].includes(s.status)) return res.status(404).sendFile(__dirname + '/404.html');
     const E = eEsc, open = s.status === 'open', na = Array.isArray(s.attachments) ? s.attachments.length : 0;
@@ -12570,7 +12582,7 @@ app.get('/s/:key', async (req, res) => {
 .w{max-width:560px;margin:0 auto;padding:16px}.cd{background:var(--c);border:1px solid var(--b);border-radius:18px;padding:18px;margin-bottom:12px}.tg{display:inline-block;background:#ede9fe;color:#6d28d9;border-radius:999px;padding:4px 11px;font-size:12px;font-weight:900}
 h1{font-size:19px;line-height:1.7;margin:10px 0 6px}.s{color:var(--m);font-size:13px;font-weight:700;line-height:1.8}.b{display:block;text-align:center;text-decoration:none;border-radius:14px;padding:14px;font-weight:900;font-size:15px;margin-top:10px}
 .v{background:#7c3aed;color:#fff}.o{background:var(--c);color:var(--t);border:1px solid var(--b)}ul{margin:8px 0 0;padding-inline-start:18px;color:var(--m);font-size:13px;font-weight:700;line-height:2}</style></head>
-<body><div class="top">مناقصة</div><div class="w"><div class="cd"><span class="tg">🤝 مقاول باطن · ${E(s.category)}</span><h1>${E(s.description)}</h1>
+<body><div class="top">مناقصة</div><div class="w"><div class="cd"><span class="tg">🤝 مقاول باطن · ${E(s.category)}</span><h1>${E(s.title || s.description)}</h1>${s.title ? `<div class="s" style="white-space:pre-wrap">${E(s.description)}</div>` : ''}
 <div class="s">${s.city ? '📍 ' + E(s.city) + (s.district ? ' · ' + E(s.district) : '') : ''}${s.start_text ? ' · يبدأ ' + E(s.start_text) : ''}${na ? ' · 📎 فيه مرفقات' : ''}</div>
 <div class="s" style="margin-top:8px">من <b>${E(s.owner || 'مقاول')}</b> · ${s.offers ? s.offers + ' عرض للحين' : 'كن أول من يقدّم'}</div></div>
 ${open ? `<div class="cd"><b style="font-size:15px">تبي تقدّم عرضك؟</b><ul><li>سجّل كمزوّد في مناقصة — مجاناً</li><li>قدّم سعرك، ويظهر لك رقم المقاول بعدها</li><li>توصلك مشاريع العملاء وطلبات المقاولين في تخصصك</li></ul>
@@ -12591,7 +12603,7 @@ app.post('/api/sub/:id/rate', auth, providerOnly, rateLimiter(20, 3600000), asyn
     const r = await pool.query('INSERT INTO sub_ratings (sub_id, rater_id, rated_id, stars, comment) VALUES ($1,$2,$3,$4,$5) ON CONFLICT (sub_id, rater_id) DO NOTHING RETURNING id', [id, me, other, stars, _needTxt(req.body.comment, 300) || null]);
     if (!r.rows.length) return res.status(400).json({ message: 'قيّمت من قبل' });
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [me])).rows[0].nm;
-    notify(other, '⭐ ' + (nm || 'مزوّد') + ' قيّمك ' + stars + ' من 5', 'على «' + String(s.description).slice(0, 50) + '» — تقييم المقاولين يطلع لهم لما تقدّم على طلباتهم', 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
+    notify(other, '⭐ ' + (nm || 'مزوّد') + ' قيّمك ' + stars + ' من 5', 'على «' + _subT(s).slice(0, 50) + '» — تقييم المقاولين يطلع لهم لما تقدّم على طلباتهم', 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { console.error('sub rate:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -12604,7 +12616,7 @@ app.get('/api/admin/sub', requirePermission('requests.view'), async (req, res) =
         (SELECT COUNT(*)::int FROM sub_offers) AS offers, (SELECT COALESCE(SUM(o.price),0)::bigint FROM sub_requests s2 JOIN sub_offers o ON o.id=s2.awarded_offer_id) AS value,
         (SELECT COUNT(*)::int FROM partners) AS partners, (SELECT COUNT(DISTINCT provider_id)::int FROM sub_requests) AS owners,
         (SELECT ROUND(AVG(stars)::numeric,1) FROM sub_ratings) AS avg_rate, (SELECT COUNT(*)::int FROM sub_ratings) AS rates FROM sub_requests`)).rows[0];
-    const list = (await pool.query(`SELECT s.id, s.category, s.city, s.description, s.status, s.created_at, s.budget,
+    const list = (await pool.query(`SELECT s.id, s.title, s.category, s.city, s.description, s.status, s.created_at, s.budget, s.work_state,
         COALESCE(NULLIF(u.business_name,''),u.name) AS owner, u.phone AS owner_phone, u.id AS owner_id,
         (SELECT COUNT(*)::int FROM sub_offers o WHERE o.sub_id=s.id) AS offers,
         (SELECT json_build_object('name', COALESCE(NULLIF(w.business_name,''),w.name), 'price', o.price, 'id', w.id) FROM sub_offers o JOIN users w ON w.id=o.provider_id WHERE o.id=s.awarded_offer_id) AS winner,
@@ -12643,11 +12655,11 @@ app.post('/api/admin/sub/:id/close', requirePermission('requests.edit'), async (
 // ═══ الإدارة: مراجعة طلبات مقاول باطن قبل النشر (مثل مراجعة مشاريع العملاء) ═══
 async function _subDups(s){
   try {
-    const c = (await pool.query(`SELECT id, category, city, description, status, created_at, (SELECT COUNT(*)::int FROM sub_offers o WHERE o.sub_id=x.id) AS offers
+    const c = (await pool.query(`SELECT id, title, category, city, description, status, created_at, (SELECT COUNT(*)::int FROM sub_offers o WHERE o.sub_id=x.id) AS offers
       FROM sub_requests x WHERE provider_id=$1 AND id<>$2 AND status NOT IN ('rejected') AND dup_of IS NULL AND COALESCE(submitted_at, created_at) > NOW() - INTERVAL '60 days' ORDER BY id DESC LIMIT 20`, [s.provider_id, s.id])).rows;
     const out = [];
     for (const x of c) {
-      const pct = Math.round(_dice(String(s.description).slice(0, 400), String(x.description).slice(0, 400)) * 100);
+      const pct = Math.round(_dice(((s.title || '') + ' ' + String(s.description)).slice(0, 400), ((x.title || '') + ' ' + String(x.description)).slice(0, 400)) * 100);
       const sameCat = s.category === x.category, sameCity = !!(s.city && s.city === x.city);
       if (!(pct >= 55 || (sameCat && sameCity && pct >= 30))) continue;
       const why = []; if (sameCat) why.push('نفس التخصص: ' + x.category); if (sameCity) why.push('نفس المدينة: ' + x.city); if (pct >= 30) why.push('الكلام متشابه ' + pct + '%');
@@ -12698,6 +12710,8 @@ app.patch('/api/admin/sub/:id/quick', requirePermission('requests.review'), asyn
     const set = [], v = [];
     const put = (col, val) => { v.push(val); set.push(col + '=$' + v.length); };
     if ('description' in b) { const d = _needTxt(b.description, 1500); if (d.length < 10) return res.status(400).json({ message: 'الوصف قصير' }); put('description', d); }
+    if ('title' in b) put('title', _cleanTxt(b.title, 150) || null);
+    if ('pending_title' in b) put('pending_title', _cleanTxt(b.pending_title, 150) || null);
     if ('pending_desc' in b) { const d = _needTxt(b.pending_desc, 1500); if (d.length < 10) return res.status(400).json({ message: 'الوصف قصير' }); put('pending_desc', d); }
     if ('category' in b) { const c = _cleanTxt(b.category, 100); if (!c) return res.status(400).json({ message: 'اختر التخصص' }); put('category', c); }
     if ('city' in b) put('city', _cleanTxt(b.city, 100) || null);
@@ -12727,20 +12741,20 @@ app.put('/api/admin/sub/:id/review', requirePermission('requests.review'), async
     const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
     if (!s) return res.status(404).json({ message: 'غير موجود' });
     const ow = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm, phone, email FROM users WHERE id=$1", [s.provider_id])).rows[0] || {};
-    const nm = _drFirst(ow.nm), reason = _needTxt(b.reason, 1000), short = String(s.description).slice(0, 60);
+    const nm = _drFirst(ow.nm), reason = _needTxt(b.reason, 1000), short = _subT(s).slice(0, 60);
     const link = SITE_URL + '/dashboard-provider.html#sub/' + id;
     const tell = (t, body, btn) => notifyWithEmail(s.provider_id, t, body, 'sub', id, t, `<p>مرحباً${nm ? ' ' + eEsc(nm) : ''}،</p><p>${eEsc(body).replace(/\n/g, '<br>')}</p>`, btn || 'افتح طلبك', link, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
     let wa = null, msg = '';
     if (act === 'edit_ok' || act === 'edit_no') {
       if (s.status !== 'open' || !s.pending_desc) return res.status(400).json({ message: 'ما فيه تعديل ينتظر' });
       if (act === 'edit_ok') {
-        await pool.query('UPDATE sub_requests SET description=pending_desc, pending_desc=NULL, pending_at=NULL, edited_at=NOW() WHERE id=$1', [id]);
+        await pool.query('UPDATE sub_requests SET description=pending_desc, title=COALESCE(pending_title,title), pending_desc=NULL, pending_title=NULL, pending_at=NULL, edited_at=NOW() WHERE id=$1', [id]);
         const ps = (await pool.query("SELECT provider_id FROM sub_offers WHERE sub_id=$1 AND status='pending'", [id])).rows;
         for (const p of ps) notify(p.provider_id, '✏️ المقاول عدّل طلبه', '«' + String(s.pending_desc).slice(0, 60) + '» — راجع عرضك وحدّثه إذا تغيّر شي', 'sub', id, { url: link.replace(SITE_URL, '') }).catch(()=>{});
         notify(s.provider_id, '✅ اعتمدنا تعديل طلبك', '«' + String(s.pending_desc).slice(0, 60) + '» — وبلّغنا اللي قدّموا عروض', 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
         msg = 'اعتمد التعديل';
       } else {
-        await pool.query('UPDATE sub_requests SET pending_desc=NULL, pending_at=NULL WHERE id=$1', [id]);
+        await pool.query('UPDATE sub_requests SET pending_desc=NULL, pending_title=NULL, pending_at=NULL WHERE id=$1', [id]);
         tell('ℹ️ ما اعتمدنا تعديل طلبك', `تعديلك على «${short}» ما انعتمد${reason ? ': ' + reason : ''}.\nطلبك باقي منشور بالوصف السابق.`);
         wa = _subWa(ow.phone, nm, `بخصوص تعديلك على طلب «مقاول باطن» («${short}») — ما اعتمدناه${reason ? ': ' + reason : ''}.\nطلبك باقي منشور بالوصف السابق.\n${link}`);
         msg = 'رفض التعديل' + (reason ? ': ' + reason : '');
@@ -12800,7 +12814,7 @@ app.put('/api/admin/sub/:id/review', requirePermission('requests.review'), async
         const l2 = SITE_URL + '/dashboard-provider.html#sub/' + dupId;
         if (act === 'dup_merge') { notify(s.provider_id, '✅ حدّثنا طلبك السابق', 'نفس طلبك «' + short + '» موجود — أضفنا التفاصيل الجديدة عليه' + (d.offers ? ' وعروضك (' + d.offers + ') محفوظة' : ''), 'sub', dupId, { url: '/dashboard-provider.html#sub/' + dupId }).catch(()=>{});
           wa = _subWa(ow.phone, nm, `لاحظنا إنك نشرت نفس طلب «مقاول باطن» مرتين — أضفنا التفاصيل الجديدة على طلبك الأول عشان ما تتوزع العروض.\n${l2}`); }
-        else { notify(s.provider_id, '📂 طلبك موجود من قبل', '«' + String(d.description).slice(0, 60) + '»' + (d.offers ? ' وفيه ' + d.offers + ' عروض' : '') + ' — تابعه هناك', 'sub', dupId, { url: '/dashboard-provider.html#sub/' + dupId }).catch(()=>{});
+        else { notify(s.provider_id, '📂 طلبك موجود من قبل', '«' + _subT(d).slice(0, 60) + '»' + (d.offers ? ' وفيه ' + d.offers + ' عروض' : '') + ' — تابعه هناك', 'sub', dupId, { url: '/dashboard-provider.html#sub/' + dupId }).catch(()=>{});
           wa = _subWa(ow.phone, nm, `لاحظنا إنك نشرت نفس طلب «مقاول باطن» مرة ثانية — طلبك الأول لسا موجود${d.offers ? ' وفيه ' + d.offers + ' عروض' : ''}:\n${l2}`); }
         msg = act === 'dup_merge' ? 'مكرر — حدّثنا #' + dupId : 'مكرر — رجّعناه لـ #' + dupId;
       } else return res.status(400).json({ message: 'إجراء غير صحيح' });

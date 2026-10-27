@@ -391,6 +391,10 @@ function _gotoPageInner(page){
 // زر رجوع المتصفّح: يرجّع للقسم السابق داخل لوحة المزوّد بدل الخروج
 window.addEventListener('popstate',function(){
   var h=(location.hash||'').replace('#','');
+  // «مقاول باطن»: صفحات داخلية (طلب · نموذج) — الرجوع يتنقّل بينها بدل ما يطلع للرئيسية
+  var _sm=h.match(/^sub\/(\d+)$/); if(_sm){ if(_curPage==='sub'&&window.SubC){ SubC.open(parseInt(_sm[1]),null,true); return; } window._subOpen=parseInt(_sm[1]); h='sub'; }
+  if(/^sub\/(new|\d+\/edit)$/.test(h)){ h='sub'; }
+  if(h==='sub'&&_curPage==='sub'&&window.SubC&&SubC.list){ SubC.list(); return; }
   var known=['home','browse','works','notifs','profile','chat','saai','sub'];
   var target=known.indexOf(h)>=0?h:'home';
   window._pSkipHash=true; gotoPage(target); window._pSkipHash=false;
@@ -2439,6 +2443,7 @@ document.addEventListener('DOMContentLoaded',function(){
   // رابط مباشر لقسم (مثل #saai من صفحة السداد) يتقدّم على آخر قسم محفوظ
   var _h=(location.hash||'').replace('#','');
   if(/^sub\/\d+$/.test(_h)){ window._subOpen=parseInt(_h.split('/')[1]); _h='sub'; }
+  if(/^sub\/(new|\d+\/edit)$/.test(_h)){ _h='sub'; }
   var pg=(_h&&_pages[_h])?_h:((saved&&_pages[saved])?saved:'home');
   gotoPage(pg);
 });
