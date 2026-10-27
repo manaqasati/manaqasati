@@ -1038,6 +1038,11 @@ body.dm-open #waFloat,body.dm-open #toTopBtn,body.dm-open #mnqBackToChoose{displ
 .dm-rp{margin-top:14px;border:0;background:none;color:#a9bde3;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;min-height:36px}
 .dm-ex{position:absolute;bottom:22px;left:0;right:0;text-align:center;font-size:11px;font-weight:700;color:#7d93bd}
 @media (prefers-reduced-motion:reduce){#dmPill .pl,.dm-send.ok,.dm-cta{animation:none}}
+
+/* مربعات المخطط الهندسي */
+body .hx{background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:22px 22px}
+body .appx-in{background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),radial-gradient(120% 90% at 85% 0%,#2563eb 0%,transparent 60%),linear-gradient(170deg,#0f1b45,#172554 50%,#1e3a8a);background-size:22px 22px,22px 22px,auto,auto}
+body .app-cta{background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(135deg,#1e3a8a,#1d4ed8);background-size:22px 22px,22px 22px,auto}
 </style>
 <script src="/wafix.js?v=1"></script>
 </head>
@@ -1393,7 +1398,7 @@ body.os-ios .appx .only-and,body.os-and .appx .only-ios{display:none}
 
 <!-- CTA -->
 <section style="padding:72px 20px;text-align:center">
-  <div style="max-width:660px;margin:0 auto;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:26px;padding:50px 34px;box-shadow:0 22px 55px rgba(29,78,216,0.30);position:relative;overflow:hidden">
+  <div style="max-width:660px;margin:0 auto;background:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(135deg,var(--accent),var(--accent2));background-size:22px 22px,22px 22px,auto;border-radius:26px;padding:50px 34px;box-shadow:0 22px 55px rgba(29,78,216,0.30);position:relative;overflow:hidden">
     <div style="position:absolute;top:-40px;left:-40px;width:160px;height:160px;background:rgba(255,255,255,0.08);border-radius:50%"></div>
     <div style="position:absolute;bottom:-50px;right:-30px;width:140px;height:140px;background:rgba(255,255,255,0.07);border-radius:50%"></div>
     <div style="position:relative">

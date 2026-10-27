@@ -1918,7 +1918,7 @@ function loadSaai(){
   _api('/api/provider/saai').then(function(d){
     if(!d){ _loadFail(pg,'loadSaai','السعي'); return; }
     var items=d.items||[];
-    var wallet='<div style="background:linear-gradient(135deg,#172554,#1e3a8a 60%,#2563eb);color:#fff;border-radius:18px;padding:22px;margin-bottom:16px">'
+    var wallet='<div style="background:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(135deg,#172554,#1e3a8a 60%,#2563eb);background-size:22px 22px,22px 22px,auto;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px">'
       +'<div style="font-size:12.5px;opacity:.85">سعي مستحق عليك <span style="background:rgba(255,255,255,.16);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:800">تقديري</span></div>'
       +'<div style="font-family:Cairo,sans-serif;font-size:38px;font-weight:900;line-height:1.1;margin:4px 0">'+fmtN(d.pending_total)+' <small style="font-size:15px">ر.س</small></div>'
       +'<div style="font-size:12px;opacity:.8;line-height:1.7">سعي المنصة 3% من مبلغ الاتفاق النهائي — يُسدَّد خلال 10 أيام. المبلغ محسوب من سعر عرضك — وعند السداد تأكد منه أو صحّحه.</div>'
