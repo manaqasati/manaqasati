@@ -11546,6 +11546,8 @@ async function _adminOverview(){
       one(`SELECT
         (SELECT COUNT(*) FROM requests WHERE status IN ('pending_review','review'))::int AS review,
         (SELECT MIN(created_at) FROM requests WHERE status IN ('pending_review','review')) AS review_oldest,
+        (SELECT COUNT(*)::int FROM sub_requests WHERE status='review' OR (status='open' AND pending_desc IS NOT NULL)) AS sub_review,
+        (SELECT MIN(CASE WHEN status='review' THEN submitted_at ELSE pending_at END) FROM sub_requests WHERE status='review' OR (status='open' AND pending_desc IS NOT NULL)) AS sub_review_oldest,
         (SELECT COUNT(*) FROM reports WHERE status='pending' OR status IS NULL)::int AS reports,
         (SELECT COUNT(*) FROM request_questions q WHERE ${_QA_ACTIVE})::int AS questions,
         (SELECT COUNT(*) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flags,
