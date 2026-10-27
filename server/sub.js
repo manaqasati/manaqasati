@@ -118,10 +118,30 @@
   function cityHtml(v){ var R=W._PROV_REGIONS||{}, has=false, h='';
     Object.keys(R).forEach(function(r){ h+='<optgroup label="'+esc('منطقة '+r)+'">'+R[r].map(function(c){ if(c===v)has=true; return '<option'+(c===v?' selected':'')+'>'+esc(c)+'</option>'; }).join('')+'</optgroup>'; });
     return '<select class="sb-f" id="sb-city"><option value="">— اختر المدينة —</option>'+(v&&!has?'<option selected>'+esc(v)+'</option>':'')+h+'</select>'; }
+  // بطاقة تعريف: تطلع أول مرة يضغط «اطلب مقاول باطن» (وتنفتح بعدها من «وش هو؟» داخل النموذج)
+  function introSeen(){ try{ return !!localStorage.getItem('mnq_sub_intro'); }catch(e){ return false; } }
+  function intro(fromForm){ css();
+    var st=function(n,t,d){ return '<div class="sb-row" style="align-items:flex-start;gap:10px;margin-top:10px"><span style="width:26px;height:26px;border-radius:50%;background:#ede9fe;color:#6d28d9;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px">'+n+'</span><div><div class="sb-t" style="font-size:13.5px">'+t+'</div><div class="sb-s">'+d+'</div></div></div>'; };
+    var old=document.getElementById('sbIntro'); if(old)old.remove();
+    var o=document.createElement('div'); o.id='sbIntro'; o.className='sb-ov'; o.style.zIndex='9100'; o.onclick=function(e){ if(e.target===o)o.remove(); };
+    o.innerHTML='<div class="sb-sh" role="dialog" aria-label="وش هو مقاول باطن">'+('<div class="sb-row" style="gap:12px"><span style="width:48px;height:48px;border-radius:14px;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🤝</span><div style="flex:1"><div class="sb-t" style="font-size:17px">«مقاول باطن» — وش هو؟</div><div class="sb-s">تطلب مزوّد يكمّل معك شغل عندك</div></div><button type="button" class="sb-b sb-o" style="padding:6px 10px" onclick="var i=document.getElementById(\'sbIntro\');if(i)i.remove()" aria-label="إغلاق">✕</button></div>'
+      +'<div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.35);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:800;line-height:1.8;margin-top:12px"><b style="color:#16a34a">✓ مثال صحيح:</b> «أحتاج كهربائي لتمديدات فيلا دورين 40 نقطة في الرياض، أبدأ الأسبوع الجاي»</div>'
+      +'<div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.35);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:800;line-height:1.8;margin-top:8px"><b style="color:#dc2626">✗ مو للإعلان</b> عن خدماتك وأسعارك — مكانها صفحتك العامة</div>'
+      +st(1,'تنشر وش تحتاج','التخصص، المدينة، الشغل بالتفصيل، والمخطط لو عندك')
+      +st(2,'نراجعه بسرعة','فريق مناقصة يتأكد إنه واضح، وبعدها يوصل شركاءك أول ثم الفنيين في مدينتك')
+      +st(3,'توصلك العروض','يسألونك بالمحادثة ويقدّمون أسعارهم — ورقمك يظهر بس للي يقدّم')
+      +st(4,'تعتمد الأنسب','تتواصلون وتتفقون، وتحفظه في «شركائي» لو ارتحت له')
+      +'<button type="button" class="sb-b sb-v" style="width:100%;margin-top:16px;padding:13px" onclick="SubC.introGo()">'+(fromForm?'فهمت — كمّل طلبي':'فهمت — اطلب الحين')+'</button>'
+      +(fromForm?'':'<label class="sb-s" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:10px;cursor:pointer"><input type="checkbox" id="sb-intro-no" checked style="width:16px;height:16px;accent-color:#7c3aed"> لا تعرضها لي مرة ثانية</label>'))+'</div>';
+    document.body.appendChild(o); S.introForm=!!fromForm; }
+  function introGo(){ var c=document.getElementById('sb-intro-no'), i=document.getElementById('sbIntro'); if(i)i.remove(); if(S.introForm)return;
+    try{ if(!c||c.checked) localStorage.setItem('mnq_sub_intro','1'); }catch(e){} S.introPass=true; form(); }
   function form(ed){
+    if(!ed&&!introSeen()&&!S.introPass){ intro(false); return; }
+    S.introPass=false;
     F={cat:ed?ed.category:'',atts:[],keep:ed?(ed.attachments||[]).slice():[],edit:ed?ed.id:0}; var d=S.hub||{partners:[]}, me=W._prof||{};
     var o=sheet('<div class="sb-row" style="justify-content:space-between"><b style="font-family:Cairo,sans-serif;font-size:18px">'+(ed?'تعديل الطلب':'اطلب مقاول باطن')+'</b><button type="button" class="sb-b sb-o" style="padding:6px 10px" onclick="SubC.x()">✕</button></div>'
-      +'<div class="sb-s">يشوفه المزوّدين بس — العملاء ما يشوفونه</div>'
+      +'<div class="sb-s">يشوفه المزوّدين بس — العملاء ما يشوفونه · <a href="#" style="color:#6d28d9;font-weight:900" onclick="event.preventDefault();SubC.introF()">ℹ️ وش هو «مقاول باطن»؟</a></div>'
       +(ed?'<label class="sb-l">التخصص</label><span class="sb-tag" style="font-size:12.5px;padding:6px 12px">🤝 '+esc(ed.category)+'</span><div class="sb-s" style="margin-top:4px">التخصص ما يتغيّر — لو تبي تخصص ثاني انشر طلب جديد</div><div id="sb-cats" style="display:none"></div><select id="sb-cat-all" style="display:none"></select>':'<label class="sb-l">وش التخصص اللي تحتاجه؟</label><div class="sb-chips" id="sb-cats">'+TOP.map(function(c){return '<button type="button" data-c="'+esc(c[1])+'">'+c[0]+' '+esc(c[1])+'</button>';}).join('')
         +'<button type="button" data-c="_more">＋ غيرها</button></div><div id="sb-cat-all" style="display:none;margin-top:8px"><input class="sb-f" id="sb-cq" placeholder="🔍 اكتب التخصص… مثلاً: مصاعد" autocomplete="off"><div class="sb-chips" id="sb-cl" style="margin-top:8px;max-height:190px;overflow:auto"></div></div>')
       +'<div class="sb-row" style="gap:8px"><div style="flex:1"><label class="sb-l">المدينة</label>'+cityHtml(ed?(ed.city||''):(me.city||''))+'</div><div style="flex:1"><label class="sb-l">الحي (اختياري)</label><input class="sb-f" id="sb-dist" maxlength="60" value="'+esc(ed&&ed.district||'')+'"></div></div>'
@@ -297,5 +317,5 @@
   setTimeout(function(){ try{ var pd=localStorage.getItem('mnq_sub_pending'); if(pd){ localStorage.removeItem('mnq_sub_pending'); var id=parseInt(pd); if(id){ W._subOpen=id; if(W._curPage==='sub') open(id); else if(W.gotoPage) W.gotoPage('sub'); } } }catch(e){} },1200);
   setTimeout(function(){ css(); markNav(); count(); },300);
   setInterval(function(){ if(document.visibilityState!=='hidden') count(); },90000);
-  W.SubC={homeCard:homeCard,load:load,go:go,form:form,send:send,open:open,offer:offer,acc:acc,addp:addp,unp:unp,close:close,rate:rate,nd:nd,cmenu:cmenu,blk:blk,rpt:rpt,city:function(c){ S.city=c; render(); },rmF:rmF,rmK:rmK,edit:edit,wd:wd,cp:cp,chat:chat,say:say,back:back,x:function(){ clearInterval(CH.t); closeSheet(); }};
+  W.SubC={intro:intro,introGo:introGo,introF:function(){ intro(true); },homeCard:homeCard,load:load,go:go,form:form,send:send,open:open,offer:offer,acc:acc,addp:addp,unp:unp,close:close,rate:rate,nd:nd,cmenu:cmenu,blk:blk,rpt:rpt,city:function(c){ S.city=c; render(); },rmF:rmF,rmK:rmK,edit:edit,wd:wd,cp:cp,chat:chat,say:say,back:back,x:function(){ clearInterval(CH.t); closeSheet(); }};
 })();
