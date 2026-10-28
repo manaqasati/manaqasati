@@ -1450,8 +1450,9 @@ app.get('/dalil/:cat/:city', async (req, res) => {
     // العنوان بصيغة اللي يكتبها الناس في جوجل («كهربائي رفحاء»، «سباك حفر الباطن») + عدد المزوّدين + الفائدة
     const who = _SEO_WHO[cat] || cat;
     const nProv = providers.length;
-    const title = `${who} في ${city}${nProv >= 3 ? ` — ${nProv} مزوّد` : ''} | قارن عروض الأسعار مجاناً — مناقصة`;
-    const desc = `تبحث عن ${who} في ${city}؟ انشر طلبك مجاناً واستقبل عروض أسعار من ${nProv >= 3 ? nProv + ' مزوّد' : 'مزوّدين'} في ${city} خلال ساعات. قارن الأسعار والتقييمات واختر الأنسب ✓ بدون التزام.`;
+    // بدون عدد المزوّدين (لو قليل يطفّي الحماس)
+    const title = `${who} في ${city} | قارن عروض الأسعار مجاناً — مناقصة`;
+    const desc = `تبحث عن ${who} في ${city}؟ انشر طلبك مجاناً واستقبل عروض أسعار من مزوّدين في ${city} خلال ساعات. قارن الأسعار والتقييمات واختر الأنسب ✓ بدون التزام.`;
     const canonical = `${SITE_URL}/dalil/${seoSlug(cat)}/${seoSlug(city)}`;
 
     const provCards = providers.length ? providers.map(p => {
@@ -1460,7 +1461,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
       const slug = seoSlug(p.business_name || p.name || 'مزود') + '-' + p.id;
       const bio = p.bio ? `<p style="font-size:13px;color:#3a4c6b;margin:6px 0 0;line-height:1.7">${seoEsc(String(p.bio).slice(0,120))}</p>` : '';
       return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:15px;margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><h3 style="margin:0;font-size:15px;color:#1e3a8a"><a href="/pro/${slug}" style="color:#1e3a8a;text-decoration:none">${nm}</a></h3><div>${av}</div></div><div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${seoEsc(p.city||city)} · ${seoEsc(cat)}</div>${bio}<a href="/pro/${slug}" style="display:inline-block;margin-top:10px;font-size:12.5px;font-weight:700;color:#1e40af;text-decoration:none">عرض الملف ←</a></div>`;
-    }).join('') : `<p style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:18px;color:#64748b">لا يوجد مزوّدون مسجّلون بعد في ${seoEsc(cat)} بـ${seoEsc(city)}. <strong>كن أول من يستفيد:</strong> انشر مشروعك وسنوصّلك بمزوّدين مناسبين.</p>`;
+    }).join('') : `<p style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:18px;color:#64748b"><strong>انشر مشروعك مجاناً</strong> — نوصّله لمزوّدين ${seoEsc(cat)} المناسبين في ${seoEsc(city)}، ويوصلك عروضهم وتختار الأنسب.</p>`;
 
     const otherCities = SEO_CITIES.filter(c=>c!==city).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(cat)}/${seoSlug(c)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(cat)} ${seoEsc(c)}</a>`).join('');
     const otherCats = SEO_CATS.filter(c=>c!==cat).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(c)}/${seoSlug(city)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:16px;color:#15803d;text-decoration:none;font-size:12.5px">${seoEsc(c)} ${seoEsc(city)}</a>`).join('');

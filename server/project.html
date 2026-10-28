@@ -873,7 +873,7 @@ function _pjPost(path,btn,okMsg){
   }).catch(function(){if(btn){btn.disabled=false;btn.textContent=btn._t;}_pjToast('تعذّر الاتصال',1);});
 }
 function _pjExtend(btn){_pjPost('extend',btn,'تم التمديد 7 أيام ✓');}
-function _pjBoost(btn){_pjPost('boost',btn,function(d){return d.sent?('وصل تنبيه لـ '+d.sent+' مزوّد مطابق ✓'):'أرسلنا التنبيه ✓ — ما فيه مزوّدين مطابقين جدد الحين';});}
+function _pjBoost(btn){_pjPost('boost',btn,function(d){return d.sent?'وصل تنبيه للمزوّدين المطابقين ✓':'تم ✓ — نتابع مشروعك ونبلّغ المزوّدين الجدد أول ما يسجّلون';});}
 function _pjEditMyBid(){
   var b=_bids.filter(function(x){return x.is_mine;})[0];if(!b)return openBid();
   openBid();
