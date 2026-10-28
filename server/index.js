@@ -6,6 +6,7 @@ const { Pool } = require('pg');
 const webpush = require('web-push');
 const { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, GetObjectCommand } = require('@aws-sdk/client-s3');
 const crypto = require('crypto');
+const { AsyncLocalStorage } = require('async_hooks');
 
 // Cloudflare R2 Setup
 let r2Client = null;
@@ -1712,6 +1713,7 @@ app.get('/api/e/o/:tok', async (req, res) => {
 });
 async function sendEmail(to, subject, html, meta) {
   meta = meta || {};
+  if (_softOn() && to && await _softQ(meta.uid || null, 'e', [to, subject, html, meta], '', to)) return true;
   if (!RESEND_KEY) { console.warn(' RESEND_KEY not set — skipping email to', to); return false; }
   if (!to || /@manaqasa\.local$/i.test(String(to))) return false;
   let logId = null;
@@ -2093,8 +2095,74 @@ async function guardUserTarget(req, targetId){
 
 // تتبّع الإشعار: وصل للتطبيق؟ فتحه؟ (ntrack) — يرجع رقم التتبّع عشان نربط فيه الإيميل
 function _withN(url, tid, v){ if (!tid) return url; const u = String(url||'/'), h = u.indexOf('#'), base = h >= 0 ? u.slice(0, h) : u, hash = h >= 0 ? u.slice(h) : ''; return base + (base.indexOf('?') >= 0 ? '&' : '?') + '_n=' + tid + (v ? '&_v=' + v : '') + hash; }
+// ═══ أوقات الإشعارات غير المستعجلة (تذكيرات المهام المجدولة) ═══
+// المزوّد: 10–12 الصبح (وقت الدوام) · العميل: 9–11 بالليل (وقت الراحة) — بتوقيت السعودية
+// اللي ينرسل برّا وقته ينحفظ في soft_queue ويطلع أول الوقت المناسب. الإدارة والإشعارات الفورية ما تتأثر.
+const _softCtx = new AsyncLocalStorage();
+const _soft = (fn, chk) => _softCtx.run({ soft: true, chk: chk || null }, fn);
+const _noSoft = (fn) => _softCtx.run({ soft: false }, fn);
+const SOFT_WIN = { provider: [10, 12], client: [21, 23] };
+const _SOFT_PROV_T = ['sub','pause','pause_chosen','req_updated','bid','bid_accepted','bid_rejected','new_request'];
+const _SOFT_CLI_T = ['becomeprov','pause_ask','req_dup','exec_draft','request','request_published','new_question','draft'];
+function _softNext(aud){ // null = داخل الوقت المناسب، أرسل الحين
+  const w = SOFT_WIN[aud] || SOFT_WIN.client, now = Date.now(), r = new Date(now + 3*3600e3), h = r.getUTCHours();
+  if (h >= w[0] && h < w[1]) return null;
+  let t = Date.UTC(r.getUTCFullYear(), r.getUTCMonth(), r.getUTCDate(), w[0]) - 3*3600e3;
+  if (t <= now) t += 864e5;
+  return new Date(t);
+}
+async function _softAud(uid, hint, email){ // provider | client | null (= فوري: إدارة)
+  const u = String(hint || '');
+  let role = null;
+  try {
+    const q = uid ? await pool.query('SELECT role FROM users WHERE id=$1', [uid]) : (email ? await pool.query('SELECT role FROM users WHERE LOWER(email)=LOWER($1) LIMIT 1', [email]) : null);
+    role = q && q.rows[0] ? q.rows[0].role : null;
+  } catch(e) {}
+  if (role === 'admin') return null;
+  if (/dashboard-provider/.test(u) || _SOFT_PROV_T.includes(u)) return 'provider';
+  if (/dashboard-client|new\.html|post\.html/.test(u) || _SOFT_CLI_T.includes(u)) return 'client';
+  return role === 'provider' ? 'provider' : 'client';
+}
+function _softOn(){ const st = _softCtx.getStore(); return !!(st && st.soft); }
+async function _softQ(uid, kind, args, hint, email){ // true = انحفظ للوقت المناسب
+  try {
+    const aud = await _softAud(uid, hint, email); if (!aud) return false;
+    const t = _softNext(aud); if (!t) return false;
+    const st = _softCtx.getStore() || {};
+    await pool.query('INSERT INTO soft_queue (user_id, kind, args, chk, send_at) VALUES ($1,$2,$3,$4,$5)', [uid || null, kind, JSON.stringify(args), st.chk ? JSON.stringify(st.chk) : null, t]);
+    return true;
+  } catch(e) { console.error('softQ:', e.message); return false; }
+}
+// قبل الإرسال المتأخر: لو الحالة تغيّرت والتذكير ما عاد له داعي ← نلغيه
+async function _softStale(c){
+  try {
+    if (c && c.t === 'subfu') { const r = (await pool.query('SELECT status, work_state FROM sub_requests WHERE id=$1', [c.id])).rows[0]; return !r || r.status !== 'awarded' || String(r.work_state || '') !== String(c.ws || ''); }
+    if (c && c.t === 'subst') { const r = (await pool.query('SELECT status FROM sub_requests WHERE id=$1', [c.id])).rows[0]; return !r || r.status !== c.st; }
+    if (c && c.t === 'subnoof') { const r = (await pool.query("SELECT (SELECT status FROM sub_requests WHERE id=$1) st, EXISTS(SELECT 1 FROM sub_offers WHERE sub_id=$1) o", [c.id])).rows[0]; return !r || r.st !== 'open' || r.o; }
+    if (c && c.t === 'subrate') { return (await pool.query('SELECT 1 FROM sub_ratings WHERE sub_id=$1 AND rater_id=$2', [c.id, c.u])).rows.length > 0; }
+    if (c && c.t === 'req') { const r = (await pool.query('SELECT status FROM requests WHERE id=$1', [c.id])).rows[0]; return !r || (c.st && r.status !== c.st); }
+  } catch(e) {}
+  return false;
+}
+async function _softFlush(){
+  const L = (await pool.query(`DELETE FROM soft_queue WHERE id IN (SELECT id FROM soft_queue WHERE send_at <= NOW() ORDER BY id LIMIT 300 FOR UPDATE SKIP LOCKED) RETURNING *`)).rows;
+  for (const x of L) {
+    try {
+      if (x.chk && await _softStale(x.chk)) continue;
+      const a = x.args || [];
+      await _noSoft(async () => {
+        if (x.kind === 'n') await notify(...a);
+        else if (x.kind === 'nwe') await notifyWithEmail(...a);
+        else if (x.kind === 'e') await sendEmail(...a);
+      });
+    } catch(e) { console.error('softFlush:', e.message); }
+  }
+  return L.length;
+}
+
 async function notify(userId, title, body, type, refId, opts) {
   opts = opts || {};
+  if (_softOn() && await _softQ(userId, 'n', [userId, title, body, type, refId, opts], opts.url || type)) return null;
   let tid = null;
   try {
     const _ni = await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5) RETURNING id', [userId, title, body, type, refId]);
@@ -2123,6 +2191,8 @@ async function notify(userId, title, body, type, refId, opts) {
 }
 
 async function notifyWithEmail(userId, title, body, type, refId, emailSubject, emailBody, btnText, btnUrl) {
+  if (_softOn() && await _softQ(userId, 'nwe', [userId, title, body, type, refId, emailSubject, emailBody, btnText, btnUrl], btnUrl || type)) return;
+  return _noSoft(async () => {
   const tid = await notify(userId, title, body, type, refId);
   try {
     const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [userId]);
@@ -2130,6 +2200,7 @@ async function notifyWithEmail(userId, title, body, type, refId, emailSubject, e
       sendEmail(u.rows[0].email, emailSubject||title, emailTpl(title, emailBody.replace(/\{name\}/g, u.rows[0].name||''), btnText, btnUrl||SITE_URL), { uid: userId, kind: type, tid }).catch(() => {});
     }
   } catch(e) { console.error('notifyWithEmail email part:', e.message); }
+  });
 }
 
 /* ═══════════ محرّك التذكيرات المجدولة (Push + Email، مرّة واحدة لكل حالة) ═══════════ */
@@ -2509,13 +2580,14 @@ async function checkStorageAlert(){
     }
   } catch(e){ console.error('storageAlert:', e.message); }
 }
-async function runReminders(){
+async function runReminders(){ return _soft(_runRemindersAll); }
+async function _runRemindersAll(){
   try { await checkStorageAlert(); } catch(e){}
   try { await _saaiDeferJob(); } catch(e){ console.error('saaiDeferJob:', e.message); }
   try { await _claimsJob(); } catch(e){ console.error('claimsJob:', e.message); }
   try { await _unlockReviewNudge(); } catch(e){ console.error('unlockReviewNudge:', e.message); }
   try { await _silentClientJob(); } catch(e){ console.error('silentClientJob:', e.message); }
-  try { await _verifyRemindJob(); } catch(e){ console.error('verifyRemindJob:', e.message); }
+  try { await _noSoft(() => _verifyRemindJob()); } catch(e){ console.error('verifyRemindJob:', e.message); }
   try { await runSavedReminders(); } catch(e){ console.error('savedReminders:', e.message); }
   try{
     const dOffers = Math.max(0, parseInt(await getSetting('rem_offers_days','2'))||2);
@@ -2925,6 +2997,7 @@ async function runEngagementReminders(){
         else if (sent === 2) gap = 2*86400e3;  // ~3 أيام
         else gap = 24*3600e3;                  // بعدها يومي (تذكير 4 و5)
         if (now < base + gap) continue; // لم يحن الموعد
+        if (_softNext(await _softAud(u.id, '') || 'client')) continue; // برّا وقته المناسب ← نحاول بالجولة الجاية
         await notify(u.id, title, body, 'reminder', null);
         if (u.email && sent < 2) sendEmail(u.email, title, emailTpl(title, `<p>مرحباً${u.name?' '+eEsc(u.name):''}،</p><p>${eEsc(body)}</p>`, 'فتح المنصة', SITE_URL+'/')).catch(()=>{});
         await pool.query(`INSERT INTO engagement_state (user_id, reminders_sent, last_reminded, updated_at) VALUES ($1,1,NOW(),NOW()) ON CONFLICT (user_id) DO UPDATE SET reminders_sent=engagement_state.reminders_sent+1, last_reminded=NOW(), updated_at=NOW()`, [u.id]);
@@ -2934,7 +3007,7 @@ async function runEngagementReminders(){
     await pool.query(`DELETE FROM engagement_state WHERE user_id NOT IN (SELECT DISTINCT user_id FROM notifications WHERE type IN ('bid','message') AND is_read=false AND created_at > NOW() - INTERVAL '30 days')`);
   } catch(e){ console.error('engagementReminders:', e.message); }
 }
-setInterval(() => _jobLock('engagement', runEngagementReminders), 2*60*60*1000); // كل ساعتين (يفحص المواعيد المتدرّجة)
+setInterval(() => _jobLock('engagement', runEngagementReminders), 30*60*1000); // كل نص ساعة (يفحص المواعيد المتدرّجة ويرسل بالوقت المناسب)
 setTimeout(() => _jobLock('reminders', runReminders), 60000);          // مرّة بعد دقيقة من الإقلاع
 
 
@@ -3308,6 +3381,8 @@ async function setupDatabase() {
     try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_2d BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_1d BOOLEAN DEFAULT FALSE'); } catch(e){}
     await _mig(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
+    await _mig(`CREATE TABLE IF NOT EXISTS soft_queue (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(8), args JSONB, chk JSONB, send_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())`);
+    await _mig(`CREATE INDEX IF NOT EXISTS soft_queue_at ON soft_queue(send_at)`);
     await _mig(`CREATE TABLE IF NOT EXISTS reminders_log (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(40), ref_id INTEGER DEFAULT 0, sent_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, kind, ref_id))`);
     await _mig(`CREATE TABLE IF NOT EXISTS request_questions (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, asker_id INTEGER REFERENCES users(id) ON DELETE CASCADE, body TEXT NOT NULL, answer TEXT, answered_at TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
     try { await _mig('ALTER TABLE reviews ADD COLUMN IF NOT EXISTS images TEXT[]'); } catch(e){}
@@ -4297,6 +4372,7 @@ async function runDraftReminders(){
       WHERE d.posted_at IS NULL AND d.user_id IS NULL AND d.email IS NOT NULL AND LOWER(u.email)=LOWER(d.email) AND r.created_at >= d.created_at - INTERVAL '10 minutes'`);
     const base = `SELECT d.*, u.email AS uemail, u.name AS uname FROM post_drafts d LEFT JOIN users u ON u.id=d.user_id
       WHERE d.posted_at IS NULL AND d.stopped_at IS NULL AND (d.user_id IS NOT NULL OR d.email IS NOT NULL) AND LENGTH(COALESCE(d.title,''))>=3 AND COALESCE(u.role,'client')='client'`;
+    if (_softNext('client')) return; // تذكير المسودّات للعميل بس في وقته المناسب (9–11 بالليل)
     const r1 = await pool.query(base + ` AND d.rem1_at IS NULL AND d.updated_at < NOW() - INTERVAL '1 hour' AND d.created_at > NOW() - INTERVAL '3 days' ORDER BY d.id LIMIT 40`);
     for (const d of r1.rows) {
       const c = await pool.query('UPDATE post_drafts SET rem1_at=NOW() WHERE id=$1 AND rem1_at IS NULL RETURNING id', [d.id]); if (!c.rows.length) continue;
@@ -10065,7 +10141,8 @@ app.get('/api/requests/:id/exec-draft', auth, async (req, res) => {
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // لما يرسّي طلب المخطط على مكتب (أو بعد 3 أسابيع) نذكّره يكمّل مشروع التنفيذ
-async function runExecReminders(){
+async function runExecReminders(){ return _soft(_runExecReminders); }
+async function _runExecReminders(){
   try {
     const L = (await pool.query(`SELECT r.id, r.client_id, r.exec_draft->>'title' AS t FROM requests r
       WHERE r.exec_draft IS NOT NULL AND r.exec_remind_at IS NULL AND r.dup_of IS NULL AND r.status NOT IN ('rejected','pending_review','review','needs_edit')
@@ -10463,9 +10540,11 @@ app.post('/api/requests/:id/resume', auth, rateLimiter(20, 600000), async (req, 
   } catch(e) { console.error('/resume:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 // نهاية المدة: نسأل صاحب المشروع «كيف صار التفاوض؟» — ولو ما ردّ خلال يومين يرجع المشروع لحاله
-async function runPauseJob(){
+async function runPauseJob(){ return _soft(_runPauseJob); }
+async function _runPauseJob(){
   try {
-    const ask = await pool.query(`SELECT r.id, r.client_id, r.title, r.pause_bid_id, COALESCE(p.business_name, p.name) AS pnm FROM requests r
+    // سؤال «كيف صار التفاوض؟» ينرسل بوقت العميل المناسب (ومهلة اليومين تبدأ من وقت الإرسال)
+    const ask = _softNext('client') ? { rows: [] } : await pool.query(`SELECT r.id, r.client_id, r.title, r.pause_bid_id, COALESCE(p.business_name, p.name) AS pnm FROM requests r
         LEFT JOIN bids b ON b.id = r.pause_bid_id LEFT JOIN users p ON p.id = b.provider_id
       WHERE r.status='open' AND r.paused_at IS NOT NULL AND r.pause_asked_at IS NULL
         AND ((r.paused_until IS NOT NULL AND r.paused_until <= NOW()) OR (r.paused_until IS NULL AND r.paused_at <= NOW() - INTERVAL '14 days')) LIMIT 50`);
@@ -12223,24 +12302,26 @@ async function _subNotify(sub, partnersOnly){
     }
   } catch(e){ console.error('sub-notify:', e.message); }
 }
-setInterval(async () => { try {
+setInterval(() => _soft(async () => { try {
   const L = (await pool.query(`UPDATE sub_requests SET notified_all=TRUE WHERE status='open' AND notified_all=FALSE AND created_at < NOW() - INTERVAL '${SUB_PARTNER_HOURS} hours' RETURNING *`)).rows;
-  for (const s of L) await _subNotify(s, false);
+  for (const s of L) await _noSoft(() => _subNotify(s, false)); // طلب جديد للمزوّدين = فوري
   const X = (await pool.query(`UPDATE sub_requests SET status='closed', closed_at=NOW(), close_kind='expired' WHERE status='open' AND COALESCE(expires_at, created_at + INTERVAL '${SUB_EXPIRE_DAYS} days') < NOW() RETURNING id, provider_id, title, description`)).rows;
-  for (const x of X) notify(x.provider_id, '⌛ انتهت مدة طلبك', '«' + _subT(x).slice(0, 60) + '» انقفل — لو لسا تحتاجه مدّده أسبوع من صفحة الطلب', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
+  for (const x of X) _soft(() => notify(x.provider_id, '⌛ انتهت مدة طلبك', '«' + _subT(x).slice(0, 60) + '» انقفل — لو لسا تحتاجه مدّده أسبوع من صفحة الطلب', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{}), { t: 'subst', id: x.id, st: 'closed' });
   const N0 = (await pool.query(`UPDATE sub_requests s SET nudge_noof=TRUE WHERE s.status='open' AND s.nudge_noof=FALSE AND s.created_at < NOW() - INTERVAL '24 hours' AND NOT EXISTS(SELECT 1 FROM sub_offers o WHERE o.sub_id=s.id) RETURNING id, provider_id, description`)).rows;
   const SR = (await pool.query(`UPDATE saai_ledger SET sub_reminded=TRUE WHERE source='sub' AND status='pending' AND sub_reminded=FALSE AND COALESCE(due_from,created_at) < NOW() - INTERVAL '7 days' RETURNING id, provider_id, saai_amount, self_title`)).rows;
   for (const x of SR) notify(x.provider_id, '💰 تذكير بالسعي', Math.round(x.saai_amount) + ' ر.س على «' + String(x.self_title || '').replace('🤝 مقاول باطن: ', '').slice(0, 50) + '» — سدّد من محفظة السعي، أو بلّغ لو ما تم الاتفاق', 'saai', null, { url: '/dashboard-provider.html#saai' }).catch(()=>{});
-  for (const x of N0) notify(x.provider_id, '💡 ما وصلك عرض للحين', 'على «' + _subT(x).slice(0, 50) + '» — تعرف فني؟ أرسل له رابط الطلب من صفحة الطلب، يسجّل مجاناً ويقدّم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
+  for (const x of N0) _soft(() => notify(x.provider_id, '💡 ما وصلك عرض للحين', 'على «' + _subT(x).slice(0, 50) + '» — تعرف فني؟ أرسل له رابط الطلب من صفحة الطلب، يسجّل مجاناً ويقدّم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{}), { t: 'subnoof', id: x.id });
   // متابعة الشغل بعد الاعتماد: «بدأ الشغل؟» بعد 3 أيام، و«خلص؟» بعد أسبوع من البدء — للطرفين، مرة لكل مرحلة
-  const FU = (await pool.query(`UPDATE sub_requests s SET fu_next=NULL FROM sub_offers o WHERE o.id=s.awarded_offer_id AND s.status='awarded' AND s.fu_next IS NOT NULL AND s.fu_next < NOW() AND COALESCE(s.work_state,'') <> 'done' RETURNING s.id, s.provider_id, s.description, s.work_state, o.provider_id AS sub_pid`)).rows;
-  for (const x of FU) for (const u of [x.provider_id, x.sub_pid]) notify(u, x.work_state === 'started' ? '🛠️ خلص الشغل؟' : '🛠️ بدأ الشغل؟', '«' + _subT(x).slice(0, 50) + '» — حدّث الحالة بضغطة', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
+  const FU = (await pool.query(`UPDATE sub_requests s SET fu_next=NULL FROM sub_offers o WHERE o.id=s.awarded_offer_id AND s.status='awarded' AND s.fu_next IS NOT NULL AND s.fu_next < NOW() AND COALESCE(s.work_state,'') <> 'done' RETURNING s.id, s.provider_id, s.title, s.description, s.work_state, o.provider_id AS sub_pid`)).rows;
+  for (const x of FU) for (const u of [x.provider_id, x.sub_pid]) _soft(() => notify(u, x.work_state === 'started' ? '🛠️ خلص الشغل؟' : '🛠️ بدأ الشغل؟', '«' + _subT(x).slice(0, 50) + '» — حدّث الحالة بضغطة', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{}), { t: 'subfu', id: x.id, ws: x.work_state || '' });
   const R = (await pool.query(`UPDATE sub_requests s SET rate_nudged=TRUE FROM sub_offers o WHERE o.id=s.awarded_offer_id AND s.status='awarded' AND s.rate_nudged=FALSE AND s.closed_at < NOW() - INTERVAL '3 days' RETURNING s.id, s.provider_id, s.description, o.provider_id AS sub_pid`)).rows;
   for (const x of R) for (const [u, o] of [[x.provider_id, x.sub_pid], [x.sub_pid, x.provider_id]]) {
     const done = (await pool.query('SELECT 1 FROM sub_ratings WHERE sub_id=$1 AND rater_id=$2', [x.id, u])).rows.length; if (done) continue;
-    notify(u, '⭐ قيّم تعاملك', 'كيف كان الشغل على «' + _subT(x).slice(0, 50) + '»؟ تقييمك يساعد المزوّدين يختارون شركاءهم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{});
+    _soft(() => notify(u, '⭐ قيّم تعاملك', 'كيف كان الشغل على «' + _subT(x).slice(0, 50) + '»؟ تقييمك يساعد المزوّدين يختارون شركاءهم', 'sub', x.id, { url: '/dashboard-provider.html#sub/' + x.id }).catch(()=>{}), { t: 'subrate', id: x.id, u });
   }
-} catch(e){ console.error('sub-job:', e.message); } }, 10 * 60 * 1000);
+} catch(e){ console.error('sub-job:', e.message); } }), 10 * 60 * 1000);
+// إرسال الإشعارات المؤجّلة لوقتها المناسب
+setInterval(() => _jobLock('softq', _softFlush), 5 * 60 * 1000);
 const _subRateSQL = (col) => `(SELECT json_build_object('avg', ROUND(AVG(stars)::numeric,1), 'n', COUNT(*)) FROM sub_ratings WHERE rated_id=${col})`;
 function _subRow(r){ return { id: r.id, expires_at: r.expires_at || new Date(new Date(r.created_at).getTime() + SUB_EXPIRE_DAYS * 864e5), title: r.title || null, pending_title: r.pending_title || null, category: r.category, city: r.city, district: r.district, description: r.description, start_text: r.start_text, budget: r.budget, attachments: r.attachments || [], status: r.status, created_at: r.created_at, partners_first: r.partners_first, review_note: r.review_note || null, approve_note: r.approve_note || null, pending_desc: r.pending_desc || null, reject_kind: r.reject_kind || null, submitted_at: r.submitted_at || null, work_state: r.work_state || null, started_at: r.started_at || null, done_at: r.done_at || null }; }
 // نشر طلب
