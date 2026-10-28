@@ -4256,19 +4256,19 @@ async function _draftSend(d, stage){
   const ch = [];
   const title = String(d.title || 'مشروعك').slice(0, 80);
   const name = _drFirst(d.uname || d.name);
-  let nProv = 0;
-  try { if (d.category) nProv = (await matchingProviders([d.category], d.city || null, !d.city)).length; } catch(e) {}
+  // ما نذكر عدد المزوّدين للعميل (لو قليل يطفّي الحماس) — العدد يظهر للإدارة بس في «ما اكتملت»
+  const catTxt = d.category ? 'مزوّدين ' + d.category : 'المزوّدين';
   const resumePath = '/new.html?draft=' + d.token;
   const fin = stage === 2;
   // الإيميل
   const to = d.user_id ? d.uemail : d.email;
   if (to) {
-    const subj = fin ? `${nProv >= 3 ? nProv + ' مزوّد ' + (d.category || '') + ' ينتظرون' : 'مشروعك «' + title + '» ينتظر'} — آخر تذكير` : `مشروعك «${title}» ينتظرك ✍️`;
+    const subj = fin ? `مشروعك «${title}» ينتظر — آخر تذكير` : `مشروعك «${title}» ينتظرك ✍️`;
     const h = fin ? 'مشروعك محفوظ — انشره الحين وخلهم يتنافسون' : `أهلاً${name ? ' ' + eEsc(name) : ''}، وقفت في نص الطريق 👋`;
     const steps = Math.min(d.step || 1, d.steps || 4), tot = d.steps || 4;
     const bars = d.src === 'dash' ? '' : '<div style="margin-top:10px;font-size:0">' + Array.from({ length: tot }, (_, i) => `<span style="display:inline-block;width:${Math.floor(92 / tot)}%;height:6px;border-radius:4px;margin-left:2%;background:${i < steps - 1 ? '#2563eb' : '#e2e8f0'}"></span>`).join('') + '</div>';
     const box = `<div style="border:1.5px dashed #c7d6f0;border-radius:13px;padding:13px 14px;background:#f8fbff;margin:12px 0"><div style="font-weight:bold;font-size:15px;color:#0f2544">${eEsc(title)}</div><div style="font-size:12.5px;color:#64748b;margin-top:3px">${eEsc([d.category, d.city, d.district].filter(Boolean).join(' · '))}</div>${bars}<div style="font-size:12px;color:#1d4ed8;font-weight:bold;margin-top:7px">${eEsc(_drStepTxt(d))}</div></div>`;
-    const why = nProv >= 3 ? `<p>في ${eEsc(d.city || 'منطقتك')} فيه <strong>${nProv} مزوّد ${eEsc(d.category || '')}</strong> يوصلهم مشروعك أول ما ينزل، ويقدّمون لك عروضهم وتختار الأنسب.</p>` : `<p>حفظنا لك كل اللي كتبته — كمّله بضغطة، وتبدأ توصلك عروض الأسعار من المزوّدين.</p>`;
+    const why = d.category ? `<p><strong>${eEsc(catTxt)}</strong>${d.city ? ' في ' + eEsc(d.city) : ''} يوصلهم مشروعك أول ما ينزل، ويقدّمون لك عروضهم وتختار الأنسب.</p>` : `<p>حفظنا لك كل اللي كتبته — كمّله بضغطة، وتبدأ توصلك عروض الأسعار من المزوّدين.</p>`;
     const stop = `<p style="font-size:11.5px;color:#94a3b8;text-align:center;margin-top:16px">وصلك هالإيميل لأنك بديت طلب في مناقصة · <a href="${SITE_URL}/api/drafts/stop/${d.token}" style="color:#94a3b8">لا تذكّرني</a></p>`;
     const url = d.user_id ? await _magicUrl(d.user_id, resumePath) : SITE_URL + resumePath;
     const ok = await sendEmail(to, subj, emailTpl(h, box + why, 'كمّل مشروعي', url, { after: stop }), { uid: d.user_id || null, kind: 'draft_reminder' }).catch(() => false);
@@ -4277,7 +4277,7 @@ async function _draftSend(d, stage){
   // الإشعار (لصاحب الحساب)
   if (d.user_id) {
     try {
-      const nt = fin ? (nProv >= 3 ? `${nProv} مزوّد ${d.category || ''} ينتظرون مشروعك 👷` : `مشروعك «${title}» ما زال محفوظ`) : `مشروعك «${title}» ما انتشر ✍️`;
+      const nt = fin ? (d.category ? `${catTxt} ينتظرون مشروعك 👷` : `مشروعك «${title}» ما زال محفوظ`) : `مشروعك «${title}» ما انتشر ✍️`;
       const nb = fin ? 'انشره الحين وخلهم يتنافسون على أفضل سعر.' : 'حفظنا لك كل اللي كتبته — ' + _drStepTxt(d).replace(/ \(.*\)$/, '') + ' وتبدأ توصلك العروض.';
       await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5)', [d.user_id, nt, nb, 'draft', d.id]);
       sendPush(d.user_id, nt, nb, resumePath, 'draft', d.id).catch(() => {});
@@ -4325,6 +4325,11 @@ app.get('/api/admin/drafts', requirePermission('requests.view'), async (req, res
       WHERE d.created_at > NOW() - ($1 || ' days')::interval AND (d.posted_at IS NULL OR d.rem1_at IS NOT NULL OR d.wa_at IS NOT NULL)
       ORDER BY COALESCE(d.posted_at, d.updated_at) DESC LIMIT 300`, [String(days)]);
     const rows = r.rows;
+    // للإدارة بس: كم مزوّد يطابق تخصص ومدينة المسودة — لو قليل ندوّر له مزوّدين قبل ما ينشر
+    const mc = {};
+    for (const x of rows) { if (x.posted_at || !x.category) continue; const key = x.category + '|' + (x.city || '');
+      if (!(key in mc)) { try { mc[key] = (await matchingProviders([x.category], x.city || null, !x.city)).length; } catch(e) { mc[key] = null; } }
+      x.match = mc[key]; }
     const k = { total: rows.length, reach: 0, reminded: 0, clicked: 0, back: 0, waiting: 0 };
     for (const x of rows) {
       const reach = !!(x.user_id || x.email || x.phone); if (reach) k.reach++;
