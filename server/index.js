@@ -5905,8 +5905,22 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
     if (!isUpdate) { try{ const cnt = await pool.query('SELECT COUNT(*) c FROM bids WHERE request_id=$1', [requestId]); isFirst = (parseInt(cnt.rows[0].c)||0) === 1; }catch(e){} }
     const inAppTitle = isUpdate ? '✏️ تم تحديث عرض' : (isFirst ? '🎉 وصلك أول عرض!' : '💼 عرض جديد');
     const inAppBody = isUpdate ? `قام ${eEsc(provName)} بتحديث عرضه على "${projTitle}"` : (isFirst ? `وصلك أول عرض من ${eEsc(provName)} على "${projTitle}" — بداية موفقة! قارن العروض القادمة واختر الأنسب` : `تلقيت عرضاً من ${eEsc(provName)} على "${projTitle}"`);
-    if (!_held) await notify(reqRow.rows[0].client_id, inAppTitle, inAppBody, 'bid', requestId);
-    if (!_held && Array.isArray(req.body.need_items) && req.body.need_items.length) _needNotify(requestId);
+    // عرض جديد + «يحتاج منك معلومات» يجون مع بعض → إشعار واحد بدل إشعارين في نفس اللحظة
+    let _needTxt2 = '';
+    if (!_held && !isUpdate && Array.isArray(req.body.need_items) && req.body.need_items.length) {
+      try {
+        const nd = ((await pool.query('SELECT need_done FROM requests WHERE id=$1', [requestId])).rows[0] || {}).need_done || {};
+        const labs = req.body.need_items.filter(k => NEED_L[k] && k !== 'other' && !nd[k]).map(k => NEED_L[k]);
+        const oth = req.body.need_items.includes('other') ? String(req.body.need_other || '').trim().slice(0, 40) : '';
+        if (oth) labs.push(oth);
+        if (labs.length) {
+          _needTxt2 = labs.slice(0, 3).join(' و') + (labs.length > 3 ? ' وغيرها' : '');
+          await pool.query('UPDATE requests SET need_notified_at=NOW() WHERE id=$1', [requestId]);
+        }
+      } catch(e) { console.error('need merge:', e.message); }
+    }
+    if (!_held) await notify(reqRow.rows[0].client_id, inAppTitle, _needTxt2 ? `${isFirst ? 'وصلك أول عرض' : 'عرض جديد'} من ${eEsc(provName)} على "${projTitle}" — ويحتاج منك: ${_needTxt2}` : inAppBody, 'bid', requestId);
+    if (!_held && isUpdate && Array.isArray(req.body.need_items) && req.body.need_items.length) _needNotify(requestId);
     if (clientInfo.rows.length && clientInfo.rows[0].email && !isUpdate && !_held) {
       const subject = `💼 عرض جديد على مشروع "${projTitle}"`;
       const body = `<p>عزيزي <strong>${eEsc(clientInfo.rows[0].name)}</strong>،</p><p>تلقيت عرضاً جديداً من <strong>${eEsc(provName)}</strong>:</p><div style="background:#f8f8f4;border:1px solid #E6E2D9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>السعر:</strong> ${Number(price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${days} يوم</div>${note?`<div><strong>ملاحظة:</strong> ${eEsc(note).replace(/\n/g,'<br>')}</div>`:''}</div></div>`;
