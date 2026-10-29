@@ -13130,7 +13130,18 @@ app.post('/api/support/msg', auth, rateLimiter(40, 60000), async (req, res) => {
     const wasSolved = t.status === 'solved', hadUnread = (t.admin_unread || 0) > 0;
     if (b.link) { const u = await _supSetLink(t, uid, b.link, false); if (u) t = u; }
     const mode = b.mode === 'provider' ? 'provider' : (b.mode === 'client' ? 'client' : null);
-    const ins = await _supInsert(t.id, uid, false, file ? 'file' : 'text', body, file, mode ? { mode } : null, ck);
+    let fr = null;
+    if (file && parseInt(b.fr)) fr = (await pool.query(`SELECT * FROM support_msgs WHERE id=$1 AND thread_id=$2 AND kind='file_req'`, [parseInt(b.fr), t.id])).rows[0] || null;
+    const meta = {}; if (mode) meta.mode = mode; if (fr) { meta.fr = fr.id; meta.fr_label = (fr.meta && fr.meta.label) || ''; }
+    const ins = await _supInsert(t.id, uid, false, file ? 'file' : 'text', body, file, Object.keys(meta).length ? meta : null, ck);
+    if (fr && !ins.dup) {
+      const fm = fr.meta || {}, first = fm.status !== 'done';
+      await pool.query(`UPDATE support_msgs SET meta = COALESCE(meta,'{}'::jsonb) || jsonb_build_object('status','done','got', COALESCE(meta->'got','[]'::jsonb) || to_jsonb($2::int)) WHERE id=$1`, [fr.id, ins.m.id]);
+      if (fm.auto && fm.rid) {
+        const rq = (await pool.query('SELECT id, title, client_id, attachments, images, status FROM requests WHERE id=$1 AND client_id=$2', [fm.rid, uid])).rows[0];
+        if (rq) { try { await _supAddFiles(t, rq, [ins.m], null, { tellUser: true, tellBidders: first }); } catch(e) { console.error('support auto-add:', e.message); } }
+      }
+    }
     await pool.query(`UPDATE support_threads SET last_msg_at=NOW(), last_user_at=NOW(), admin_unread=admin_unread+1, status='open', solved_at=CASE WHEN status='solved' THEN NULL ELSE solved_at END, rating=CASE WHEN status='solved' THEN NULL ELSE rating END WHERE id=$1`, [t.id]);
     if (wasSolved) await _supSys(t.id, 'انفتحت المحادثة من جديد', { reopen: 1 }, false);
     // برّا وقت الدوام: رد تلقائي (مرة كل 6 ساعات)
@@ -13165,14 +13176,14 @@ app.post('/api/support/rate', auth, rateLimiter(10, 60000), async (req, res) => 
 });
 
 // ── الإدارة ──
-async function _supAdminSend(req, t, body, file, note, ck){
-  const ins = await _supInsert(t.id, req.user.id, true, note ? 'note' : (file ? 'file' : 'text'), body, file, null, ck);
+async function _supAdminSend(req, t, body, file, note, ck, extra){
+  const ins = await _supInsert(t.id, req.user.id, true, (extra && extra.kind) || (note ? 'note' : (file ? 'file' : 'text')), body, file, (extra && extra.meta) || null, ck);
   if (ins.dup) return ins.m;
   if (!note) {
     await pool.query(`UPDATE support_threads SET last_msg_at=NOW(), last_admin_at=NOW(), user_unread=user_unread+1, admin_unread=0,
         assigned_to=COALESCE(assigned_to,$2), first_reply_at=COALESCE(first_reply_at,NOW()) WHERE id=$1`, [t.id, req.user.id]);
     await pool.query(`UPDATE support_msgs SET read_at=COALESCE(read_at,NOW()) WHERE thread_id=$1 AND NOT from_admin AND read_at IS NULL`, [t.id]);
-    notify(t.user_id, '💬 فريق مناقصة رد عليك', _supPreview(ins.m), 'support', t.id, { url: '/chat?support=1' }).catch(() => {});
+    notify(t.user_id, (extra && extra.ntitle) || '💬 فريق مناقصة رد عليك', _supPreview(ins.m), 'support', t.id, { url: '/chat?support=1' }).catch(() => {});
     wsBroadcast(t.user_id, { type: 'support_msg', tid: t.id });
   } else if (!t.assigned_to) await pool.query('UPDATE support_threads SET assigned_to=$2 WHERE id=$1 AND assigned_to IS NULL', [t.id, req.user.id]);
   _supPingAdmins({ tid: t.id });
@@ -13300,6 +13311,67 @@ app.post('/api/admin/support/:tid/solve', requirePermission('support.reply'), as
     _supPingAdmins({ tid });
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ── إضافة ملفات المحادثة لمشروع العميل ──
+const _SUP_IMG_RX = /^image\/(jpeg|jpg|png|webp|gif|heic)$/i;
+async function _supAddFiles(t, rq, msgs, adminId, o){
+  o = o || {};
+  const atts = Array.isArray(rq.attachments) ? rq.attachments.slice() : [];
+  const imgs = Array.isArray(rq.images) ? rq.images.slice() : [];
+  const added = [];
+  for (const m of msgs) {
+    const f = m.file; if (!f || !f.url) continue;
+    if (m.meta && m.meta.added && String(m.meta.added.rid) === String(rq.id)) continue;
+    if (_SUP_IMG_RX.test(f.type || '')) { if (!imgs.includes(f.url)) imgs.push(f.url); }
+    else if (!atts.some(a => a && a.url === f.url)) atts.push({ name: String(f.name || 'ملف').slice(0, 120), type: f.type || null, url: f.url, uploaded_at: new Date().toISOString(), by: 'support' });
+    added.push(f.name || 'ملف');
+    await pool.query(`UPDATE support_msgs SET meta = COALESCE(meta,'{}'::jsonb) || jsonb_build_object('added', jsonb_build_object('rid',$2::int,'at',NOW())) WHERE id=$1`, [m.id, rq.id]);
+  }
+  if (!added.length) return { n: 0, bidders: 0 };
+  await pool.query('UPDATE requests SET attachments=$1, images=$2 WHERE id=$3', [JSON.stringify(atts), imgs, rq.id]);
+  try { await addTimeline(rq.id, 'updated', 'انضافت ملفات للمشروع (' + added.length + ')'); } catch(e) {}
+  if (o.tellUser) {
+    await _supInsert(t.id, adminId || null, true, 'added', 'أضفنا ' + (added.length === 1 ? 'الملف' : 'الملفات') + ' لمشروعك ✓', null, { rid: rq.id, title: rq.title, files: added.slice(0, 12) }, null);
+    await pool.query('UPDATE support_threads SET last_msg_at=NOW(), user_unread=user_unread+1 WHERE id=$1', [t.id]);
+    notify(t.user_id, '📎 انضافت ملفات لمشروعك', '«' + String(rq.title || '').slice(0, 60) + '» — ' + added.length + ' ' + (added.length === 1 ? 'ملف' : 'ملفات'), 'support', t.id, { url: '/chat?support=1' }).catch(() => {});
+    wsBroadcast(t.user_id, { type: 'support_msg', tid: t.id });
+  }
+  let nb = 0;
+  if (o.tellBidders) {
+    const bs = (await pool.query(`SELECT DISTINCT provider_id FROM bids WHERE request_id=$1 AND COALESCE(status,'pending') NOT IN ('rejected','withdrawn')`, [rq.id])).rows;
+    for (const x of bs) { nb++; notify(x.provider_id, '📝 تحدّث مشروع «' + String(rq.title || '').slice(0, 50) + '»', 'انضافت ملفات جديدة للمشروع (مخططات/صور) — راجعها وحدّث عرضك إذا يحتاج', 'req_updated', rq.id).catch(() => {}); }
+  }
+  _supPingAdmins({ tid: t.id });
+  return { n: added.length, bidders: nb };
+}
+app.post('/api/admin/support/:tid/add-to-project', requirePermission('support.reply'), async (req, res) => {
+  try {
+    const t = (await pool.query('SELECT * FROM support_threads WHERE id=$1', [parseInt(req.params.tid) || 0])).rows[0];
+    if (!t) return res.status(404).json({ message: 'غير موجود' });
+    const b = req.body || {}, rid = parseInt(b.request_id) || 0;
+    const rq = (await pool.query('SELECT id, title, client_id, attachments, images, status FROM requests WHERE id=$1 AND client_id=$2', [rid, t.user_id])).rows[0];
+    if (!rq) return res.status(400).json({ message: 'اختر مشروع من مشاريع هذا المستخدم' });
+    const ids = (Array.isArray(b.msg_ids) ? b.msg_ids : []).map(x => parseInt(x)).filter(Boolean).slice(0, 30);
+    if (!ids.length) return res.status(400).json({ message: 'اختر ملف واحد على الأقل' });
+    const msgs = (await pool.query(`SELECT * FROM support_msgs WHERE thread_id=$1 AND id = ANY($2::int[]) AND file IS NOT NULL ORDER BY id`, [t.id, ids])).rows;
+    const r = await _supAddFiles(t, rq, msgs, req.user.id, { tellUser: b.tell_user !== false, tellBidders: !!b.tell_bidders });
+    if (!r.n) return res.status(400).json({ message: 'الملفات مضافة للمشروع من قبل' });
+    try { await logAdmin(req, 'support_add_files', 'request', rq.id, 'أضاف ' + r.n + ' ملف من محادثة الدعم'); } catch(e) {}
+    res.json({ ok: true, n: r.n, bidders: r.bidders });
+  } catch(e) { console.error('support add-to-project:', e.message); res.status(500).json({ message: 'تعذّر الإضافة' }); }
+});
+app.post('/api/admin/support/:tid/request-file', requirePermission('support.reply'), async (req, res) => {
+  try {
+    const t = (await pool.query('SELECT * FROM support_threads WHERE id=$1', [parseInt(req.params.tid) || 0])).rows[0];
+    if (!t) return res.status(404).json({ message: 'غير موجود' });
+    const b = req.body || {}, label = _cleanTxt(b.label, 60), note = String(b.note || '').trim().slice(0, 600);
+    if (!label) return res.status(400).json({ message: 'وش الملف المطلوب؟' });
+    let rid = parseInt(b.request_id) || null, rtitle = null;
+    if (rid) { const rq = (await pool.query('SELECT id, title FROM requests WHERE id=$1 AND client_id=$2', [rid, t.user_id])).rows[0]; if (!rq) return res.status(400).json({ message: 'المشروع مو لهذا المستخدم' }); rtitle = rq.title; }
+    const meta = { label, note: note || null, rid, rtitle, auto: !!(rid && b.auto !== false), status: 'open' };
+    const m = await _supAdminSend(req, t, 'نحتاج منك: ' + label + (note ? '\n' + note : ''), null, false, null, { kind: 'file_req', meta, ntitle: '📎 فريق مناقصة يطلب منك ملف' });
+    res.json({ ok: true, id: m.id });
+  } catch(e) { console.error('support request-file:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 // الردود الجاهزة
 app.get('/api/admin/support-replies', requirePermission('support.view'), async (req, res) => {

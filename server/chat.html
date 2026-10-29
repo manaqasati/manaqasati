@@ -185,6 +185,17 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--text);dis
 .sup-light img{max-width:94vw;max-height:80vh;border-radius:10px}
 .sup-light a{color:#fff;font-weight:800;font-size:14px;background:rgba(255,255,255,.14);padding:8px 18px;border-radius:10px;text-decoration:none}
 .sup-light button{position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:18px;cursor:pointer}
+.sup-req{align-self:flex-end;width:84%;max-width:330px;background:var(--white);border:1.5px solid var(--p2);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:6px}
+.sup-req.done{border-color:#86efac;background:#f0fdf4}
+.sup-req-h{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.sup-req-h span{font-size:11px;font-weight:900;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:2px 9px}.sup-req.done .sup-req-h span{background:#dcfce7;color:#166534}.sup-req-h small{font-size:11px;color:var(--muted);font-weight:700}
+.sup-req b{font-size:15px}.sup-req p{margin:0;font-size:13px;color:var(--muted);font-weight:600;line-height:1.7}.sup-req .sup-req-n{color:#1d4ed8;font-size:12px;font-weight:800}
+.sup-req-b{display:flex;align-items:center;justify-content:center;gap:6px;background:var(--p2);color:#fff;border:0;border-radius:12px;padding:11px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer}
+.sup-req-b2{background:none;border:1px dashed #86efac;color:#166534;border-radius:10px;padding:7px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer}
+.sup-req-a{text-align:center;font-size:11.5px;color:var(--muted);font-weight:700}.sup-req-a button{background:none;border:0;color:var(--p2);font-family:inherit;font-weight:900;font-size:11.5px;cursor:pointer;text-decoration:underline;padding:0}
+.sup-added{align-self:flex-end;width:84%;max-width:330px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:4px}
+.sup-added-t{align-self:flex-start;font-size:11px;font-weight:900;background:#dcfce7;color:#166534;border-radius:999px;padding:2px 9px}.sup-added b{font-size:14.5px}.sup-added small{font-size:11.5px;color:var(--muted);font-weight:700}
+.sup-added button{margin-top:6px;background:var(--white);border:1px solid #bbf7d0;border-radius:11px;padding:8px;font-family:inherit;font-weight:900;font-size:13px;cursor:pointer;color:#166534}
+[data-theme="dark"] .sup-req.done,[data-theme="dark"] .sup-added{background:#0f2a1d;border-color:#166534}
 body.emb #scList,body.emb #dkEmpty,body.emb #scNew{display:none!important}
 body.emb #app{padding:0!important;background:var(--bg)!important}
 body.emb #scChat{display:flex!important;border-radius:0!important;border:0!important}
@@ -1006,7 +1017,7 @@ function _supAfterLoad(){
 }
 function _supNeedsTopic(){
   var ms=sup.msgs||[], i=ms.length-1;
-  for(;i>=0;i--){ var m=ms[i]; if(m.kind==='system'&&m.meta&&m.meta.solved)break; if(m.kind==='system'&&m.meta&&m.meta.topic)return false; if(!m.from_admin&&(m.kind==='text'||m.kind==='file'))return false; }
+  for(;i>=0;i--){ var m=ms[i]; if(m.kind==='system'&&m.meta&&m.meta.solved)break; if(m.from_admin&&m.kind!=='auto'&&m.kind!=='system')return false; if(m.kind==='system'&&m.meta&&m.meta.topic)return false; if(!m.from_admin&&(m.kind==='text'||m.kind==='file'))return false; }
   return true;
 }
 function renderSup(scroll){
@@ -1045,6 +1056,19 @@ function _supFileHtml(f,isMe){
 function _supMsgHtml(m){
   if(m.kind==='system'){ var ok=m.meta&&m.meta.solved; return '<div class="daysep sup-sys'+(ok?' ok':'')+'">'+esc(m.body||'')+'</div>'; }
   if(m.kind==='rate')return '<div class="daysep sup-sys">'+esc(m.body||'')+' · شكراً لتقييمك</div>';
+  if(m.kind==='file_req'){
+    var q=m.meta||{}, done=q.status==='done';
+    return '<div class="sup-req'+(done?' done':'')+'"><div class="sup-req-h"><span>'+(done?'✓ وصلنا':'مطلوب منك')+'</span>'+(q.rtitle?'<small>للمشروع «'+esc(String(q.rtitle).slice(0,40))+'»</small>':'')+'</div>'
+      +'<b>'+esc(q.label||'ملف')+'</b>'+(q.note?'<p>'+esc(q.note)+'</p>':'')
+      +(q.auto&&q.rid&&!done?'<p class="sup-req-n">اللي ترفعه هنا ينضاف لمشروعك مباشرة</p>':'')
+      +(done?'<button class="sup-req-b2" onclick="supReqUpload('+m.id+')">+ ارفع ملف ثاني</button>'
+        :'<button class="sup-req-b" onclick="supReqUpload('+m.id+')"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg> ارفع الملف</button><div class="sup-req-a">ما عندك؟ <button onclick="var i=document.getElementById(\'inp\');if(i)i.focus();">رد علينا</button></div>')
+      +'<div class="bub-meta">'+_supTime(m.created_at)+'</div></div>';
+  }
+  if(m.kind==='added'){
+    var a=m.meta||{};
+    return '<div class="sup-added"><span class="sup-added-t">✓ انضاف لمشروعك</span><b>'+esc(a.title||'مشروعك')+'</b><small>'+esc((a.files||[]).join(' · '))+'</small>'+(a.rid?'<button onclick="supGoProj('+(+a.rid)+')">شوف مشروعك</button>':'')+'</div>';
+  }
   var isMe=!m.from_admin;
   var cls=isMe?'me':'you';
   var h='<div class="bub '+cls+'">';
@@ -1077,14 +1101,14 @@ function _supPendHtml(p){
 function _supPaintPend(p){ var el=document.getElementById('sp_'+p.ck); if(el){ el.outerHTML=_supPendHtml(p); } else renderSup(); }
 /* ── الإرسال (مع تقدّم الرفع وإعادة المحاولة) ── */
 var _supQ=[], _supBusy=false;
-function supQueue(body,file){
-  var p={ck:_supCk(),body:body||'',file:file||null,state:'sending',prog:0};
+function supQueue(body,file,fr){
+  var p={ck:_supCk(),body:body||'',file:file||null,state:'sending',prog:0,fr:fr||null};
   supPend.push(p); renderSup(true); _supQ.push(p); _supRun();
 }
 function _supRun(){
   if(_supBusy)return; var p=_supQ.shift(); if(!p)return; _supBusy=true;
   var mode=isProvider?'provider':'client';
-  var payload={body:p.body,ck:p.ck,mode:mode};
+  var payload={body:p.body,ck:p.ck,mode:mode}; if(p.fr)payload.fr=p.fr;
   if(p.file)payload.file={name:p.file.name,type:p.file.type,data:p.file.data,wave:p.file.wave};
   var x=new XMLHttpRequest();
   x.open('POST',API+'/api/support/msg');
@@ -1147,13 +1171,16 @@ function supLinkSheet(){
   s.innerHTML=h+'<button class="sheet-btn cancel" onclick="closeSheet()">إلغاء</button></div>'; s.classList.add('on');
 }
 function supLink(k,id){ closeSheet(); api('/api/support/link',{method:'POST',body:JSON.stringify({kind:k,id:id})}).then(function(){ toast('انربطت ✓','ok'); _supSig=''; loadSup(true); }).catch(function(){ toast('تعذّر الربط','err'); }); }
+var _supFr=null;
+function supReqUpload(id){ _supFr=id; document.getElementById('supFile').click(); }
+function supGoProj(rid){ var u='/dashboard-client.html#detail/'+rid; try{ (window.top||window).location.href=u; }catch(e){ location.href=u; } }
 function supPickFiles(inp){
-  var fs=[].slice.call(inp.files||[]); inp.value='';
+  var fs=[].slice.call(inp.files||[]); inp.value=''; var fr=_supFr; _supFr=null;
   if(!fs.length)return;
   if(fs.length>10){ toast('لين 10 ملفات مرة وحدة — أرسلنا أول 10','err'); fs=fs.slice(0,10); }
   fs.forEach(function(f){
     if(f.size>30*1024*1024){ toast('«'+f.name+'» أكبر من 30 ميجا','err'); return; }
-    var go=function(d){ supQueue('',{name:f.name,type:f.type||'application/octet-stream',data:d,size:f.size}); };
+    var go=function(d){ supQueue('',{name:f.name,type:f.type||'application/octet-stream',data:d,size:f.size},fr); };
     if(/^image\/(jpeg|png|webp)$/.test(f.type)&&f.size>600*1024) compressImg(f,function(d){ go(d); });
     else { var r=new FileReader(); r.onload=function(e){ go(e.target.result); }; r.onerror=function(){ toast('تعذّر قراءة الملف','err'); }; r.readAsDataURL(f); }
   });

@@ -2813,6 +2813,7 @@ function _cdVal(id){ var s=document.getElementById(id); if(!s)return undefined; 
 function openReqEdit(id){
   var r=_allReq.find(function(x){return x.id===id;});if(!r)return;
   _editReqId=id;
+  (function(){ var b=document.getElementById('re-sup'); if(!b)return; if(!r.client_id||!permOK('support.reply')){ b.innerHTML=''; return; } b.innerHTML='<button type="button" class="act-btn ab-default" onclick="closeModal(\'reqModal\');spStartReq('+r.client_id+','+id+')">💬 راسل صاحب المشروع</button><button type="button" class="act-btn ab-default" onclick="closeModal(\'reqModal\');spStartReq('+r.client_id+','+id+',1)">📎 اطلب منه ملف</button>'; })();
   document.getElementById('re-title').value=r.title||'';
   document.getElementById('re-desc').value=r.description||'';
   var _rc=document.getElementById('re-cat');
@@ -7945,6 +7946,7 @@ function _spOpen(tid,keep,silent){
     _SP.data=d; if(silent&&sig===_SP.sig)return; _SP.sig=sig;
     if(!document.getElementById('sp-msgs'))_spChatShell();
     _spPaintHead(); _spPaintMsgs(); _spPaintInfo();
+    if(window._spAfterOpen==='req'&&!silent){ window._spAfterOpen=null; setTimeout(_spReqOpen,200); }
     if(!silent)_spLoadList(true);
   }).catch(function(e){ if(!silent){ var c=document.getElementById('sp-c'); if(c)c.innerHTML='<div class="sp-empty">'+esc((e&&e.message)||'تعذّر التحميل')+'</div>'; } });
 }
@@ -7971,6 +7973,7 @@ function _spPaintHead(){
   el.innerHTML='<button class="sp-bk" onclick="_spSetView(\'list\')" aria-label="رجوع">‹</button>'
     +'<span class="sp-av">'+esc(_spNm(u).charAt(0))+'</span><span class="sp-chn"><b>'+esc(_spNm(u))+'</b><small>'+esc(who)+(t.link_title?' · 📁 '+esc(t.link_title):'')+(wait?' · <span style="color:#b45309">ينتظر ردك من '+_spWait(d.msgs.filter(function(m){return !m.from_admin;}).slice(-1)[0]&&d.msgs.filter(function(m){return !m.from_admin;}).slice(-1)[0].created_at)+'</span>':'')+'</small></span>'
     +'<span class="sp-cha">'+(can?'<select id="sp-as" onchange="_spAssign(this.value)" aria-label="المسؤول"><option value="">المسؤول: لا أحد</option>'+(_SP.admins||[]).map(function(a){ return '<option value="'+a.id+'"'+(String(t.assigned_to)===String(a.id)?' selected':'')+'>المسؤول: '+esc(a.name)+'</option>'; }).join('')+'</select>'
+      +'<button class="sp-b2" onclick="_spReqOpen()">📎 طلب ملف</button>'+(_spUnadded().length&&_spProjCount()?'<button class="sp-b2 bl" onclick="_spAddOpen()">📁 أضف للمشروع ('+_spUnadded().length+')</button>':'')
       +(t.status==='solved'?'<button class="sp-b2" onclick="_spSolve(false)">↺ رجّعها مفتوحة</button>':'<button class="sp-b2 gr" onclick="_spSolve(true)">✓ تم الحل</button>'):'')
     +'<button class="sp-b2 sp-inf" onclick="_spSetView(\'info\')">بياناته</button></span>';
 }
@@ -7984,6 +7987,8 @@ function _spPaintMsgs(){
     var tm=new Date(m.created_at).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'});
     if(m.kind==='system')return x+'<div class="sp-sys'+(m.meta&&m.meta.solved?' ok':'')+'">'+esc(m.body||'')+'</div>';
     if(m.kind==='rate')return x+'<div class="sp-sys '+(m.meta&&m.meta.v>0?'ok':'bad')+'">التقييم: '+esc(m.body||'')+'</div>';
+    if(m.kind==='file_req'){ var q=m.meta||{}; return x+'<div class="sp-fr'+(q.status==='done'?' done':'')+'"><span>'+(q.status==='done'?'✓ وصل':'طلبتم ملف · بانتظاره')+'</span><b>'+esc(q.label||'')+'</b>'+(q.note?'<small>'+esc(q.note)+'</small>':'')+(q.rid?'<small>للمشروع #'+q.rid+(q.auto?' · ينضاف تلقائياً':'')+'</small>':'')+'<em>'+esc(m.who||'')+' · '+tm+'</em></div>'; }
+    if(m.kind==='added'){ var a=m.meta||{}; return x+'<div class="sp-sys ok">📁 انضاف للمشروع #'+esc(a.rid||'')+': '+esc((a.files||[]).join('، '))+'</div>'; }
     if(m.kind==='note')return x+'<div class="sp-note">📝 <b>'+esc(m.who||'')+'</b> · ملاحظة داخلية — ما يشوفها المستخدم<div>'+esc(m.body||'').replace(/\n/g,'<br>')+'</div><small>'+tm+'</small></div>';
     var mine=m.from_admin;
     var f='';
@@ -7991,6 +7996,10 @@ function _spPaintMsgs(){
       if(/^image\/(jpeg|jpg|png|webp|gif|heic)$/i.test(m.file.type||''))f='<a href="'+fu+'" target="_blank" rel="noopener"><img class="sp-img" src="'+fu+'" alt="'+esc(m.file.name||'')+'" loading="lazy"></a>';
       else if(/^audio\//.test(m.file.type||''))f='<audio controls preload="none" src="'+fu+'" style="max-width:260px"></audio>';
       else f='<div class="spf">'+_spIc(m.file.name,m.file.type)+'<span class="spf-t"><b>'+esc(m.file.name||'ملف')+'</b><small>'+_spSize(m.file.size)+'</small></span><a class="spf-b" href="'+fu+'" target="_blank" rel="noopener">فتح</a><a class="spf-b" href="'+fu+'" download>تحميل</a></div>';
+      var ad=m.meta&&m.meta.added;
+      if(ad)f+='<div class="sp-fa ok">✓ في المشروع #'+esc(ad.rid)+'</div>';
+      else if(_spProjCount()&&permOK('support.reply'))f+='<button class="sp-fa" onclick="_spAddOpen(['+m.id+'])">+ أضف للمشروع</button>';
+      if(m.meta&&m.meta.fr_label)f='<div class="sp-frr">📎 رداً على طلب: '+esc(m.meta.fr_label)+'</div>'+f;
     }
     return x+'<div class="sp-m '+(mine?'me':'you')+(m.kind==='auto'?' auto':'')+'">'+(mine?'<div class="sp-who">'+(m.kind==='auto'?'رد تلقائي':esc(m.who||'الإدارة'))+'</div>':'')+f+(m.body?'<div class="sp-tx">'+esc(m.body)+'</div>':'')
       +'<div class="sp-mm">'+tm+(mine&&m.kind!=='auto'?(m.read_at?' <span title="قرأها">✓✓</span>':' <span title="ما قرأها للحين">✓</span>'):'')+'</div></div>';
@@ -8001,7 +8010,7 @@ function _spPaintMsgs(){
 function _spPaintInfo(){
   var d=_SP.data, el=document.getElementById('sp-r'); if(!d||!el)return;
   var u=d.user||{}, t=d.thread||{};
-  var pr=(u.projects||[]).map(function(p){ return '<a class="sp-pj'+(t.link_kind==='req'&&String(t.link_id)===String(p.id)?' on':'')+'" href="#requests" onclick="try{openReqView&&openReqView('+p.id+');}catch(e){}"><b>'+esc(p.title||'مشروع')+'</b><small>#'+p.id+' · '+esc(p.status||'')+' · '+p.bids+' عروض'+(p.atts?' · '+p.atts+' مرفق':'')+'</small></a>'; }).join('');
+  var pr=(u.projects||[]).map(function(p){ return '<a class="sp-pj'+(t.link_kind==='req'&&String(t.link_id)===String(p.id)?' on':'')+'" href="#requests" onclick="try{openReqView&&openReqView('+p.id+');}catch(e){}"><b>'+esc(p.title||'مشروع')+'</b><small>#'+p.id+' · '+esc(_spSt(p.status))+' · '+p.bids+' عروض'+(p.atts?' · '+p.atts+' مرفق':'')+'</small></a>'; }).join('');
   var files=(d.files||[]).map(function(f){ return '<a class="sp-fl" href="'+esc(f.url)+'" target="_blank" rel="noopener">'+_spIc(f.name,f.type)+'<span>'+esc(f.name||'ملف')+'</span></a>'; }).join('');
   var susp=u.bid_review?'<div class="sp-warn">🔎 عروضه تحت المراجعة</div>':'';
   el.innerHTML='<button class="sp-bk sp-bk2" onclick="_spSetView(\'chat\')">‹ رجوع للمحادثة</button>'
@@ -8049,3 +8058,55 @@ function _spRepSave(){ var t=document.getElementById('sp-rt').value.trim(), b=do
 function _spRepDel(id){ if(!confirm('تحذف هذا الرد؟'))return; _spJ('/api/admin/support-replies/'+id,{method:'DELETE'}).then(_spRepReload).catch(function(){ toast('تعذّر','error'); }); }
 // يفتح محادثة مستخدم من أي مكان (ملفه، صفحة مشروع)
 function spStart(uid,link){ _spJ('/api/admin/support/start',{method:'POST',body:JSON.stringify({user_id:uid,link:link||null})}).then(function(d){ try{ closeModal&&document.querySelectorAll('.overlay.show').forEach(function(o){ o.classList.remove('show'); }); }catch(e){} _SP.cur=d.tid; _SP.view='chat'; location.hash='#support?t='+d.tid; }).catch(function(e){ toast((e&&e.message)||'تعذّر','error'); }); }
+// ── إضافة ملفات المحادثة لمشروع العميل · طلب ملف ──
+var _SP_ST={open:'مفتوح',in_progress:'قيد التنفيذ',completed:'مكتمل',closed:'مقفل',closed_auto:'مقفل',rejected:'مرفوض',review:'قيد المراجعة',pending_review:'قيد المراجعة',needs_edit:'يحتاج تعديل',cancelled:'ملغي',paused:'موقوف'};
+function _spSt(x){ return _SP_ST[x]||x||''; }
+function _spProjCount(){ var d=_SP.data; return d&&d.user&&d.user.projects?d.user.projects.length:0; }
+function _spUnadded(){ var d=_SP.data; if(!d)return []; return (d.msgs||[]).filter(function(m){ return m.file&&!(m.meta&&m.meta.added)&&!/^audio\//.test(m.file.type||''); }); }
+function _spModal(id,title,body){ var o=document.createElement('div'); o.className='overlay show'; o.id=id; o.innerHTML='<div class="modal" style="max-width:540px"><div class="modal-head"><h3>'+title+'</h3><button class="modal-x" aria-label="إغلاق" onclick="document.getElementById(\''+id+'\').remove()">✕</button></div><div class="modal-body sp-mb">'+body+'</div></div>'; o.onclick=function(e){ if(e.target===o)o.remove(); }; document.body.appendChild(o); return o; }
+function _spAddOpen(only){
+  var d=_SP.data; if(!d)return; var t=d.thread||{}, P=d.user.projects||[];
+  var files=(d.msgs||[]).filter(function(m){ return m.file&&!/^audio\//.test(m.file.type||''); });
+  if(!files.length){ toast('ما فيه ملفات في المحادثة','error'); return; }
+  var def=(t.link_kind==='req'&&P.some(function(p){return String(p.id)===String(t.link_id);}))?t.link_id:(P[0]&&P[0].id);
+  var body='<div class="sp-ml">الملفات</div>'+files.map(function(m){ var ad=m.meta&&m.meta.added, on=only?only.indexOf(m.id)>=0:!ad;
+      return '<label class="sp-ck">'+_spIc(m.file.name,m.file.type)+'<span><b>'+esc(m.file.name||'ملف')+'</b><small>'+_spSize(m.file.size)+(ad?' · موجود في #'+esc(ad.rid):'')+'</small></span><input type="checkbox" name="spf" value="'+m.id+'"'+(on?' checked':'')+'></label>'; }).join('')
+    +'<div class="sp-ml">المشروع</div>'+P.map(function(p){ return '<label class="sp-ck"><span><b>'+esc(p.title||'مشروع')+' #'+p.id+'</b><small>'+esc(_spSt(p.status))+' · '+p.bids+' عروض'+(String(t.link_id)===String(p.id)&&t.link_kind==='req'?' · المربوط بالمحادثة':'')+'</small></span><input type="radio" name="spp" value="'+p.id+'"'+(String(p.id)===String(def)?' checked':'')+'></label>'; }).join('')
+    +'<label class="sp-ck2"><input type="checkbox" id="spa-u" checked> بلّغ المستخدم في المحادثة إنها انضافت</label>'
+    +'<label class="sp-ck2"><input type="checkbox" id="spa-b" checked> نبّه المزوّدين اللي قدّموا إن المشروع تحدّث</label>'
+    +'<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:12px;margin-top:6px" onclick="_spAddGo(this)">أضف للمشروع</button>'
+    +'<p class="sp-mn">تنضاف مع ملفات المشروع (الصور مع صور المشروع)، وتنحفظ في السجل إن الإدارة أضافتها</p>';
+  _spModal('spAddM','أضف ملفات المحادثة لمشروعه',body);
+}
+function _spAddGo(btn){
+  var ids=[].map.call(document.querySelectorAll('#spAddM input[name=spf]:checked'),function(i){return +i.value;});
+  var p=document.querySelector('#spAddM input[name=spp]:checked');
+  if(!ids.length){ toast('اختر ملف واحد على الأقل','error'); return; } if(!p){ toast('اختر المشروع','error'); return; }
+  btn.disabled=true;
+  _spJ('/api/admin/support/'+_SP.cur+'/add-to-project',{method:'POST',body:JSON.stringify({msg_ids:ids,request_id:+p.value,tell_user:document.getElementById('spa-u').checked,tell_bidders:document.getElementById('spa-b').checked})})
+    .then(function(r){ toast('انضاف '+r.n+' للمشروع'+(r.bidders?' · نبّهنا '+r.bidders+' مزوّد':'')+' ✓','success'); var m=document.getElementById('spAddM'); if(m)m.remove(); _SP.sig=''; _spOpen(_SP.cur,true,true); })
+    .catch(function(e){ toast((e&&e.message)||'تعذّر','error'); btn.disabled=false; });
+}
+var _SP_REQ_L=['المخطط المعماري','المخطط الإنشائي','صور الموقع','جدول الكميات','المخطط الكهربائي'];
+function _spReqOpen(){
+  var d=_SP.data; if(!d)return; var t=d.thread||{}, P=d.user.projects||[];
+  var def=(t.link_kind==='req')?t.link_id:'';
+  var body='<div class="sp-ml">وش تحتاج منه؟</div><div class="sp-chips">'+_SP_REQ_L.map(function(l,i){ return '<button type="button" class="'+(i===0?'on':'')+'" onclick="_spReqChip(this)">'+esc(l)+'</button>'; }).join('')+'<button type="button" onclick="_spReqChip(this,1)">شي آخر</button></div>'
+    +'<input id="spr-l" class="sp-inp" maxlength="60" value="'+esc(_SP_REQ_L[0])+'" placeholder="اسم الملف المطلوب">'
+    +'<div class="sp-ml">رسالة معه (اختياري)</div><textarea id="spr-n" class="sp-inp" rows="2" maxlength="600" placeholder="مثلاً: لو ترفع المخطط تجيك عروض أدق بكثير"></textarea>'
+    +(P.length?'<div class="sp-ml">المشروع</div><select id="spr-p" class="sp-inp" onchange="document.getElementById(\'spr-aw\').style.display=this.value?\'\':\'none\'"><option value="">بدون مشروع</option>'+P.map(function(p){ return '<option value="'+p.id+'"'+(String(p.id)===String(def)?' selected':'')+'>'+esc(p.title||'مشروع')+' #'+p.id+'</option>'; }).join('')+'</select>'
+      +'<label class="sp-ck2" id="spr-aw"'+(def?'':' style="display:none"')+'><input type="checkbox" id="spr-a" checked> اللي يرفعه ينضاف للمشروع تلقائياً (ونبّه المزوّدين)</label>':'')
+    +'<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:12px;margin-top:6px" onclick="_spReqGo(this)">إرسال الطلب</button><p class="sp-mn">يوصله إشعار، ولو ما فتحه خلال ساعة يوصله إيميل</p>';
+  _spModal('spReqM','طلب ملف من '+esc(_spNm(d.user)),body);
+}
+function _spReqChip(b,other){ [].forEach.call(b.parentNode.children,function(x){ x.classList.toggle('on',x===b); }); var i=document.getElementById('spr-l'); i.value=other?'':b.textContent; if(other)i.focus(); }
+function _spReqGo(btn){
+  var l=document.getElementById('spr-l').value.trim(); if(!l){ toast('اكتب وش الملف المطلوب','error'); return; }
+  var pe=document.getElementById('spr-p'), ae=document.getElementById('spr-a');
+  btn.disabled=true;
+  _spJ('/api/admin/support/'+_SP.cur+'/request-file',{method:'POST',body:JSON.stringify({label:l,note:document.getElementById('spr-n').value.trim(),request_id:pe&&pe.value?+pe.value:null,auto:ae?ae.checked:false})})
+    .then(function(){ toast('انرسل الطلب ✓','success'); var m=document.getElementById('spReqM'); if(m)m.remove(); _SP.sig=''; _spOpen(_SP.cur,true,true); _spLoadList(true); })
+    .catch(function(e){ toast((e&&e.message)||'تعذّر','error'); btn.disabled=false; });
+}
+// من نافذة المشروع: راسل صاحبه / اطلب منه ملف
+function spStartReq(uid,rid,ask){ window._spAfterOpen=ask?'req':null; spStart(uid,{kind:'req',id:rid}); }

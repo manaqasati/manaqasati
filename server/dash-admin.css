@@ -1397,3 +1397,21 @@ a.cu-pv:hover{border-color:#86efac}
   .sp-ch{gap:7px}.sp-cha{width:100%}.sp-cha select{flex:1;max-width:none}
   .sp-cn{margin:0;width:100%;overflow-x:auto;flex-wrap:nowrap}.sp-cn button{flex-shrink:0}
 }
+.sp-fa{display:inline-block;margin-top:6px;border:1px dashed #93c5fd;background:#eff6ff;color:#1d4ed8;border-radius:9px;padding:5px 10px;font-family:inherit;font-weight:900;font-size:11.5px;cursor:pointer}
+.sp-fa.ok{border-style:solid;border-color:#bbf7d0;background:#f0fdf4;color:#166534;cursor:default}
+.sp-m.me .sp-fa{background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.4)}
+.sp-frr{font-size:11px;font-weight:800;color:#1d4ed8;margin-bottom:5px}
+.sp-fr{align-self:flex-start;max-width:70%;border:1.5px solid #2563eb;background:var(--card);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:3px}
+.sp-fr span{align-self:flex-start;font-size:10.5px;font-weight:900;background:#dbeafe;color:#1d4ed8;border-radius:999px;padding:1px 8px}
+.sp-fr.done{border-color:#86efac}.sp-fr.done span{background:#dcfce7;color:#166534}
+.sp-fr b{font-size:14px}.sp-fr small{font-size:11.5px;color:var(--muted);font-weight:700}.sp-fr em{font-style:normal;font-size:10px;color:var(--hint)}
+.sp-b2.bl{background:#2563eb;border-color:#2563eb;color:#fff}
+.sp-mb{display:flex;flex-direction:column;gap:7px}
+.sp-ml{font-size:12.5px;font-weight:900;margin-top:6px}
+.sp-ck{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:12px;padding:9px 11px;cursor:pointer}
+.sp-ck>span:not(.spf-ic){flex:1;min-width:0;display:flex;flex-direction:column}.sp-ck b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sp-ck small{font-size:11px;color:var(--muted)}
+.sp-ck input{width:18px;height:18px;flex-shrink:0}
+.sp-ck2{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;cursor:pointer}.sp-ck2 input{width:17px;height:17px}
+.sp-mn{font-size:11.5px;color:var(--muted);text-align:center;margin:0}
+.sp-chips{display:flex;gap:6px;flex-wrap:wrap}.sp-chips button{border:1px solid var(--border);background:var(--card);border-radius:999px;padding:6px 12px;font-family:inherit;font-weight:800;font-size:12.5px;cursor:pointer;color:var(--text)}.sp-chips button.on{background:#dbeafe;border-color:#2563eb;color:#1d4ed8}
+.sp-inp{width:100%;border:1.5px solid var(--border);border-radius:11px;padding:9px 11px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--text)}
