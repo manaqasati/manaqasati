@@ -425,6 +425,7 @@
     if(O.busy){ toast('لحظات — نجهّز الصور','error'); return; }
     api('/api/sub/'+id+'/offers',{method:'POST',body:JSON.stringify({price:p,days:d,note:n,fee_ok:true,keep_photos:O.keep,photos:O.add})}).then(function(r){
       if(r&&r.ok){ toast('وصل عرضك للمقاول ✓'); hub(true); open(id,null,true); }
+      else if(r&&r.code==='bid_ban'&&window.mnqBanSheet){ window.mnqBanSheet(r.ban); if(b)b.disabled=false; }
       else { toast((r&&r.message)||'تعذّر الإرسال','error'); if(b)b.disabled=false; }
     }).catch(function(){ toast('تعذّر الاتصال','error'); if(b)b.disabled=false; });
   }

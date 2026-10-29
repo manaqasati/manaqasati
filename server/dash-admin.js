@@ -904,6 +904,7 @@ function openUserModal(uid){
     +_badgePicker(u)
     +(u.role==='provider'?('<div class="sec-label">المستوى (تلقائي حسب الصفقات — يمكن تجاوزه)</div>'+_tierPicker(u)):'')
     +'<div class="sec-label">المراسلة</div>'
+    +((u.role==='provider'&&permOK('bids.edit'))?'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px;color:#991b1b;border-color:#fecaca" onclick="discOpen('+u.id+')">⛔ إيقاف عن تقديم العروض</button>':'')
     +((u.role!=='admin'&&permOK('support.view'))?'<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="spStart('+u.id+')">💬 افتح محادثته (فريق مناقصة)</button>':'')
     +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:4px" onclick="openNotify('+u.id+','+_jsa(u.name)+','+_jsa(u.role||'')+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>إرسال رسالة / إشعار</button>'
     +(((u.role==='client'||u.role==='provider'))?('<div class="sec-label">تحكّم الإدارة</div>'+'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="enterClientAccount('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>دخول كحساب '+(u.role==='provider'?'المزود':'العميل')+'</button>'+((u.role==='client')?('<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="addProjectForClient('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>أضف مشروعاً لهذا العميل</button>'):'')):'')+'<div class="sec-label">إجراءات الحساب</div>'
@@ -1754,6 +1755,7 @@ function _owDrawer(d){
     +(!af&&_owWaLink(u,waK)?'<a class="ow-wa" target="_blank" rel="noopener" href="'+_owWaLink(u,waK)+'" title="'+(waK==='review'?'رسالة: عروضه تحت المراجعة':'رسالة: تنبيه + نصائح')+'">💬 '+(waK==='review'?'واتساب: عروضه تحت المراجعة':'التنبيه + النصائح واتساب')+'</a>':'')
     +(u.bid_review?'<button style="'+gb+';color:#15803d;border-color:#bbf7d0" onclick="_owAct('+u.id+',\'lift\',this)">▶ رفع المراجعة</button>':'<button style="'+gb+';color:#92400e;border-color:#fde68a" onclick="_owAct('+u.id+',\'review\',this)">⏸ عروضه تنتظر موافقتي</button>')
     +(u.is_active!==false?'<button style="'+gb+';color:#dc2626;border-color:#fecaca" onclick="_owAct('+u.id+',\'suspend\',this)">⛔ إيقاف الحساب</button>':'')
+    +'<button style="'+gb+';color:#991b1b;border-color:#fecaca" onclick="discOpen('+u.id+')">⛔ إيقاف عن العروض</button>'
     +'<button style="'+gb+'" onclick="_owAct('+u.id+',\'dismiss\',this)">✓ البلاغات غير صحيحة</button>'
     +(d.reports.some(function(r){return r.status==='actioned'&&!r.closed_at;})?'<button style="'+gb+';color:#15803d;border-color:#bbf7d0;background:#f0fdf4" onclick="_owAct('+u.id+',\'close\',this)">✓ خلصت — شيله من القائمة</button>':'')
     +'</div>';
@@ -1815,12 +1817,12 @@ function _owLoadAll(){
 }
 function _owHeldCard(b){
       var nm=b.provider_business_name||b.provider_name||'مزوّد';
-      var urgent=(parseInt(b.left_sec)||0)<2*3600;
+      var urgent=!b.manual&&(parseInt(b.left_sec)||0)<2*3600;
       return '<div class="card ow-hc" id="owh-'+b.id+'">'
         +'<div style="display:flex;gap:10px;align-items:flex-start"><span class="ow-av">'+esc(nm.charAt(0))+'</span><div style="flex:1;min-width:0"><b style="font-size:14.5px">'+esc(nm)+'</b>'
         +'<div style="font-size:12.5px;color:var(--muted);font-weight:700">← على مشروع «'+esc(b.request_title||'')+'»'+(b.request_city?' · '+esc(b.request_city):'')+'</div>'
         +(b.reports?'<div style="font-size:12px;color:#b91c1c;font-weight:800;margin-top:2px">'+_fuN(b.reports,'بلاغ واحد','بلاغين','بلاغات','بلاغ')+' من '+_fuN(b.clients,'عميل واحد','عميلين','عملاء','عميل')+(b.top_reason?' · '+esc(OW_RS_SHORT[b.top_reason]||b.top_reason_label):'')+'</div>':'')
-        +'</div>'+_owPill('⏱ '+_owLeft(b.left_sec),urgent?'#fef2f2':'#f1f5f9',urgent?'#b91c1c':'#475569')+'</div>'
+        +'</div>'+(b.manual?_owPill('🔎 يدوي · اعتُمد له '+(b.review_ok||0)+' من 5 · بانتظارك','#fffbeb','#92400e'):_owPill('⏱ '+_owLeft(b.left_sec),urgent?'#fef2f2':'#f1f5f9',urgent?'#b91c1c':'#475569'))+'</div>'
         +'<div style="display:flex;gap:18px;margin:10px 0 6px;font-size:12.5px;font-weight:700;color:var(--muted)"><span><b style="color:var(--text);font-size:15px">'+(b.price?fmtNum(b.price):'—')+'</b> السعر'+(b.price_visibility!=='public'?' (خاص)':'')+'</span><span><b style="color:var(--text);font-size:15px">'+(b.days||'—')+'</b> يوم مدة التنفيذ</span></div>'
         +'<div class="ow-bn" style="-webkit-line-clamp:unset">'+_owHl(b.note||'—')+'</div>'
         +(b.attachment_url?'<a href="'+esc(_safeUrl(b.attachment_url))+'" target="_blank" rel="noopener" style="font-size:12px;font-weight:800">📎 الملف المرفق</a>':'')
@@ -3425,6 +3427,7 @@ function renderBids(){
       +_bidTrail(b.warning)
       +'<div class="bc-act">'
         +'<button class="act-btn ab-default" style="color:#b91c1c;border-color:#fecaca;background:#fef2f2" onclick="warnBid('+b.id+')">⚠️ تحذير</button>'
+        +'<button class="act-btn ab-default" style="color:#991b1b;border-color:#fecaca" onclick="discOpen('+b.provider_id+','+_jsa('آخر عرض: «'+String(b.request_title||'').slice(0,50)+'»')+')">⛔ إيقاف</button>'
         +(b.status==='pending'?'<button class="act-btn ab-default" style="color:#c2410e;border-color:#fed7aa" onclick="adminBidEdit('+b.id+')">طلب تعديل</button><button class="act-btn ab-danger" onclick="adminBidReject('+b.id+')">رفض</button>':'')
         +'<button class="act-btn ab-default" onclick="editBid('+b.id+')">تعديل</button>'
         +'<button class="act-btn ab-danger" onclick="delBid('+b.id+')">حذف</button>'
@@ -8012,7 +8015,10 @@ function _spPaintInfo(){
   var u=d.user||{}, t=d.thread||{};
   var pr=(u.projects||[]).map(function(p){ return '<a class="sp-pj'+(t.link_kind==='req'&&String(t.link_id)===String(p.id)?' on':'')+'" href="#requests" onclick="try{openReqView&&openReqView('+p.id+');}catch(e){}"><b>'+esc(p.title||'مشروع')+'</b><small>#'+p.id+' · '+esc(_spSt(p.status))+' · '+p.bids+' عروض'+(p.atts?' · '+p.atts+' مرفق':'')+'</small></a>'; }).join('');
   var files=(d.files||[]).map(function(f){ return '<a class="sp-fl" href="'+esc(f.url)+'" target="_blank" rel="noopener">'+_spIc(f.name,f.type)+'<span>'+esc(f.name||'ملف')+'</span></a>'; }).join('');
-  var susp=u.bid_review?'<div class="sp-warn">🔎 عروضه تحت المراجعة</div>':'';
+  var susp='';
+  if(u.ban)susp+='<div class="sp-ban"><b>⛔ '+esc(u.ban.label)+'</b><small>'+(u.ban.until_txt?'لين '+esc(u.ban.until_txt):'بدون مدة')+(u.ban.reason?' · '+esc(u.ban.reason):'')+'</small><div><button onclick="_discLiftDirect('+u.id+',\'ban\')">ارفع الإيقاف</button><button onclick="discOpen('+u.id+')">تغيير</button></div></div>';
+  else if(u.bid_review)susp+='<div class="sp-warn">🔎 عروضه تحت المراجعة'+(u.bid_review_manual?' · اعتُمد '+u.bid_review_ok+' من '+u.clean_need:'')+'<div style="margin-top:6px"><button class="sp-b2" onclick="_discLiftDirect('+u.id+',\'review\')">ارفع المراجعة</button></div></div>';
+  if(u.role==='provider'&&permOK('bids.edit')&&!u.ban)susp+='<button class="sp-b2 w" style="margin-top:0;color:#991b1b;border-color:#fecaca" onclick="discOpen('+u.id+')">⛔ إيقاف عن العروض</button>';
   el.innerHTML='<button class="sp-bk sp-bk2" onclick="_spSetView(\'chat\')">‹ رجوع للمحادثة</button>'
     +'<div class="sp-uc"><span class="sp-av lg">'+esc(_spNm(u).charAt(0))+'</span><b>'+esc(_spNm(u))+'</b>'+(u.business_name&&u.name?'<small>'+esc(u.name)+'</small>':'')+'<small>'+_spRole(u.role)+(u.city?' · '+esc(u.city):'')+(u.created_at?' · منذ '+_adAgo(u.created_at).replace('قبل ',''):'')+'</small>'
     +(u.phone?'<a class="sp-ph" href="tel:'+esc(u.phone)+'" dir="ltr">'+esc(u.phone)+'</a>':'')+(u.email?'<small dir="ltr" style="word-break:break-all">'+esc(u.email)+'</small>':'')+'</div>'+susp
@@ -8110,3 +8116,60 @@ function _spReqGo(btn){
 }
 // من نافذة المشروع: راسل صاحبه / اطلب منه ملف
 function spStartReq(uid,rid,ask){ window._spAfterOpen=ask?'req':null; spStart(uid,{kind:'req',id:rid}); }
+// ═══ الإيقاف عن تقديم العروض: مراجعة · 24 ساعة · أسبوع · شهر · حظر ═══
+var _DISC={pid:0,d:null,kind:'',reason:''};
+var _DISC_OPTS=[['review','مراجعة عروضه','يقدّم عادي، بس ما يشوف العميل العرض إلا بعد موافقتك'],['24h','إيقاف 24 ساعة','ما يقدر يقدّم عروض، ويرجع تلقائياً'],['week','إيقاف أسبوع','ما يقدر يقدّم عروض، ويرجع تلقائياً'],['month','إيقاف شهر','ما يقدر يقدّم عروض، ويرجع تلقائياً'],['ban','حظر','موقوف عن التقديم لين أنت ترجّعه']];
+function discOpen(pid,ctx){
+  _DISC={pid:pid,d:null,kind:'',reason:'',ctx:ctx||''};
+  var o=document.getElementById('discM'); if(o)o.remove();
+  o=_spModal('discM','إيقاف عن تقديم العروض','<div class="loading"><div class="spinner"></div></div>');
+  _spJ('/api/admin/providers/'+pid+'/discipline').then(function(d){ _DISC.d=d; _DISC.kind=d.suggest==='warn'?'review':d.suggest; _discPaint(); }).catch(function(e){ var b=o.querySelector('.modal-body'); if(b)b.innerHTML='<div class="sp-none">'+esc((e&&e.message)||'تعذّر التحميل')+'</div>'; });
+}
+function _discPaint(){
+  var d=_DISC.d, o=document.getElementById('discM'); if(!d||!o)return;
+  var u=d.user, nm=u.business_name||u.name||'مزوّد';
+  o.querySelector('.modal-head h3').textContent='إيقاف '+nm;
+  var cur='';
+  if(d.ban)cur='<div class="ds-cur rd"><div><b>⛔ '+esc(d.ban.label)+'</b><small>'+(d.ban.until_txt?'لين '+esc(d.ban.until_txt):'بدون مدة')+(d.ban.reason?' · '+esc(d.ban.reason):'')+'</small></div><button onclick="_discLift(\'ban\')">ارفع الإيقاف</button></div>';
+  if(u.manual)cur+='<div class="ds-cur am"><div><b>🔎 عروضه تحت المراجعة (يدوي)</b><small>اعتُمد له '+u.ok+' من '+d.need+(u.bid_review_reason?' · '+esc(u.bid_review_reason):'')+'</small></div><button onclick="_discLift(\'review\')">ارفع المراجعة</button></div>';
+  var past=(d.history||[]).filter(function(h){return ['warn','review','24h','week','month','ban'].indexOf(h.kind)>=0;});
+  var sugL=(d.suggest==='warn'?'تحذير (من زر «تحذير» على العرض)':(_DISC_OPTS.filter(function(x){return x[0]===d.suggest;})[0]||['',''])[1]);
+  var tip='<div class="ds-tip">'+(past.length?'⚠ عنده '+past.length+' '+(past.length===1?'مخالفة سابقة':'مخالفات سابقة')+(d.user.reports?' · '+d.user.reports+' عملاء بلّغوا عنه':''):'ما عنده مخالفات سابقة'+(d.user.reports?' · '+d.user.reports+' عملاء بلّغوا عنه':''))+' — <b>المقترح: '+esc(sugL)+'</b></div>';
+  var opts=_DISC_OPTS.map(function(x){ var on=_DISC.kind===x[0]; return '<button type="button" class="ds-opt'+(on?' on':'')+'" onclick="_DISC.kind=\''+x[0]+'\';_discPaint()"><span class="ds-rad"></span><span class="ds-ot"><b>'+x[1]+'</b><small>'+x[2]+'</small></span>'+(d.suggest===x[0]?'<span class="ds-sg">المقترح</span>':'')+'</button>'; }).join('');
+  var R=d.reasons||{};
+  var chips=Object.keys(R).map(function(k){ return '<button type="button" class="'+(_DISC.reason===k?'on':'')+'" onclick="_DISC.reason=\''+k+'\';_discPaint()">'+esc(R[k])+'</button>'; }).join('');
+  var isBan=_DISC.kind&&_DISC.kind!=='review';
+  var lbl=(_DISC_OPTS.filter(function(x){return x[0]===_DISC.kind;})[0]||['','تأكيد'])[1];
+  var note=(document.getElementById('ds-note')||{}).value||'';
+  var hide=document.getElementById('ds-hide'); var hideOn=hide?hide.checked:false;
+  var hist=(d.history||[]).slice(0,8).map(function(h){ return '<li><b>'+esc(h.label)+'</b> · '+_adAgo(h.created_at)+(h.admin_name?' · '+esc(h.admin_name):'')+(h.reason?'<small>'+esc(h.reason)+'</small>':'')+'</li>'; }).join('');
+  o.querySelector('.modal-body').innerHTML=(_DISC.ctx?'<p class="sp-mn" style="text-align:right">'+esc(_DISC.ctx)+'</p>':'')+cur+tip+'<div class="ds-opts">'+opts+'</div>'
+    +'<div class="sp-ml">السبب (يشوفه المزوّد)</div><div class="sp-chips">'+chips+'</div>'
+    +'<textarea id="ds-note" class="sp-inp" rows="2" maxlength="400" placeholder="'+(_DISC.reason==='other'?'اكتب السبب':'تفاصيل إضافية (اختياري)')+'">'+esc(note)+'</textarea>'
+    +(isBan&&u.open_bids?'<label class="sp-ck2"><input type="checkbox" id="ds-hide"'+(hideOn?' checked':'')+'> إخفاء عروضه المفتوحة عن العملاء خلال الإيقاف ('+u.open_bids+' عرض)</label>':'')
+    +'<button class="act-btn '+(isBan?'ab-danger':'ab-primary')+'" style="width:100%;justify-content:center;padding:12px;margin-top:6px" onclick="_discGo(this)">'+esc(lbl)+'</button>'
+    +'<p class="sp-mn">يوصله إشعار وإيميل بالسبب'+(isBan?' والمدة · ويوصله إشعار لما يرجع':'')+'</p>'
+    +(hist?'<details class="ds-h"><summary>السجل ('+(d.history||[]).length+')</summary><ul>'+hist+'</ul></details>':'');
+}
+function _discGo(btn){
+  var R=(_DISC.d&&_DISC.d.reasons)||{}, note=(document.getElementById('ds-note')||{}).value||'';
+  if(!_DISC.kind){ toast('اختر نوع الإجراء','error'); return; }
+  if(!_DISC.reason){ toast('اختر السبب — المزوّد يشوفه','error'); return; }
+  if(_DISC.reason==='other'&&!note.trim()){ toast('اكتب السبب','error'); return; }
+  var h=document.getElementById('ds-hide');
+  btn.disabled=true;
+  _spJ('/api/admin/providers/'+_DISC.pid+'/discipline',{method:'POST',body:JSON.stringify({kind:_DISC.kind,reason:_DISC.reason,note:note.trim(),hide:h?h.checked:false})})
+    .then(function(r){ toast((r.message||'تم')+' ✓','success'); var m=document.getElementById('discM'); if(m)m.remove(); _discAfter(); })
+    .catch(function(e){ toast((e&&e.message)||'تعذّر','error'); btn.disabled=false; });
+}
+function _discLift(what){
+  if(!confirm(what==='ban'?'ترفع الإيقاف ويرجع يقدّم عروض؟':'ترفع المراجعة وتنعتمد عروضه المعلّقة؟'))return;
+  _spJ('/api/admin/providers/'+_DISC.pid+'/discipline/lift',{method:'POST',body:JSON.stringify({what:what})})
+    .then(function(r){ toast((r.message||'تم')+' ✓','success'); var m=document.getElementById('discM'); if(m)m.remove(); _discAfter(); })
+    .catch(function(e){ toast((e&&e.message)||'تعذّر','error'); });
+}
+function _discLiftDirect(pid,what){ _DISC.pid=pid; _discLift(what); }
+function _discAfter(){
+  try{ if(_SP&&_SP.cur){ _SP.sig=''; _spOpen(_SP.cur,true,true); } }catch(e){}
+  try{ var pg=document.querySelector('.page.on'); if(pg&&pg.id==='page-offerwatch'&&typeof _owLoadCounts==='function'){ _owLoadCounts(); } }catch(e){}
+}

@@ -763,7 +763,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   if(isMine)tags+='<span class="pj-pill" style="background:#1e3a8a;color:#fff">عرضك</span>';
   if(showBest)tags+='<span class="pj-pill" style="background:#1d4ed8;color:#fff">⭐ الأنسب لك</span>';
   if(b.invited&&isOwner)tags+='<span class="pj-pill" style="background:#dcfce7;color:#166534">🔗 مدعو منك</span>';
-  if(isMine&&b.hold_state==='held')tags+='<span class="pj-pill" style="background:#fef3c7;color:#92400e">⏳ تحت المراجعة</span>';
+  if(isMine&&b.hold_state==='held')tags+=(b.hold_reason==='ban'?'<span class="pj-pill" style="background:#fef2f2;color:#991b1b">⛔ مخفي خلال الإيقاف</span>':'<span class="pj-pill" style="background:#fef3c7;color:#92400e">⏳ تحت المراجعة</span>');
   if(isMine&&b.hold_state==='rejected')tags+='<span class="pj-pill" style="background:#fef2f2;color:#b91c1c">لم يُعتمد</span>';
   if(isCheap&&isOwner&&!isRej)tags+='<span class="pj-pill" style="background:#dcfce7;color:#15803d">الأرخص</span>';
   if(!reviews&&!cp)tags+='<span class="pj-pill" style="background:#fef3c7;color:#92400e">مزوّد جديد</span>';
@@ -780,7 +780,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   h+='</div>';
   if(isOwner&&b.improved_at&&!isRej&&typeof _rjImpHtml==='function')h+=_rjImpHtml(b);
   if(isMine&&typeof _rjProvHtml==='function'&&(isRej||b.improved_at))h+=_rjProvHtml(b).replace('_rjImproveOpen(','_pjImprove(');
-  if(isMine&&b.hold_state==='held')h+='<div class="pj-info">عرضك بانتظار موافقة الإدارة — بيظهر لصاحب المشروع بعد المراجعة (خلال ساعات)</div>';
+  if(isMine&&b.hold_state==='held'&&b.hold_reason!=='ban')h+='<div class="pj-info">عرضك بانتظار موافقة الإدارة — بيظهر لصاحب المشروع بعد المراجعة (خلال ساعات)</div>';
   if(isMine&&b.hold_state==='rejected')h+='<div class="pj-warn">عرضك ما ظهر لصاحب المشروع'+(b.hold_reason?' — السبب: '+esc(b.hold_reason):'')+'. عدّله بتفاصيل تخص المشروع وأرسله من جديد.</div>';
   var mt=_pjMatTxt(b.materials);
   h+='<div class="pj-m'+(mt?'':' one')+'"><div><b>'+(b.days?b.days+' '+_dWord(b.days):'—')+'</b><span>مدة التنفيذ</span></div>'+(mt?'<div>'+mt+'<span>المواد</span></div>':'')+'</div>';
@@ -1203,6 +1203,7 @@ function render(){
 function _toggleBidTip(){var b=document.getElementById('bid-tip-body'),a=document.getElementById('bid-tip-ar');if(!b)return;var o=b.style.display!=='none';b.style.display=o?'none':'block';if(a)a.textContent=o?'▾':'▴';}
 function _useBidTemplate(){var t=document.getElementById('bid-note');if(!t)return;if(t.value.trim()&&!confirm('استبدال ما كتبته بالقالب؟'))return;t.value='لدي خبرة (عدد) سنوات في هذا المجال.\nسأنفّذ المشروع كالتالي: (اشرح طريقتك باختصار).\nالمواد المستخدمة: (نوعها وجودتها).\nأبدأ خلال (عدد) أيام، وأقدّم ضماناً لمدة (اذكر المدة).';t.focus();}
 function openBid(){
+  if(window.mnqBanGate&&!window._banOk){ window.mnqBanGate(function(){ window._banOk=1; try{openBid();}finally{window._banOk=0;} }); return; }
   var u=getUser();
   if(!u){goLogin();return;}
   if(u.role!=='provider'&&!u.can_provide){alert('هذا الزر للمزودين فقط — فعّل تقديم العروض من حسابك');return;}
@@ -1301,6 +1302,7 @@ async function _reallySubmitBidP(){
       body:_bb
     });
     var dd={};try{dd=await r.json();}catch(_j){dd={};}
+    if(dd&&dd.code==='bid_ban'){ _closeBidConfirmP(); closeBid(); if(window.mnqBanSheet)mnqBanSheet(dd.ban); return; }
     if(dd&&dd.code==='email_unverified'&&window._evOpen){ if(_bb.length<4000000)_evSavePending('/api/requests/'+_rid+'/bids',_bb); _closeBidConfirmP(); closeBid(); _evOpen({saved:_bb.length<4000000,onChange:function(){location.href='/dashboard-provider.html#profile';}}); return; }
     if(r.ok){
       window._bidAttachP=null;window._pendingBidP=null;_closeBidConfirmP();
@@ -1792,6 +1794,6 @@ function fmtIns(id,kind){
 }
 </script>
 <script src="/dash-rj.js" defer></script>
-<script src="/guide.js?v=1" defer></script>
+<script src="/guide.js?v=1" defer></script><script src="/bidban.js?v=1" defer></script>
 </body>
 </html>

@@ -978,7 +978,7 @@ function _openBidNudge(projId,bidCount){
   openModal('',body,foot);
 }
 
-function _openBidModal(projId){ if(window._areaGate&&!window._agSkip){ _areaGate(projId,function(){ window._agSkip=1; try{_openBidModal(projId);}finally{window._agSkip=0;} }); return; }
+function _openBidModal(projId){ if(window.mnqBanGate&&!window._banOk){ window.mnqBanGate(function(){ window._banOk=1; try{_openBidModal(projId);}finally{window._banOk=0;} }); return; } if(window._areaGate&&!window._agSkip){ _areaGate(projId,function(){ window._agSkip=1; try{_openBidModal(projId);}finally{window._agSkip=0;} }); return; }
   window._ndRid=projId;
   var body='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px"><div class="fg" style="margin:0"><label>السعر (ر.س) *</label><input type="number" id="bid-price" placeholder="5000"></div><div class="fg" style="margin:0"><label>المدة (أيام) *</label><input type="number" id="bid-days" placeholder="7"></div></div>'+'<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:11.5px;color:#166534;line-height:1.75">💡 <strong>سعر منافس يرفع فرصتك في الفوز.</strong> العميل يقارن القيمة كاملة — خبرتك وجودتك ومدة تنفيذك — مو السعر وحده. قدّم أفضل سعر تقدر عليه، وأبرز ما يميّزك.</div>'+'<div class="fg"><label>نوع السعر</label><select id="bid-unit" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;background:var(--white)"><option value="total">إجمالي للمشروع</option><option value="meter">للمتر</option><option value="unit">للوحدة/القطعة</option></select></div>'+'<div class="fg"><label>شامل المواد؟ <span style="font-weight:600;color:var(--muted)">(اختياري — يساعد العميل يقارن)</span></label><select id="bid-mat" style="width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:9px;font-family:Tajawal,sans-serif;font-size:13px;background:var(--white)"><option value="">— اختر —</option><option value="yes">نعم، السعر شامل المواد</option><option value="no">لا، السعر للشغل فقط (بدون مواد)</option></select></div>'+'<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:11px;padding:11px 13px;margin-bottom:11px"><div onclick="_toggleBidTip()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;font-weight:800;color:#1e40af"><span>💡 كيف تكتب عرضاً يفوز؟ (مثال)</span><span id="bid-tip-ar" style="font-size:11px">▾</span></div><div id="bid-tip-body" style="display:none;margin-top:9px;font-size:11.5px;color:#334155;line-height:1.9"><div style="font-weight:800;margin-bottom:5px;color:#1e293b">عرضك القوي يذكر باختصار:</div>خبرتك · كيف ستنفّذ العمل والمواد · مدة البدء · الضمان بعد التنفيذ.<div style="background:#fff;border:1px solid #e2e8f0;border-radius:9px;padding:10px 12px;margin-top:9px;line-height:2;color:#475569">«لدي خبرة … سنوات في هذا المجال. سأنفّذ المشروع بـ… باستخدام مواد …، مع الالتزام بالمقاسات المطلوبة. أبدأ خلال … أيام، وأقدّم ضماناً لمدة … .»</div><button type="button" onclick="_useBidTemplate()" style="margin-top:10px;background:#1e40af;color:#fff;border:none;padding:8px 15px;border-radius:8px;font-family:Tajawal,sans-serif;font-size:12px;font-weight:800;cursor:pointer">✍️ استخدام هذا القالب</button></div></div>'+'<div style="background:#fef2f2;border:1.5px solid #fecaca;border-right:4px solid #dc2626;border-radius:11px;padding:11px 13px;margin-bottom:11px"><div style="font-size:12.5px;font-weight:900;color:#b91c1c;margin-bottom:4px">⚠️ عرض احترافي فقط</div><div style="font-size:11.5px;color:#7f1d1d;line-height:1.8">قدّم عرضاً يوضّح خبرتك وطريقة تنفيذك ليساعد العميل على الاختيار. <b>العروض العشوائية أو الفارغة تُرفض تلقائياً، وقد يُحظر الحساب عند تكرارها.</b></div></div>'+'<div class="fg"><label>رسالتك للعميل *</label>'+fmtBar('bid-note')+'<textarea id="bid-note" placeholder="اشرح خبرتك وكيف ستنفذ المشروع...&#10;مثال:&#10;- خبرة 8 سنوات في هذا المجال&#10;- ضمان سنة على التنفيذ&#10;- البدء خلال 3 أيام" style="min-height:110px"></textarea></div>'+'<div style="font-size:10.5px;color:var(--muted);margin:-4px 0 12px;line-height:1.6">💡 لو اخترت إخفاء سعرك، لا تذكر الرقم داخل الرسالة حتى يبقى مخفياً عن المنافسين.</div>'+'<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:11px;padding:11px 13px;margin-bottom:12px;font-size:12px;color:#166534;line-height:1.85">📞 <strong>عرضك الحقيقي يفتح لك بيانات العميل للتواصل المباشر</strong> — سعر واضح + تفاصيل كافية في الرسالة (أو أرفق ملف عرض سعر). العروض الفاضية أو العبث تعرّض حسابك للإيقاف.</div>'
     +'<div style="background:linear-gradient(135deg,#fff7ed,#fffbeb);border:1px solid #fed7aa;border-radius:12px;padding:13px;margin-bottom:11px">'
@@ -1072,6 +1072,7 @@ async function _reallySubmitBid(){
   try{
     var _bb=JSON.stringify(Object.assign({price:d.price,days:d.days,note:d.note,price_visibility:d.vis,price_unit:d.unit,materials:(d.mat||null),attachment:(window._bidAttach||null),area_mode:(window._areaMode||null)},(window._bxGet?_bxGet():{})));
     var r=await _api('/api/requests/'+d.projId+'/bids',{method:'POST',body:_bb});
+    if(r&&r.code==='bid_ban'){ _closeBidConfirm();closeModal(); if(window.mnqBanSheet)mnqBanSheet(r.ban); else showToast(r.message,'error'); return; }
     if(r&&r.code==='email_unverified'&&window._evOpen){ if(_bb.length<4000000)_evSavePending('/api/requests/'+d.projId+'/bids',_bb); _closeBidConfirm();closeModal(); _evOpen({saved:_bb.length<4000000,onChange:_vbChange}); return; }
     if(r&&(r.id||r.request_id)){window._bidAttach=null;window._pendingBid=null;_closeBidConfirm();closeModal();showToast('تم إرسال عرضك بنجاح','success');try{ if(window.mnqAppMoment) setTimeout(function(){ mnqAppMoment('bid'); },900); }catch(e){}loadBrowse();}
     else{showToast((r&&r.message)||'حدث خطأ','error');if(btn){btn.disabled=false;btn.textContent='✅ تأكيد وإرسال';}}
@@ -1168,6 +1169,7 @@ async function loadWorks(){
   var html='<div class="pghd"><div class="pg-t">عروضي</div><div class="pg-s">'+_myBids.length+' عرض · '+_myProjs.length+' مشروع</div></div>';
   // تنبيه واحد مختصر بدل البطاقات الكثيرة (التفاصيل تنفتح عند الضغط)
   var _sb=_bidStandingBanner();
+  var _bb=_bidBanBanner(); if(_bb){ html+=_bb; _sb=''; }
   if(_sb) html+='<div class="wk-tip" onclick="var d=document.getElementById(&quot;wk-tip-full&quot;);if(d)d.style.display=d.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg><span>'+((window._bidStanding||{}).review?'عروضك الجديدة تحت المراجعة':'عروضك تحتاج تحسين')+' — اكتب تفاصيل من وصف المشروع نفسه</span><b>التفاصيل ‹</b></div><div id="wk-tip-full" style="display:none">'+_sb+'</div>';
   var C=_wkCounts();
   var T=[['all','الكل',C.all],['wait','بانتظار العميل',C.wait],['acc','مقبولة',C.acc],['rej','منتهية',C.rej],['projs','مشاريعي',_myProjs.length]];
@@ -1257,6 +1259,28 @@ async function _saveBidEdit(id){
   }
 }
 // تنبيه جودة العروض (بعد بلاغات من أصحاب مشاريع) — بدون اسم المبلّغ ولا المشروع
+// الإيقاف/المراجعة اليدوية: بطاقة واضحة فوق «عروضي» (السبب + المدة + التقدّم)
+function _bidBanBanner(){
+  var st=window._bidStanding||{}, b=st.ban;
+  var chat='<a href="/chat?support=1&topic='+encodeURIComponent('اعتراض على إيقاف')+'" style="display:block;text-align:center;margin-top:10px;background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:9px;font-weight:900;font-size:13px;color:#1d4ed8;text-decoration:none">💬 تواصل مع الإدارة</a>';
+  if(b){
+    return '<div style="background:#fef2f2;border:1.5px solid #fecaca;border-radius:16px;padding:15px;margin-bottom:14px">'
+      +'<div style="font-weight:900;font-size:15px;color:#991b1b">⛔ '+(b.kind==='ban'?'حسابك موقوف عن تقديم العروض':'حسابك موقوف مؤقتاً عن تقديم العروض')+'</div>'
+      +(b.until_txt?'<div style="font-size:12.5px;color:#7f1d1d;font-weight:700;margin-top:4px">يرجع تلقائياً '+_esc(b.until_txt)+'</div>':'')
+      +(b.reason?'<div style="font-size:13px;color:#7f1d1d;font-weight:800;margin-top:6px">السبب: '+_esc(b.reason)+'</div>':'')
+      +'<div style="font-size:12px;color:#7f1d1d;font-weight:600;margin-top:6px;line-height:1.7">تقدر ترد على محادثاتك وتكمّل مشاريعك عادي — الإيقاف على تقديم العروض بس.</div>'+chat+'</div>';
+  }
+  if(st.manual){
+    var ok=+st.ok||0, need=+st.need||5, pc=Math.min(100,Math.round(ok/need*100));
+    return '<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:16px;padding:15px;margin-bottom:14px">'
+      +'<div style="font-weight:900;font-size:15px;color:#92400e">🔎 عروضك تمر على المراجعة مؤقتاً</div>'
+      +(st.review_reason?'<div style="font-size:13px;color:#78350f;font-weight:800;margin-top:5px">السبب: '+_esc(st.review_reason)+'</div>':'')
+      +'<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:800;color:#92400e;margin-top:10px"><span>اعتمدنا '+ok+' من '+need+' عروض</span><span>بعدها ترجع عروضك تنزل مباشرة</span></div>'
+      +'<div style="height:8px;background:#fde68a;border-radius:9px;margin-top:5px;overflow:hidden"><div style="width:'+pc+'%;height:8px;background:#b45309;border-radius:9px"></div></div>'
+      +'<div style="font-size:12px;color:#78350f;font-weight:600;margin-top:8px">اكتب لكل مشروع عرض يخصه — العروض النظيفة ورا بعض ترجّعك أسرع.</div>'+chat+'</div>';
+  }
+  return '';
+}
 function _bidStandingBanner(){
   var st=window._bidStanding;if(!st||!st.warned)return '';
   return '<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:16px;padding:15px;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start">'
@@ -1275,7 +1299,8 @@ function _renderBids(list){
     var stLbl=isAcc?'مقبول':isRej?(b.chance_open?'فرصة ثانية':'غير مختار'):(b.improved_at?'✨ عرض محسّن':'بانتظار العميل');
     var pill=isAcc?['#dcfce7','#15803d']:isRej?(b.chance_open?['#dbeafe','#1d4ed8']:['#f1f5f9','#475569']):['#fef3c7','#92400e'];
     var isHeld=b.hold_state==='held',isHRej=b.hold_state==='rejected';
-    if(isHeld){stLbl='تحت المراجعة';pill=['#fef3c7','#92400e'];}else if(isHRej){stLbl='لم يُعتمد';pill=['#fef2f2','#b91c1c'];}
+    var isBanH=isHeld&&b.hold_reason==='ban';
+    if(isBanH){stLbl='مخفي خلال الإيقاف';pill=['#fef2f2','#991b1b'];}else if(isHeld){stLbl='تحت المراجعة';pill=['#fef3c7','#92400e'];}else if(isHRej){stLbl='لم يُعتمد';pill=['#fef2f2','#b91c1c'];}
     var _wn=(_pvWarns||[]).some(function(w){return String(w.bid_id)===String(b.id);});
     if(_wn&&!isAcc){stLbl='⚠️ يحتاج تعديل';pill=['#fee2e2','#b91c1c'];}
     var proj=isAcc?(_myProjs||[]).filter(function(p){return String(p.id)===String(b.request_id);})[0]:null;
@@ -1299,7 +1324,8 @@ function _renderBids(list){
     h+=steps;
     if(typeof _rjProvHtml==='function')h+=_rjProvHtml(b);
     if(typeof _clmBidHtml==='function')h+=_clmBidHtml(b);
-    if(isHeld)h+='<div class="rp-nx"><span class="rp-ic">⏳</span><span class="rp-tx">عرضك بانتظار موافقة الإدارة — بيظهر للعميل بعدها</span></div>';
+    if(isBanH)h+='<div class="rp-nx"><span class="rp-ic">⛔</span><span class="rp-tx">مخفي عن العميل خلال الإيقاف — يرجع يظهر لما ينتهي</span></div>';
+    else if(isHeld)h+='<div class="rp-nx"><span class="rp-ic">⏳</span><span class="rp-tx">عرضك بانتظار موافقة الإدارة — بيظهر للعميل بعدها</span></div>';
     if(isHRej)h+='<div class="rp-nx bad"><span class="rp-ic">✕</span><span class="rp-tx">عرضك ما ظهر لصاحب المشروع'+(b.hold_reason?' — '+_esc(b.hold_reason):'')+'</span></div>';
     // الخطوة الجاية
     if(b.req_paused&&!isAcc&&!isRej){
@@ -2748,6 +2774,7 @@ function _nfOpenP(id){
   if(!n.is_read){ n.is_read=true; _api('/api/notifications/'+id+'/read',{method:'PUT'}); _cacheSet('notifs',_nfList); _nfPaintP(); try{_loadNotifCount();}catch(e){} }
   var t=n.type, k=_nfKind(t).g;
   if(t==='verify_email'){ try{_vbShow();}catch(e){} return; }
+  if(t==='bid_ban'){ gotoPage('works'); return; }
   if(t==='support'){ if(window.supOpen)supOpen(); else location.href='/chat?support=1'; return; }
   if(t==='message'||t==='admin_message'){ gotoPage('chat'); return; }
   if(t==='saai'){ gotoPage('saai'); return; }

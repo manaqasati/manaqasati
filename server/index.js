@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sub.js','/support-fab.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/sub.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -3381,6 +3381,15 @@ async function setupDatabase() {
     try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_2d BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_1d BOOLEAN DEFAULT FALSE'); } catch(e){}
     await _mig(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_ban_until TIMESTAMPTZ`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_ban_kind VARCHAR(10)`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_ban_reason TEXT`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_ban_at TIMESTAMPTZ`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_manual BOOLEAN DEFAULT FALSE`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_ok INTEGER DEFAULT 0`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_reason TEXT`);
+    await _mig(`CREATE TABLE IF NOT EXISTS provider_actions (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(12), reason TEXT, until TIMESTAMPTZ, admin_id INTEGER, admin_name VARCHAR(120), hidden INTEGER DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW())`);
+    await _mig(`CREATE INDEX IF NOT EXISTS provider_actions_p ON provider_actions(provider_id, created_at DESC)`);
     await _mig(`CREATE TABLE IF NOT EXISTS support_threads (id SERIAL PRIMARY KEY, user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE, status VARCHAR(12) DEFAULT 'open', topic VARCHAR(40), link_kind VARCHAR(8), link_id INTEGER, link_title VARCHAR(160), assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL, user_unread INTEGER DEFAULT 0, admin_unread INTEGER DEFAULT 0, last_msg_at TIMESTAMPTZ, last_user_at TIMESTAMPTZ, last_admin_at TIMESTAMPTZ, admin_notified_at TIMESTAMPTZ, first_reply_at TIMESTAMPTZ, solved_at TIMESTAMPTZ, rating SMALLINT, rated_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await _mig(`CREATE TABLE IF NOT EXISTS support_msgs (id SERIAL PRIMARY KEY, thread_id INTEGER REFERENCES support_threads(id) ON DELETE CASCADE, sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL, from_admin BOOLEAN DEFAULT FALSE, kind VARCHAR(12) DEFAULT 'text', body TEXT, file JSONB, meta JSONB, ck VARCHAR(40), read_at TIMESTAMPTZ, emailed BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await _mig(`CREATE INDEX IF NOT EXISTS support_msgs_t ON support_msgs(thread_id, id)`);
@@ -5887,6 +5896,7 @@ async function _bidExtras(bidId, providerId, body){
 }
 app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
   try {
+    { const bb = await _bidBan(req.user.id); if (bb) return res.status(403).json({ code: 'bid_ban', message: bb.msg, ban: bb }); }
     const requestId = parseInt(req.params.id);
     try { const _v = await pool.query('SELECT COALESCE(email_verified,true) AS ev FROM users WHERE id=$1',[req.user.id]); if(_v.rows.length && _v.rows[0].ev===false) return res.status(403).json({ message:'فعّل بريدك الإلكتروني قبل تقديم عرض', code:'email_unverified' }); } catch(_e){}
     let { price, days, note } = req.body;
@@ -6044,6 +6054,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
 
 app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
   try {
+    { const bb = await _bidBan(req.user.id); if (bb) return res.status(403).json({ code: 'bid_ban', message: bb.msg, ban: bb }); }
     const id = parseInt(req.params.id);
     const own = await pool.query("SELECT provider_id, status, COALESCE(price_unit,'total') AS price_unit FROM bids WHERE id=$1", [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
@@ -6654,6 +6665,7 @@ app.get('/api/admin/bid-reasons', requirePermission('bids.view'), async (req, re
 // ═══ المزوّد يقدّم عرضاً محسّناً بعد عدم الاختيار (فرصة وحدة) ═══
 app.post('/api/bids/:id/improve', auth, providerOnly, async (req, res) => {
   try {
+    { const bb = await _bidBan(req.user.id); if (bb) return res.status(403).json({ code: 'bid_ban', message: bb.msg, ban: bb }); }
     const id = parseInt(req.params.id);
     const q = (await pool.query(`SELECT b.*, r.client_id, r.title, r.status AS req_status, r.assigned_provider_id FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1`, [id])).rows[0];
     if (!q) return res.status(404).json({ message: 'غير موجود' });
@@ -9525,7 +9537,8 @@ async function _provUnderReview(pid){
   try { const r = await pool.query('SELECT COALESCE(bid_review,FALSE) AS v FROM users WHERE id=$1', [pid]); return !!(r.rows[0] && r.rows[0].v); } catch(e){ return false; }
 }
 async function _holdBid(bidId){
-  await pool.query(`UPDATE bids SET hold_state='held', hold_reason=NULL, held_until=NOW() + ($2 || ' hours')::interval WHERE id=$1`, [bidId, String(BID_HOLD_HOURS)]);
+  // المراجعة اليدوية (الإدارة حطته): ما فيه اعتماد تلقائي — ينتظر قرار الإدارة
+  await pool.query(`UPDATE bids b SET hold_state='held', hold_reason=NULL, held_until=CASE WHEN COALESCE(u.bid_review_manual,FALSE) THEN NULL ELSE NOW() + ($2 || ' hours')::interval END FROM users u WHERE b.id=$1 AND u.id=b.provider_id`, [bidId, String(BID_HOLD_HOURS)]);
 }
 // اعتماد عرض معلّق → يظهر للعميل ويوصله إشعار
 async function _releaseBid(bidId, how){
@@ -9541,7 +9554,7 @@ async function _releaseBid(bidId, how){
   return x;
 }
 async function _releaseAllHeld(pid, how){
-  const r = await pool.query(`SELECT id FROM bids WHERE provider_id=$1 AND hold_state='held'`, [pid]);
+  const r = await pool.query(`SELECT id FROM bids WHERE provider_id=$1 AND hold_state='held' AND COALESCE(hold_reason,'')<>'ban'`, [pid]);
   for (const b of r.rows) await _releaseBid(b.id, how);
   return r.rows.length;
 }
@@ -9585,10 +9598,11 @@ app.delete('/api/bids/:id/report', auth, async (req, res) => {
 // حالة المزوّد (للبانر في لوحته)
 app.get('/api/provider/bid-standing', auth, async (req, res) => {
   try {
-    const u = (await pool.query('SELECT COALESCE(bid_review,FALSE) AS review, bid_warned_at FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
+    const u = (await pool.query('SELECT COALESCE(bid_review,FALSE) AS review, bid_warned_at, COALESCE(bid_review_manual,FALSE) AS manual, COALESCE(bid_review_ok,0) AS ok, bid_review_reason FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
     const warned = !!u.review || (!!u.bid_warned_at && (Date.now() - new Date(u.bid_warned_at).getTime()) < 30*86400000);
-    const held = parseInt((await pool.query(`SELECT COUNT(*)::int c FROM bids WHERE provider_id=$1 AND hold_state='held'`, [req.user.id])).rows[0].c) || 0;
-    res.json({ warned, review: !!u.review, held });
+    const held = parseInt((await pool.query(`SELECT COUNT(*)::int c FROM bids WHERE provider_id=$1 AND hold_state='held' AND COALESCE(hold_reason,'')<>'ban'`, [req.user.id])).rows[0].c) || 0;
+    const ban = await _bidBan(req.user.id);
+    res.json({ warned, review: !!u.review, held, manual: !!u.manual, ok: u.ok, need: BID_CLEAN_NEED, review_reason: u.bid_review_reason || null, ban });
   } catch(e) { res.json({ warned: false, review: false, held: 0 }); }
 });
 // تشابه النصوص بين عروض المزوّد (نسبة العروض المنسوخة من قالب واحد)
@@ -9679,7 +9693,7 @@ app.post('/api/admin/bid-reports/provider/:id/action', requirePermission('reques
       await notify(pid, '⏸ عروضك الجديدة تحت المراجعة', 'عروضك الجديدة بتظهر للعملاء بعد مراجعة الإدارة (خلال ساعات). اكتب لكل مشروع عرضاً يخصه واذكر تفاصيل من وصفه.', 'bid', null);
       msg = 'عروضه الجديدة صارت تنتظر موافقتك';
     } else if (act === 'lift') {
-      await pool.query('UPDATE users SET bid_review=FALSE WHERE id=$1', [pid]);
+      await pool.query('UPDATE users SET bid_review=FALSE, bid_review_manual=FALSE, bid_review_ok=0, bid_review_reason=NULL WHERE id=$1', [pid]);
       const n = await _releaseAllHeld(pid, 'approved');
       await notify(pid, '✅ رُفعت المراجعة عن عروضك', 'عروضك الجديدة ترجع تظهر للعملاء مباشرة. استمر بكتابة عروض تخص كل مشروع.', 'bid', null);
       msg = 'رُفعت المراجعة' + (n ? ' واعتُمد ' + n + ' عرض معلّق' : '');
@@ -9688,7 +9702,7 @@ app.post('/api/admin/bid-reports/provider/:id/action', requirePermission('reques
       msg = r.rowCount ? 'انشال من قائمة البلاغات — تلقاه في «تمت معالجتها»' : 'ما فيه شي يحتاج إغلاق';
     } else if (act === 'dismiss') {
       await pool.query(`UPDATE bid_reports SET status='dismissed', closed_at=COALESCE(closed_at,NOW()) WHERE provider_id=$1 AND status<>'dismissed'`, [pid]);
-      await pool.query('UPDATE users SET bid_review=FALSE, bid_warned_at=NULL WHERE id=$1', [pid]);
+      await pool.query('UPDATE users SET bid_review=FALSE, bid_review_manual=FALSE, bid_review_ok=0, bid_review_reason=NULL, bid_warned_at=NULL WHERE id=$1', [pid]);
       const n = await _releaseAllHeld(pid, 'approved');
       msg = 'أُلغي أثر البلاغات' + (n ? ' واعتُمد ' + n + ' عرض معلّق' : '');
     } else if (act === 'suspend') {
@@ -9713,20 +9727,139 @@ app.post('/api/admin/bid-reports/close', requirePermission('requests.review'), a
     res.json({ ok: true, n: r.rowCount || 0 });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// ═══ الإيقاف عن تقديم العروض (مراجعة · 24 ساعة · أسبوع · شهر · حظر) ═══
+const BID_CLEAN_NEED = 5; // كم عرض نظيف ورا بعض عشان ترتفع المراجعة اليدوية تلقائياً
+const BAN_KINDS = { '24h': { l: 'إيقاف 24 ساعة', h: 24 }, week: { l: 'إيقاف أسبوع', h: 168 }, month: { l: 'إيقاف شهر', h: 720 }, ban: { l: 'حظر', h: null } };
+const BAN_REASONS = { copy: 'عروض منسوخة', scope: 'خارج تخصصه', spam: 'إزعاج العملاء', price: 'أسعار وهمية', other: 'سبب آخر' };
+const DISC_LADDER = ['warn', 'review', '24h', 'week', 'month', 'ban'];
+const DISC_LBL = { warn: 'تحذير', review: 'مراجعة عروضه', '24h': 'إيقاف 24 ساعة', week: 'إيقاف أسبوع', month: 'إيقاف شهر', ban: 'حظر', lift_ban: 'رفع الإيقاف', lift_review: 'رفع المراجعة', auto_lift: 'رجع تلقائياً', ban_end: 'انتهى الإيقاف' };
+function _banFmt(d){ try { return new Date(d).toLocaleString('ar-SA-u-nu-latn-ca-gregory', { timeZone: 'Asia/Riyadh', weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' }); } catch(e) { return ''; } }
+async function _bidBan(uid){
+  try {
+    const u = (await pool.query('SELECT bid_ban_until, bid_ban_kind, bid_ban_reason, bid_ban_at FROM users WHERE id=$1', [uid])).rows[0];
+    if (!u || !u.bid_ban_until || new Date(u.bid_ban_until).getTime() <= Date.now()) return null;
+    const perm = u.bid_ban_kind === 'ban';
+    const left = Math.max(0, new Date(u.bid_ban_until).getTime() - Date.now());
+    return { kind: u.bid_ban_kind, label: (BAN_KINDS[u.bid_ban_kind] || {}).l || 'إيقاف', until: perm ? null : u.bid_ban_until, until_txt: perm ? null : _banFmt(u.bid_ban_until), left_h: perm ? null : Math.ceil(left / 3600e3), reason: u.bid_ban_reason || null, at: u.bid_ban_at,
+      msg: perm ? 'حسابك موقوف عن تقديم العروض — تواصل مع الإدارة' : 'حسابك موقوف مؤقتاً عن تقديم العروض حتى ' + _banFmt(u.bid_ban_until) };
+  } catch(e) { return null; }
+}
+async function _discHistory(pid){
+  const a = (await pool.query(`SELECT kind, reason, until, admin_name, created_at FROM provider_actions WHERE provider_id=$1 ORDER BY created_at DESC LIMIT 30`, [pid])).rows;
+  const w = (await pool.query(`SELECT 'warn' AS kind, reason, NULL AS until, NULL AS admin_name, created_at FROM bid_warnings WHERE provider_id=$1 AND kind='warn' ORDER BY created_at DESC LIMIT 20`, [pid]).catch(() => ({ rows: [] }))).rows;
+  return a.concat(w).sort((x, y) => new Date(y.created_at) - new Date(x.created_at)).map(x => Object.assign(x, { label: DISC_LBL[x.kind] || x.kind }));
+}
+function _discSuggest(hist){
+  // أعلى خطوة وصلها خلال 180 يوم → اللي بعدها
+  let top = -1; const since = Date.now() - 180 * 864e5;
+  for (const h of hist) { if (new Date(h.created_at).getTime() < since) continue; const i = DISC_LADDER.indexOf(h.kind); if (i > top) top = i; }
+  const warns = hist.filter(h => h.kind === 'warn' && new Date(h.created_at).getTime() >= since).length;
+  if (top <= 0 && warns < 2) return top < 0 ? 'warn' : 'review';
+  return DISC_LADDER[Math.min(DISC_LADDER.length - 1, Math.max(top + 1, 1))];
+}
+async function _bidReviewClean(pid){
+  const u = (await pool.query(`UPDATE users SET bid_review_ok=COALESCE(bid_review_ok,0)+1 WHERE id=$1 AND COALESCE(bid_review_manual,FALSE) RETURNING bid_review_ok`, [pid])).rows[0];
+  if (!u || u.bid_review_ok < BID_CLEAN_NEED) return false;
+  await pool.query('UPDATE users SET bid_review=FALSE, bid_review_manual=FALSE, bid_review_ok=0, bid_review_reason=NULL WHERE id=$1', [pid]);
+  await pool.query(`INSERT INTO provider_actions (provider_id, kind, reason) VALUES ($1,'auto_lift',$2)`, [pid, 'اعتُمد له ' + BID_CLEAN_NEED + ' عروض نظيفة']);
+  await _releaseAllHeld(pid, 'approved');
+  notify(pid, '✅ رجعت عروضك تنزل مباشرة', 'اعتمدنا لك ' + BID_CLEAN_NEED + ' عروض نظيفة — عروضك الجديدة توصل للعملاء مباشرة. استمر كذا 👍', 'bid', null).catch(() => {});
+  return true;
+}
+async function _discNotify(pid, title, body, emailHtml){
+  await notify(pid, title, body, 'bid_ban', null, { url: '/dashboard-provider.html#works' }).catch(() => {});
+  try { const u = (await pool.query('SELECT email, name FROM users WHERE id=$1', [pid])).rows[0];
+    if (u && u.email) sendEmail(u.email, title, emailTpl(title, `<p>مرحباً${u.name ? ' ' + eEsc(_supFirst(u.name)) : ''}،</p>${emailHtml}<p>لو عندك استفسار أو اعتراض، تواصل مع فريق مناقصة من داخل المنصة.</p>`, 'تواصل مع فريق مناقصة', SITE_URL + '/chat?support=1&topic=' + encodeURIComponent('اعتراض على إيقاف')), { uid: pid, kind: 'bid_ban' }).catch(() => {}); } catch(e) {}
+}
+async function _banLift(pid, how, req){
+  const u = (await pool.query('SELECT bid_ban_kind FROM users WHERE id=$1 AND bid_ban_until IS NOT NULL', [pid])).rows[0];
+  if (!u) return false;
+  await pool.query('UPDATE users SET bid_ban_until=NULL, bid_ban_kind=NULL, bid_ban_reason=NULL WHERE id=$1', [pid]);
+  const r = await pool.query(`UPDATE bids SET hold_state=NULL, hold_reason=NULL, held_until=NULL WHERE provider_id=$1 AND hold_state='held' AND hold_reason='ban' RETURNING id`, [pid]);
+  await pool.query(`INSERT INTO provider_actions (provider_id, kind, reason, admin_id, admin_name) VALUES ($1,$2,$3,$4,$5)`, [pid, how === 'auto' ? 'ban_end' : 'lift_ban', how === 'auto' ? 'خلصت المدة' : null, req ? req.user.id : null, req && req.adminUser ? req.adminUser.name : null]);
+  await _discNotify(pid, '✅ رجع حسابك يقدّم عروض', 'تقدر تقدّم عروضك من جديد. اكتب لكل مشروع عرض يخصه 👍', '<p>رجع حسابك يقدّم عروض في مناقصة.' + (r.rowCount ? ' وعروضك المفتوحة (' + r.rowCount + ') رجعت تظهر للعملاء.' : '') + '</p><p>اكتب لكل مشروع عرض يخصه — هذا اللي يخلي العملاء يختارونك.</p>');
+  return true;
+}
+app.get('/api/admin/providers/:id/discipline', requirePermission('bids.view'), async (req, res) => {
+  try {
+    const pid = parseInt(req.params.id);
+    const u = (await pool.query(`SELECT id, name, NULLIF(business_name,'') AS business_name, role, COALESCE(bid_review,FALSE) AS review, COALESCE(bid_review_manual,FALSE) AS manual, COALESCE(bid_review_ok,0) AS ok, bid_review_reason,
+        (SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND COALESCE(status,'pending')='pending' AND COALESCE(hold_state,'') NOT IN ('held','rejected'))::int AS open_bids,
+        (SELECT COUNT(DISTINCT client_id) FROM bid_reports WHERE provider_id=users.id AND status<>'dismissed' AND created_at > NOW() - INTERVAL '90 days')::int AS reports
+      FROM users WHERE id=$1`, [pid])).rows[0];
+    if (!u) return res.status(404).json({ message: 'غير موجود' });
+    const hist = await _discHistory(pid);
+    res.json({ user: u, ban: await _bidBan(pid), history: hist, suggest: _discSuggest(hist), need: BID_CLEAN_NEED, reasons: BAN_REASONS, kinds: Object.keys(BAN_KINDS).reduce((o, k) => (o[k] = BAN_KINDS[k].l, o), {}) });
+  } catch(e) { console.error('discipline get:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/providers/:id/discipline', requirePermission('bids.edit'), async (req, res) => {
+  try {
+    const pid = parseInt(req.params.id), b = req.body || {}, kind = String(b.kind || '');
+    const u = (await pool.query(`SELECT id, role, name, business_name FROM users WHERE id=$1`, [pid])).rows[0];
+    if (!u || u.role === 'admin') return res.status(404).json({ message: 'غير موجود' });
+    const rl = BAN_REASONS[b.reason] && b.reason !== 'other' ? BAN_REASONS[b.reason] : '';
+    const note = String(b.note || '').trim().slice(0, 400);
+    const reason = [rl, note].filter(Boolean).join(' — ');
+    if (!reason) return res.status(400).json({ message: 'السبب إجباري — المزوّد يشوفه' });
+    const an = req.adminUser ? req.adminUser.name : null;
+    if (kind === 'review') {
+      await pool.query(`UPDATE users SET bid_review=TRUE, bid_review_manual=TRUE, bid_review_ok=0, bid_review_reason=$2, bid_review_at=NOW(), bid_warned_at=COALESCE(bid_warned_at,NOW()) WHERE id=$1`, [pid, reason]);
+      await pool.query(`UPDATE bids SET held_until=NULL WHERE provider_id=$1 AND hold_state='held'`, [pid]);
+      await pool.query(`INSERT INTO provider_actions (provider_id, kind, reason, admin_id, admin_name) VALUES ($1,'review',$2,$3,$4)`, [pid, reason, req.user.id, an]);
+      await _discNotify(pid, '🔎 عروضك تمر على المراجعة مؤقتاً', 'السبب: ' + reason + ' — بعد ' + BID_CLEAN_NEED + ' عروض نظيفة ترجع تنزل مباشرة', `<p>عروضك الجديدة صارت تمر على مراجعة فريق مناقصة قبل ما توصل للعملاء.</p><p><strong>السبب:</strong> ${eEsc(reason)}</p><p>بعد ما نعتمد لك ${BID_CLEAN_NEED} عروض نظيفة ورا بعض، ترجع عروضك توصل مباشرة.</p>`);
+      await logAdmin(req, 'provider_review', 'user', pid, reason);
+      return res.json({ ok: true, message: 'عروضه الجديدة صارت تنتظر موافقتك' });
+    }
+    const K = BAN_KINDS[kind]; if (!K) return res.status(400).json({ message: 'اختر نوع الإجراء' });
+    const until = K.h ? new Date(Date.now() + K.h * 3600e3) : new Date('9999-12-31T00:00:00Z');
+    await pool.query('UPDATE users SET bid_ban_until=$2, bid_ban_kind=$3, bid_ban_reason=$4, bid_ban_at=NOW() WHERE id=$1', [pid, until, kind, reason]);
+    let hidden = 0;
+    if (b.hide) hidden = (await pool.query(`UPDATE bids SET hold_state='held', hold_reason='ban', held_until=NULL WHERE provider_id=$1 AND COALESCE(status,'pending')='pending' AND COALESCE(hold_state,'') NOT IN ('held','rejected') RETURNING id`, [pid])).rowCount;
+    await pool.query(`INSERT INTO provider_actions (provider_id, kind, reason, until, admin_id, admin_name, hidden) VALUES ($1,$2,$3,$4,$5,$6,$7)`, [pid, kind, reason, K.h ? until : null, req.user.id, an, hidden]);
+    const ut = K.h ? _banFmt(until) : null;
+    await _discNotify(pid, kind === 'ban' ? '⛔ حسابك موقوف عن تقديم العروض' : '⛔ حسابك موقوف مؤقتاً عن تقديم العروض', (ut ? 'لين ' + ut + ' · ' : '') + 'السبب: ' + reason,
+      `<p>حسابك موقوف ${K.h ? 'مؤقتاً ' : ''}عن تقديم العروض في مناقصة${ut ? ' لين <strong>' + eEsc(ut) + '</strong>' : ''}.</p><p><strong>السبب:</strong> ${eEsc(reason)}</p><p>تقدر تدخل حسابك وترد على محادثاتك وتكمّل مشاريعك عادي — الإيقاف على تقديم العروض بس.</p>`);
+    await logAdmin(req, 'provider_ban', 'user', pid, K.l + ' — ' + reason + (hidden ? ' · أخفى ' + hidden + ' عرض' : ''));
+    res.json({ ok: true, message: K.l + (hidden ? ' · انخفى ' + hidden + ' عرض' : ''), hidden });
+  } catch(e) { console.error('discipline post:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/providers/:id/discipline/lift', requirePermission('bids.edit'), async (req, res) => {
+  try {
+    const pid = parseInt(req.params.id), what = String(req.body && req.body.what || '');
+    if (what === 'ban') { const ok = await _banLift(pid, 'admin', req); await logAdmin(req, 'provider_unban', 'user', pid, ''); return res.json({ ok: true, message: ok ? 'رجع يقدّم عروض' : 'ما كان موقوف' }); }
+    if (what === 'review') {
+      await pool.query('UPDATE users SET bid_review=FALSE, bid_review_manual=FALSE, bid_review_ok=0, bid_review_reason=NULL WHERE id=$1', [pid]);
+      const n = await _releaseAllHeld(pid, 'approved');
+      await pool.query(`INSERT INTO provider_actions (provider_id, kind, admin_id, admin_name) VALUES ($1,'lift_review',$2,$3)`, [pid, req.user.id, req.adminUser ? req.adminUser.name : null]);
+      notify(pid, '✅ رُفعت المراجعة عن عروضك', 'عروضك الجديدة ترجع تظهر للعملاء مباشرة.', 'bid', null).catch(() => {});
+      await logAdmin(req, 'provider_unreview', 'user', pid, '');
+      return res.json({ ok: true, message: 'رُفعت المراجعة' + (n ? ' واعتُمد ' + n + ' عرض معلّق' : '') });
+    }
+    res.status(400).json({ message: 'غير صالح' });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// انتهاء مدة الإيقاف → يرجع تلقائياً
+setInterval(() => _jobLock('bidban', async () => {
+  try {
+    const L = (await pool.query(`SELECT id FROM users WHERE bid_ban_until IS NOT NULL AND bid_ban_until <= NOW() LIMIT 100`)).rows;
+    for (const x of L) await _banLift(x.id, 'auto', null);
+  } catch(e) { console.error('bidban job:', e.message); }
+}), 5 * 60 * 1000);
 // طابور العروض المعلّقة (تحت المراجعة قبل النشر)
 app.get('/api/admin/held-bids', requirePermission('requests.view'), async (req, res) => {
   try {
     const bids = (await pool.query(`SELECT b.id, b.request_id, b.provider_id, b.note, b.price, b.days, COALESCE(b.price_unit,'total') AS price_unit, b.price_visibility, b.attachment_url, b.created_at, b.held_until,
       GREATEST(0, EXTRACT(EPOCH FROM (b.held_until - NOW())))::int AS left_sec,
       q.title AS request_title, q.city AS request_city, u.name AS provider_name, u.business_name AS provider_business_name,
+      COALESCE(u.bid_review_manual,FALSE) AS manual, COALESCE(u.bid_review_ok,0) AS review_ok, u.bid_review_reason AS review_reason,
       (SELECT COUNT(*) FROM bid_reports x WHERE x.provider_id=b.provider_id AND x.status<>'dismissed')::int AS reports,
       (SELECT COUNT(DISTINCT client_id) FROM bid_reports x WHERE x.provider_id=b.provider_id AND x.status<>'dismissed')::int AS clients,
       (SELECT reason FROM bid_reports x WHERE x.provider_id=b.provider_id AND x.status<>'dismissed' GROUP BY reason ORDER BY COUNT(*) DESC LIMIT 1) AS top_reason
       FROM bids b JOIN requests q ON q.id=b.request_id JOIN users u ON u.id=b.provider_id
-      WHERE b.hold_state='held' ORDER BY b.held_until ASC LIMIT 200`)).rows
+      WHERE b.hold_state='held' AND COALESCE(b.hold_reason,'')<>'ban' ORDER BY b.held_until ASC NULLS FIRST LIMIT 200`)).rows
       .map(x => Object.assign(x, { top_reason_label: x.top_reason ? (BID_REP_REASONS[x.top_reason] || x.top_reason) : null, blank: _BLANK_RE.test(x.note || '') }));
-    const provs = (await pool.query(`SELECT u.id, u.name, u.business_name, u.bid_review_at,
-      (SELECT COUNT(*) FROM bids WHERE provider_id=u.id AND hold_state='held')::int AS held
+    const provs = (await pool.query(`SELECT u.id, u.name, u.business_name, u.bid_review_at, COALESCE(u.bid_review_manual,FALSE) AS manual, COALESCE(u.bid_review_ok,0) AS ok, u.bid_review_reason AS reason,
+      (SELECT COUNT(*) FROM bids WHERE provider_id=u.id AND hold_state='held' AND COALESCE(hold_reason,'')<>'ban')::int AS held
       FROM users u WHERE COALESCE(u.bid_review,FALSE)=TRUE ORDER BY u.bid_review_at DESC NULLS LAST LIMIT 100`)).rows;
     res.json({ bids, providers: provs, hours: BID_HOLD_HOURS, rej_reasons: BID_REJ_REASONS });
   } catch(e) { console.error('held-bids:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -9736,7 +9869,8 @@ app.post('/api/admin/held-bids/:id/approve', requirePermission('requests.review'
     const x = await _releaseBid(parseInt(req.params.id), 'approved');
     if (!x) return res.status(400).json({ message: 'العرض ما عاد معلّق' });
     await logAdmin(req, 'held_bid_approve', 'bid', x.id, x.title);
-    res.json({ ok: true });
+    const lifted = await _bidReviewClean(x.provider_id);
+    res.json({ ok: true, lifted });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/admin/held-bids/:id/reject', requirePermission('requests.review'), async (req, res) => {
@@ -9747,6 +9881,7 @@ app.post('/api/admin/held-bids/:id/reject', requirePermission('requests.review')
     if (!txt) return res.status(400).json({ message: 'اختر سبب الرفض' });
     const r = await pool.query(`UPDATE bids b SET hold_state='rejected', hold_reason=$2, held_until=NULL FROM requests q WHERE b.id=$1 AND b.hold_state='held' AND q.id=b.request_id RETURNING b.id, b.provider_id, b.request_id, q.title`, [id, txt]);
     const x = r.rows[0]; if (!x) return res.status(400).json({ message: 'العرض ما عاد معلّق' });
+    await pool.query('UPDATE users SET bid_review_ok=0 WHERE id=$1', [x.provider_id]);
     await notify(x.provider_id, '✕ عرضك ما انعتمد', `عرضك على "${x.title}" ما ظهر للعميل — السبب: ${txt}. عدّل العرض واكتب تفاصيل تخص المشروع نفسه ثم أرسله من جديد.`, 'bid', x.request_id);
     await logAdmin(req, 'held_bid_reject', 'bid', x.id, txt);
     res.json({ ok: true });
@@ -9758,7 +9893,7 @@ setInterval(() => _jobLock('heldbids', async () => {
     const due = await pool.query(`SELECT id FROM bids WHERE hold_state='held' AND held_until <= NOW() LIMIT 100`);
     let n = 0; for (const b of due.rows) { if (await _releaseBid(b.id, 'auto')) n++; }
     if (n) await _notifyAdmins('⏱ اعتُمدت عروض تلقائياً', `اعتُمد ${n} ${n===1?'عرض':(n===2?'عرضين':(n<=10?'عروض':'عرض'))} تلقائياً بعد مرور ${BID_HOLD_HOURS} ساعات بدون مراجعة — تقدر تراجعها من «مراقبة العروض».`, 'bidwatch', null);
-    await pool.query(`UPDATE users u SET bid_review=FALSE WHERE COALESCE(u.bid_review,FALSE)=TRUE AND u.bid_review_at < NOW() - INTERVAL '30 days'
+    await pool.query(`UPDATE users u SET bid_review=FALSE WHERE COALESCE(u.bid_review,FALSE)=TRUE AND NOT COALESCE(u.bid_review_manual,FALSE) AND u.bid_review_at < NOW() - INTERVAL '30 days'
       AND NOT EXISTS (SELECT 1 FROM bid_reports x WHERE x.provider_id=u.id AND x.status<>'dismissed' AND x.created_at > NOW() - INTERVAL '30 days')`);
   } catch(e) { console.error('held auto-release:', e.message); }
 }), 10*60*1000);
@@ -12439,6 +12574,7 @@ app.get('/api/sub/:id', auth, providerOnly, async (req, res) => {
 });
 app.post('/api/sub/:id/offers', auth, providerOnly, rateLimiter(30, 3600000), async (req, res) => {
   try {
+    { const bb = await _bidBan(req.user.id); if (bb) return res.status(403).json({ code: 'bid_ban', message: bb.msg, ban: bb }); }
     const id = parseInt(req.params.id), me = req.user.id, b = req.body || {};
     const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
     if (!s || s.status !== 'open') return res.status(400).json({ message: 'الطلب مغلق' });
@@ -13256,7 +13392,8 @@ app.get('/api/admin/support/:tid', requirePermission('support.view'), async (req
     if (rd.rows.length) wsBroadcast(t.user_id, { type: 'support_read', tid: t.id });
     const uid = t.user_id;
     const u = (await pool.query(`SELECT id, name, NULLIF(business_name,'') AS business_name, role, COALESCE(can_provide,FALSE) AS can_provide, COALESCE(can_request,FALSE) AS can_request,
-        city, phone, email, created_at, profile_image, COALESCE(bid_review,FALSE) AS bid_review, bid_warned_at, is_active FROM users WHERE id=$1`, [uid])).rows[0] || {};
+        city, phone, email, created_at, profile_image, COALESCE(bid_review,FALSE) AS bid_review, COALESCE(bid_review_manual,FALSE) AS bid_review_manual, COALESCE(bid_review_ok,0) AS bid_review_ok, bid_warned_at, is_active FROM users WHERE id=$1`, [uid])).rows[0] || {};
+    u.ban = await _bidBan(uid); u.clean_need = BID_CLEAN_NEED;
     const [rq, bc, sc, pr, assigned] = await Promise.all([
       pool.query(`SELECT r.id, r.title, r.status, (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS bids,
           COALESCE(jsonb_array_length(CASE WHEN jsonb_typeof(r.attachments::jsonb)='array' THEN r.attachments::jsonb ELSE '[]'::jsonb END),0) AS atts
