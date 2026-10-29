@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sub.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/sub.js','/support-fab.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -1949,14 +1949,14 @@ async function setSetting(key, value) {
 
 // ═══════════ نظام الصلاحيات (RBAC) ═══════════
 const OWNER_EMAIL = 'wled-111@hotmail.com';
-const ALL_PERMISSIONS = ['dashboard.view','analytics.view','users.view','users.edit','users.delete','users.badge','users.role','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send','settings.manage','admins.manage','outreach.manage'];
-const PERM_LABELS = {'dashboard.view':'عرض لوحة المعلومات','analytics.view':'عرض التحليلات','users.view':'عرض المستخدمين','users.edit':'تعديل المستخدمين','users.delete':'حذف المستخدمين','users.badge':'منح الألقاب','users.role':'تغيير الأدوار','requests.view':'عرض المشاريع','requests.edit':'تعديل المشاريع','requests.delete':'حذف المشاريع','requests.review':'مراجعة المشاريع','bids.view':'عرض العروض','bids.edit':'تعديل العروض','bids.delete':'حذف العروض','reviews.view':'عرض التقييمات','reviews.delete':'حذف التقييمات','questions.view':'عرض الأسئلة','questions.answer':'الرد على الأسئلة','questions.delete':'حذف الأسئلة','reports.view':'عرض البلاغات','reports.resolve':'معالجة البلاغات','logs.view':'عرض السجل','broadcast.send':'الرسائل الجماعية','settings.manage':'إدارة الإعدادات','admins.manage':'إدارة المشرفين','outreach.manage':'إدارة الاستقطاب (الصيد)'};
+const ALL_PERMISSIONS = ['dashboard.view','analytics.view','users.view','users.edit','users.delete','users.badge','users.role','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send','settings.manage','admins.manage','outreach.manage','support.view','support.reply'];
+const PERM_LABELS = {'support.view':'عرض محادثات الدعم','support.reply':'الرد على محادثات الدعم','dashboard.view':'عرض لوحة المعلومات','analytics.view':'عرض التحليلات','users.view':'عرض المستخدمين','users.edit':'تعديل المستخدمين','users.delete':'حذف المستخدمين','users.badge':'منح الألقاب','users.role':'تغيير الأدوار','requests.view':'عرض المشاريع','requests.edit':'تعديل المشاريع','requests.delete':'حذف المشاريع','requests.review':'مراجعة المشاريع','bids.view':'عرض العروض','bids.edit':'تعديل العروض','bids.delete':'حذف العروض','reviews.view':'عرض التقييمات','reviews.delete':'حذف التقييمات','questions.view':'عرض الأسئلة','questions.answer':'الرد على الأسئلة','questions.delete':'حذف الأسئلة','reports.view':'عرض البلاغات','reports.resolve':'معالجة البلاغات','logs.view':'عرض السجل','broadcast.send':'الرسائل الجماعية','settings.manage':'إدارة الإعدادات','admins.manage':'إدارة المشرفين','outreach.manage':'إدارة الاستقطاب (الصيد)'};
 const ROLE_LABELS = {super_admin:'مدير كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
 const ROLE_BASE_LEVEL = {super_admin:90,content_manager:50,support:30,analyst:20,outreach_specialist:25};
 const ROLE_PERMISSIONS = {
   super_admin: ['*'],
-  content_manager: ['dashboard.view','analytics.view','users.view','users.edit','users.badge','users.role','users.delete','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send'],
-  support: ['dashboard.view','users.view','requests.view','questions.view','questions.answer','reports.view','reports.resolve'],
+  content_manager: ['dashboard.view','analytics.view','users.view','users.edit','users.badge','users.role','users.delete','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send','support.view','support.reply'],
+  support: ['dashboard.view','users.view','requests.view','questions.view','questions.answer','reports.view','reports.resolve','support.view','support.reply'],
   analyst: ['dashboard.view','analytics.view','users.view','requests.view','bids.view'],
   outreach_specialist: ['dashboard.view','outreach.manage']
 };
@@ -3381,6 +3381,13 @@ async function setupDatabase() {
     try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_2d BOOLEAN DEFAULT FALSE'); } catch(e){}
     try { await _mig('ALTER TABLE saved_requests ADD COLUMN IF NOT EXISTS notified_1d BOOLEAN DEFAULT FALSE'); } catch(e){}
     await _mig(`CREATE TABLE IF NOT EXISTS push_tokens (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, token TEXT NOT NULL, platform VARCHAR(20), created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, token))`);
+    await _mig(`CREATE TABLE IF NOT EXISTS support_threads (id SERIAL PRIMARY KEY, user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE, status VARCHAR(12) DEFAULT 'open', topic VARCHAR(40), link_kind VARCHAR(8), link_id INTEGER, link_title VARCHAR(160), assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL, user_unread INTEGER DEFAULT 0, admin_unread INTEGER DEFAULT 0, last_msg_at TIMESTAMPTZ, last_user_at TIMESTAMPTZ, last_admin_at TIMESTAMPTZ, admin_notified_at TIMESTAMPTZ, first_reply_at TIMESTAMPTZ, solved_at TIMESTAMPTZ, rating SMALLINT, rated_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
+    await _mig(`CREATE TABLE IF NOT EXISTS support_msgs (id SERIAL PRIMARY KEY, thread_id INTEGER REFERENCES support_threads(id) ON DELETE CASCADE, sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL, from_admin BOOLEAN DEFAULT FALSE, kind VARCHAR(12) DEFAULT 'text', body TEXT, file JSONB, meta JSONB, ck VARCHAR(40), read_at TIMESTAMPTZ, emailed BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())`);
+    await _mig(`CREATE INDEX IF NOT EXISTS support_msgs_t ON support_msgs(thread_id, id)`);
+    await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS support_msgs_ck ON support_msgs(thread_id, ck) WHERE ck IS NOT NULL`);
+    await _mig(`CREATE INDEX IF NOT EXISTS support_threads_wait ON support_threads(status, admin_unread)`);
+    await _mig(`CREATE TABLE IF NOT EXISTS support_replies (id SERIAL PRIMARY KEY, title VARCHAR(40), body TEXT, sort INTEGER DEFAULT 0, created_by INTEGER, created_at TIMESTAMPTZ DEFAULT NOW())`);
+    await _mig(`INSERT INTO support_replies (title, body, sort) SELECT * FROM (VALUES ('راجعناها وتم ✓','هلا، راجعنا طلبك وتم ✓ لو احتجت أي شي ثاني إحنا هنا.',1),('نحتاج رقم المشروع','هلا، عشان نساعدك أسرع: وش رقم أو اسم المشروع؟',2),('نحتاج المخطط','لو ترفع المخطط هنا نضيفه لمشروعك، وتجيك عروض أدق 👍',3),('نتابعها ونرجع لك','وصلتنا ونتابعها الحين، ونرجع لك بأقرب وقت 🙏',4)) v(t,b,s) WHERE NOT EXISTS (SELECT 1 FROM support_replies)`);
     await _mig(`CREATE TABLE IF NOT EXISTS soft_queue (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(8), args JSONB, chk JSONB, send_at TIMESTAMPTZ NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await _mig(`CREATE INDEX IF NOT EXISTS soft_queue_at ON soft_queue(send_at)`);
     await _mig(`CREATE TABLE IF NOT EXISTS reminders_log (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(40), ref_id INTEGER DEFAULT 0, sent_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, kind, ref_id))`);
@@ -6729,23 +6736,23 @@ app.post('/api/direct-message', rateLimiter(30, 600000), auth, async (req, res) 
 
 // الإدارة يراسل عميلاً — رسالة عامة أو مرتبطة بمشروع + إشعار + إيميل (باسم "إدارة مناقصة")
 app.post('/api/admin/message-client', auth, adminOnly, async (req, res) => {
+  // من 2026-10: رسائل الإدارة تروح لمحادثة «فريق مناقصة» (محادثة الدعم) بدل محادثات المشاريع
   try {
     const clientId = parseInt(req.body.client_id);
-    const content = (req.body.content||'').trim();
+    const content = String(req.body.content || '').trim().slice(0, 4000);
     const reqId = req.body.request_id ? parseInt(req.body.request_id) : null;
     const doEmail = req.body.email !== false;
-    if (!clientId || !content) return res.status(400).json({ message: 'اختر العميل واكتب الرسالة' });
-    const cli = await pool.query("SELECT id, name, email FROM users WHERE id=$1 AND (role='client' OR COALESCE(can_request,FALSE))", [clientId]);
-    if (!cli.rows.length) return res.status(404).json({ message: 'العميل غير موجود' });
-    if (reqId) {
-      const rq = await pool.query('SELECT id FROM requests WHERE id=$1 AND client_id=$2', [reqId, clientId]);
-      if (!rq.rows.length) return res.status(400).json({ message: 'المشروع غير مرتبط بهذا العميل' });
+    if (!clientId || !content) return res.status(400).json({ message: 'اختر المستخدم واكتب الرسالة' });
+    const cli = (await pool.query("SELECT id, name, email, role FROM users WHERE id=$1", [clientId])).rows[0];
+    if (!cli || cli.role === 'admin') return res.status(404).json({ message: 'المستخدم غير موجود' });
+    let t = await _supThread(clientId, true);
+    if (reqId) { const x = await _supSetLink(t, clientId, { kind: 'req', id: reqId }, true); if (x) t = x; }
+    const m = await _supAdminSend(req, t, content, null, false, null);
+    if (doEmail && cli.email) {
+      await pool.query('UPDATE support_msgs SET emailed=TRUE WHERE id=$1', [m.id]);
+      sendEmail(cli.email, 'رسالة من فريق مناقصة', emailTpl('رسالة من فريق مناقصة', `<p>مرحباً <strong>${eEsc(_supFirst(cli.name||''))}</strong>،</p><p style="white-space:pre-line">${eEsc(content)}</p>`, 'افتح المحادثة', SITE_URL + '/chat?support=1'), { uid: clientId, kind: 'support' }).catch(() => {});
     }
-    await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW())`, [reqId, req.user.id, clientId, content]);
-    const c = cli.rows[0];
-    await notify(clientId, 'رسالة من إدارة مناقصة', content.slice(0,120), 'admin_message', reqId);
-    if (doEmail && c.email) sendEmail(c.email, 'رسالة من إدارة منصة مناقصة', emailTpl('رسالة من إدارة مناقصة', `<p>عزيزي <strong>${eEsc(c.name||'')}</strong>،</p><p>${eEsc(content)}</p>`, 'فتح المحادثات', SITE_URL+'/chat.html')).catch(()=>{});
-    res.json({ ok: true });
+    res.json({ ok: true, tid: t.id });
   } catch(e) { console.error('admin-message-client:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 
@@ -11651,6 +11658,8 @@ async function _adminOverview(){
         (SELECT COUNT(*)::int FROM sub_requests WHERE status='review' OR (status='open' AND pending_desc IS NOT NULL)) AS sub_review,
         (SELECT MIN(CASE WHEN status='review' THEN submitted_at ELSE pending_at END) FROM sub_requests WHERE status='review' OR (status='open' AND pending_desc IS NOT NULL)) AS sub_review_oldest,
         (SELECT COUNT(*) FROM reports WHERE status='pending' OR status IS NULL)::int AS reports,
+        (SELECT COUNT(*)::int FROM support_threads WHERE status='open' AND admin_unread>0) AS support_wait,
+        (SELECT MIN(last_user_at) FROM support_threads WHERE status='open' AND admin_unread>0) AS support_oldest,
         (SELECT COUNT(*) FROM request_questions q WHERE ${_QA_ACTIVE})::int AS questions,
         (SELECT COUNT(*) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flags,
         (SELECT COUNT(DISTINCT provider_id) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flag_providers,
@@ -12983,6 +12992,355 @@ app.delete('/api/partners/:id', auth, providerOnly, async (req, res) => {
   try { await pool.query('DELETE FROM partners WHERE owner_id=$1 AND partner_id=$2', [req.user.id, parseInt(req.params.id)]); res.json({ ok: true }); }
   catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// ═══════════ محادثة الدعم: «فريق مناقصة» ═══════════
+// محادثة وحدة مستمرة لكل مستخدم (عميل أو مزوّد) مع فريق الإدارة كله. الملاحظات الداخلية ما يشوفها المستخدم.
+const SUP_TOPICS = ['مشكلة في مشروع', 'سؤال عن العروض', 'الدفع والسعي', 'اعتراض على إيقاف', 'حسابي وملفي', 'شي ثاني'];
+const SUP_MAX_FILE = 30 * 1024 * 1024;
+const SUP_HOURS_TXT = 'من 9 الصبح لين 11 بالليل';
+function _supOpenNow(){ const h = new Date(Date.now() + 3 * 3600e3).getUTCHours(); return h >= 9 && h < 23; }
+function _supFirst(n){ const w = String(n || '').trim().split(/\s+/); if (w.length > 1 && /^(ابو|أبو|ام|أم|عبد)$/.test(w[0])) return w[0] + ' ' + w[1]; return w[0] || ''; }
+async function _supAdminIds(perm){
+  try {
+    const r = await pool.query(`SELECT id, email, role, admin_role, permissions FROM users WHERE role='admin' AND is_active IS NOT FALSE`);
+    return r.rows.filter(a => hasPerm(effectivePermissions(a), perm || 'support.view')).map(a => a.id);
+  } catch(e) { return []; }
+}
+async function _supThread(uid, create){
+  let t = (await pool.query('SELECT * FROM support_threads WHERE user_id=$1', [uid])).rows[0];
+  if (!t && create) t = (await pool.query(`INSERT INTO support_threads (user_id) VALUES ($1) ON CONFLICT (user_id) DO UPDATE SET user_id=EXCLUDED.user_id RETURNING *`, [uid])).rows[0];
+  return t || null;
+}
+async function _supUpload(f){
+  if (!f || typeof f.data !== 'string' || !f.data.startsWith('data:')) return null;
+  const name = _cleanTxt(f.name || 'ملف', 120) || 'ملف';
+  const b64 = f.data.slice(f.data.indexOf(',') + 1);
+  const size = Math.floor(b64.length * 3 / 4);
+  if (!size || size > SUP_MAX_FILE) return { err: 'حجم الملف أكبر من 30 ميجا' };
+  let url = null;
+  try { url = await uploadToCloud(f.data, 'manaqasa/support', name); } catch(e) {}
+  if (!url || !/^https?:\/\//.test(url)) return { err: 'نوع الملف غير مسموح — صور، PDF، مخططات DWG/DXF، Excel أو Word' };
+  const out = { name, url, type: String(f.type || '').slice(0, 80), size };
+  if (typeof f.wave === 'string') out.wave = f.wave.slice(0, 300);
+  return out;
+}
+async function _supInsert(tid, senderId, fromAdmin, kind, body, file, meta, ck){
+  const r = await pool.query(`INSERT INTO support_msgs (thread_id, sender_id, from_admin, kind, body, file, meta, ck) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      ON CONFLICT (thread_id, ck) WHERE ck IS NOT NULL DO NOTHING RETURNING *`,
+    [tid, senderId || null, !!fromAdmin, kind, body || null, file ? JSON.stringify(file) : null, meta ? JSON.stringify(meta) : null, ck || null]);
+  if (r.rows[0]) return { m: r.rows[0], dup: false };
+  const d = (await pool.query('SELECT * FROM support_msgs WHERE thread_id=$1 AND ck=$2', [tid, ck])).rows[0];
+  return { m: d, dup: true };
+}
+async function _supSys(tid, body, meta, fromAdmin){ return (await _supInsert(tid, null, fromAdmin !== false, 'system', body, null, meta || null, null)).m; }
+async function _supPingAdmins(data){ const ids = await _supAdminIds('support.view'); ids.forEach(id => wsBroadcast(id, Object.assign({ type: 'support_admin' }, data || {}))); }
+function _supPreview(m){ if (!m) return ''; if (m.body) return String(m.body).slice(0, 120); const f = m.file || {}; if (/^audio\//.test(f.type || '')) return '🎤 رسالة صوتية'; if (/^image\/(jpeg|jpg|png|webp|gif|heic)$/i.test(f.type || '')) return '📷 صورة'; return '📎 ' + (f.name || 'ملف'); }
+async function _supLinkTitle(kind, id, uid){
+  try {
+    if (kind === 'req') { const r = (await pool.query('SELECT id, title FROM requests WHERE id=$1 AND ($2::int IS NULL OR client_id=$2)', [id, uid])).rows[0]; return r ? r.title : null; }
+    if (kind === 'bid') { const r = (await pool.query('SELECT b.id, q.title FROM bids b JOIN requests q ON q.id=b.request_id WHERE b.id=$1 AND ($2::int IS NULL OR b.provider_id=$2)', [id, uid])).rows[0]; return r ? 'عرضك على «' + r.title + '»' : null; }
+    if (kind === 'sub') { const r = (await pool.query('SELECT id, COALESCE(NULLIF(title,\'\'), description) AS t FROM sub_requests WHERE id=$1 AND ($2::int IS NULL OR provider_id=$2)', [id, uid])).rows[0]; return r ? 'مقاول باطن: ' + String(r.t || '').slice(0, 60) : null; }
+  } catch(e) {}
+  return null;
+}
+function _supMsgOut(m, forAdmin){
+  const o = { id: m.id, from_admin: m.from_admin, kind: m.kind, body: m.body, file: m.file, created_at: m.created_at, read_at: m.read_at, meta: m.meta || null };
+  if (m.sender_name) o.who = forAdmin ? m.sender_name : _supFirst(m.sender_name);
+  if (forAdmin) o.sender_id = m.sender_id;
+  return o;
+}
+async function _supMsgs(tid, forAdmin){
+  const r = await pool.query(`SELECT * FROM (SELECT m.*, u.name AS sender_name FROM support_msgs m LEFT JOIN users u ON u.id=m.sender_id
+      WHERE m.thread_id=$1 ${forAdmin ? '' : "AND m.kind<>'note'"} ORDER BY m.id DESC LIMIT 400) x ORDER BY id ASC`, [tid]);
+  return r.rows.map(m => _supMsgOut(m, forAdmin));
+}
+function _supThreadOut(t){ return t ? { id: t.id, status: t.status, topic: t.topic, link_kind: t.link_kind, link_id: t.link_id, link_title: t.link_title, rating: t.rating, last_msg_at: t.last_msg_at } : null; }
+
+// ── المستخدم ──
+app.get('/api/support', auth, async (req, res) => {
+  try {
+    const uid = req.user.id;
+    const t = await _supThread(uid, false);
+    let msgs = [];
+    if (t) {
+      msgs = await _supMsgs(t.id, false);
+      const rd = await pool.query(`UPDATE support_msgs SET read_at=NOW() WHERE thread_id=$1 AND from_admin AND read_at IS NULL AND kind<>'note' RETURNING id`, [t.id]);
+      if (t.user_unread) await pool.query('UPDATE support_threads SET user_unread=0 WHERE id=$1', [t.id]);
+      if (rd.rows.length) _supPingAdmins({ tid: t.id, read: true });
+    }
+    const [rq, bd, sb] = await Promise.all([
+      pool.query(`SELECT id, title, status FROM requests WHERE client_id=$1 ORDER BY id DESC LIMIT 12`, [uid]),
+      pool.query(`SELECT b.id, q.title FROM bids b JOIN requests q ON q.id=b.request_id WHERE b.provider_id=$1 ORDER BY b.id DESC LIMIT 12`, [uid]),
+      pool.query(`SELECT id, COALESCE(NULLIF(title,''), description) AS title FROM sub_requests WHERE provider_id=$1 ORDER BY id DESC LIMIT 8`, [uid]).catch(() => ({ rows: [] }))
+    ]);
+    res.json({ thread: _supThreadOut(t), msgs, topics: SUP_TOPICS, hours: SUP_HOURS_TXT, open_now: _supOpenNow(),
+      links: { req: rq.rows.map(x => ({ id: x.id, title: x.title, status: x.status })), bid: bd.rows.map(x => ({ id: x.id, title: x.title })), sub: sb.rows.map(x => ({ id: x.id, title: String(x.title || '').slice(0, 70) })) } });
+  } catch(e) { console.error('support get:', e.message); res.status(500).json({ message: 'تعذّر التحميل' }); }
+});
+app.get('/api/support/unread', auth, async (req, res) => {
+  try {
+    const t = await _supThread(req.user.id, false);
+    if (!t) return res.json({ n: 0, last: null });
+    const l = (await pool.query(`SELECT body, file, from_admin, kind, created_at FROM support_msgs WHERE thread_id=$1 AND kind<>'note' ORDER BY id DESC LIMIT 1`, [t.id])).rows[0];
+    res.json({ n: t.user_unread || 0, last: l ? { text: _supPreview(l), from_admin: l.from_admin, at: l.created_at } : null });
+  } catch(e) { res.json({ n: 0, last: null }); }
+});
+async function _supSetLink(t, uid, link, byAdmin){
+  const kind = String(link && link.kind || ''), id = parseInt(link && link.id) || 0;
+  if (!['req', 'bid', 'sub'].includes(kind) || !id) return null;
+  const title = await _supLinkTitle(kind, id, byAdmin ? null : uid);
+  if (!title) return null;
+  if (t.link_kind === kind && String(t.link_id) === String(id)) return t;
+  const u = (await pool.query('UPDATE support_threads SET link_kind=$2, link_id=$3, link_title=$4 WHERE id=$1 RETURNING *', [t.id, kind, id, String(title).slice(0, 160)])).rows[0];
+  await _supSys(t.id, 'مربوطة بـ ' + (kind === 'req' ? '«' + title + '»' : title), { link: { kind, id } }, false);
+  return u;
+}
+app.post('/api/support/topic', auth, rateLimiter(20, 60000), async (req, res) => {
+  try {
+    const topic = String(req.body && req.body.topic || '');
+    if (!SUP_TOPICS.includes(topic)) return res.status(400).json({ message: 'غير صالح' });
+    let t = await _supThread(req.user.id, true);
+    if (t.status === 'solved') t = (await pool.query(`UPDATE support_threads SET status='open', solved_at=NULL, rating=NULL WHERE id=$1 RETURNING *`, [t.id])).rows[0];
+    const last = (await pool.query(`SELECT kind, meta FROM support_msgs WHERE thread_id=$1 AND kind<>'note' ORDER BY id DESC LIMIT 1`, [t.id])).rows[0];
+    if (!(last && last.kind === 'system' && last.meta && last.meta.topic === topic)) {
+      await pool.query('UPDATE support_threads SET topic=$2, last_msg_at=NOW() WHERE id=$1', [t.id, topic]);
+      await _supSys(t.id, 'الموضوع: ' + topic, { topic }, false);
+    }
+    res.json({ ok: true });
+  } catch(e) { console.error('support topic:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/support/link', auth, rateLimiter(20, 60000), async (req, res) => {
+  try {
+    const t = await _supThread(req.user.id, true);
+    const u = await _supSetLink(t, req.user.id, req.body || {}, false);
+    if (!u) return res.status(400).json({ message: 'ما لقينا هذا العنصر في حسابك' });
+    res.json({ ok: true, thread: _supThreadOut(u) });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/support/msg', auth, rateLimiter(40, 60000), async (req, res) => {
+  try {
+    const uid = req.user.id, b = req.body || {};
+    const body = String(b.body || '').trim();
+    if (body.length > 2000) return res.status(400).json({ message: 'الرسالة طويلة (الحد 2000 حرف)' });
+    if (!body && !b.file) return res.status(400).json({ message: 'الرسالة فارغة' });
+    const ck = /^[a-z0-9_-]{6,40}$/i.test(String(b.ck || '')) ? String(b.ck) : null;
+    let t = await _supThread(uid, true);
+    if (ck) { const ex = (await pool.query('SELECT * FROM support_msgs WHERE thread_id=$1 AND ck=$2', [t.id, ck])).rows[0]; if (ex) return res.json({ ok: true, msg: _supMsgOut(ex, false), dup: true }); }
+    let file = null;
+    if (b.file) { file = await _supUpload(b.file); if (!file || file.err) return res.status(400).json({ message: (file && file.err) || 'تعذّر رفع الملف' }); }
+    const wasSolved = t.status === 'solved', hadUnread = (t.admin_unread || 0) > 0;
+    if (b.link) { const u = await _supSetLink(t, uid, b.link, false); if (u) t = u; }
+    const mode = b.mode === 'provider' ? 'provider' : (b.mode === 'client' ? 'client' : null);
+    const ins = await _supInsert(t.id, uid, false, file ? 'file' : 'text', body, file, mode ? { mode } : null, ck);
+    await pool.query(`UPDATE support_threads SET last_msg_at=NOW(), last_user_at=NOW(), admin_unread=admin_unread+1, status='open', solved_at=CASE WHEN status='solved' THEN NULL ELSE solved_at END, rating=CASE WHEN status='solved' THEN NULL ELSE rating END WHERE id=$1`, [t.id]);
+    if (wasSolved) await _supSys(t.id, 'انفتحت المحادثة من جديد', { reopen: 1 }, false);
+    // برّا وقت الدوام: رد تلقائي (مرة كل 6 ساعات)
+    if (!_supOpenNow()) {
+      const rec = (await pool.query(`SELECT 1 FROM support_msgs WHERE thread_id=$1 AND kind='auto' AND created_at > NOW() - INTERVAL '6 hours' LIMIT 1`, [t.id])).rows.length;
+      if (!rec) await _supInsert(t.id, null, true, 'auto', 'وصلت رسالتك 👍 فريقنا يرد ' + SUP_HOURS_TXT + '، ونرد عليك أول ما نبدأ. بيوصلك إشعار.', null, null, null);
+    }
+    // تنبيه الإدارة: أول رسالة تنتظر، أو مر 15 دقيقة على آخر تنبيه
+    const notifyNow = !hadUnread || !t.admin_notified_at || (Date.now() - new Date(t.admin_notified_at).getTime() > 15 * 60e3);
+    const u = (await pool.query("SELECT name, COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [uid])).rows[0] || {};
+    if (notifyNow) {
+      await pool.query('UPDATE support_threads SET admin_notified_at=NOW() WHERE id=$1', [t.id]);
+      const ids = await _supAdminIds('support.view');
+      for (const aid of ids) notify(aid, '💬 رسالة دعم من ' + (u.nm || 'مستخدم'), _supPreview(ins.m), 'support', t.id, { url: '/dashboard-admin.html#support?t=' + t.id }).catch(() => {});
+    }
+    _supPingAdmins({ tid: t.id });
+    wsBroadcast(uid, { type: 'support_msg', tid: t.id });
+    res.json({ ok: true, msg: _supMsgOut(ins.m, false) });
+  } catch(e) { console.error('support msg:', e.message); res.status(500).json({ message: 'تعذّر الإرسال، حاول مرة ثانية' }); }
+});
+app.post('/api/support/rate', auth, rateLimiter(10, 60000), async (req, res) => {
+  try {
+    const v = parseInt(req.body && req.body.v);
+    if (v !== 1 && v !== -1) return res.status(400).json({ message: 'غير صالح' });
+    const t = await _supThread(req.user.id, false);
+    if (!t || t.status !== 'solved' || t.rating != null) return res.status(400).json({ message: 'غير متاح' });
+    await pool.query('UPDATE support_threads SET rating=$2, rated_at=NOW() WHERE id=$1', [t.id, v]);
+    await _supInsert(t.id, req.user.id, false, 'rate', v === 1 ? '👍 الخدمة ممتازة' : '👎 ما ساعدتني', null, { v }, null);
+    _supPingAdmins({ tid: t.id });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+
+// ── الإدارة ──
+async function _supAdminSend(req, t, body, file, note, ck){
+  const ins = await _supInsert(t.id, req.user.id, true, note ? 'note' : (file ? 'file' : 'text'), body, file, null, ck);
+  if (ins.dup) return ins.m;
+  if (!note) {
+    await pool.query(`UPDATE support_threads SET last_msg_at=NOW(), last_admin_at=NOW(), user_unread=user_unread+1, admin_unread=0,
+        assigned_to=COALESCE(assigned_to,$2), first_reply_at=COALESCE(first_reply_at,NOW()) WHERE id=$1`, [t.id, req.user.id]);
+    await pool.query(`UPDATE support_msgs SET read_at=COALESCE(read_at,NOW()) WHERE thread_id=$1 AND NOT from_admin AND read_at IS NULL`, [t.id]);
+    notify(t.user_id, '💬 فريق مناقصة رد عليك', _supPreview(ins.m), 'support', t.id, { url: '/chat?support=1' }).catch(() => {});
+    wsBroadcast(t.user_id, { type: 'support_msg', tid: t.id });
+  } else if (!t.assigned_to) await pool.query('UPDATE support_threads SET assigned_to=$2 WHERE id=$1 AND assigned_to IS NULL', [t.id, req.user.id]);
+  _supPingAdmins({ tid: t.id });
+  return ins.m;
+}
+app.get('/api/admin/support/count', requirePermission('support.view'), async (req, res) => {
+  try {
+    const r = (await pool.query(`SELECT COUNT(*)::int AS n, MIN(last_user_at) AS oldest FROM support_threads WHERE status='open' AND admin_unread>0`)).rows[0];
+    res.json({ n: r.n, oldest: r.oldest });
+  } catch(e) { res.json({ n: 0 }); }
+});
+app.get('/api/admin/support', requirePermission('support.view'), async (req, res) => {
+  try {
+    const f = String(req.query.f || 'all'), role = String(req.query.role || ''), q = String(req.query.q || '').trim().slice(0, 60);
+    const w = [`EXISTS (SELECT 1 FROM support_msgs sm WHERE sm.thread_id=t.id AND sm.kind<>'system')`], p = [];
+    if (f === 'wait') w.push(`t.status='open' AND t.admin_unread>0`);
+    else if (f === 'mine') { p.push(req.user.id); w.push(`t.assigned_to=$${p.length} AND t.status='open'`); }
+    else if (f === 'files') w.push(`EXISTS (SELECT 1 FROM support_msgs fm WHERE fm.thread_id=t.id AND fm.file IS NOT NULL)`);
+    else if (f === 'closed') w.push(`t.status='solved'`);
+    else if (f === 'open') w.push(`t.status='open'`);
+    if (role === 'client') w.push(`u.role<>'provider'`); else if (role === 'provider') w.push(`u.role='provider'`);
+    if (q) {
+      p.push('%' + q.replace(/[%_]/g, '') + '%'); const i = p.length;
+      const n = parseInt(q.replace(/^#/, '')) || 0;
+      p.push(n); const j = p.length;
+      w.push(`(u.name ILIKE $${i} OR u.business_name ILIKE $${i} OR u.email ILIKE $${i} OR u.phone ILIKE $${i} OR t.id=$${j} OR t.link_id=$${j} OR u.id=$${j}
+        OR EXISTS (SELECT 1 FROM support_msgs qm WHERE qm.thread_id=t.id AND qm.body ILIKE $${i}))`);
+    }
+    const r = await pool.query(`SELECT t.id, t.user_id, t.status, t.topic, t.admin_unread, t.last_msg_at, t.last_user_at, t.last_admin_at, t.link_kind, t.link_id, t.link_title, t.rating, t.assigned_to,
+        u.name, NULLIF(u.business_name,'') AS business_name, u.role, u.profile_image, a.name AS assigned_name,
+        (SELECT row_to_json(x) FROM (SELECT body, file, kind, from_admin, created_at FROM support_msgs WHERE thread_id=t.id AND kind NOT IN ('note','system') ORDER BY id DESC LIMIT 1) x) AS last,
+        EXISTS (SELECT 1 FROM support_msgs fm WHERE fm.thread_id=t.id AND fm.file IS NOT NULL) AS has_files
+      FROM support_threads t JOIN users u ON u.id=t.user_id LEFT JOIN users a ON a.id=t.assigned_to
+      WHERE ${w.join(' AND ')} ORDER BY (t.status='open' AND t.admin_unread>0) DESC, t.last_msg_at DESC NULLS LAST LIMIT 150`, p);
+    const cnt = (await pool.query(`SELECT COUNT(*) FILTER (WHERE status='open' AND admin_unread>0)::int AS wait, COUNT(*) FILTER (WHERE status='open' AND assigned_to=$1)::int AS mine FROM support_threads`, [req.user.id])).rows[0];
+    res.json({ list: r.rows.map(x => Object.assign(x, { last: x.last ? { text: _supPreview(x.last), from_admin: x.last.from_admin, at: x.last.created_at } : null })), counts: cnt });
+  } catch(e) { console.error('admin support list:', e.message); res.status(500).json({ message: 'تعذّر التحميل' }); }
+});
+app.get('/api/admin/support/admins', requirePermission('support.view'), async (req, res) => {
+  try {
+    const ids = await _supAdminIds('support.reply');
+    const r = ids.length ? (await pool.query('SELECT id, name FROM users WHERE id = ANY($1::int[]) ORDER BY name', [ids])).rows : [];
+    res.json(r.map(x => ({ id: x.id, name: x.name, me: x.id === req.user.id })));
+  } catch(e) { res.json([]); }
+});
+app.get('/api/admin/support/stats', requirePermission('support.view'), async (req, res) => {
+  try {
+    const r = (await pool.query(`SELECT COUNT(*) FILTER (WHERE (meta->>'v')='1')::int AS up, COUNT(*) FILTER (WHERE (meta->>'v')='-1')::int AS down FROM support_msgs WHERE kind='rate' AND created_at > NOW() - INTERVAL '30 days'`)).rows[0];
+    const f = (await pool.query(`SELECT ROUND(AVG(EXTRACT(EPOCH FROM (first_reply_at - created_at))/60))::int AS m FROM support_threads WHERE first_reply_at IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'`)).rows[0];
+    res.json({ up: r.up, down: r.down, first_reply_min: f.m });
+  } catch(e) { res.json({}); }
+});
+// يفتح (أو ينشئ) محادثة مستخدم — من ملفه أو صفحة مشروعه
+app.post('/api/admin/support/start', requirePermission('support.reply'), async (req, res) => {
+  try {
+    const uid = parseInt(req.body && req.body.user_id);
+    const u = uid && (await pool.query(`SELECT id, role FROM users WHERE id=$1`, [uid])).rows[0];
+    if (!u || u.role === 'admin') return res.status(404).json({ message: 'المستخدم غير موجود' });
+    let t = await _supThread(uid, true);
+    if (req.body.link) { const x = await _supSetLink(t, uid, req.body.link, true); if (x) t = x; }
+    res.json({ ok: true, tid: t.id });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/support/:tid', requirePermission('support.view'), async (req, res) => {
+  try {
+    const t = (await pool.query('SELECT * FROM support_threads WHERE id=$1', [parseInt(req.params.tid) || 0])).rows[0];
+    if (!t) return res.status(404).json({ message: 'غير موجود' });
+    const msgs = await _supMsgs(t.id, true);
+    const rd = await pool.query(`UPDATE support_msgs SET read_at=NOW() WHERE thread_id=$1 AND NOT from_admin AND read_at IS NULL RETURNING id`, [t.id]);
+    if (rd.rows.length) wsBroadcast(t.user_id, { type: 'support_read', tid: t.id });
+    const uid = t.user_id;
+    const u = (await pool.query(`SELECT id, name, NULLIF(business_name,'') AS business_name, role, COALESCE(can_provide,FALSE) AS can_provide, COALESCE(can_request,FALSE) AS can_request,
+        city, phone, email, created_at, profile_image, COALESCE(bid_review,FALSE) AS bid_review, bid_warned_at, is_active FROM users WHERE id=$1`, [uid])).rows[0] || {};
+    const [rq, bc, sc, pr, assigned] = await Promise.all([
+      pool.query(`SELECT r.id, r.title, r.status, (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS bids,
+          COALESCE(jsonb_array_length(CASE WHEN jsonb_typeof(r.attachments::jsonb)='array' THEN r.attachments::jsonb ELSE '[]'::jsonb END),0) AS atts
+        FROM requests r WHERE r.client_id=$1 ORDER BY r.id DESC LIMIT 10`, [uid]).catch(() => ({ rows: [] })),
+      pool.query(`SELECT COUNT(*)::int AS n, COUNT(*) FILTER (WHERE status='accepted')::int AS won FROM bids WHERE provider_id=$1`, [uid]),
+      pool.query(`SELECT COUNT(*)::int AS n FROM sub_requests WHERE provider_id=$1`, [uid]).catch(() => ({ rows: [{ n: 0 }] })),
+      pool.query(`SELECT COUNT(*) FILTER (WHERE (meta->>'v')='1')::int AS up, COUNT(*) FILTER (WHERE (meta->>'v')='-1')::int AS down FROM support_msgs WHERE thread_id=$1 AND kind='rate'`, [t.id]),
+      t.assigned_to ? pool.query('SELECT name FROM users WHERE id=$1', [t.assigned_to]) : Promise.resolve({ rows: [] })
+    ]);
+    const files = msgs.filter(m => m.file).map(m => ({ id: m.id, name: m.file.name, url: m.file.url, type: m.file.type, size: m.file.size, from_admin: m.from_admin, at: m.created_at }));
+    res.json({ thread: Object.assign(_supThreadOut(t), { user_id: uid, assigned_to: t.assigned_to, assigned_name: assigned.rows[0] ? assigned.rows[0].name : null, admin_unread: t.admin_unread }),
+      msgs, files, user: Object.assign(u, { projects: rq.rows, bids: bc.rows[0], subs: sc.rows[0].n, ratings: pr.rows[0] }) });
+  } catch(e) { console.error('admin support thread:', e.message); res.status(500).json({ message: 'تعذّر التحميل' }); }
+});
+app.post('/api/admin/support/:tid/msg', requirePermission('support.reply'), async (req, res) => {
+  try {
+    const t = (await pool.query('SELECT * FROM support_threads WHERE id=$1', [parseInt(req.params.tid) || 0])).rows[0];
+    if (!t) return res.status(404).json({ message: 'غير موجود' });
+    const b = req.body || {}, body = String(b.body || '').trim(), note = !!b.note;
+    if (body.length > 4000) return res.status(400).json({ message: 'الرسالة طويلة' });
+    if (!body && !b.file) return res.status(400).json({ message: 'الرسالة فارغة' });
+    let file = null;
+    if (b.file) { file = await _supUpload(b.file); if (!file || file.err) return res.status(400).json({ message: (file && file.err) || 'تعذّر رفع الملف' }); }
+    const ck = /^[a-z0-9_-]{6,40}$/i.test(String(b.ck || '')) ? String(b.ck) : null;
+    const m = await _supAdminSend(req, t, body, file, note, ck);
+    res.json({ ok: true, msg: _supMsgOut(Object.assign({ sender_name: req.adminUser.name }, m), true) });
+  } catch(e) { console.error('admin support msg:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
+});
+app.post('/api/admin/support/:tid/assign', requirePermission('support.reply'), async (req, res) => {
+  try {
+    const tid = parseInt(req.params.tid) || 0, to = req.body && req.body.admin_id ? parseInt(req.body.admin_id) : null;
+    if (to && !(await _supAdminIds('support.reply')).includes(to)) return res.status(400).json({ message: 'هذا المشرف ما عنده صلاحية الرد' });
+    const t = (await pool.query('UPDATE support_threads SET assigned_to=$2 WHERE id=$1 RETURNING *', [tid, to])).rows[0];
+    if (!t) return res.status(404).json({ message: 'غير موجود' });
+    const nm = to ? ((await pool.query('SELECT name FROM users WHERE id=$1', [to])).rows[0] || {}).name : null;
+    await _supInsert(tid, req.user.id, true, 'note', to ? 'حوّل المحادثة إلى ' + (nm || '') : 'شال المسؤول عن المحادثة', null, { assign: to }, null);
+    if (to && to !== req.user.id) notify(to, '💬 حوّلوا لك محادثة دعم', 'افتحها من «المحادثات»', 'support', tid, { url: '/dashboard-admin.html#support?t=' + tid }).catch(() => {});
+    _supPingAdmins({ tid });
+    res.json({ ok: true, assigned_name: nm });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/support/:tid/solve', requirePermission('support.reply'), async (req, res) => {
+  try {
+    const tid = parseInt(req.params.tid) || 0, solved = req.body && req.body.solved !== false;
+    const t = (await pool.query(solved ? `UPDATE support_threads SET status='solved', solved_at=NOW(), admin_unread=0, rating=NULL WHERE id=$1 AND status<>'solved' RETURNING *`
+      : `UPDATE support_threads SET status='open', solved_at=NULL WHERE id=$1 AND status='solved' RETURNING *`, [tid])).rows[0];
+    if (!t) return res.json({ ok: true });
+    if (solved) {
+      await _supSys(tid, '✓ تم الحل · تقدر تكتب لو احتجت شي', { solved: '1' }, true);
+      wsBroadcast(t.user_id, { type: 'support_msg', tid });
+    } else await _supInsert(tid, req.user.id, true, 'note', 'رجّع المحادثة مفتوحة', null, null, null);
+    _supPingAdmins({ tid });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// الردود الجاهزة
+app.get('/api/admin/support-replies', requirePermission('support.view'), async (req, res) => {
+  try { res.json((await pool.query('SELECT id, title, body FROM support_replies ORDER BY sort, id')).rows); } catch(e) { res.json([]); }
+});
+app.post('/api/admin/support-replies', requirePermission('support.reply'), async (req, res) => {
+  try {
+    const title = _cleanTxt(req.body && req.body.title, 40), body = String(req.body && req.body.body || '').trim().slice(0, 1500);
+    if (!title || !body) return res.status(400).json({ message: 'اكتب العنوان والنص' });
+    const id = parseInt(req.body.id) || 0;
+    if (id) await pool.query('UPDATE support_replies SET title=$2, body=$3 WHERE id=$1', [id, title, body]);
+    else await pool.query('INSERT INTO support_replies (title, body, created_by) VALUES ($1,$2,$3)', [title, body, req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.delete('/api/admin/support-replies/:id', requirePermission('support.reply'), async (req, res) => {
+  try { await pool.query('DELETE FROM support_replies WHERE id=$1', [parseInt(req.params.id) || 0]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// المهام: إيميل لو ما قرأ الرد خلال ساعة · إغلاق تلقائي بعد 7 أيام من ردنا بدون رد منه
+async function _supJob(){
+  try {
+    const h = new Date(Date.now() + 3 * 3600e3).getUTCHours();
+    if (h >= 7) {
+      const L = (await pool.query(`UPDATE support_msgs m SET emailed=TRUE FROM support_threads t WHERE t.id=m.thread_id AND m.from_admin AND m.kind IN ('text','file','file_req') AND m.read_at IS NULL AND NOT m.emailed
+          AND m.created_at < NOW() - INTERVAL '1 hour' AND m.created_at > NOW() - INTERVAL '3 days' RETURNING m.thread_id, t.user_id, m.body, m.file, m.kind`)).rows;
+      const seen = {};
+      for (const x of L) {
+        if (seen[x.thread_id]) continue; seen[x.thread_id] = 1;
+        const u = (await pool.query('SELECT name, email FROM users WHERE id=$1', [x.user_id])).rows[0];
+        if (!u || !u.email) continue;
+        const ti = 'فريق مناقصة رد عليك 💬';
+        sendEmail(u.email, ti, emailTpl(ti, `<p>مرحباً${u.name ? ' ' + eEsc(_supFirst(u.name)) : ''}،</p><p>رد عليك فريق مناقصة على رسالتك:</p><div style="background:#f1f5f9;border-radius:12px;padding:12px 14px;margin:10px 0">${eEsc(_supPreview(x))}</div><p>افتح المحادثة عشان تشوف الرد كامل وترد علينا.</p>`, 'افتح المحادثة', SITE_URL + '/chat?support=1'), { uid: x.user_id, kind: 'support' }).catch(() => {});
+      }
+    }
+    const C = (await pool.query(`UPDATE support_threads SET status='solved', solved_at=NOW(), admin_unread=0 WHERE status='open' AND admin_unread=0 AND last_admin_at IS NOT NULL
+        AND last_admin_at >= COALESCE(last_user_at, 'epoch'::timestamp) AND last_admin_at < NOW() - INTERVAL '7 days' RETURNING id, user_id`)).rows;
+    for (const x of C) { await _supSys(x.id, 'انقفلت المحادثة تلقائياً · تقدر تكتب لو احتجت شي', { solved: '1', auto: 1 }, true); }
+  } catch(e) { console.error('support job:', e.message); }
+}
+setInterval(() => _jobLock('support', _supJob), 10 * 60 * 1000);
+
 // ═══ START ═══
 // ═══ catch-all 404 ═══
 app.get('/404.html', (req, res) => res.sendFile(__dirname + '/404.html'));

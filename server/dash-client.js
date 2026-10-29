@@ -2449,6 +2449,7 @@ function loadChatPage(){
     if(!convs.length){
       el.innerHTML='<button onclick="goChatHome()" class="chat-home-back" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-family:Tajawal;font-size:12px;font-weight:700;cursor:pointer;align-items:center;gap:4px;color:var(--text);margin-bottom:12px"><svg width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" viewBox=\"0 0 24 24\" style=\"display:inline-block\"><polyline points=\"15 18 9 12 15 6\"/></svg> الرئيسية</button><div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+newChatBtnHtml()+emptyH('لا توجد محادثات','ستظهر محادثاتك مع المزودين هنا')+'</div>';
       bindNewChatBtn();
+      if(window._supPinRow)el.insertAdjacentHTML('afterbegin',window._supPinRow());
       return;
     }
     var h='<button onclick="goChatHome()" class="chat-home-back" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:7px 12px;font-family:Tajawal;font-size:12px;font-weight:700;cursor:pointer;align-items:center;gap:4px;color:var(--text);margin-bottom:12px"><svg width=\"12\" height=\"12\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\" viewBox=\"0 0 24 24\" style=\"display:inline-block\"><polyline points=\"15 18 9 12 15 6\"/></svg> الرئيسية</button><div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+newChatBtnHtml()+'<div style="background:var(--white);border:1px solid var(--border);border-radius:14px">';
@@ -2471,6 +2472,7 @@ function loadChatPage(){
     h+='</div></div>';
     el.innerHTML=h;
     bindNewChatBtn();
+    if(window._supPinRow)el.insertAdjacentHTML('afterbegin',window._supPinRow());
   }).catch(function(){if(el)el.innerHTML='<div class="card card-accent"><div class="ch"><h3>المحادثات</h3></div>'+errH(loadChatPage)+'</div>';});
 }
 
@@ -3122,7 +3124,7 @@ function _nfKind(t){
   if(t==='bid_rejected')return {g:'offers',i:'x',c:'#b91c1c',b:'#fee2e2'};
   if(t==='bid_accepted'||t==='completed')return {g:t==='completed'?'projects':'offers',i:'check',c:'#15803d',b:'#dcfce7'};
   if(t==='new_bid'||t==='bid'||t==='negotiate')return {g:'offers',i:'money',c:'#15803d',b:'#dcfce7'};
-  if(t==='message'||t==='admin_message')return {g:'messages',i:'chat',c:'#1d4ed8',b:'#dbeafe'};
+  if(t==='message'||t==='admin_message'||t==='support')return {g:'messages',i:'chat',c:'#1d4ed8',b:'#dbeafe'};
   if(t==='review'||t==='review_reply')return {g:'projects',i:'star',c:'#b45309',b:'#fef3c7'};
   if(t==='new_question'||t==='question_answered')return {g:'projects',i:'q',c:'#0369a1',b:'#e0f2fe'};
   if(t==='client_note')return {g:'projects',i:'q',c:'#b45309',b:'#fef3c7'};
@@ -3186,6 +3188,7 @@ function _nfOpenC(id){
   if(n.type==='draft'&&n.ref_id){ location.href='/new.html?did_id='+encodeURIComponent(n.ref_id); return; }
   if((n.type==='pause_ask'||n.type==='req_dup')&&n.ref_id){ openDetail(n.ref_id,null); return; }
   if(n.type==='verify_email'){ try{_vbShow();}catch(e){} return; }
+  if(n.type==='support'){ if(window.supOpen)supOpen(); else location.href='/chat?support=1'; return; }
   if(n.type==='message'){ show('chat',null,'chat'); try{loadChatPage();}catch(e){} return; }
   if(n.ref_id&&(k==='offers'||k==='projects'||n.type==='accept_ask')){ openDetail(n.ref_id,null); show('detail',null,'detail'); }
 }

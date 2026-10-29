@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="ng" data-g="rev">
       <button type="button" class="ng-h" aria-expanded="false" onclick="_navTog('rev')"><span class="ng-chev">&#9666;</span><span class="ng-t">الإشراف</span><span class="ng-n" style="display:none"></span></button>
       <div class="ng-b">
+        <button class="ni" onclick="showPage('support',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/></svg><span class="ni-tx">المحادثات</span><span class="ni-badge" id="support-badge" style="display:none"></span></button>
         <button class="ni" onclick="showPage('projreview',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span class="ni-tx">مراجعة المشاريع</span><span class="ni-badge" id="projreview-badge" style="display:none">0</span></button>
         <button class="ni" onclick="showPage('subrev',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg><span class="ni-tx">مراجعة «مقاول باطن»</span><span class="ni-badge" id="subrev-badge" style="display:none">0</span></button>
         <button class="ni" data-grp="mod" onclick="showGroup('mod',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span class="ni-tx">البلاغات والمحتوى<small>بلاغات · أسئلة · تقييمات</small></span><span class="ni-badge grp-badge" id="grp-mod-badge" style="display:none"></span></button>
@@ -187,6 +188,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <div id="projreview-list"><div class="loading"><div class="spinner"></div>جاري التحميل...</div></div>
     </div>
 
+    <div class="page" id="page-support"><div id="sp-root"></div></div>
     <div class="page" id="page-subrev">
       <div class="pg-head"><div><h2>مراجعة «مقاول باطن»</h2><p id="sr-count">طلبات المزوّدين قبل نشرها</p></div>
         <div class="pg-acts" style="align-items:center;font-size:12.5px;font-weight:700;color:var(--muted);gap:6px">اختصارات: <kbd>A</kbd> اعتماد <kbd>E</kbd> طلب تعديل <kbd>J</kbd> التالي <kbd>K</kbd> السابق</div></div>

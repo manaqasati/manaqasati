@@ -120,6 +120,7 @@ function showPage(pg,el){
   meta.outcomes=['نتائج المشاريع','وين راح كل مشروع — الترسية والإغلاق والسعي، ووش يحتاج قرارك'];
   meta.nstats=['الإشعارات والإيميلات','مين وصله الإيميل وإشعار التطبيق — ومين فتح وتفاعل'];
   meta.subc=['🤝 مقاول باطن','طلبات المزوّدين من بعض — مين طلب، كم عرض، ومين اعتُمد'];
+  meta.support=['💬 المحادثات','محادثات العملاء والمزوّدين مع فريق مناقصة — ردّ عليهم وتابع ملفاتهم'];
   meta.subrev=['🛡️ مراجعة «مقاول باطن»','طلبات المزوّدين قبل نشرها — وتساعد الجاد يوضّح طلبه'];
   meta.named=['⭐ المحجوزة بالاسم','مشاريع طلب فيها العميل مزوّد بالاسم — تفاعل المزوّد المطلوب والمزوّدين الثانيين'];
   meta.invites=['دعوات العملاء','العميل يشارك رابط مشروعه مع مقاولين يعرفهم — مين فتح ومين سجّل ومين قدّم ورسى عليه'];
@@ -139,6 +140,7 @@ function showPage(pg,el){
   if(pg==='named')setTimeout(_loadNamed,0);
   if(pg==='subc')setTimeout(_loadSubc,0);
   if(pg==='subrev')setTimeout(loadSubRev,0);
+  if(pg==='support')setTimeout(loadSupport,0);
   if(pg==='inbox')loadInbox();
   if(pg==='saai')loadSaaiAdmin();
   if(pg==='settings')loadSettings();
@@ -540,6 +542,8 @@ function _renderDash(o){
   if(n.held_bids) q.push({c:'red',t:'عروض تنتظر مراجعتك',s:n.held_next_sec!=null?'أقربها ينعتمد تلقائياً '+_owLeft(n.held_next_sec).replace(/^باقي /,'بعد '):'',n:n.held_bids,pg:'offerwatch',ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',tab:'held',go:'راجع الآن'});
   if(n.sub_review) q.push({c:'red',t:'طلبات «مقاول باطن» تنتظر المراجعة',s:n.sub_review_oldest?'أقدمها '+_adAgo(n.sub_review_oldest):'',n:n.sub_review,pg:'subrev',go:'افتح المراجعة',ic:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/>'});
   if(n.sub_review!=null) _srBadge(n.sub_review);
+  if(n.support_wait!=null) _spBadge(n.support_wait);
+  if(n.support_wait) q.push({c:'red',t:'محادثات تنتظر ردك',s:n.support_oldest?'أقدمها من '+_adAgo(n.support_oldest).replace('قبل ',''):'',n:n.support_wait,pg:'support',ic:'<path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/>',go:'رد عليهم'});
   if(n.review) q.push({c:'red',t:'مشاريع العملاء تنتظر المراجعة',s:n.review_oldest?'أقدمها '+_adAgo(n.review_oldest):'',n:n.review,pg:'projreview',go:'افتح المراجعة',ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'});
   var _brN=fr?fr.bid_report_providers:n.bid_report_providers; if(_brN) q.push({c:'org',t:'بلاغات عملاء على عروض',s:fr?'جديدة منذ آخر مرة فتحتها':'مزوّدين تحتاج قرارك',n:_brN,pg:'offerwatch',ic:'<path d="M4 21V4h11l-1 4h6v9h-9l1-4H4"/>',tab:'reports',seen:'bidrep'});
   var _rpN=fr?fr.reports:n.reports; if(_rpN) q.push({c:'amb',t:'بلاغات مفتوحة',s:fr?'جديدة منذ آخر مرة فتحتها':'تحتاج مراجعة وإجراء',n:_rpN,pg:'reports',seen:'reports',ic:'<path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><path d="M12 9v4M12 17h.01"/>'});
@@ -900,6 +904,7 @@ function openUserModal(uid){
     +_badgePicker(u)
     +(u.role==='provider'?('<div class="sec-label">المستوى (تلقائي حسب الصفقات — يمكن تجاوزه)</div>'+_tierPicker(u)):'')
     +'<div class="sec-label">المراسلة</div>'
+    +((u.role!=='admin'&&permOK('support.view'))?'<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="spStart('+u.id+')">💬 افتح محادثته (فريق مناقصة)</button>':'')
     +'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:4px" onclick="openNotify('+u.id+','+_jsa(u.name)+','+_jsa(u.role||'')+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>إرسال رسالة / إشعار</button>'
     +(((u.role==='client'||u.role==='provider'))?('<div class="sec-label">تحكّم الإدارة</div>'+'<button class="act-btn ab-default" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="enterClientAccount('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>دخول كحساب '+(u.role==='provider'?'المزود':'العميل')+'</button>'+((u.role==='client')?('<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:11px;margin-bottom:6px" onclick="addProjectForClient('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>أضف مشروعاً لهذا العميل</button>'):'')):'')+'<div class="sec-label">إجراءات الحساب</div>'
     +'<div style="display:flex;gap:8px">'
@@ -995,7 +1000,7 @@ function openNotify(uid,name,role){
   document.getElementById('nm-message').value='';
   document.getElementById('nm-app').checked=true;
   document.getElementById('nm-email').checked=true;
-  var isCli=(role==='client');
+  var isCli=(role!=='admin');
   var chatRow=document.getElementById('nm-chat-row');
   chatRow.style.display=isCli?'flex':'none';
   document.getElementById('nm-chat').checked=false;
@@ -6185,7 +6190,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={subrev:'requests.review',subc:'requests.view',nstats:'analytics.view',invites:'analytics.view',named:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={support:'support.view',subrev:'requests.review',subc:'requests.view',nstats:'analytics.view',invites:'analytics.view',named:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
@@ -7863,3 +7868,184 @@ function _subPreview(x){
     +'<div style="display:flex;gap:16px;flex-wrap:wrap"><div style="flex:1;min-width:280px;max-width:390px"><div style="font-size:12.5px;font-weight:900;color:#64748b;margin-bottom:6px">1 · في قائمة «من المقاولين»</div>'+card+'</div><div style="flex:1;min-width:280px;max-width:390px"><div style="font-size:12.5px;font-weight:900;color:#64748b;margin-bottom:6px">2 · لما يفتح الطلب</div>'+det+'</div></div></div></div>';
   ov.addEventListener('click',function(e){ if(e.target===ov)ov.remove(); }); document.body.appendChild(ov);
 }
+
+// ═══════════ المحادثات: محادثة «فريق مناقصة» مع العملاء والمزوّدين ═══════════
+var _SP={f:'wait',q:'',role:'',list:[],counts:{},cur:null,data:null,view:'list',note:false,replies:[],admins:[],stats:{},sig:'',lsig:'',busy:false};
+function _spJ(u,o){ return fetch(API+u,Object.assign({},hdr(),o||{})).then(function(r){ return r.json().then(function(d){ if(!r.ok)throw d; return d; }); }); }
+function _spBadge(n){ n=parseInt(n)||0; var b=document.getElementById('support-badge'); if(b){ b.textContent=n; b.style.display=n?'flex':'none'; } }
+function _spCount(){ if(!permOK('support.view'))return; _spJ('/api/admin/support/count').then(function(d){ _spBadge(d.n); }).catch(function(){}); }
+setInterval(function(){ if(!document.hidden)_spCount(); },60000); setTimeout(_spCount,2500);
+function _spWait(d){ if(!d)return ''; var m=Math.floor((Date.now()-new Date(d))/60000); if(m<1)return 'الآن'; if(m<60)return m+' د'; var h=Math.floor(m/60); if(h<24)return h+' س'; return Math.floor(h/24)+' يوم'; }
+function _spSize(b){ b=+b||0; if(b>=1048576)return (b/1048576).toFixed(1)+' ميجا'; if(b>=1024)return Math.round(b/1024)+' ك.ب'; return ''; }
+function _spIc(n,t){ var e=(String(n||'').match(/\.([a-z0-9]+)$/i)||[])[1]; e=(e||'').toLowerCase(); if(/^image\/(jpeg|jpg|png|webp|gif|heic)$/i.test(t||''))e='img';
+  var m={pdf:['PDF','#fee2e2','#b91c1c'],dwg:['DWG','#e0e7ff','#3730a3'],dxf:['DXF','#e0e7ff','#3730a3'],xlsx:['XLS','#dcfce7','#166534'],xls:['XLS','#dcfce7','#166534'],docx:['DOC','#dbeafe','#1d4ed8'],doc:['DOC','#dbeafe','#1d4ed8'],zip:['ZIP','#fef3c7','#92400e'],img:['صورة','#e0f2fe','#0369a1']};
+  var x=m[e]||[(e||'ملف').toUpperCase().slice(0,4),'#f1f5f9','#475569']; return '<span class="spf-ic" style="background:'+x[1]+';color:'+x[2]+'">'+esc(x[0])+'</span>'; }
+function _spRole(r){ return r==='provider'?'مزوّد':'عميل'; }
+function _spNm(x){ return x.business_name||x.name||'مستخدم'; }
+function loadSupport(){
+  var root=document.getElementById('sp-root'); if(!root)return;
+  var hp=_parseHashParams(); if(hp.t){ _SP.cur=parseInt(hp.t)||null; if(_SP.cur)_SP.view='chat'; }
+  if(!root.firstChild||!document.getElementById('sp-list'))_spShell();
+  _spLoadList();
+  _spJ('/api/admin/support-replies').then(function(d){ _SP.replies=Array.isArray(d)?d:[]; _spPaintCanned(); }).catch(function(){});
+  _spJ('/api/admin/support/admins').then(function(d){ _SP.admins=Array.isArray(d)?d:[]; if(_SP.data)_spPaintHead(); }).catch(function(){});
+  _spJ('/api/admin/support/stats').then(function(d){ _SP.stats=d||{}; _spPaintStats(); }).catch(function(){});
+  if(_SP.cur)_spOpen(_SP.cur,true);
+  clearInterval(window._spT); window._spT=setInterval(function(){
+    var pg=document.getElementById('page-support'); if(!pg||!pg.classList.contains('on')||document.hidden)return;
+    window._spTick=(window._spTick||0)+1;
+    if(_SP.cur)_spOpen(_SP.cur,true,true);
+    if(window._spTick%3===0)_spLoadList(true);
+  },5000);
+}
+function _spShell(){
+  var root=document.getElementById('sp-root');
+  var F=[['wait','ينتظر ردك'],['mine','لي أنا'],['open','المفتوحة'],['files','فيها ملفات'],['closed','مقفلة'],['all','الكل']];
+  root.innerHTML='<div class="sp" data-v="'+_SP.view+'">'
+    +'<div class="sp-l"><div class="sp-lh"><div class="sp-tt"><b>المحادثات</b><span id="sp-stats"></span></div>'
+      +'<input id="sp-q" class="sp-q" type="search" placeholder="🔎 بحث بالاسم، الجوال، رقم المشروع أو كلمة" oninput="clearTimeout(window._spQT);window._spQT=setTimeout(function(){_SP.q=document.getElementById(\'sp-q\').value.trim();_spLoadList();},350)">'
+      +'<div class="sp-fs" id="sp-fs">'+F.map(function(f){ return '<button data-f="'+f[0]+'" class="'+(_SP.f===f[0]?'on':'')+'" onclick="_spFilter(\''+f[0]+'\')">'+f[1]+'<i></i></button>'; }).join('')+'</div>'
+      +'<div class="sp-fs sp-rl"><button data-r="" class="'+(!_SP.role?'on':'')+'" onclick="_spRoleF(\'\')">الكل</button><button data-r="client" onclick="_spRoleF(\'client\')">عملاء</button><button data-r="provider" onclick="_spRoleF(\'provider\')">مزوّدين</button></div></div>'
+      +'<div id="sp-list" class="sp-list"><div class="loading"><div class="spinner"></div></div></div></div>'
+    +'<div class="sp-c" id="sp-c"><div class="sp-empty">💬<div>اختر محادثة من القائمة</div></div></div>'
+    +'<div class="sp-r" id="sp-r"></div></div>';
+}
+function _spSetView(v){ _SP.view=v; var s=document.querySelector('.sp'); if(s)s.setAttribute('data-v',v); }
+function _spFilter(f){ _SP.f=f; [].forEach.call(document.querySelectorAll('#sp-fs button'),function(b){ b.classList.toggle('on',b.getAttribute('data-f')===f); }); _spLoadList(); }
+function _spRoleF(r){ _SP.role=r; [].forEach.call(document.querySelectorAll('.sp-rl button'),function(b){ b.classList.toggle('on',b.getAttribute('data-r')===r); }); _spLoadList(); }
+function _spPaintStats(){ var s=_SP.stats||{}, el=document.getElementById('sp-stats'); if(!el)return; var p=[]; if(s.first_reply_min!=null)p.push('أول رد: '+_spWait(new Date(Date.now()-s.first_reply_min*60000))); if(s.up||s.down)p.push('👍 '+(s.up||0)+' · 👎 '+(s.down||0)); el.textContent=p.join(' · '); el.title='آخر 30 يوم'; }
+function _spLoadList(silent){
+  var q='/api/admin/support?f='+_SP.f+'&role='+_SP.role+'&q='+encodeURIComponent(_SP.q||'');
+  _spJ(q).then(function(d){
+    _SP.list=d.list||[]; _SP.counts=d.counts||{}; _spBadge(_SP.counts.wait);
+    [].forEach.call(document.querySelectorAll('#sp-fs button'),function(b){ var k=b.getAttribute('data-f'), n=_SP.counts[k]; var i=b.querySelector('i'); if(i)i.textContent=n?n:''; });
+    var sig=JSON.stringify(_SP.list.map(function(x){return [x.id,x.admin_unread,x.last_msg_at,x.status,x.assigned_to];}))+_SP.cur;
+    if(silent&&sig===_SP.lsig)return; _SP.lsig=sig; _spPaintList();
+  }).catch(function(e){ if(!silent){ var l=document.getElementById('sp-list'); if(l)l.innerHTML='<div class="sp-none">'+esc((e&&e.message)||'تعذّر التحميل')+'</div>'; } });
+}
+function _spPaintList(){
+  var el=document.getElementById('sp-list'); if(!el)return;
+  if(!_SP.list.length){ el.innerHTML='<div class="sp-none">'+(_SP.f==='wait'?'✓ ما فيه محادثات تنتظر ردك':'ما فيه محادثات هنا')+'</div>'; return; }
+  el.innerHTML=_SP.list.map(function(x){
+    var wait=x.status==='open'&&x.admin_unread>0;
+    return '<button class="sp-it'+(_SP.cur===x.id?' on':'')+(wait?' w':'')+'" onclick="_spOpen('+x.id+')">'
+      +'<span class="sp-av">'+esc(_spNm(x).charAt(0))+'</span><span class="sp-ib"><span class="sp-r1"><b>'+esc(_spNm(x))+'</b><span class="sp-tg">'+_spRole(x.role)+'</span><small>'+(wait?'⏱ '+_spWait(x.last_user_at):_adAgo(x.last_msg_at))+'</small></span>'
+      +'<span class="sp-r2">'+(x.last?(x.last.from_admin?'أنتم: ':'')+esc(String(x.last.text||'').slice(0,70)):'')+'</span>'
+      +'<span class="sp-r3">'+(x.topic?'<span class="sp-tp">'+esc(x.topic)+'</span>':'')+(x.has_files?'<span class="sp-tg">📎 ملفات</span>':'')+(x.assigned_name?'<span class="sp-tg">'+esc(x.assigned_name.split(' ')[0])+'</span>':(wait?'<span class="sp-tg am">بدون مسؤول</span>':''))+(x.status==='solved'?'<span class="sp-tg gr">✓ محلولة</span>':'')+'</span></span>'
+      +(wait?'<span class="sp-dot">'+x.admin_unread+'</span>':'')+'</button>';
+  }).join('');
+}
+function _spOpen(tid,keep,silent){
+  if(!silent){ _SP.cur=tid; _SP.sig=''; _spSetView('chat'); [].forEach.call(document.querySelectorAll('.sp-it'),function(b){ b.classList.toggle('on',b.getAttribute('onclick')==='_spOpen('+tid+')'); });
+    var h='#support?t='+tid; if(location.hash!==h){ window._skipHash=true; history.replaceState(null,'',h); window._skipHash=false; }
+    if(!keep||!document.getElementById('sp-msgs')){ var c=document.getElementById('sp-c'); if(c)c.innerHTML='<div class="loading"><div class="spinner"></div></div>'; } }
+  return _spJ('/api/admin/support/'+tid).then(function(d){
+    if(_SP.cur!==tid)return;
+    var sig=JSON.stringify([d.msgs.length,d.msgs.length?d.msgs[d.msgs.length-1].id:0,d.msgs.filter(function(m){return m.read_at;}).length,d.thread.status,d.thread.assigned_to,d.thread.link_id]);
+    _SP.data=d; if(silent&&sig===_SP.sig)return; _SP.sig=sig;
+    if(!document.getElementById('sp-msgs'))_spChatShell();
+    _spPaintHead(); _spPaintMsgs(); _spPaintInfo();
+    if(!silent)_spLoadList(true);
+  }).catch(function(e){ if(!silent){ var c=document.getElementById('sp-c'); if(c)c.innerHTML='<div class="sp-empty">'+esc((e&&e.message)||'تعذّر التحميل')+'</div>'; } });
+}
+function _spChatShell(){
+  var c=document.getElementById('sp-c'); var canReply=permOK('support.reply');
+  c.innerHTML='<div class="sp-ch" id="sp-ch"></div><div class="sp-msgs" id="sp-msgs"></div>'
+    +(canReply?'<div class="sp-cmp"><div class="sp-mt"><button id="sp-mr" class="on" onclick="_spMode(false)">رد للمستخدم</button><button id="sp-mn" onclick="_spMode(true)">📝 ملاحظة داخلية</button><span class="sp-cn" id="sp-cn"></span></div>'
+      +'<div class="sp-in"><input type="file" id="sp-file" multiple accept="image/*,.pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip" style="display:none" onchange="_spFiles(this)"><button class="sp-ib2" onclick="document.getElementById(\'sp-file\').click()" aria-label="إرفاق ملف" title="إرفاق ملف"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11l-8.5 8.5a5 5 0 01-7-7L14 4a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3L15 7"/></svg></button>'
+      +'<textarea id="sp-txt" rows="1" maxlength="4000" placeholder="اكتب ردك…" title="Enter للإرسال · Shift+Enter سطر جديد" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,140)+\'px\'" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_spSend();}"></textarea><button class="sp-send" id="sp-send" onclick="_spSend()">إرسال</button></div><div id="sp-up" class="sp-up"></div></div>'
+      :'<div class="sp-ro">عندك صلاحية العرض بس</div>');
+  _spPaintCanned(); _SP.note=false;
+}
+function _spMode(n){ _SP.note=n; var a=document.getElementById('sp-mr'), b=document.getElementById('sp-mn'), t=document.getElementById('sp-txt'), c=document.querySelector('.sp-cmp');
+  if(a)a.classList.toggle('on',!n); if(b)b.classList.toggle('on',n); if(c)c.classList.toggle('note',n); if(t){ t.placeholder=n?'ملاحظة يشوفها فريق الإدارة بس…':'اكتب ردك…'; t.focus(); } }
+function _spPaintCanned(){ var el=document.getElementById('sp-cn'); if(!el)return;
+  el.innerHTML=(_SP.replies||[]).slice(0,8).map(function(r,i){ return '<button onclick="_spUseReply('+i+')" title="'+esc(r.body)+'">'+esc(r.title)+'</button>'; }).join('')+'<button class="ed" onclick="_spReplies()">⚙ الردود الجاهزة</button>'; }
+function _spUseReply(i){ var r=_SP.replies[i], t=document.getElementById('sp-txt'); if(!r||!t)return; t.value=(t.value?t.value+'\n':'')+r.body; t.dispatchEvent(new Event('input')); t.focus(); }
+function _spPaintHead(){
+  var d=_SP.data, el=document.getElementById('sp-ch'); if(!d||!el)return;
+  var u=d.user||{}, t=d.thread||{}, can=permOK('support.reply');
+  var mode=(d.msgs||[]).slice().reverse().filter(function(m){return !m.from_admin&&m.meta&&m.meta.mode;})[0];
+  var who=_spRole(u.role)+(mode&&((mode.meta.mode==='client')!==(u.role!=='provider'))?' · كتب من حساب '+(mode.meta.mode==='provider'?'المزوّد':'العميل'):'');
+  var wait=t.status==='open'&&t.admin_unread>0;
+  el.innerHTML='<button class="sp-bk" onclick="_spSetView(\'list\')" aria-label="رجوع">‹</button>'
+    +'<span class="sp-av">'+esc(_spNm(u).charAt(0))+'</span><span class="sp-chn"><b>'+esc(_spNm(u))+'</b><small>'+esc(who)+(t.link_title?' · 📁 '+esc(t.link_title):'')+(wait?' · <span style="color:#b45309">ينتظر ردك من '+_spWait(d.msgs.filter(function(m){return !m.from_admin;}).slice(-1)[0]&&d.msgs.filter(function(m){return !m.from_admin;}).slice(-1)[0].created_at)+'</span>':'')+'</small></span>'
+    +'<span class="sp-cha">'+(can?'<select id="sp-as" onchange="_spAssign(this.value)" aria-label="المسؤول"><option value="">المسؤول: لا أحد</option>'+(_SP.admins||[]).map(function(a){ return '<option value="'+a.id+'"'+(String(t.assigned_to)===String(a.id)?' selected':'')+'>المسؤول: '+esc(a.name)+'</option>'; }).join('')+'</select>'
+      +(t.status==='solved'?'<button class="sp-b2" onclick="_spSolve(false)">↺ رجّعها مفتوحة</button>':'<button class="sp-b2 gr" onclick="_spSolve(true)">✓ تم الحل</button>'):'')
+    +'<button class="sp-b2 sp-inf" onclick="_spSetView(\'info\')">بياناته</button></span>';
+}
+function _spPaintMsgs(){
+  var d=_SP.data, el=document.getElementById('sp-msgs'); if(!d||!el)return;
+  var atB=(el.scrollHeight-el.scrollTop-el.clientHeight)<90||!el.innerHTML;
+  var lastDay='';
+  var h=(d.msgs||[]).map(function(m){
+    var dd=new Date(m.created_at).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'long',day:'numeric',month:'long'}), x='';
+    if(dd!==lastDay){ lastDay=dd; x+='<div class="sp-day">'+dd+'</div>'; }
+    var tm=new Date(m.created_at).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'});
+    if(m.kind==='system')return x+'<div class="sp-sys'+(m.meta&&m.meta.solved?' ok':'')+'">'+esc(m.body||'')+'</div>';
+    if(m.kind==='rate')return x+'<div class="sp-sys '+(m.meta&&m.meta.v>0?'ok':'bad')+'">التقييم: '+esc(m.body||'')+'</div>';
+    if(m.kind==='note')return x+'<div class="sp-note">📝 <b>'+esc(m.who||'')+'</b> · ملاحظة داخلية — ما يشوفها المستخدم<div>'+esc(m.body||'').replace(/\n/g,'<br>')+'</div><small>'+tm+'</small></div>';
+    var mine=m.from_admin;
+    var f='';
+    if(m.file){ var fu=esc(m.file.url||'');
+      if(/^image\/(jpeg|jpg|png|webp|gif|heic)$/i.test(m.file.type||''))f='<a href="'+fu+'" target="_blank" rel="noopener"><img class="sp-img" src="'+fu+'" alt="'+esc(m.file.name||'')+'" loading="lazy"></a>';
+      else if(/^audio\//.test(m.file.type||''))f='<audio controls preload="none" src="'+fu+'" style="max-width:260px"></audio>';
+      else f='<div class="spf">'+_spIc(m.file.name,m.file.type)+'<span class="spf-t"><b>'+esc(m.file.name||'ملف')+'</b><small>'+_spSize(m.file.size)+'</small></span><a class="spf-b" href="'+fu+'" target="_blank" rel="noopener">فتح</a><a class="spf-b" href="'+fu+'" download>تحميل</a></div>';
+    }
+    return x+'<div class="sp-m '+(mine?'me':'you')+(m.kind==='auto'?' auto':'')+'">'+(mine?'<div class="sp-who">'+(m.kind==='auto'?'رد تلقائي':esc(m.who||'الإدارة'))+'</div>':'')+f+(m.body?'<div class="sp-tx">'+esc(m.body)+'</div>':'')
+      +'<div class="sp-mm">'+tm+(mine&&m.kind!=='auto'?(m.read_at?' <span title="قرأها">✓✓</span>':' <span title="ما قرأها للحين">✓</span>'):'')+'</div></div>';
+  }).join('');
+  el.innerHTML=h||'<div class="sp-empty">ما فيه رسائل للحين — اكتب له أول رسالة</div>';
+  if(atB)el.scrollTop=el.scrollHeight;
+}
+function _spPaintInfo(){
+  var d=_SP.data, el=document.getElementById('sp-r'); if(!d||!el)return;
+  var u=d.user||{}, t=d.thread||{};
+  var pr=(u.projects||[]).map(function(p){ return '<a class="sp-pj'+(t.link_kind==='req'&&String(t.link_id)===String(p.id)?' on':'')+'" href="#requests" onclick="try{openReqView&&openReqView('+p.id+');}catch(e){}"><b>'+esc(p.title||'مشروع')+'</b><small>#'+p.id+' · '+esc(p.status||'')+' · '+p.bids+' عروض'+(p.atts?' · '+p.atts+' مرفق':'')+'</small></a>'; }).join('');
+  var files=(d.files||[]).map(function(f){ return '<a class="sp-fl" href="'+esc(f.url)+'" target="_blank" rel="noopener">'+_spIc(f.name,f.type)+'<span>'+esc(f.name||'ملف')+'</span></a>'; }).join('');
+  var susp=u.bid_review?'<div class="sp-warn">🔎 عروضه تحت المراجعة</div>':'';
+  el.innerHTML='<button class="sp-bk sp-bk2" onclick="_spSetView(\'chat\')">‹ رجوع للمحادثة</button>'
+    +'<div class="sp-uc"><span class="sp-av lg">'+esc(_spNm(u).charAt(0))+'</span><b>'+esc(_spNm(u))+'</b>'+(u.business_name&&u.name?'<small>'+esc(u.name)+'</small>':'')+'<small>'+_spRole(u.role)+(u.city?' · '+esc(u.city):'')+(u.created_at?' · منذ '+_adAgo(u.created_at).replace('قبل ',''):'')+'</small>'
+    +(u.phone?'<a class="sp-ph" href="tel:'+esc(u.phone)+'" dir="ltr">'+esc(u.phone)+'</a>':'')+(u.email?'<small dir="ltr" style="word-break:break-all">'+esc(u.email)+'</small>':'')+'</div>'+susp
+    +'<div class="sp-kv"><span>عروضه</span><b>'+((u.bids&&u.bids.n)||0)+'</b><span>ترسّت عليه</span><b>'+((u.bids&&u.bids.won)||0)+'</b><span>مشاريعه</span><b>'+(u.projects||[]).length+'</b><span>طلبات باطن</span><b>'+(u.subs||0)+'</b><span>تقييماته لنا</span><b>👍 '+((u.ratings&&u.ratings.up)||0)+' · 👎 '+((u.ratings&&u.ratings.down)||0)+'</b></div>'
+    +(pr?'<div class="sp-h">مشاريعه</div>'+pr:'')
+    +(files?'<div class="sp-h">ملفات المحادثة</div>'+files:'')
+    +'<button class="sp-b2 w" onclick="_spProfile('+u.id+')">فتح ملفه</button>';
+}
+function _spProfile(id){ try{ if(typeof openUserView==='function'){ showPage('users',null); setTimeout(function(){ openUserView(id); },400); return; } }catch(e){} location.hash='#users'; }
+function _spSend(){
+  if(_SP.busy||!_SP.cur)return; var t=document.getElementById('sp-txt'); var body=(t.value||'').trim(); if(!body)return;
+  _SP.busy=true; var btn=document.getElementById('sp-send'); if(btn)btn.disabled=true;
+  var ck='a'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  _spJ('/api/admin/support/'+_SP.cur+'/msg',{method:'POST',body:JSON.stringify({body:body,note:_SP.note,ck:ck})}).then(function(){
+    t.value=''; t.style.height='auto'; if(_SP.note)_spMode(false); _SP.sig=''; return _spOpen(_SP.cur,true,true);
+  }).then(function(){ _spLoadList(true); _spCount(); }).catch(function(e){ toast((e&&e.message)||'تعذّر الإرسال','error'); }).then(function(){ _SP.busy=false; if(btn)btn.disabled=false; });
+}
+function _spFiles(inp){
+  var fs=[].slice.call(inp.files||[]).slice(0,10); inp.value=''; if(!fs.length||!_SP.cur)return;
+  var up=document.getElementById('sp-up'), tid=_SP.cur, i=0;
+  var next=function(){
+    if(i>=fs.length){ if(up)up.textContent=''; _SP.sig=''; _spOpen(tid,true,true); return; }
+    var f=fs[i++]; if(f.size>30*1024*1024){ toast('«'+f.name+'» أكبر من 30 ميجا','error'); return next(); }
+    if(up)up.textContent='جاري رفع «'+f.name+'» ('+i+' من '+fs.length+')…';
+    var r=new FileReader(); r.onload=function(e){
+      _spJ('/api/admin/support/'+tid+'/msg',{method:'POST',body:JSON.stringify({file:{name:f.name,type:f.type,data:e.target.result},note:_SP.note})}).catch(function(er){ toast((er&&er.message)||'تعذّر رفع «'+f.name+'»','error'); }).then(next);
+    }; r.readAsDataURL(f);
+  }; next();
+}
+function _spAssign(v){ _spJ('/api/admin/support/'+_SP.cur+'/assign',{method:'POST',body:JSON.stringify({admin_id:v?parseInt(v):null})}).then(function(){ toast('تم ✓','success'); _SP.sig=''; _spOpen(_SP.cur,true,true); _spLoadList(true); }).catch(function(e){ toast((e&&e.message)||'تعذّر','error'); }); }
+function _spSolve(v){ _spJ('/api/admin/support/'+_SP.cur+'/solve',{method:'POST',body:JSON.stringify({solved:v})}).then(function(){ toast(v?'انقفلت ✓ — لو كتب ترجع تنفتح':'رجعت مفتوحة','success'); _SP.sig=''; _spOpen(_SP.cur,true,true); _spLoadList(true); _spCount(); }).catch(function(){ toast('تعذّر','error'); }); }
+function _spReplies(){
+  var o=document.createElement('div'); o.className='overlay show'; o.id='spRepModal';
+  var paint=function(){ o.innerHTML='<div class="modal" style="max-width:560px"><div class="modal-head"><h3>الردود الجاهزة</h3><button class="modal-x" onclick="document.getElementById(\'spRepModal\').remove()">✕</button></div><div class="modal-body">'
+    +(_SP.replies||[]).map(function(r){ return '<div class="sp-rp"><div><b>'+esc(r.title)+'</b><small>'+esc(r.body)+'</small></div><button onclick="_spRepEdit('+r.id+')">تعديل</button><button class="del" onclick="_spRepDel('+r.id+')">حذف</button></div>'; }).join('')
+    +'<div class="sp-rpf"><input id="sp-rt" maxlength="40" placeholder="العنوان (يطلع على الزر)"><textarea id="sp-rb" rows="3" maxlength="1500" placeholder="نص الرد"></textarea><input type="hidden" id="sp-ri"><button class="act-btn ab-primary" onclick="_spRepSave()">حفظ</button></div></div></div>'; };
+  paint(); o.onclick=function(e){ if(e.target===o)o.remove(); }; document.body.appendChild(o); window._spRepPaint=paint;
+}
+function _spRepEdit(id){ var r=(_SP.replies||[]).filter(function(x){return x.id===id;})[0]; if(!r)return; document.getElementById('sp-rt').value=r.title; document.getElementById('sp-rb').value=r.body; document.getElementById('sp-ri').value=id; }
+function _spRepReload(){ return _spJ('/api/admin/support-replies').then(function(d){ _SP.replies=d||[]; _spPaintCanned(); if(document.getElementById('spRepModal')&&window._spRepPaint)window._spRepPaint(); }); }
+function _spRepSave(){ var t=document.getElementById('sp-rt').value.trim(), b=document.getElementById('sp-rb').value.trim(), id=document.getElementById('sp-ri').value; if(!t||!b){ toast('اكتب العنوان والنص','error'); return; }
+  _spJ('/api/admin/support-replies',{method:'POST',body:JSON.stringify({id:id?parseInt(id):null,title:t,body:b})}).then(function(){ toast('انحفظ ✓','success'); _spRepReload(); }).catch(function(e){ toast((e&&e.message)||'تعذّر','error'); }); }
+function _spRepDel(id){ if(!confirm('تحذف هذا الرد؟'))return; _spJ('/api/admin/support-replies/'+id,{method:'DELETE'}).then(_spRepReload).catch(function(){ toast('تعذّر','error'); }); }
+// يفتح محادثة مستخدم من أي مكان (ملفه، صفحة مشروع)
+function spStart(uid,link){ _spJ('/api/admin/support/start',{method:'POST',body:JSON.stringify({user_id:uid,link:link||null})}).then(function(d){ try{ closeModal&&document.querySelectorAll('.overlay.show').forEach(function(o){ o.classList.remove('show'); }); }catch(e){} _SP.cur=d.tid; _SP.view='chat'; location.hash='#support?t='+d.tid; }).catch(function(e){ toast((e&&e.message)||'تعذّر','error'); }); }
