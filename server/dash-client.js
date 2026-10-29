@@ -3256,16 +3256,19 @@ function _pzOpen(id,ext,pre){
   var cur=pre?String(pre):(req.pause_with_provider?String(req.pause_with_provider):'');
   var o=document.createElement('div'); o.className='pz-ov'; o.id='pz-ov';
   o.innerHTML='<div class="pz-sh" role="dialog" aria-modal="true"><div class="pz-grab"></div><div class="pz-h">⏸️ '+(ext?'مدة الإيقاف':'إيقاف مؤقت')+'</div><div class="pz-s">مشروعك يختفي من المزوّدين الجدد، وما يوصلك عروض جديدة لين ترجّعه.</div>'
+    +'<div class="pz-l">ليش توقفه؟</div><div id="pz-why">'+[['negotiate','أتفاوض مع مزوّد'],['approval','أنتظر موافقة أو ميزانية'],['review','أبي أراجع العروض على راحتي'],['other','سبب ثاني']].map(function(x){ return '<button type="button" class="pz-o'+(req.pause_reason===x[0]?' on':'')+'" data-r="'+x[0]+'"><i></i><span><b>'+x[1]+'</b></span></button>'; }).join('')+'</div>'
     +'<div class="pz-l">كم المدة؟</div><div class="pz-seg" id="pz-days"><button type="button" data-d="3">3 أيام</button><button type="button" data-d="7" class="on">أسبوع</button><button type="button" data-d="0">لين أرجّعه</button></div>'
     +(bids.length?'<div class="pz-l">مع مين تتفاوض؟ <span>(اختياري)</span></div><div id="pz-who">'+bids.map(function(b){ var on=cur?String(b.provider_id)===cur:false; return '<button type="button" class="pz-o'+(on?' on':'')+'" data-b="'+b.id+'"><i></i><span><b>'+esc(b.provider_business_name||b.provider_name||'مزوّد')+'</b><small>'+fmtN(b.price)+' ر.س'+(b.days?' · '+b.days+' يوم':'')+'</small></span></button>'; }).join('')+'<button type="button" class="pz-o'+(cur?'':' on')+'" data-b=""><i></i><span><b>ما أبي أحدد</b></span></button></div>':'')
     +'<button type="button" class="pz-b p" id="pz-go">⏸️ '+(ext?'احفظ':'أوقف استقبال العروض')+'</button><button type="button" class="pz-x" onclick="document.getElementById(\'pz-ov\').remove()">إلغاء</button></div>';
   document.body.appendChild(o);
-  o.addEventListener('click',function(e){ if(e.target===o){o.remove();return;} var d=e.target.closest('#pz-days button'); if(d){[].forEach.call(o.querySelectorAll('#pz-days button'),function(x){x.classList.toggle('on',x===d);});} var w=e.target.closest('.pz-o'); if(w){[].forEach.call(o.querySelectorAll('.pz-o'),function(x){x.classList.toggle('on',x===w);});} });
+  o.addEventListener('click',function(e){ if(e.target===o){o.remove();return;} var d=e.target.closest('#pz-days button'); if(d){[].forEach.call(o.querySelectorAll('#pz-days button'),function(x){x.classList.toggle('on',x===d);});} var w=e.target.closest('#pz-who .pz-o'); if(w){[].forEach.call(o.querySelectorAll('#pz-who .pz-o'),function(x){x.classList.toggle('on',x===w);});} var rr=e.target.closest('#pz-why .pz-o'); if(rr){[].forEach.call(o.querySelectorAll('#pz-why .pz-o'),function(x){x.classList.toggle('on',x===rr);});} });
   document.getElementById('pz-go').onclick=function(){
     var btn=this; btn.disabled=true; btn.textContent='جاري…';
     var d=(o.querySelector('#pz-days .on')||{}).getAttribute?o.querySelector('#pz-days .on').getAttribute('data-d'):'7';
-    var w=o.querySelector('.pz-o.on'); var bid=w?w.getAttribute('data-b'):'';
-    fetch(API+'/api/requests/'+id+'/pause',Object.assign({method:'POST',body:JSON.stringify({days:parseInt(d),bid_id:bid?parseInt(bid):null})},hdr())).then(function(r){return r.json().then(function(x){return {ok:r.ok,d:x};});}).then(function(res){
+    var w=o.querySelector('#pz-who .pz-o.on'); var bid=w?w.getAttribute('data-b'):'';
+    var rs=o.querySelector('#pz-why .pz-o.on'); var reason=rs?rs.getAttribute('data-r'):'';
+    if(!reason){ showToast('اختر ليش توقفه','error'); btn.disabled=false; btn.textContent='⏸️ '+(ext?'احفظ':'أوقف استقبال العروض'); return; }
+    fetch(API+'/api/requests/'+id+'/pause',Object.assign({method:'POST',body:JSON.stringify({days:parseInt(d),bid_id:bid?parseInt(bid):null,reason:reason})},hdr())).then(function(r){return r.json().then(function(x){return {ok:r.ok,d:x};});}).then(function(res){
       if(!res.ok){ showToast((res.d&&res.d.message)||'تعذّر','error'); btn.disabled=false; btn.textContent='⏸️ أوقف استقبال العروض'; return; }
       o.remove(); showToast(ext?'تم ✓':'⏸️ وقّفنا استقبال العروض — وبلّغنا المزوّدين','success'); openDetail(id);
     }).catch(function(){ showToast('تعذّر الاتصال','error'); btn.disabled=false; });

@@ -3390,6 +3390,9 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_reason TEXT`);
     await _mig(`CREATE TABLE IF NOT EXISTS provider_actions (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(12), reason TEXT, until TIMESTAMPTZ, admin_id INTEGER, admin_name VARCHAR(120), hidden INTEGER DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await _mig(`CREATE INDEX IF NOT EXISTS provider_actions_p ON provider_actions(provider_id, created_at DESC)`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS pause_reason VARCHAR(20)`);
+    await _mig(`CREATE TABLE IF NOT EXISTS pause_log (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, client_id INTEGER, bid_id INTEGER, provider_id INTEGER, reason VARCHAR(20), days INTEGER, started_at TIMESTAMPTZ DEFAULT NOW(), ended_at TIMESTAMPTZ, outcome VARCHAR(20), checked_at TIMESTAMPTZ, checked_by VARCHAR(120))`);
+    await _mig(`CREATE INDEX IF NOT EXISTS pause_log_r ON pause_log(request_id, started_at DESC)`);
     await _mig(`CREATE TABLE IF NOT EXISTS support_threads (id SERIAL PRIMARY KEY, user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE, status VARCHAR(12) DEFAULT 'open', topic VARCHAR(40), link_kind VARCHAR(8), link_id INTEGER, link_title VARCHAR(160), assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL, user_unread INTEGER DEFAULT 0, admin_unread INTEGER DEFAULT 0, last_msg_at TIMESTAMPTZ, last_user_at TIMESTAMPTZ, last_admin_at TIMESTAMPTZ, admin_notified_at TIMESTAMPTZ, first_reply_at TIMESTAMPTZ, solved_at TIMESTAMPTZ, rating SMALLINT, rated_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await _mig(`CREATE TABLE IF NOT EXISTS support_msgs (id SERIAL PRIMARY KEY, thread_id INTEGER REFERENCES support_threads(id) ON DELETE CASCADE, sender_id INTEGER REFERENCES users(id) ON DELETE SET NULL, from_admin BOOLEAN DEFAULT FALSE, kind VARCHAR(12) DEFAULT 'text', body TEXT, file JSONB, meta JSONB, ck VARCHAR(40), read_at TIMESTAMPTZ, emailed BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await _mig(`CREATE INDEX IF NOT EXISTS support_msgs_t ON support_msgs(thread_id, id)`);
@@ -9218,7 +9221,9 @@ app.get('/api/admin/requests', requirePermission('requests.view'), async (req, r
       SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE(bs.n,0) as bid_count, bs.acc as accepted_price, bs.mn as min_bid, sl.id as saai_id, u.phone as client_phone,
         (SELECT COALESCE(NULLIF(iv.business_name,''),iv.name) FROM users iv WHERE iv.id=r.invited_provider_id) AS invited_name,
         CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + ((CASE WHEN EXISTS(SELECT 1 FROM bids ib0 WHERE ib0.request_id=r.id AND ib0.provider_id=r.invited_provider_id) THEN ${INVITE_BID_HOURS} ELSE ${INVITE_OPEN_HOURS} END) || ' hours')::interval - NOW())))::int END AS invite_left_sec,
-        EXISTS(SELECT 1 FROM bids ib WHERE ib.request_id=r.id AND ib.provider_id=r.invited_provider_id) AS invite_has_bid
+        EXISTS(SELECT 1 FROM bids ib WHERE ib.request_id=r.id AND ib.provider_id=r.invited_provider_id) AS invite_has_bid,
+        CASE WHEN r.paused_at IS NOT NULL THEN (SELECT COALESCE(NULLIF(pu.business_name,''),pu.name) FROM bids pb JOIN users pu ON pu.id=pb.provider_id WHERE pb.id=r.pause_bid_id) END AS pause_with_name,
+        CASE WHEN r.paused_at IS NOT NULL AND r.pause_bid_id IS NOT NULL THEN EXISTS(SELECT 1 FROM contact_unlocks cu JOIN bids pb2 ON pb2.id=r.pause_bid_id WHERE cu.request_id=r.id AND cu.provider_id=pb2.provider_id) END AS pause_unlocked
       FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN users p ON r.assigned_provider_id=p.id LEFT JOIN bs ON bs.request_id=r.id LEFT JOIN sl ON sl.request_id=r.id
       WHERE (r.category IS DISTINCT FROM 'direct')`;
     const params = [];
@@ -10640,6 +10645,92 @@ async function _pauseNotifyBidders(rq, kind){
     } catch(e) {}
   }
 }
+// ═══ «موقوف مؤقتاً»: ليش وقّفه العميل، مع مين، وهل الاتفاق صار برّا المنصة ═══
+const PAUSE_REASONS = { negotiate: 'أتفاوض مع مزوّد', approval: 'أنتظر موافقة أو ميزانية', review: 'أبي أراجع العروض على راحتي', other: 'سبب ثاني' };
+const PAUSE_OUT = { awarded: 'رسّاه على المنصة', resumed: 'رجّعه يستقبل عروض', auto_resumed: 'رجع مفتوح تلقائياً (ما رد)', closed: 'قفله بدون ترسية' };
+// يقفل سجلات الإيقاف اللي انتهت بطريقة ثانية (ترسية، إغلاق…)
+async function _pzReconcile(){
+  try { await pool.query(`UPDATE pause_log l SET ended_at=NOW(), outcome = CASE WHEN q.assigned_provider_id IS NOT NULL OR q.status IN ('in_progress','completed') THEN 'awarded' WHEN q.status='open' THEN 'resumed' ELSE 'closed' END
+      FROM requests q WHERE q.id=l.request_id AND l.ended_at IS NULL AND (q.paused_at IS NULL OR q.status<>'open')`); } catch(e) {}
+}
+async function _pzSignals(rid, cid, pid, since){
+  const out = { unlocked: null, msgs: 0, last_msg: null, msgs_since: 0 };
+  if (!pid) return out;
+  try {
+    const u = (await pool.query('SELECT created_at FROM contact_unlocks WHERE request_id=$1 AND provider_id=$2 LIMIT 1', [rid, pid])).rows[0];
+    out.unlocked = u ? u.created_at : null;
+    const m = (await pool.query(`SELECT COUNT(*)::int AS n, MAX(created_at) AS last, COUNT(*) FILTER (WHERE created_at >= $4)::int AS since FROM messages
+        WHERE request_id=$1 AND ((sender_id=$2 AND receiver_id=$3) OR (sender_id=$3 AND receiver_id=$2))`, [rid, cid, pid, since || new Date(0)])).rows[0];
+    out.msgs = m.n; out.last_msg = m.last; out.msgs_since = m.since;
+  } catch(e) {}
+  return out;
+}
+app.get('/api/admin/requests/:id/pause', requirePermission('requests.view'), async (req, res) => {
+  try {
+    await _pzReconcile();
+    const rid = parseInt(req.params.id);
+    const q = (await pool.query(`SELECT id, client_id, status, paused_at, paused_until, pause_asked_at, pause_bid_id, pause_reason FROM requests WHERE id=$1`, [rid])).rows[0];
+    if (!q) return res.status(404).json({ message: 'غير موجود' });
+    let l = (await pool.query(`SELECT * FROM pause_log WHERE request_id=$1 ORDER BY started_at DESC LIMIT 1`, [rid])).rows[0] || null;
+    if (!l && q.paused_at) l = { request_id: rid, client_id: q.client_id, bid_id: q.pause_bid_id, reason: q.pause_reason, started_at: q.paused_at, ended_at: null, legacy: true };
+    if (!l) return res.json({ pause: null });
+    const bid = l.bid_id ? (await pool.query(`SELECT b.id, b.provider_id, b.price, b.days, COALESCE(b.price_unit,'total') AS price_unit, COALESCE(NULLIF(u.business_name,''),u.name) AS name FROM bids b JOIN users u ON u.id=b.provider_id WHERE b.id=$1`, [l.bid_id])).rows[0] : null;
+    const pid = bid ? bid.provider_id : l.provider_id;
+    const sig = await _pzSignals(rid, q.client_id, pid, l.started_at);
+    const hist = (await pool.query(`SELECT l.id, l.request_id, q.title, l.reason, l.started_at, l.ended_at, l.outcome, COALESCE(NULLIF(u.business_name,''),u.name) AS provider
+        FROM pause_log l JOIN requests q ON q.id=l.request_id LEFT JOIN users u ON u.id=l.provider_id WHERE l.client_id=$1 ORDER BY l.started_at DESC LIMIT 12`, [q.client_id])).rows
+      .map(h => Object.assign(h, { reason_l: PAUSE_REASONS[h.reason] || null, outcome_l: PAUSE_OUT[h.outcome] || null }));
+    const active = !!q.paused_at && q.status === 'open';
+    const risk = !!(pid && sig.unlocked && (l.outcome === 'closed' || (active && !sig.msgs_since && Date.now() - new Date(l.started_at).getTime() > 3 * 864e5)));
+    res.json({ pause: { id: l.id || null, active, reason: l.reason, reason_l: PAUSE_REASONS[l.reason] || null, days: l.days, started_at: l.started_at, ended_at: l.ended_at, outcome: l.outcome, outcome_l: PAUSE_OUT[l.outcome] || null,
+      until: active ? q.paused_until : null, asked_at: active ? q.pause_asked_at : null, checked_at: l.checked_at, checked_by: l.checked_by, legacy: !!l.legacy },
+      client_id: q.client_id, provider: bid ? { id: bid.provider_id, name: bid.name, price: bid.price, days: bid.days, price_unit: bid.price_unit } : null, signals: sig, risk, history: hist, client_pauses: hist.length });
+  } catch(e) { console.error('admin pause:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// قائمة «مشاريع موقوفة تحتاج متابعة»
+async function _pzWatch(){
+  await _pzReconcile();
+  const out = [];
+  const A = (await pool.query(`SELECT q.id, q.title, q.client_id, q.paused_at, q.paused_until, q.pause_asked_at, q.pause_reason, q.pause_bid_id, l.id AS lid, l.provider_id, l.checked_at,
+      COALESCE(NULLIF(u.business_name,''),u.name) AS provider, c.name AS client
+    FROM requests q LEFT JOIN pause_log l ON l.request_id=q.id AND l.ended_at IS NULL LEFT JOIN users u ON u.id=COALESCE(l.provider_id,(SELECT provider_id FROM bids WHERE id=q.pause_bid_id)) LEFT JOIN users c ON c.id=q.client_id
+    WHERE q.status='open' AND q.paused_at IS NOT NULL ORDER BY q.paused_at ASC LIMIT 200`)).rows;
+  for (const x of A) {
+    if (x.checked_at) continue;
+    const pid = x.provider_id || (x.pause_bid_id ? ((await pool.query('SELECT provider_id FROM bids WHERE id=$1', [x.pause_bid_id])).rows[0] || {}).provider_id : null);
+    const sig = await _pzSignals(x.id, x.client_id, pid, x.paused_at);
+    const age = Date.now() - new Date(x.paused_at).getTime();
+    let kind = null, txt = '';
+    if (x.pause_asked_at) { kind = 'noreply'; txt = 'خلصت المدة · ما رد على «كيف صار التفاوض؟»'; }
+    else if (pid && sig.unlocked && !sig.msgs_since && age > 3 * 864e5) { kind = 'silent'; txt = 'يتفاوض مع ' + (x.provider || 'مزوّد') + ' · تبادلوا الأرقام · ' + Math.floor(age / 864e5) + ' أيام بدون كلام في المنصة'; }
+    else if (!x.paused_until && age > 7 * 864e5) { kind = 'long'; txt = (PAUSE_REASONS[x.pause_reason] || 'موقوف') + ' · موقوف من ' + Math.floor(age / 864e5) + ' يوم بدون مدة'; }
+    if (kind) out.push({ id: x.id, lid: x.lid, title: x.title, client: x.client, kind, txt, at: x.paused_at });
+  }
+  const B = (await pool.query(`SELECT l.id AS lid, l.request_id AS id, q.title, c.name AS client, l.ended_at AS at, COALESCE(NULLIF(u.business_name,''),u.name) AS provider
+    FROM pause_log l JOIN requests q ON q.id=l.request_id LEFT JOIN users u ON u.id=l.provider_id LEFT JOIN users c ON c.id=q.client_id
+    WHERE l.outcome='closed' AND l.provider_id IS NOT NULL AND l.checked_at IS NULL AND l.ended_at > NOW() - INTERVAL '60 days'
+      AND EXISTS (SELECT 1 FROM contact_unlocks cu WHERE cu.request_id=l.request_id AND cu.provider_id=l.provider_id) ORDER BY l.ended_at DESC LIMIT 100`)).rows;
+  for (const x of B) out.unshift({ id: x.id, lid: x.lid, title: x.title, client: x.client, kind: 'outside', txt: 'وقّفه مع «' + (x.provider || 'مزوّد') + '» · تبادلوا الأرقام · انقفل بدون ترسية', at: x.at });
+  return out;
+}
+app.get('/api/admin/pause-watch', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const list = await _pzWatch();
+    const r = (await pool.query(`SELECT COUNT(*) FILTER (WHERE outcome='awarded')::int AS awarded, COUNT(*)::int AS n FROM pause_log WHERE ended_at > NOW() - INTERVAL '60 days'`)).rows[0];
+    res.json({ list, awarded_pct: r.n ? Math.round(r.awarded * 100 / r.n) : null, ended: r.n });
+  } catch(e) { console.error('pause-watch:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/pause-watch/:rid/checked', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const rid = parseInt(req.params.rid);
+    let l = (await pool.query('SELECT id FROM pause_log WHERE request_id=$1 ORDER BY started_at DESC LIMIT 1', [rid])).rows[0];
+    if (!l) { const q = (await pool.query('SELECT client_id, pause_bid_id, pause_reason, paused_at FROM requests WHERE id=$1', [rid])).rows[0]; if (!q) return res.status(404).json({ message: 'غير موجود' });
+      l = (await pool.query(`INSERT INTO pause_log (request_id, client_id, bid_id, provider_id, reason, started_at) VALUES ($1,$2,$3,(SELECT provider_id FROM bids WHERE id=$3),$4,COALESCE($5,NOW())) RETURNING id`, [rid, q.client_id, q.pause_bid_id, q.pause_reason, q.paused_at])).rows[0]; }
+    await pool.query('UPDATE pause_log SET checked_at=NOW(), checked_by=$2 WHERE id=$1', [l.id, req.adminUser ? req.adminUser.name : null]);
+    await logAdmin(req, 'pause_checked', 'request', rid, 'تابعها');
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
 async function _pauseResume(id, by){
   // يرجّع المشروع: يمدّد مدته بمقدار الإيقاف، ويطلع للمزوّدين كجديد
   const r = (await pool.query(`UPDATE requests SET
@@ -10648,6 +10739,7 @@ async function _pauseResume(id, by){
       paused_at = NULL, paused_until = NULL, pause_bid_id = NULL, pause_asked_at = NULL, published_at = NOW()
     WHERE id=$1 AND paused_at IS NOT NULL RETURNING id, title, client_id`, [id])).rows[0];
   if (!r) return null;
+  try { await pool.query(`UPDATE pause_log SET ended_at=NOW(), outcome=$2 WHERE request_id=$1 AND ended_at IS NULL`, [id, by === 'auto' ? 'auto_resumed' : 'resumed']); } catch(e) {}
   try { await _pauseNotifyBidders({ id: r.id, title: r.title }, 'resumed'); } catch(e) {}
   console.log('[pause] رجع المشروع', id, by || '');
   return r;
@@ -10659,16 +10751,20 @@ app.post('/api/requests/:id/pause', auth, rateLimiter(20, 600000), async (req, r
     if (!rq || (rq.client_id !== req.user.id && req.user.role !== 'admin')) return res.status(404).json({ message: 'غير موجود' });
     if (rq.status !== 'open' || rq.assigned_provider_id) return res.status(400).json({ message: 'المشروع مو مفتوح' });
     const days = [3, 7, 0].includes(parseInt(req.body.days)) ? parseInt(req.body.days) : 7;
+    const reason = PAUSE_REASONS[req.body.reason] ? String(req.body.reason) : null;
     let bidId = parseInt(req.body.bid_id) || null;
     if (bidId) { const ok = (await pool.query('SELECT 1 FROM bids WHERE id=$1 AND request_id=$2', [bidId, id])).rows.length; if (!ok) bidId = null; }
     if (rq.paused_at) {
       // تمديد / تغيير: نحدّث المدة والمزوّد بدون ما نعيد عدّاد الإيقاف
-      await pool.query(`UPDATE requests SET paused_until = CASE WHEN $2::int > 0 THEN NOW() + ($2 || ' days')::interval ELSE NULL END, pause_asked_at = NULL, pause_bid_id = COALESCE($3, pause_bid_id) WHERE id=$1`, [id, days, bidId]);
+      await pool.query(`UPDATE requests SET paused_until = CASE WHEN $2::int > 0 THEN NOW() + ($2 || ' days')::interval ELSE NULL END, pause_asked_at = NULL, pause_bid_id = COALESCE($3, pause_bid_id), pause_reason = COALESCE($4, pause_reason) WHERE id=$1`, [id, days, bidId, reason]);
+      try { await pool.query(`UPDATE pause_log l SET days=$2, reason=COALESCE($3, l.reason), bid_id=COALESCE($4, l.bid_id), provider_id=COALESCE((SELECT provider_id FROM bids WHERE id=$4), l.provider_id) WHERE l.request_id=$1 AND l.ended_at IS NULL`, [id, days, reason, bidId]); } catch(e) {}
       return res.json({ ok: true, extended: true });
     }
     const u = (await pool.query(`UPDATE requests SET paused_at = NOW(), paused_until = CASE WHEN $2::int > 0 THEN NOW() + ($2 || ' days')::interval ELSE NULL END, pause_bid_id = $3, pause_asked_at = NULL
       WHERE id=$1 AND paused_at IS NULL RETURNING id, title, pause_bid_id, paused_until`, [id, days, bidId])).rows[0];
     if (u) _pauseNotifyBidders(u, 'paused').catch(()=>{});
+    if (u) { try { await pool.query('UPDATE requests SET pause_reason=$2 WHERE id=$1', [id, reason]);
+      await pool.query(`INSERT INTO pause_log (request_id, client_id, bid_id, provider_id, reason, days) VALUES ($1,$2,$3,(SELECT provider_id FROM bids WHERE id=$3),$4,$5)`, [id, rq.client_id, bidId, reason, days]); } catch(e) { console.error('pause_log:', e.message); } }
     res.json({ ok: true, paused_until: u && u.paused_until });
   } catch(e) { console.error('/pause:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -10685,6 +10781,7 @@ app.post('/api/requests/:id/resume', auth, rateLimiter(20, 600000), async (req, 
 async function runPauseJob(){ return _soft(_runPauseJob); }
 async function _runPauseJob(){
   try {
+    await _pzReconcile();
     // سؤال «كيف صار التفاوض؟» ينرسل بوقت العميل المناسب (ومهلة اليومين تبدأ من وقت الإرسال)
     const ask = _softNext('client') ? { rows: [] } : await pool.query(`SELECT r.id, r.client_id, r.title, r.pause_bid_id, COALESCE(p.business_name, p.name) AS pnm FROM requests r
         LEFT JOIN bids b ON b.id = r.pause_bid_id LEFT JOIN users p ON p.id = b.provider_id
@@ -11794,6 +11891,7 @@ async function _adminOverview(){
         (SELECT MIN(CASE WHEN status='review' THEN submitted_at ELSE pending_at END) FROM sub_requests WHERE status='review' OR (status='open' AND pending_desc IS NOT NULL)) AS sub_review_oldest,
         (SELECT COUNT(*) FROM reports WHERE status='pending' OR status IS NULL)::int AS reports,
         (SELECT COUNT(*)::int FROM support_threads WHERE status='open' AND admin_unread>0) AS support_wait,
+        (SELECT COUNT(*)::int FROM requests WHERE status='open' AND paused_at IS NOT NULL) AS paused_now,
         (SELECT MIN(last_user_at) FROM support_threads WHERE status='open' AND admin_unread>0) AS support_oldest,
         (SELECT COUNT(*) FROM request_questions q WHERE ${_QA_ACTIVE})::int AS questions,
         (SELECT COUNT(*) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flags,
