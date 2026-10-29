@@ -2423,6 +2423,7 @@ function getFilteredRequests(){
     if(_reqFilter==='stale'){ if(!_rqStale(r))return false; }
     else if(_reqFilter==='notes'){ if(!(r.client_note&&!r.client_note_done_at))return false; }
     else if(_reqFilter==='nosaai'){ if(!_noSaai(r))return false; }
+    else if(_reqFilter==='paused'){ if(!(r.status==='open'&&r.paused_at))return false; }
     else if(_reqFilter==='closed'){ if(_RQ_CLOSED.indexOf(r.status)<0)return false; }
     else if(_reqFilter!=='all'&&r.status!==_reqFilter)return false;
     if(ci&&r.city!==ci)return false;
@@ -2478,7 +2479,7 @@ function _rqKpis(){
     +'<div><span class="l">متوسط العروض لكل مشروع</span><span class="n">'+(Math.round(avg*10)/10)+'</span><span class="s">آخر 30 يوم</span></div>'
     +'</div>';
   // عدّادات التبويبات
-  var cnt={all:all.length,stale:stale,notes:all.filter(function(r){return r.client_note&&!r.client_note_done_at;}).length,nosaai:all.filter(_noSaai).length,closed:all.filter(function(r){return _RQ_CLOSED.indexOf(r.status)>=0;}).length};
+  var cnt={all:all.length,stale:stale,notes:all.filter(function(r){return r.client_note&&!r.client_note_done_at;}).length,nosaai:all.filter(_noSaai).length,paused:all.filter(function(r){return r.status==='open'&&r.paused_at;}).length,closed:all.filter(function(r){return _RQ_CLOSED.indexOf(r.status)>=0;}).length};
   all.forEach(function(r){cnt[r.status]=(cnt[r.status]||0)+1;});
   document.querySelectorAll('#page-requests .ftab').forEach(function(t){
     var m=(t.getAttribute('onclick')||'').match(/filterReq\('([a-z_]+)'/); if(!m)return;
@@ -2489,6 +2490,8 @@ function renderRequests(){
   syncReqFiltersToHash();
   try{_rqKpis();}catch(e){}
   var filtered=getFilteredRequests();
+  // الموقوفة: اللي ما رد أولاً، بعدها الأقرب لانتهاء المدة، وآخرها «لين يرجّعه»
+  if(_reqFilter==='paused')filtered=filtered.slice().sort(function(a,b){ var ka=a.pause_asked_at?0:(a.paused_until?1:2), kb=b.pause_asked_at?0:(b.paused_until?1:2); if(ka!==kb)return ka-kb; if(ka===1)return new Date(a.paused_until)-new Date(b.paused_until); return new Date(a.paused_at)-new Date(b.paused_at); });
   var cnt=document.getElementById('rf-count');if(cnt)cnt.textContent=filtered.length+' نتيجة';
   if(!filtered.length){document.getElementById('requests-table').innerHTML=emptyState('لا يوجد مشاريع مطابقة');return;}
   var _rTotal=filtered.length;
