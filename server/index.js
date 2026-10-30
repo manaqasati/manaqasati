@@ -3392,6 +3392,7 @@ async function setupDatabase() {
     await _mig(`CREATE INDEX IF NOT EXISTS provider_actions_p ON provider_actions(provider_id, created_at DESC)`);
     await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS pause_reason VARCHAR(20)`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS extra_categories TEXT[]`);
+    await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS admin_edits TEXT[]`);
     await _mig(`CREATE TABLE IF NOT EXISTS pause_log (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, client_id INTEGER, bid_id INTEGER, provider_id INTEGER, reason VARCHAR(20), days INTEGER, started_at TIMESTAMPTZ DEFAULT NOW(), ended_at TIMESTAMPTZ, outcome VARCHAR(20), checked_at TIMESTAMPTZ, checked_by VARCHAR(120))`);
     await _mig(`CREATE INDEX IF NOT EXISTS pause_log_r ON pause_log(request_id, started_at DESC)`);
     await _mig(`CREATE TABLE IF NOT EXISTS support_threads (id SERIAL PRIMARY KEY, user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE, status VARCHAR(12) DEFAULT 'open', topic VARCHAR(40), link_kind VARCHAR(8), link_id INTEGER, link_title VARCHAR(160), assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL, user_unread INTEGER DEFAULT 0, admin_unread INTEGER DEFAULT 0, last_msg_at TIMESTAMPTZ, last_user_at TIMESTAMPTZ, last_admin_at TIMESTAMPTZ, admin_notified_at TIMESTAMPTZ, first_reply_at TIMESTAMPTZ, solved_at TIMESTAMPTZ, rating SMALLINT, rated_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
@@ -13073,7 +13074,7 @@ app.get('/api/admin/sub-review', requirePermission('requests.review'), async (re
     if (req.query.count) return res.json({ n: rows.length, today });
     const list = [];
     for (const r of rows) list.push(Object.assign(_subRow(r), { kind: r.status === 'review' ? 'new' : 'edit', pending_at: r.pending_at, owner_id: r.provider_id, owner_name: r.owner_name, owner_phone: r.owner_phone, owner_image: r.owner_image,
-      owner_prev: r.owner_prev, owner_rej: r.owner_rej, owner_rating: r.owner_rating, owner_srate: r.owner_srate, offers: r.offers, has_partners: r.has_partners, notify_scope: r.notify_scope, notify_cities: r.notify_cities,
+      admin_edits: r.admin_edits || [], owner_prev: r.owner_prev, owner_rej: r.owner_rej, owner_rating: r.owner_rating, owner_srate: r.owner_srate, offers: r.offers, has_partners: r.has_partners, notify_scope: r.notify_scope, notify_cities: r.notify_cities,
       dups: r.status === 'review' ? await _subDups(r) : [] }));
     res.json({ list, today });
   } catch(e) { console.error('sub-review:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -13120,9 +13121,17 @@ app.patch('/api/admin/sub/:id/quick', requirePermission('requests.review'), asyn
     }
     if (!set.length) return res.status(400).json({ message: 'ما فيه تعديل' });
     v.push(id);
-    const r = (await pool.query(`UPDATE sub_requests SET ${set.join(', ')} WHERE id=$${v.length} RETURNING *`, v)).rows[0];
+    let r = (await pool.query(`UPDATE sub_requests SET ${set.join(', ')} WHERE id=$${v.length} RETURNING *`, v)).rows[0];
+    // نسجّل وش عدّلت الإدارة قبل النشر (عشان رسالة الاعتماد تقول «قبلناه مع تعديلات»)
+    if (s.status === 'review') {
+      const LB = [['title','العنوان'],['description','الوصف'],['category','التخصص'],['extra_categories','التخصص'],['city','الموقع'],['district','الموقع'],['start_text','موعد البدء'],['budget','الميزانية'],['attachments','المرفقات']];
+      const same = (a, c) => JSON.stringify(a == null || (Array.isArray(a) && !a.length) ? null : a) === JSON.stringify(c == null || (Array.isArray(c) && !c.length) ? null : c);
+      const ed = Array.isArray(s.admin_edits) ? s.admin_edits.slice() : [];
+      for (const [col, lb] of LB) if (col in b && !same(s[col], r[col]) && !ed.includes(lb)) ed.push(lb);
+      if (ed.length !== (s.admin_edits || []).length) r = (await pool.query('UPDATE sub_requests SET admin_edits=$1 WHERE id=$2 RETURNING *', [ed, id])).rows[0];
+    }
     logAdmin(req, 'sub_edit', 'sub', id, 'تعديل: ' + Object.keys(b).join('، ')).catch(()=>{});
-    res.json(Object.assign(_subRow(r), { _dropped: dropped }));
+    res.json(Object.assign(_subRow(r), { admin_edits: r.admin_edits || [], _dropped: dropped }));
   } catch(e) { console.error('sub quick:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 function _subWa(phone, nm, text){ const ph = normPhone(phone); return ph ? `https://wa.me/${ph}?text=${encodeURIComponent(`السلام عليكم ${nm || ''}، معك فريق منصة مناقصة 👋\n` + text)}` : null; }
@@ -13160,15 +13169,20 @@ app.put('/api/admin/sub/:id/review', requirePermission('requests.review'), async
         const pf = !!s.partners_first && (await _subAudRows(s, sc, cl)).some(x => x.is_p);
         const note = _needTxt(b.note, 600) || null;
         const days = [7, 14, 30, 60].includes(parseInt(b.days)) ? parseInt(b.days) : SUB_EXPIRE_DAYS;
-        const r = (await pool.query(`UPDATE sub_requests SET status='open', created_at=NOW(), expires_at=NOW() + ($7 || ' days')::interval, close_kind=NULL, reviewed_at=NOW(), review_note=NULL, approve_note=$1, notify_scope=$2, notify_cities=$3, partners_first=$4, notified_all=$5 WHERE id=$6 AND status='review' RETURNING *`,
+        const r = (await pool.query(`UPDATE sub_requests SET status='open', created_at=NOW(), expires_at=NOW() + ($7 || ' days')::interval, close_kind=NULL, reviewed_at=NOW(), review_note=NULL, admin_edits=NULL, approve_note=$1, notify_scope=$2, notify_cities=$3, partners_first=$4, notified_all=$5 WHERE id=$6 AND status='review' RETURNING *`,
           [note, sc, cl && cl.length ? cl : null, pf, !pf, id, String(days)])).rows[0];
         if (!r) return res.status(409).json({ message: 'انراجع من قبل' });
         await _subNotify(r, pf);
         const sent = (await _subAudRows(r)).filter(x => !pf || x.is_p).length;
-        tell('✅ نشرنا طلبك', `طلبك «${short}» انتشر ` + (pf ? 'لشركائك أول، وبعد ساعتين للفنيين المناسبين' : 'للفنيين المناسبين') + (r.city ? ' في ' + r.city : '') + '.' + (note ? '\n💡 ' + note : ''), 'شوف طلبك');
-        msg = 'اعتماد ونشر' + (note ? ' + ملاحظة' : '');
+        const eds = Array.isArray(s.admin_edits) ? s.admin_edits : [], sh2 = _subT(r).slice(0, 60);
+        const edTxt = eds.length ? 'سوّينا تعديل بسيط عشان يوصل أوضح للفنيين (عدّلنا ' + eds.join(' و') + ')' : '';
+        const where = (pf ? 'لشركائك أول، وبعد ساعتين للفنيين المناسبين' : 'للفنيين المناسبين') + (r.city ? ' في ' + r.city : '');
+        tell(eds.length ? '✅ نشرنا طلبك (مع تعديل بسيط)' : '✅ نشرنا طلبك', `طلبك «${sh2}» انتشر ${where}.` + (edTxt ? '\n✏️ ' + edTxt + '.' : '') + (note ? '\n💡 ' + note : ''), 'شوف طلبك');
+        wa = _subWa(ow.phone, nm, (eds.length ? `قبلنا طلبك في «مقاول باطن» («${sh2}») ✅ لكن ${edTxt}.` : `قبلنا طلبك في «مقاول باطن» («${sh2}») ✅`)
+          + `\nانتشر ${where}، ويبقى يستقبل العروض ${days} يوم.` + (note ? `\n💡 ${note}` : '') + `\n\nشوف طلبك${eds.length ? ' وتأكد من التعديل' : ''}:\n${link}`);
+        msg = 'اعتماد ونشر' + (eds.length ? ' (مع تعديل: ' + eds.join('، ') + ')' : '') + (note ? ' + ملاحظة' : '');
         await logAdmin(req, 'sub_review', 'sub', id, msg);
-        return res.json({ ok: true, status: 'open', sent, partners_first: pf });
+        return res.json({ ok: true, status: 'open', sent, partners_first: pf, edits: eds, wa_link: wa });
       } else if (act === 'needs_edit') {
         if (!reason) return res.status(400).json({ message: 'اكتب وش يحتاج يعدّل' });
         await pool.query("UPDATE sub_requests SET status='needs_edit', review_note=$1, reviewed_at=NOW() WHERE id=$2", [reason, id]);
@@ -13222,7 +13236,7 @@ app.get('/api/admin/sub-review-history', requirePermission('requests.review'), a
       FROM admin_logs l JOIN sub_requests s ON s.id=l.target_id JOIN users u ON u.id=s.provider_id WHERE l.action='sub_review' ORDER BY l.id DESC LIMIT 40`)).rows;
     res.json(r.map(x => { const d = String(x.details || ''); const act = /^اعتماد/.test(d) ? 'approve' : (/^طلب تعديل/.test(d) ? 'needs_edit' : (/^رفض: إعلان/.test(d) ? 'ad' : (/^رفض التعديل/.test(d) ? 'edit_no' : (/^اعتمد التعديل/.test(d) ? 'edit_ok' : (/^مكرر/.test(d) ? 'dup' : 'reject')))));
       const nm = _drFirst(x.owner), short = String(x.description || '').slice(0, 60), link = SITE_URL + '/dashboard-provider.html#sub/' + x.sid;
-      const t = act === 'approve' ? `طلبك في «مقاول باطن» («${short}») انتشر — تابع العروض من هنا:\n${link}` : act === 'needs_edit' ? `بخصوص طلبك في «مقاول باطن» («${short}») — يحتاج توضيح بسيط:\n${x.review_note || ''}\n${link}` : act === 'ad' ? `بخصوص طلبك في «مقاول باطن» — الخدمة مخصصة لطلب مزوّد يكمّل معك شغل، والتعريف بشغلك مكانه صفحتك العامة:\n${SITE_URL}/pro/${x.owner_id}` : `بخصوص طلبك في «مقاول باطن» («${short}»):\n${link}`;
+      const em = act === 'approve' && d.match(/مع تعديل: ([^)]+)\)/); const t = act === 'approve' ? (em ? `قبلنا طلبك في «مقاول باطن» («${short}») ✅ لكن سوّينا تعديل بسيط عشان يوصل أوضح للفنيين (عدّلنا ${em[1].split('، ').join(' و')}).\nانتشر وتقدر تتابع العروض وتتأكد من التعديل من هنا:\n${link}` : `طلبك في «مقاول باطن» («${short}») انتشر — تابع العروض من هنا:\n${link}`) : act === 'needs_edit' ? `بخصوص طلبك في «مقاول باطن» («${short}») — يحتاج توضيح بسيط:\n${x.review_note || ''}\n${link}` : act === 'ad' ? `بخصوص طلبك في «مقاول باطن» — الخدمة مخصصة لطلب مزوّد يكمّل معك شغل، والتعريف بشغلك مكانه صفحتك العامة:\n${SITE_URL}/pro/${x.owner_id}` : `بخصوص طلبك في «مقاول باطن» («${short}»):\n${link}`;
       return { id: x.id, sid: x.sid, action: act, at: x.created_at, admin: x.admin_name, category: x.category, city: x.city, short, status: x.status, owner: x.owner, note: d, wa_link: _subWa(x.phone, nm, t) }; }));
   } catch(e) { console.error('sub hist:', e.message); res.json([]); }
 });

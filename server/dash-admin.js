@@ -1440,7 +1440,7 @@ var APPROVE_TIPS=[
 function tipChips(t){return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">'+APPROVE_TIPS.map(function(r,i){return '<button type="button" onclick="addTip(\''+t+'\','+i+')" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:20px;padding:5px 11px;font-family:Tajawal,sans-serif;font-size:11.5px;font-weight:800;cursor:pointer">💡 '+esc(r.k)+'</button>';}).join('')+'</div>';}
 function addTip(t,i){var ta=document.getElementById(t);if(!ta||!APPROVE_TIPS[i])return;var txt=APPROVE_TIPS[i].v;var cur=(ta.value||'').trim();if(cur.indexOf(txt)>=0){ta.focus();return;}ta.value=(cur?cur+'\n':'')+'- '+txt;ta.focus();}
 function addReason(t,i){var ta=document.getElementById(t);if(!ta||!REVIEW_REASONS[i])return;var txt=REVIEW_REASONS[i].v;var cur=(ta.value||'').trim();if(cur.indexOf(txt)>=0){ta.focus();return;}ta.value=(cur?cur+'\n':'')+'- '+txt;ta.focus();}
-function showWaFollowup(link){if(!link)return;var a=document.getElementById('wa-follow-link');if(a)a.href=link;var m=document.getElementById('waFollowModal');if(m)m.classList.add('show');}
+function showWaFollowup(link,who){if(!link)return;var a=document.getElementById('wa-follow-link');if(a)a.href=link;var h=document.getElementById('wa-follow-h');if(h)h.textContent='📲 تواصل مع '+(who||'العميل');var pp=document.querySelector('#waFollowModal .modal-body p');if(pp)pp.textContent='تم تسجيل الطلب وإشعار '+(who||'العميل')+' تلقائياً. لتأكيد أسرع، أرسل له رسالة واتساب جاهزة بالملاحظات من رقمك:';var m=document.getElementById('waFollowModal');if(m)m.classList.add('show');}
 var OW_PRESETS=[
   {t:'خارج نطاق الخدمة',m:'تنبيه: نرجو تقديم العروض فقط للمشاريع الواقعة في المدن التي تقدمون فيها خدماتكم. وذلك لضمان وصول العروض للمشاريع المناسبة، وزيادة فرص اختياركم من قبل صاحب المشروع، وتجنب تقديم عروض على مشاريع خارج نطاق خدمتكم.'},
   {t:'تذكير ودّي (أول مخالفة)',m:'مرحباً، لاحظنا تقديمكم عرضاً على مشروع خارج مدن خدمتكم. لتحصلوا على أفضل النتائج، ننصح بالتركيز على المشاريع ضمن نطاقكم. ولو كنتم تخدمون مدناً إضافية، حدّثوا «مدن الخدمة» في ملفكم.'},
@@ -7827,6 +7827,12 @@ function _srAct(id,act){
   else if(act==='edit_no'){ body.reason=reason||null; }
   else if(act==='dup_merge'||act==='dup_back'){ var d=r.dups[(_SR.dup&&_SR.dup.i)||0]; body.dup_id=d.id; }
   var L={approve:'اعتماد ونشر',needs_edit:'طلب تعديل',reject:'رفض',ad:'رفض (إعلان)',edit_ok:'اعتماد التعديل',edit_no:'رفض التعديل',dup_merge:'تحديث الطلب القديم',dup_back:'رجّعه للقديم'};
+  // الاعتماد: بطاقة تأكيد أول (مثل مشاريع العملاء)، وبعد «نعم» يتنفّذ مباشرة ويطلع واتساب
+  if(act==='approve'){ var c=_srAudCount(id), eds=r.admin_edits||[];
+    askConfirm({title:'اعتماد ونشر #'+id,message:'سينتشر الطلب'+(c&&c.n!=null?(c.n?' ويوصل إشعار لـ '+fmtNum(c.n)+' مزوّد':' (ما فيه مزوّد مطابق للحين — يوصل اللي يسجّلون بعدين)'):' للمزوّدين المناسبين')+' ويستقبل العروض '+body.days+' يوم.'+(eds.length?' ✏️ عدّلت عليه ('+eds.join('، ')+') — رسالة الواتساب بتبلّغه بالتعديل.':''),confirmText:'نعم، انشر'}).then(function(ok){ if(!ok)return;
+      if(_SR.pend) _srCommit(); _SR.pend={id:id,body:body,label:L[act],left:0}; _srCommit();
+      var vis=_srVisible(); var i=vis.findIndex(function(x){return x.id===id;}); var nx=vis[i+1]||vis[i-1]; _SR.sel=nx?nx.id:null; _SR.ed=null; _srRender(); });
+    return; }
   if(_SR.pend) _srCommit();
   var bar=document.getElementById('sr-undo-bar'); if(!bar){ bar=document.createElement('div'); bar.id='sr-undo-bar'; bar.style.cssText='position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:3000;background:#0f172a;color:#fff;border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:12px;font-weight:800;font-size:13.5px;box-shadow:0 12px 30px rgba(0,0,0,.3)'; document.body.appendChild(bar); }
   _SR.pend={id:id,body:body,label:L[act]||act,left:6};
@@ -7840,7 +7846,7 @@ function _srCommit(){ var p=_SR.pend; if(!p)return; clearInterval(p.t); _SR.pend
     if(!res.ok){ toast((res.d&&res.d.message)||'تعذّر التنفيذ','error'); _srRender(); return; }
     _SR.list=_SR.list.filter(function(x){return x.id!==p.id;}); _SR.done++; _srBadge(_SR.list.length);
     toast(p.body.action==='approve'?('انتشر ✓'+(res.d.sent!=null?' — وصل '+fmtNum(res.d.sent)+(res.d.partners_first?' شريك (والباقين بعد ساعتين)':' مزوّد'):'')):(p.label+' ✓'),'success');
-    if(res.d&&res.d.wa_link) showWaFollowup(res.d.wa_link);
+    if(res.d&&res.d.wa_link) showWaFollowup(res.d.wa_link,'صاحب الطلب');
     _srRender(); _srHist();
   }).catch(function(){ toast('تعذّر الاتصال','error'); _srRender(); }); }
 window.addEventListener('beforeunload',function(){ if(_SR.pend){ try{ fetch(API+'/api/admin/sub/'+_SR.pend.id+'/review',Object.assign({method:'PUT',keepalive:true,body:JSON.stringify(_SR.pend.body)},hdr())); }catch(e){} } });
