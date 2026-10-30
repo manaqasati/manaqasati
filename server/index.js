@@ -11895,6 +11895,8 @@ async function _adminOverview(){
         (SELECT COUNT(*) FROM reports WHERE status='pending' OR status IS NULL)::int AS reports,
         (SELECT COUNT(*)::int FROM support_threads WHERE status='open' AND admin_unread>0) AS support_wait,
         (SELECT COUNT(*)::int FROM requests WHERE status='open' AND paused_at IS NOT NULL) AS paused_now,
+        (SELECT COUNT(*)::int FROM sub_requests s WHERE s.status='open' AND s.created_at < NOW() - INTERVAL '24 hours' AND NOT EXISTS(SELECT 1 FROM sub_offers o WHERE o.sub_id=s.id)) AS sub_nooffer,
+        (SELECT MIN(s.created_at) FROM sub_requests s WHERE s.status='open' AND s.created_at < NOW() - INTERVAL '24 hours' AND NOT EXISTS(SELECT 1 FROM sub_offers o WHERE o.sub_id=s.id)) AS sub_nooffer_oldest,
         (SELECT MIN(last_user_at) FROM support_threads WHERE status='open' AND admin_unread>0) AS support_oldest,
         (SELECT COUNT(*) FROM request_questions q WHERE ${_QA_ACTIVE})::int AS questions,
         (SELECT COUNT(*) FROM offer_flags WHERE resolved IS NOT TRUE)::int AS flags,

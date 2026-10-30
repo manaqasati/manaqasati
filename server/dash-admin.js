@@ -544,6 +544,7 @@ function _renderDash(o){
   if(n.sub_review!=null) _srBadge(n.sub_review);
   if(n.support_wait!=null) _spBadge(n.support_wait);
   if(n.paused_now) setTimeout(_pzNeeds,0);
+  if(n.sub_nooffer) q.push({c:'org',t:'طلبات «مقاول باطن» بدون عروض',s:'مرّ عليها أكثر من 24 ساعة'+(n.sub_nooffer_oldest?' · أقدمها '+_adAgo(n.sub_nooffer_oldest):''),n:n.sub_nooffer,pg:'subc',pre:'_scSt=\'nooffer\';',go:'وصّلها لأكثر',ic:'<path d="M3 11l18-5v12L3 13v-2z"/><path d="M11.6 16.8a3 3 0 11-5.8-1.6"/>'});
   if(n.support_wait) q.push({c:'red',t:'محادثات تنتظر ردك',s:n.support_oldest?'أقدمها من '+_adAgo(n.support_oldest).replace('قبل ',''):'',n:n.support_wait,pg:'support',ic:'<path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/>',go:'رد عليهم'});
   if(n.review) q.push({c:'red',t:'مشاريع العملاء تنتظر المراجعة',s:n.review_oldest?'أقدمها '+_adAgo(n.review_oldest):'',n:n.review,pg:'projreview',go:'افتح المراجعة',ic:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'});
   var _brN=fr?fr.bid_report_providers:n.bid_report_providers; if(_brN) q.push({c:'org',t:'بلاغات عملاء على عروض',s:fr?'جديدة منذ آخر مرة فتحتها':'مزوّدين تحتاج قرارك',n:_brN,pg:'offerwatch',ic:'<path d="M4 21V4h11l-1 4h6v9h-9l1-4H4"/>',tab:'reports',seen:'bidrep'});
@@ -562,7 +563,7 @@ function _renderDash(o){
   var na=document.getElementById('needs-action');
   // سطر الترحيب: كم شي ينتظرك
   (function(){var tot=0;q.forEach(function(x){var v=Number(x.n);if(v>0)tot+=v;});var e=document.getElementById('ad-needs-hi');if(e)e.textContent=tot?'عندك '+tot+' شي ينتظرك':'ما فيه شي ينتظرك اليوم';})();
-  if(na) na.innerHTML='<div class="ad-q">'+(q.length?q.map(function(x){return '<button class="ad-qc '+x.c+'" onclick="'+(x.seen?'_adSeen(\''+x.seen+'\');':'')+(x.tab?'_owCur=\''+x.tab+'\';':'')+'_niGo(\''+x.pg+'\')"><span class="ad-qi">'+_adIcon(x.ic)+'</span><span><div class="ad-qt">'+x.t+'</div><div class="ad-qs">'+esc(x.s||'')+'</div></span><span class="ad-qn">'+x.n+'</span><span class="ad-qgo">'+esc(x.go||'افتح')+'</span></button>';}).join(''):'<div class="ad-qc ok"><span class="ad-qi">'+_adIcon('<path d="M20 6L9 17l-5-5"/>')+'</span><span><div class="ad-qt">ما فيه شي ينتظرك</div><div class="ad-qs">كل المراجعات والبلاغات منتهية</div></span></div>')+'</div>';
+  if(na) na.innerHTML='<div class="ad-q">'+(q.length?q.map(function(x){return '<button class="ad-qc '+x.c+'" onclick="'+(x.seen?'_adSeen(\''+x.seen+'\');':'')+(x.tab?'_owCur=\''+x.tab+'\';':'')+(x.pre||'')+'_niGo(\''+x.pg+'\')"><span class="ad-qi">'+_adIcon(x.ic)+'</span><span><div class="ad-qt">'+x.t+'</div><div class="ad-qs">'+esc(x.s||'')+'</div></span><span class="ad-qn">'+x.n+'</span><span class="ad-qgo">'+esc(x.go||'افتح')+'</span></button>';}).join(''):'<div class="ad-qc ok"><span class="ad-qi">'+_adIcon('<path d="M20 6L9 17l-5-5"/>')+'</span><span><div class="ad-qt">ما فيه شي ينتظرك</div><div class="ad-qs">كل المراجعات والبلاغات منتهية</div></span></div>')+'</div>';
   // المؤشرات
   var ser=o.series||[];
   var pc=cv.n?Math.round(cv.with_bids/cv.n*100):0;
