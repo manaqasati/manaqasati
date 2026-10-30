@@ -1202,14 +1202,15 @@ function render(){
 // ═══ ACTIONS ═══
 function _toggleBidTip(){var b=document.getElementById('bid-tip-body'),a=document.getElementById('bid-tip-ar');if(!b)return;var o=b.style.display!=='none';b.style.display=o?'none':'block';if(a)a.textContent=o?'▾':'▴';}
 function _useBidTemplate(){var t=document.getElementById('bid-note');if(!t)return;if(t.value.trim()&&!confirm('استبدال ما كتبته بالقالب؟'))return;t.value='لدي خبرة (عدد) سنوات في هذا المجال.\nسأنفّذ المشروع كالتالي: (اشرح طريقتك باختصار).\nالمواد المستخدمة: (نوعها وجودتها).\nأبدأ خلال (عدد) أيام، وأقدّم ضماناً لمدة (اذكر المدة).';t.focus();}
-function openBid(){
-  if(window.mnqBanGate&&!window._banOk){ window.mnqBanGate(function(){ window._banOk=1; try{openBid();}finally{window._banOk=0;} }); return; }
+function openBid(_g){
+  _g=(typeof _g==='number')?_g:0; // البوابات اللي عدّاها (1=الإيقاف، 2=خارج المدينة)
+  if(window.mnqBanGate&&!(_g&1)){ window.mnqBanGate(function(){ openBid(_g|1); }); return; }
   var u=getUser();
   if(!u){goLogin();return;}
   if(u.role!=='provider'&&!u.can_provide){alert('هذا الزر للمزودين فقط — فعّل تقديم العروض من حسابك');return;}
   if(_req&&_req.invite_locked){_pjToast('العميل طلب مزوّد محدد بالاسم — '+(_req.invite_left_sec>0?'ينفتح للعروض خلال '+_pjLeft(_req.invite_left_sec):'ينفتح إذا فتحه العميل'),1);return;}
   if(_req&&_req.paused&&!_req.pause_chosen&&!(_bids||[]).some(function(b){return b.is_mine;})){_pjToast('⏸️ صاحب المشروع يتفاوض حالياً مع أحد المزوّدين — المشروع ما يستقبل عروض جديدة الحين',1);return;}
-  if(window._areaGate&&!window._agSkip&&!(_bids||[]).some(function(b){return b.is_mine;})){ _areaGate(getReqId(),function(){ window._agSkip=1; try{openBid();}finally{window._agSkip=0;} }); return; }
+  if(window._areaGate&&!(_g&2)&&!(_bids||[]).some(function(b){return b.is_mine;})){ _areaGate(getReqId(),function(){ openBid(_g|2); }); return; }
   document.getElementById('bidOverlay').classList.add('on');
   try{ if(window._bxMount)_bxMount(); }catch(e){}
   document.body.style.overflow='hidden';
