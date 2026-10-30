@@ -2798,6 +2798,7 @@ function _rqOpen(id){
       +_rqInv(r)
       +(r.paused_at||r.pause_reason?'<div class="rq-ds" id="rq-pz-'+r.id+'"><div class="loading" style="padding:10px"><div class="spinner"></div></div></div>':'<div id="rq-pz-'+r.id+'"></div>')
       +_rqActs(r)
+      +(r.status==='in_progress'&&r.assigned_provider_id&&permOK('requests.edit')?'<div class="rq-ds" style="flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap"><span style="flex:1;min-width:180px;font-size:12.5px;font-weight:700;color:var(--muted)">العميل اختار بالغلط أو ما اتفقوا؟</span><button type="button" class="btn-g" style="color:#b91c1c;border-color:#fecaca" onclick="_uaOpen('+r.id+')">↩️ إلغاء الترسية</button></div>':'')
       +(['pending_review','review','needs_edit','rejected'].indexOf(r.status)<0?'<div class="rq-ds" id="rq-reach-'+r.id+'"><h4>📊 مين وصله ومين تفاعل</h4><div class="loading" style="padding:10px"><div class="spinner"></div></div></div>':'')
       +_roSection(r)
       +_saSection(r,x.saai,x.saai_suggest)
@@ -2814,6 +2815,41 @@ function _rqOpen(id){
       +(tl.length?'<div class="rq-ds"><h4>السجل</h4>'+tl.map(function(t){return '<div class="rq-tl"><i></i><div><b>'+esc(t.event||'')+'</b>'+(t.description?' — '+esc(t.description):'')+'<div style="font-size:11.5px;color:var(--muted)">'+new Date(t.created_at).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+'</div></div></div>';}).join('')+'</div>':'');
     d.innerHTML=h; if(document.getElementById('rq-reach-'+r.id)) _rqReach(r.id); _pzLoad(r.id);
   }).catch(function(){ d.innerHTML='<div style="padding:30px">'+emptyState('تعذّر التحميل')+'</div>'; });
+}
+// ═══ إلغاء الترسية: «اختار بالغلط» / «ما اتفقوا» ═══
+function _uaOpen(id){
+  var old=document.getElementById('uaOv'); if(old)old.remove();
+  var ov=document.createElement('div'); ov.id='uaOv'; ov.className='overlay show'; ov.style.zIndex='1000';
+  ov.innerHTML='<div class="modal" style="max-width:560px"><div class="modal-body" style="padding:18px" id="uaB"><div class="loading"><div class="spinner"></div></div></div></div>';
+  ov.addEventListener('click',function(e){ if(e.target===ov)ov.remove(); }); document.body.appendChild(ov);
+  fetch(API+'/api/admin/requests/'+id+'/unaward',hdr()).then(function(r){return r.json();}).then(function(d){
+    var B=document.getElementById('uaB'); if(!B)return; if(!d||!d.id){ B.innerHTML=emptyState('تعذّر التحميل'); return; }
+    var paid=d.saai&&['submitted','approved'].indexOf(d.saai.status)>=0, pend=!!d.award_pending_until;
+    var opt=function(v,t,s,on){ return '<label class="ua-o'+(on?' on':'')+'"><input type="radio" name="ua-why" value="'+v+'"'+(on?' checked':'')+' onchange="document.querySelectorAll(\'.ua-o\').forEach(function(x){x.classList.toggle(\'on\',x.contains(event.target))})"><span><b>'+t+'</b><small>'+s+'</small></span></label>'; };
+    B.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:17px">↩️ إلغاء الترسية — #'+d.id+'</b><button type="button" class="act-btn ab-default" onclick="document.getElementById(\'uaOv\').remove()">✕</button></div>'
+      +'<div style="font-size:12.5px;color:var(--muted);font-weight:700;margin:6px 0 12px;line-height:1.8">'+esc(d.title||'')+'<br>المختار: <b style="color:var(--text)">'+esc(d.provider||'—')+'</b>'+(d.price?' · '+fmtNum(d.price)+' ر.س':'')+(d.assigned_at?' · '+_adAgo(d.assigned_at):'')+(d.saai?' · سعي '+fmtNum(d.saai.saai_amount)+' ر.س ('+({pending:'ما سدّد',deferred:'معلّق',cancelled:'ملغي',submitted:'سدّد ⏳',approved:'سدّد ✓'}[d.saai.status]||d.saai.status)+')':'')+'</div>'
+      +(paid?'<div style="background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:800;margin-bottom:10px">المزوّد سدّد السعي على هالمشروع — راجعه من صفحة السعي أول</div>':'')
+      +(pend?'<div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:800;margin-bottom:10px">لسا ما وصل المزوّدين شي (العميل اختار قبل أقل من 5 دقايق) — الإلغاء يصير بهدوء</div>':'')
+      +'<b style="font-size:13.5px">السبب</b><div style="display:flex;flex-direction:column;gap:7px;margin:8px 0 12px">'
+      +opt('mistake','اختار بالغلط','المزوّد يوصله اعتذار لطيف — عرضه باقي ويقدر العميل يختاره',true)
+      +opt('nodeal','ما اتفقوا','المزوّد يوصله إن العميل ما اتفق معه، وعرضه يصير مرفوض',false)+'</div>'
+      +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:11px 13px;font-size:12.5px;font-weight:700;line-height:1.95;color:var(--text2)"><b>وش بيصير:</b><br>✓ المشروع يرجع مفتوح ويستقبل اختيار<br>✓ العروض اللي انرفضت بسبب الترسية ترجع'+(d.restore_n?' ('+d.restore_n+')':'')+' — واللي رفضها العميل بنفسه تبقى<br>✓ السعي على '+esc(d.provider||'المزوّد')+' ينلغي<br>✓ يتسجّل في سجل المشروع والإدارة</div>'
+      +'<label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;margin:12px 0 8px;cursor:pointer"><input type="checkbox" id="ua-tell" checked style="width:16px;height:16px;accent-color:#2563eb"> بلّغ المزوّدين اللي قدّموا إن المشروع رجع</label>'
+      +'<input id="ua-note" placeholder="ملاحظة داخلية (اختياري)…" style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-family:inherit;background:var(--card);color:var(--text)">'
+      +'<div style="display:flex;gap:8px;margin-top:14px"><button type="button" class="act-btn ab-default" style="flex:1;justify-content:center" onclick="document.getElementById(\'uaOv\').remove()">إلغاء</button><button type="button" class="act-btn" style="flex:2;justify-content:center;background:#dc2626;color:#fff;border-color:#dc2626"'+(paid?' disabled':'')+' onclick="_uaGo('+d.id+',this)">إلغاء الترسية</button></div>';
+  }).catch(function(){ var B=document.getElementById('uaB'); if(B)B.innerHTML=emptyState('تعذّر التحميل'); });
+}
+function _uaGo(id,btn){
+  var w=document.querySelector('input[name="ua-why"]:checked'), why=w?w.value:'mistake';
+  btn.disabled=true; btn.textContent='...';
+  fetch(API+'/api/admin/requests/'+id+'/unaward',Object.assign({method:'POST',body:JSON.stringify({reason:why,notify_bidders:!!(document.getElementById('ua-tell')||{}).checked,note:(document.getElementById('ua-note')||{}).value||''})},hdr()))
+    .then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
+      if(!res.ok){ toast((res.d&&res.d.message)||'تعذّر','error'); btn.disabled=false; btn.textContent='إلغاء الترسية'; return; }
+      var o=document.getElementById('uaOv'); if(o)o.remove();
+      toast('رجّعنا المشروع مفتوح ✓'+(res.d.told?' — بلّغنا '+res.d.told+' مزوّد':''),'success');
+      try{ if(typeof loadRequests==='function')loadRequests(); }catch(e){}
+      if(res.d.wa_link){ try{ _rqClose(); }catch(e){} showWaFollowup(res.d.wa_link); } else { try{ _rqOpen(id); }catch(e){} }
+    }).catch(function(){ toast('تعذّر الاتصال','error'); btn.disabled=false; btn.textContent='إلغاء الترسية'; });
 }
 function _updAgentDue(){var el=document.getElementById('re-agent-due');if(!el)return;var pct=parseFloat((document.getElementById('re-agent-pct')||{}).value||0);var ap=window._reAcceptedPrice||0;if(!pct){el.textContent='';return;}if(pct>=3){el.textContent='⚠️ النسبة '+pct+'٪ تساوي أو تتجاوز رسوم المنصة (٣٪) — لن يتبقى لك ربح.';el.style.color='#dc2626';return;}if(ap>0){var due=Math.round(ap*pct/100);el.textContent='المستحق للمندوب: '+due.toLocaleString('en-US')+' ر.س ('+pct+'% من '+Math.round(ap).toLocaleString('en-US')+' ر.س — العرض المعتمد)';el.style.color='#059669';}else{el.textContent='يُحتسب المستحق ('+pct+'%) تلقائياً عند اعتماد عرض على المشروع.';el.style.color='#64748b';}}
 function _cdPrefill(sel,close_at,created_at){ if(!sel)return; var o=sel.querySelector('option[value="keep"]'); if(o)o.remove(); sel.value=''; if(close_at&&created_at){ var d=Math.round((new Date(close_at)-new Date(created_at))/86400000); if([7,14,30,60,90,120,180].indexOf(d)>=0) sel.value=String(d); else { var op=document.createElement('option'); op.value='keep'; op.textContent='مدة حالية مخصصة (حتى '+new Date(close_at).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'})+')'; sel.insertBefore(op,sel.firstChild); sel.value='keep'; } } sel.setAttribute('data-init',sel.value); }

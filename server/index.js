@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sub.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/sub.js','/award.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -3393,6 +3393,8 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS pause_reason VARCHAR(20)`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS extra_categories TEXT[]`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS admin_edits TEXT[]`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS award_pending_until TIMESTAMPTZ`);
+    await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS award_prev JSONB`);
     await _mig(`CREATE TABLE IF NOT EXISTS sub_views (sub_id INTEGER NOT NULL, user_id INTEGER NOT NULL, first_at TIMESTAMPTZ DEFAULT NOW(), last_at TIMESTAMPTZ DEFAULT NOW(), n INTEGER DEFAULT 1, PRIMARY KEY (sub_id, user_id))`);
     await _mig(`CREATE TABLE IF NOT EXISTS pause_log (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, client_id INTEGER, bid_id INTEGER, provider_id INTEGER, reason VARCHAR(20), days INTEGER, started_at TIMESTAMPTZ DEFAULT NOW(), ended_at TIMESTAMPTZ, outcome VARCHAR(20), checked_at TIMESTAMPTZ, checked_by VARCHAR(120))`);
     await _mig(`CREATE INDEX IF NOT EXISTS pause_log_r ON pause_log(request_id, started_at DESC)`);
@@ -4951,9 +4953,11 @@ app.get('/api/provider/bids', auth, async (req, res) => {
       CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
       ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted') as contact_unlocked
       , (${_REAL_BID_SQL}) AS real_bid, (${_ASKABLE_REQ_SQL}) AS askable_req, ak.id AS ask_id, ak.status AS ask_status, ak.sends AS ask_sends, ak.last_sent_at AS ask_last_at
-      , (r.status='open' AND r.paused_at IS NOT NULL) AS req_paused, (r.pause_bid_id = b.id) AS pause_chosen
+      , (r.status='open' AND r.paused_at IS NOT NULL) AS req_paused, (r.pause_bid_id = b.id) AS pause_chosen, (r.award_pending_until > NOW()) AS _awp, b.rejected_at AS _rjat
       FROM bids b JOIN requests r ON b.request_id=r.id JOIN users u ON r.client_id=u.id LEFT JOIN bid_accept_asks ak ON ak.bid_id=b.id LEFT JOIN completion_claims cc ON cc.request_id=b.request_id AND cc.provider_id=b.provider_id WHERE b.provider_id=$1 ORDER BY b.created_at DESC LIMIT 200`, [req.user.id]);
     r.rows.forEach(b => { if (b.req_paused && !b.pause_chosen) { b.client_phone = null; b.contact_unlocked = false; } });
+    // خلال مهلة الـ5 دقايق بعد اختيار العميل: المزوّدين يشوفون الوضع زي ما كان (ما يدرون لين يتأكد)
+    r.rows.forEach(b => { if (b._awp) { if (b.status === 'accepted' || (b.status === 'rejected' && !b._rjat)) b.status = 'pending'; if (b.req_status === 'in_progress') b.req_status = 'open'; } delete b._awp; delete b._rjat; });
     r.rows.forEach(b => { const st = _askState(b); b.ask_can = !!st.can; b.ask_why = st.why || null; b.ask_next_at = st.next_at || null; b.ask_left = Math.max(0, ASK_MAX_SENDS - (b.ask_sends||0)); delete b.real_bid; delete b.askable_req; });
     // سجل فتح التواصل (أول مرة فقط لكل مزوّد+مشروع)
     try {
@@ -6248,44 +6252,18 @@ async function nudgeAcceptAsks(){
     } catch(e){}
   }
 }
-app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
+// ═══ الترسية: 5 دقايق سماح — بعدها (أو لما يضغط «اعتمد») توصل الإشعارات وينسجّل السعي ═══
+const AWARD_GRACE_SEC = 300;
+async function _awardFinalize(requestId){
+  // نحجزها مرة وحدة — لو تراجع العميل قبلها ما نلقى شي
+  const cl = (await pool.query('UPDATE requests SET award_pending_until=NULL, award_prev=NULL WHERE id=$1 AND award_pending_until IS NOT NULL AND assigned_provider_id IS NOT NULL RETURNING id', [requestId])).rows[0];
+  if (!cl) return false;
+  const ab = (await pool.query(`SELECT b.*, r.client_id, r.title FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.request_id=$1 AND b.status='accepted' AND b.provider_id=r.assigned_provider_id ORDER BY b.id DESC LIMIT 1`, [requestId])).rows[0];
+  if (!ab) return false;
+  const acceptedBid = ab, bidId = ab.id;
   try {
-    const bidId = parseInt(req.params.id);
-    const bid = await pool.query(`SELECT b.*, r.client_id, r.title FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1`, [bidId]);
-    if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس مشروعك' });
-    if (['held','rejected'].indexOf(bid.rows[0].hold_state) >= 0) return res.status(404).json({ message: 'غير موجود' });
-    const acceptedBid = bid.rows[0];
-    const client = await pool.connect();
-    let _committed = false, _released = false;
-    try {
-      await client.query('BEGIN');
-      // منع الترسية المزدوجة وسباق التزامن: لا نُرسي إلا إذا لم يُسنَد المشروع بعد
-      // مفتوح، أو مغلق (تلقائياً أو من العميل) خلال مهلة ${ACCEPT_AFTER_CLOSE_DAYS} يوم من الإغلاق — العميل يقدر يختار من العروض الموجودة
-      const lock = await client.query(
-        `UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW(),
-             close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL,
-             paused_at=NULL, paused_until=NULL, pause_asked_at=NULL
-         WHERE id=$2 AND assigned_provider_id IS NULL
-           AND ( status NOT IN ('completed','cancelled','closed_auto','expired','closed','rejected','pending_review','review','needs_edit')
-              OR ( status IN ('closed_auto','expired','closed')
-                   AND COALESCE(closed_at, close_at, created_at + INTERVAL '30 days') >= NOW() - ($3 || ' days')::interval ) )
-         RETURNING id`, [acceptedBid.provider_id, acceptedBid.request_id, String(ACCEPT_AFTER_CLOSE_DAYS)]);
-      if (!lock.rows.length) {
-        await client.query('ROLLBACK'); client.release(); _released = true;
-        const cur = (await pool.query('SELECT status, assigned_provider_id FROM requests WHERE id=$1', [acceptedBid.request_id])).rows[0] || {};
-        const msg = cur.assigned_provider_id ? 'تمت ترسية هذا المشروع مسبقاً'
-          : (['closed_auto','expired','closed'].includes(cur.status) ? 'انتهت مهلة الاختيار (' + ACCEPT_AFTER_CLOSE_DAYS + ' يوم من إغلاق المشروع) — أعد فتح المشروع أولاً ثم اقبل العرض'
-          : (cur.status === 'cancelled' ? 'المشروع ملغي' : 'لا يمكن قبول عرض على هذا المشروع في حالته الحالية'));
-        return res.status(400).json({ message: msg });
-      }
-      if (acceptedBid.status === 'rejected') { /* قبول عرض سبق رفضه مسموح — يرجع مقبول */ }
-      await client.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
-      await client.query(`UPDATE bids SET status='rejected', chance_until=NULL WHERE request_id=$1 AND id!=$2`, [acceptedBid.request_id, bidId]);
-      await client.query('COMMIT'); _committed = true;
-      client.release(); _released = true;
       const acceptedProv = await pool.query('SELECT name, email FROM users WHERE id=$1', [acceptedBid.provider_id]);
-      const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [req.user.id]);
+      const clientInfo = await pool.query('SELECT name, phone FROM users WHERE id=$1', [acceptedBid.client_id]);
       const cName = clientInfo.rows[0]?.name||'العميل'; const cPhone = clientInfo.rows[0]?.phone||'';
     const _isTotal = !acceptedBid.price_unit || acceptedBid.price_unit === 'total';
     let _cval = _isTotal ? (parseFloat(acceptedBid.price)||0) : 0;   // سعر المتر/الوحدة ليس قيمة العقد
@@ -6304,7 +6282,7 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
       await pool.query(
         `INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status)
          VALUES ($1,$2,$3,$4,$5,'pending')
-         ON CONFLICT (request_id, provider_id) DO NOTHING`,
+         ON CONFLICT (request_id, provider_id) DO UPDATE SET status='pending', bid_id=EXCLUDED.bid_id, contract_value=EXCLUDED.contract_value, saai_amount=EXCLUDED.saai_amount WHERE saai_ledger.status='cancelled'`,
         [acceptedBid.request_id, acceptedBid.provider_id, bidId, _cval, _fee]);
     } catch(e){ console.error('saai accrue:', e.message); }
     await notify(acceptedBid.provider_id, 'تم قبول عرضك! 🎉', 'العميل قبل عرضك على «'+eEsc(acceptedBid.title)+'» — تواصل معه لإتمام العمل.'+(_fee>0?' سعي المنصة التقديري '+_fee.toLocaleString('en-US')+' ر.س (3% من سعر عرضك) — يُحسب النهائي على مبلغ اتفاقك الفعلي مع العميل، وتعدّله من «محفظة السعي» عند السداد خلال 10 أيام.':' سعي المنصة 3% من مبلغ اتفاقك النهائي مع العميل — حدّده من «محفظة السعي» وسدّده خلال 10 أيام.'), 'bid_accepted', acceptedBid.request_id);
@@ -6323,7 +6301,158 @@ app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
         await pool.query(`UPDATE bid_accept_asks SET status='accepted', responded_at=NOW() WHERE bid_id=$1`, [bidId]);
         await pool.query(`UPDATE bid_accept_asks SET status='other', responded_at=NOW() WHERE request_id=$1 AND bid_id<>$2 AND status='pending'`, [acceptedBid.request_id, bidId]);
       } catch(e){}
-      res.json({ ok: true });
+  } catch(e) { console.error('award finalize:', e.message); }
+  return true;
+}
+let _awardBusy = false;
+async function _awardRun(){
+  if (_awardBusy) return; _awardBusy = true;
+  try { const L = (await pool.query('SELECT id FROM requests WHERE award_pending_until IS NOT NULL AND award_pending_until <= NOW() LIMIT 50')).rows;
+    for (const x of L) await _noSoft(() => _awardFinalize(x.id)); } catch(e) { console.error('award job:', e.message); }
+  _awardBusy = false;
+}
+function _awardKick(){ setTimeout(() => { _awardRun().catch(()=>{}); }, (AWARD_GRACE_SEC + 2) * 1000); }
+setInterval(() => { _awardRun().catch(()=>{}); }, 30000);
+// يرجّع المشروع لوضعه قبل الترسية (من اللقطة المحفوظة، أو تقديرياً للترسيات القديمة)
+async function _awardRevert(rq, opts){
+  opts = opts || {};
+  const prev = rq.award_prev || null;
+  const acc = (await pool.query("SELECT id, provider_id FROM bids WHERE request_id=$1 AND status='accepted'", [rq.id])).rows;
+  let st = prev && prev.status ? prev.status : 'open';
+  if (['in_progress','completed'].includes(st)) st = 'open';
+  await pool.query(`UPDATE requests SET status=$2, assigned_provider_id=NULL, assigned_at=NULL, award_pending_until=NULL, award_prev=NULL,
+      close_reason=$3, close_reason_note=$4, close_auto_kind=$5, close_auto_days=$6,
+      close_at=CASE WHEN $7 AND (close_at IS NULL OR close_at < NOW() + INTERVAL '3 days') THEN NOW() + INTERVAL '7 days' ELSE close_at END
+    WHERE id=$1`, [rq.id, st, prev ? prev.close_reason || null : null, prev ? prev.close_reason_note || null : null, prev ? prev.close_auto_kind || null : null, prev ? prev.close_auto_days || null : null, st === 'open']);
+  if (prev && Array.isArray(prev.bids)) {
+    for (const b of prev.bids) await pool.query('UPDATE bids SET status=$2, chance_until=$3 WHERE id=$1 AND request_id=$4', [b.id, b.status || 'pending', b.chance_until || null, rq.id]);
+    await pool.query("UPDATE bids SET status='pending' WHERE request_id=$1 AND status IN ('accepted','rejected') AND rejected_at IS NULL AND NOT (id = ANY($2::int[]))", [rq.id, prev.bids.map(b => b.id)]);
+  } else {
+    // ترسية قديمة بدون لقطة: اللي رفضها العميل بنفسه عنده rejected_at — ما نرجّعها
+    await pool.query("UPDATE bids SET status='pending' WHERE request_id=$1 AND (status='accepted' OR (status='rejected' AND rejected_at IS NULL AND COALESCE(hold_state,'') <> 'rejected'))", [rq.id]);
+  }
+  if (opts.rejectAccepted) for (const a of acc) await pool.query("UPDATE bids SET status='rejected', rejected_at=NOW() WHERE id=$1", [a.id]);
+  return acc;
+}
+// العميل: «اخترت بالغلط؟ تراجع» / «اعتمد» — خلال 5 دقايق بس
+app.get('/api/requests/:id/award-state', auth, async (req, res) => {
+  try {
+    const r = (await pool.query(`SELECT r.client_id, r.award_pending_until, EXTRACT(EPOCH FROM (r.award_pending_until - NOW()))::int AS left_sec, COALESCE(NULLIF(u.business_name,''),u.name) AS prov
+      FROM requests r LEFT JOIN users u ON u.id=r.assigned_provider_id WHERE r.id=$1`, [parseInt(req.params.id)])).rows[0];
+    if (!r || String(r.client_id) !== String(req.user.id) || !r.award_pending_until || r.left_sec <= 0) return res.json({ pending: false });
+    res.json({ pending: true, left_sec: r.left_sec, provider: r.prov });
+  } catch(e) { res.json({ pending: false }); }
+});
+app.post('/api/requests/:id/award-undo', auth, rateLimiter(20, 600000), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rq = (await pool.query('SELECT * FROM requests WHERE id=$1', [id])).rows[0];
+    if (!rq || String(rq.client_id) !== String(req.user.id)) return res.status(404).json({ message: 'غير موجود' });
+    // نحجزها ذرّياً: لو انتهت المهلة أو انرسلت الإشعارات ما نتراجع
+    const ok = (await pool.query('UPDATE requests SET award_pending_until=NULL WHERE id=$1 AND award_pending_until > NOW() RETURNING id', [id])).rows[0];
+    if (!ok) return res.status(400).json({ message: 'انتهت مهلة التراجع — تواصل مع فريق مناقصة لو تحتاج تغيّر' });
+    await _awardRevert(rq);
+    try { await addTimeline(id, 'award_undo', 'العميل تراجع عن اختياره خلال دقايق'); } catch(e){}
+    res.json({ ok: true });
+  } catch(e) { console.error('award undo:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/requests/:id/award-confirm', auth, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const rq = (await pool.query('SELECT client_id FROM requests WHERE id=$1', [id])).rows[0];
+    if (!rq || String(rq.client_id) !== String(req.user.id)) return res.status(404).json({ message: 'غير موجود' });
+    await _noSoft(() => _awardFinalize(id));
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// الإدارة: «إلغاء الترسية» — اختار بالغلط / ما اتفقوا
+app.get('/api/admin/requests/:id/unaward', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const r = (await pool.query(`SELECT r.id, r.title, r.status, r.assigned_at, r.award_pending_until, COALESCE(NULLIF(u.business_name,''),u.name) AS provider, u.id AS provider_id,
+        (SELECT price FROM bids WHERE request_id=r.id AND status='accepted' ORDER BY id DESC LIMIT 1) AS price,
+        (SELECT COUNT(*)::int FROM bids WHERE request_id=r.id AND status='rejected' AND rejected_at IS NULL) AS restore_n,
+        (SELECT row_to_json(l) FROM (SELECT status, saai_amount FROM saai_ledger WHERE request_id=r.id AND provider_id=r.assigned_provider_id) l) AS saai
+      FROM requests r LEFT JOIN users u ON u.id=r.assigned_provider_id WHERE r.id=$1`, [id])).rows[0];
+    if (!r) return res.status(404).json({ message: 'غير موجود' });
+    res.json(r);
+  } catch(e) { console.error('unaward info:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/requests/:id/unaward', requirePermission('requests.edit'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), b = req.body || {};
+    const why = b.reason === 'nodeal' ? 'nodeal' : 'mistake';
+    const rq = (await pool.query('SELECT * FROM requests WHERE id=$1', [id])).rows[0];
+    if (!rq) return res.status(404).json({ message: 'غير موجود' });
+    if (!rq.assigned_provider_id || rq.status !== 'in_progress') return res.status(400).json({ message: rq.status === 'completed' ? 'المشروع مكتمل — ما يمكن إلغاء ترسيته' : 'المشروع ما فيه ترسية' });
+    const pid = rq.assigned_provider_id;
+    const sl = (await pool.query('SELECT status FROM saai_ledger WHERE request_id=$1 AND provider_id=$2', [id, pid])).rows[0];
+    if (sl && ['submitted','approved'].includes(sl.status)) return res.status(400).json({ message: 'المزوّد سدّد السعي على هالمشروع — راجعه من صفحة السعي أول' });
+    // لو لسا بمهلة الـ5 دقايق: ما وصل أحد شي → نرجّع بهدوء
+    const wasPending = !!(await pool.query('UPDATE requests SET award_pending_until=NULL WHERE id=$1 AND award_pending_until IS NOT NULL RETURNING id', [id])).rows[0];
+    await _awardRevert(rq, { rejectAccepted: why === 'nodeal' });
+    if (sl) await pool.query("UPDATE saai_ledger SET status='cancelled' WHERE request_id=$1 AND provider_id=$2 AND status IN ('pending','deferred')", [id, pid]);
+    const note = _cleanTxt(b.note, 300), t = String(rq.title || '').slice(0, 50);
+    let told = 0;
+    if (!wasPending) {
+      if (why === 'mistake') await notify(pid, 'ℹ️ تحديث على «' + t + '»', 'العميل اختار عرضك بالغلط، فرجّعنا المشروع مفتوح للاختيار. عرضك باقي ويقدر العميل يختاره — نعتذر عن اللبس.', 'request', id);
+      else await notify(pid, 'ℹ️ تحديث على «' + t + '»', 'العميل بلّغنا إنه ما تم الاتفاق بينكم، فرجّعنا المشروع مفتوح للاختيار وألغينا السعي.', 'request', id);
+      if (b.notify_bidders !== false) {
+        const L = (await pool.query("SELECT DISTINCT provider_id FROM bids WHERE request_id=$1 AND status='pending' AND provider_id<>$2", [id, pid])).rows;
+        await _inChunks(L, 8, x => notify(x.provider_id, '🔄 «' + t + '» رجع يستقبل الاختيار', 'العميل ما كمّل مع المزوّد السابق — عرضك باقي وممكن يختاره. تقدر تحسّنه لو تبي.', 'request', id));
+        told = L.length;
+      }
+    }
+    try { await addTimeline(id, 'unaward', why === 'nodeal' ? 'الإدارة ألغت الترسية — ما تم الاتفاق' : 'الإدارة ألغت الترسية — اختيار بالغلط'); } catch(e){}
+    await logAdmin(req, 'unaward', 'request', id, 'إلغاء الترسية (' + (why === 'nodeal' ? 'ما اتفقوا' : 'اختار بالغلط') + ')' + (note ? ': ' + note : ''));
+    const c = (await pool.query('SELECT name, phone FROM users WHERE id=$1', [rq.client_id])).rows[0] || {};
+    const ph = normPhone(c.phone);
+    const wa_link = ph ? `https://wa.me/${ph}?text=${encodeURIComponent(`السلام عليكم ${_drFirst(c.name)}، معك فريق منصة مناقصة 👋\nرجّعنا مشروعك «${rq.title}» ${why === 'nodeal' ? 'مفتوح بعد ما ما تم الاتفاق مع المزوّد' : 'مثل ما طلبت، وألغينا الاختيار اللي صار بالغلط'} ✅\nالعروض رجعت — اختر العرض المناسب لك من هنا:\n${SITE_URL}/dashboard-client.html#detail/${id}`)}` : null;
+    res.json({ ok: true, wa_link, told, silent: wasPending });
+  } catch(e) { console.error('unaward:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.put('/api/bids/:id/accept', auth, clientOnly, async (req, res) => {
+  try {
+    const bidId = parseInt(req.params.id);
+    const bid = await pool.query(`SELECT b.*, r.client_id, r.title FROM bids b JOIN requests r ON b.request_id=r.id WHERE b.id=$1`, [bidId]);
+    if (!bid.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    if (bid.rows[0].client_id !== req.user.id) return res.status(403).json({ message: 'ليس مشروعك' });
+    if (['held','rejected'].indexOf(bid.rows[0].hold_state) >= 0) return res.status(404).json({ message: 'غير موجود' });
+    const acceptedBid = bid.rows[0];
+    const client = await pool.connect();
+    let _committed = false, _released = false;
+    try {
+      await client.query('BEGIN');
+      // منع الترسية المزدوجة وسباق التزامن: لا نُرسي إلا إذا لم يُسنَد المشروع بعد
+      // مفتوح، أو مغلق (تلقائياً أو من العميل) خلال مهلة ${ACCEPT_AFTER_CLOSE_DAYS} يوم من الإغلاق — العميل يقدر يختار من العروض الموجودة
+      // نحفظ الوضع قبل الترسية عشان «تراجع» يرجّعه بالضبط
+      const _pr = (await client.query('SELECT status, close_reason, close_reason_note, close_auto_kind, close_auto_days FROM requests WHERE id=$1 FOR UPDATE', [acceptedBid.request_id])).rows[0] || {};
+      _pr.bids = (await client.query('SELECT id, status, chance_until FROM bids WHERE request_id=$1', [acceptedBid.request_id])).rows;
+      const lock = await client.query(
+        `UPDATE requests SET status='in_progress', assigned_provider_id=$1, assigned_at=NOW(), award_pending_until=NOW() + ($4 || ' seconds')::interval, award_prev=$5::jsonb,
+             close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL,
+             paused_at=NULL, paused_until=NULL, pause_asked_at=NULL
+         WHERE id=$2 AND assigned_provider_id IS NULL
+           AND ( status NOT IN ('completed','cancelled','closed_auto','expired','closed','rejected','pending_review','review','needs_edit')
+              OR ( status IN ('closed_auto','expired','closed')
+                   AND COALESCE(closed_at, close_at, created_at + INTERVAL '30 days') >= NOW() - ($3 || ' days')::interval ) )
+         RETURNING id`, [acceptedBid.provider_id, acceptedBid.request_id, String(ACCEPT_AFTER_CLOSE_DAYS), String(AWARD_GRACE_SEC), JSON.stringify(_pr)]);
+      if (!lock.rows.length) {
+        await client.query('ROLLBACK'); client.release(); _released = true;
+        const cur = (await pool.query('SELECT status, assigned_provider_id FROM requests WHERE id=$1', [acceptedBid.request_id])).rows[0] || {};
+        const msg = cur.assigned_provider_id ? 'تمت ترسية هذا المشروع مسبقاً'
+          : (['closed_auto','expired','closed'].includes(cur.status) ? 'انتهت مهلة الاختيار (' + ACCEPT_AFTER_CLOSE_DAYS + ' يوم من إغلاق المشروع) — أعد فتح المشروع أولاً ثم اقبل العرض'
+          : (cur.status === 'cancelled' ? 'المشروع ملغي' : 'لا يمكن قبول عرض على هذا المشروع في حالته الحالية'));
+        return res.status(400).json({ message: msg });
+      }
+      if (acceptedBid.status === 'rejected') { /* قبول عرض سبق رفضه مسموح — يرجع مقبول */ }
+      await client.query(`UPDATE bids SET status='accepted' WHERE id=$1`, [bidId]);
+      await client.query(`UPDATE bids SET status='rejected', chance_until=NULL WHERE request_id=$1 AND id!=$2`, [acceptedBid.request_id, bidId]);
+      await client.query('COMMIT'); _committed = true;
+      client.release(); _released = true;
+      // الإشعارات والسعي تتأجل 5 دقايق (العميل يقدر يتراجع بهدوء خلالها) — _awardFinalize يرسلها
+      res.json({ ok: true, pending_sec: AWARD_GRACE_SEC });
+      _awardKick();
     } catch(e) {
       // التراجع على نفس الاتصال وإرجاعه للمجمّع دائماً (كان يعلّق الاتصال ويقفل المشروع)
       if (!_committed) { try { await client.query('ROLLBACK'); } catch(_) {} }

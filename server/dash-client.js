@@ -1061,6 +1061,7 @@ function loadBids(id){
       if(!bids.length){el.innerHTML=emptyH('لا يوجد عروض بعد','سيصلك إشعار عند وصول أول عرض');return;}
       window._currentBids=bids;
       window._curBids=bids;
+      if(window.mnqAwardMount) mnqAwardMount(id, el, function(){ if(typeof openDetail==='function'){ try{openDetail(id);}catch(e){ loadBids(id); } } else loadBids(id); if(typeof loadHome==='function')loadHome(); });
       setTimeout(function(){ try{ if(window._curReq&&String(window._curReq.id)===String(id)) _pauseRender(window._curReq); }catch(e){} },0);
       // «سعري مبدئي»: معلومات يطلبها المزوّدين — بطاقة وحدة مجمّعة فوق العروض
       var ndSlot=document.getElementById('bids-needs');
@@ -1185,7 +1186,7 @@ function acceptBid(bidId,reqId){
   var _q=(_cr&&String(_cr.id)===String(reqId)&&_isClosedSt(_cr.status))
     ?(_cr.closed_by_client?'أنت أغلقت هذا المشروع من قبل. متأكد تبي تقبل هذا العرض؟ بيتحول المشروع لـ«قيد التنفيذ».':(_cr.closed_by_admin?'هذا المشروع أغلقته الإدارة. متأكد تبي تقبل هذا العرض؟':'مشروعك مغلق، بس تقدر تختار من العروض الموجودة. تأكيد قبول هذا العرض؟'))
     :'هل تؤكد قبول هذا العرض؟';
-  if(!confirm(_q))return;
+  var _go=function(){
   window._acceptingBid=true;
   showToast('جاري القبول...','info');
   fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr()))
@@ -1193,6 +1194,11 @@ function acceptBid(bidId,reqId){
     .then(function(){showToast('تم قبول العرض','success');var cb=document.getElementById('closed-banner');if(cb)cb.remove();loadBids(reqId);loadHome();})
     .catch(function(err){showToast((err&&err.srv&&err.message)?err.message:'تعذّر القبول — تحقّق من اتصالك','error');})
     .finally(function(){window._acceptingBid=false;});
+  };
+  var _b=(window._curBids||[]).find(function(x){return String(x.id)===String(bidId);})||{};
+  var _oth=(window._curBids||[]).filter(function(x){return String(x.id)!==String(bidId)&&x.status!=='rejected'&&!x.is_hidden;}).length;
+  if(window.mnqAwardConfirm){ mnqAwardConfirm({name:_b.provider_business_name||_b.provider_name,price:_b.price,unit:_b.price_unit,days:_b.days,others:_oth,note:(_q&&_q!=='هل تؤكد قبول هذا العرض؟')?_q:''}).then(function(ok){ if(ok)_go(); }); }
+  else if(confirm(_q||'هل تؤكد قبول هذا العرض؟')) _go();
 }
 function rejectBid(bidId,reqId){
   var b=(window._curBids||[]).find(function(x){return String(x.id)===String(bidId);})||{};

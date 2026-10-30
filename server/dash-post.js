@@ -748,6 +748,7 @@ function loadBids(id){
       if(!bids.length){el.innerHTML=emptyH('لا يوجد عروض بعد','سيصلك إشعار عند وصول أول عرض');return;}
       window._currentBids=bids;
       window._curBids=bids;
+      if(window.mnqAwardMount) mnqAwardMount(id, el, function(){ if(typeof openDetail==='function'){ try{openDetail(id);}catch(e){ loadBids(id); } } else loadBids(id); if(typeof loadHome==='function')loadHome(); });
       // زر مقارنة العروض (يظهر عند وجود عرضين فأكثر)
       var cmpSlot=document.getElementById('bids-compare');
       if(!cmpSlot){
@@ -839,7 +840,8 @@ function loadBids(id){
 // ═══════════════════════════════════
 function acceptBid(bidId,reqId){
   if(window._acceptingBid)return;              // حماية من الضغط المزدوج
-  if(!confirm('هل تؤكد قبول هذا العرض؟'))return;
+  var _q='';
+  var _go=function(){
   window._acceptingBid=true;
   showToast('جاري القبول...','info');
   fetch(API+'/api/bids/'+bidId+'/accept',Object.assign({method:'PUT'},hdr()))
@@ -847,6 +849,11 @@ function acceptBid(bidId,reqId){
     .then(function(){showToast('تم قبول العرض','success');loadBids(reqId);loadHome();})
     .catch(function(){showToast('تعذّر القبول — تحقّق من اتصالك','error');})
     .finally(function(){window._acceptingBid=false;});
+  };
+  var _b=(window._curBids||[]).find(function(x){return String(x.id)===String(bidId);})||{};
+  var _oth=(window._curBids||[]).filter(function(x){return String(x.id)!==String(bidId)&&x.status!=='rejected'&&!x.is_hidden;}).length;
+  if(window.mnqAwardConfirm){ mnqAwardConfirm({name:_b.provider_business_name||_b.provider_name,price:_b.price,unit:_b.price_unit,days:_b.days,others:_oth,note:(_q&&_q!=='هل تؤكد قبول هذا العرض؟')?_q:''}).then(function(ok){ if(ok)_go(); }); }
+  else if(confirm(_q||'هل تؤكد قبول هذا العرض؟')) _go();
 }
 function rejectBid(bidId,reqId){
   if(!confirm('هل تؤكد رفض هذا العرض؟'))return;

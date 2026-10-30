@@ -597,6 +597,7 @@ async function load(){
     _hidBids=_bids.filter(function(b){return !!b.is_hidden;}); _bids=_bids.filter(function(b){return !b.is_hidden;});
     render();
     try{ _invBanner(); }catch(e){}
+    try{ if(window.mnqAwardMount&&_isOwnerView()){ var _bl=document.getElementById('bids-list'); if(_bl) mnqAwardMount(_rid,_bl,function(){ load(); }); } }catch(e){}
     // عدّاد الزيارات: مرة وحدة لكل جلسة (ولو سجّل دخوله بعدها نعيدها عشان تنحسب باسمه)
     try{ var _vk='pv_'+_rid+(_tk?'u':'a')+(_INV?'i':''); if(!sessionStorage.getItem(_vk)){ sessionStorage.setItem(_vk,'1'); fetch(API+'/api/requests/'+_rid+'/view'+(_INV?'?inv=1':''),{method:'POST',headers:_tk?{'Authorization':'Bearer '+_tk}:{}}).catch(function(){}); } }catch(e){}
   }catch(e){
@@ -1608,10 +1609,13 @@ function shareProject(){
 async function acceptBid(bidId){
   var _r=_req||{};
   var _q=_pjClosed(_r.status)?(_r.closed_by_client?'أنت أغلقت هذا المشروع من قبل. متأكد تبي تقبل هذا العرض؟ بيتحول المشروع لـ«قيد التنفيذ».':(_r.closed_by_admin?'هذا المشروع أغلقته الإدارة. متأكد تبي تقبل هذا العرض؟':'مشروعك مغلق، بس تقدر تختار من العروض الموجودة. تأكيد قبول هذا العرض؟')):'هل تؤكد قبول هذا العرض؟';
-  if(!confirm(_q))return;
+  var _b=(_bids||[]).filter(function(x){return String(x.id)===String(bidId);})[0]||{};
+  var _oth=(_bids||[]).filter(function(x){return String(x.id)!==String(bidId)&&x.status!=='rejected';}).length;
+  if(window.mnqAwardConfirm){ if(!(await mnqAwardConfirm({name:_b.provider_business_name||_b.provider_name,price:_b.price,unit:_b.price_unit,days:_b.days,others:_oth,note:(_q&&_q!=='هل تؤكد قبول هذا العرض؟')?_q:''})))return; }
+  else if(!confirm(_q))return;
   try{
     var r=await fetch(API+'/api/bids/'+bidId+'/accept',{method:'PUT',headers:{'Authorization':'Bearer '+getToken(),'Content-Type':'application/json'}});
-    if(r.ok){alert('تم قبول العرض');load();}
+    if(r.ok){_pjToast('✅ تم اختيار العرض');load();}
     else{var d=await r.json();alert(d.message||'تعذر القبول');}
   }catch(e){alert('تعذر الاتصال');}
 }
@@ -1795,6 +1799,6 @@ function fmtIns(id,kind){
 }
 </script>
 <script src="/dash-rj.js" defer></script>
-<script src="/guide.js?v=1" defer></script><script src="/bidban.js?v=1" defer></script>
+<script src="/guide.js?v=1" defer></script><script src="/bidban.js?v=1" defer></script><script src="/award.js?v=1" defer></script>
 </body>
 </html>
