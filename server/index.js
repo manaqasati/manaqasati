@@ -3393,6 +3393,7 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS pause_reason VARCHAR(20)`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS extra_categories TEXT[]`);
     await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS admin_edits TEXT[]`);
+    await _mig(`CREATE TABLE IF NOT EXISTS sub_views (sub_id INTEGER NOT NULL, user_id INTEGER NOT NULL, first_at TIMESTAMPTZ DEFAULT NOW(), last_at TIMESTAMPTZ DEFAULT NOW(), n INTEGER DEFAULT 1, PRIMARY KEY (sub_id, user_id))`);
     await _mig(`CREATE TABLE IF NOT EXISTS pause_log (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, client_id INTEGER, bid_id INTEGER, provider_id INTEGER, reason VARCHAR(20), days INTEGER, started_at TIMESTAMPTZ DEFAULT NOW(), ended_at TIMESTAMPTZ, outcome VARCHAR(20), checked_at TIMESTAMPTZ, checked_by VARCHAR(120))`);
     await _mig(`CREATE INDEX IF NOT EXISTS pause_log_r ON pause_log(request_id, started_at DESC)`);
     await _mig(`CREATE TABLE IF NOT EXISTS support_threads (id SERIAL PRIMARY KEY, user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE, status VARCHAR(12) DEFAULT 'open', topic VARCHAR(40), link_kind VARCHAR(8), link_id INTEGER, link_title VARCHAR(160), assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL, user_unread INTEGER DEFAULT 0, admin_unread INTEGER DEFAULT 0, last_msg_at TIMESTAMPTZ, last_user_at TIMESTAMPTZ, last_admin_at TIMESTAMPTZ, admin_notified_at TIMESTAMPTZ, first_reply_at TIMESTAMPTZ, solved_at TIMESTAMPTZ, rating SMALLINT, rated_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
@@ -12535,16 +12536,33 @@ async function _subAudRows(sub, scope, cities){
     WHERE u.role='provider' AND u.is_active=TRUE AND u.id<>$2 AND ${cat} AND (${cityC} OR ${isP})
       AND NOT EXISTS(SELECT 1 FROM user_blocks b WHERE (b.blocker_id=u.id AND b.blocked_id=$2) OR (b.blocker_id=$2 AND b.blocked_id=u.id))`, params)).rows;
 }
+// يوصّل طلب «مقاول باطن» لمزوّد واحد (إشعار و/أو إيميل) ويتسجّل في ntrack (kind=sub_new) عشان الإدارة تشوف الوصول
+async function _subPush(sub, u, ownNm, ch){
+  const t = '🤝 ' + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category, url = '/dashboard-provider.html#sub/' + sub.id;
+  let tid = null, n = 0, e = 0;
+  try {
+    if (ch.notify) { tid = await notify(u.id, t, '«' + _subT(sub).slice(0, 70) + '»' + (sub.city ? ' · ' + sub.city : '') + ' — من ' + (ownNm || 'مقاول') + '. قدّم عرضك', 'sub', sub.id, { kind: 'sub_new', url }); n = 1; }
+    if (ch.email && u.email && !/@manaqasa\.local$/i.test(u.email)) {
+      const own = !tid;
+      if (own) tid = (await pool.query("INSERT INTO ntrack (user_id, kind, ref_id) VALUES ($1,'sub_new',$2) RETURNING id", [u.id, sub.id])).rows[0].id;
+      const et = t + (sub.city ? ' في ' + sub.city : '');
+      const p = sendEmail(u.email, et, emailTpl(et, `<p>مرحباً${u.nm ? ' ' + eEsc(u.nm) : ''}،</p><p><strong>${eEsc(ownNm || 'مقاول')}</strong> يحتاج <strong>${eEsc(sub.category)}</strong>${sub.city ? ' في ' + eEsc(sub.city) : ''}:</p><div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:14px;margin:14px 0">${(sub.title ? '<b>' + eEsc(sub.title) + '</b><br>' : '') + eEsc(String(sub.description).slice(0, 300))}</div><p>قدّم سعرك من حسابك — ويظهر لك رقمه بعد العرض.</p>`, 'شوف الطلب وقدّم', SITE_URL + url), { uid: u.id, kind: 'sub_new', tid });
+      if (ch.wait) { const ok = await p.catch(() => false); if (ok) e = 1; else if (own) await pool.query('DELETE FROM ntrack WHERE id=$1', [tid]).catch(()=>{}); }
+      else { p.catch(()=>{}); e = 1; }
+    }
+  } catch(err) { console.error('sub push:', err.message); }
+  return { n, e };
+}
 async function _subNotify(sub, partnersOnly){
   try {
     const own = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [sub.provider_id])).rows[0] || {};
     const rows = await _subAudRows(sub);
+    const done = new Set((await pool.query("SELECT DISTINCT user_id FROM ntrack WHERE ref_id=$1 AND kind='sub_new'", [sub.id])).rows.map(x => x.user_id));
     for (const u of rows) {
+      if (done.has(u.id)) continue; // وصله من قبل (مثلاً الإدارة أرسلت له)
       if (partnersOnly && !u.is_p) continue;
       if (!partnersOnly && u.is_p && sub.partners_first) continue; // وصلهم من قبل
-      if (u.email && !/@manaqasa\.local$/i.test(u.email)) { const t = '🤝 ' + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category + (sub.city ? ' في ' + sub.city : '');
-        sendEmail(u.email, t, emailTpl(t, `<p>مرحباً${u.nm ? ' ' + eEsc(u.nm) : ''}،</p><p><strong>${eEsc(own.nm || 'مقاول')}</strong> يحتاج <strong>${eEsc(sub.category)}</strong>${sub.city ? ' في ' + eEsc(sub.city) : ''}:</p><div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:14px;margin:14px 0">${(sub.title ? '<b>' + eEsc(sub.title) + '</b><br>' : '') + eEsc(String(sub.description).slice(0, 300))}</div><p>قدّم سعرك من حسابك — ويظهر لك رقمه بعد العرض.</p>`, 'شوف الطلب وقدّم', SITE_URL + '/dashboard-provider.html#sub/' + sub.id)).catch(()=>{}); }
-      notify(u.id, '🤝 ' + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category, '«' + _subT(sub).slice(0, 70) + '»' + (sub.city ? ' · ' + sub.city : '') + ' — من ' + (own.nm || 'مقاول') + '. قدّم عرضك', 'sub', sub.id, { kind: 'sub_new', url: '/dashboard-provider.html#sub/' + sub.id }).catch(()=>{});
+      await _subPush(sub, u, own.nm, { notify: true, email: true });
     }
   } catch(e){ console.error('sub-notify:', e.message); }
 }
@@ -12644,6 +12662,8 @@ app.get('/api/sub/:id', auth, providerOnly, async (req, res) => {
         GROUP BY m.other, u.business_name, u.name, u.profile_image ORDER BY MAX(m.created_at) DESC`, [id, s.provider_id])).rows;
     } else {
       out.unread = (await pool.query('SELECT COUNT(*)::int c FROM sub_msgs WHERE sub_id=$1 AND receiver_id=$2 AND read_at IS NULL', [id, me])).rows[0].c;
+      // «شافه»: نسجّل إن المزوّد دخل صفحة الطلب (للإدارة بس)
+      pool.query(`INSERT INTO sub_views (sub_id, user_id) VALUES ($1,$2) ON CONFLICT (sub_id, user_id) DO UPDATE SET n=sub_views.n+1, last_at=NOW() WHERE sub_views.last_at < NOW() - INTERVAL '10 minutes'`, [id, me]).catch(()=>{});
     }
     if (isOwner) {
       out.offers = (await pool.query(`SELECT o.id, o.provider_id, o.price, o.days, o.note, o.status, o.created_at, COALESCE(NULLIF(u.business_name,''),u.name) AS name, u.phone, u.city, u.profile_image,
@@ -13000,22 +13020,32 @@ app.post('/api/sub/:id/rate', auth, providerOnly, rateLimiter(20, 3600000), asyn
 // ═══ الإدارة: طلبات مقاول باطن ═══
 app.get('/api/admin/sub', requirePermission('requests.view'), async (req, res) => {
   try {
-    const st = ['open','awarded','closed','review','needs_edit','rejected'].includes(req.query.status) ? req.query.status : null, q = String(req.query.q || '').trim().slice(0, 60);
+    const noof = req.query.status === 'nooffer';
+    const st = ['open','awarded','closed','review','needs_edit','rejected'].includes(req.query.status) ? req.query.status : (noof ? 'open' : null), q = String(req.query.q || '').trim().slice(0, 60);
     const k = (await pool.query(`SELECT COUNT(*)::int AS total, COUNT(*) FILTER (WHERE status='open')::int AS open, COUNT(*) FILTER (WHERE status='awarded')::int AS awarded,
         COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days')::int AS last30,
         (SELECT COUNT(*)::int FROM sub_offers) AS offers, (SELECT COALESCE(SUM(o.price),0)::bigint FROM sub_requests s2 JOIN sub_offers o ON o.id=s2.awarded_offer_id) AS value,
         (SELECT COUNT(*)::int FROM partners) AS partners, (SELECT COUNT(DISTINCT provider_id)::int FROM sub_requests) AS owners,
-        (SELECT ROUND(AVG(stars)::numeric,1) FROM sub_ratings) AS avg_rate, (SELECT COUNT(*)::int FROM sub_ratings) AS rates FROM sub_requests`)).rows[0];
+        (SELECT ROUND(AVG(stars)::numeric,1) FROM sub_ratings) AS avg_rate, (SELECT COUNT(*)::int FROM sub_ratings) AS rates,
+        COUNT(*) FILTER (WHERE status='open' AND created_at < NOW() - INTERVAL '24 hours' AND NOT EXISTS(SELECT 1 FROM sub_offers o WHERE o.sub_id=sub_requests.id))::int AS nooffer,
+        (SELECT ROUND(AVG(c))::int FROM (SELECT COUNT(DISTINCT t.user_id) c FROM ntrack t JOIN sub_requests z ON z.id=t.ref_id WHERE t.kind='sub_new' AND z.created_at > NOW() - INTERVAL '30 days' GROUP BY t.ref_id) a) AS avg_reach,
+        (SELECT ROUND(100.0 * COUNT(DISTINCT (v.sub_id, v.user_id)) / NULLIF((SELECT COUNT(DISTINCT (t.ref_id, t.user_id)) FROM ntrack t JOIN sub_requests z ON z.id=t.ref_id WHERE t.kind='sub_new' AND z.created_at > NOW() - INTERVAL '30 days'),0))::int
+           FROM sub_views v JOIN sub_requests z ON z.id=v.sub_id WHERE z.created_at > NOW() - INTERVAL '30 days' AND EXISTS(SELECT 1 FROM ntrack t WHERE t.kind='sub_new' AND t.ref_id=v.sub_id AND t.user_id=v.user_id)) AS view_rate
+      FROM sub_requests`)).rows[0];
     const list = (await pool.query(`SELECT s.id, s.title, s.category, s.city, s.description, s.status, s.created_at, s.budget, s.work_state,
         COALESCE(NULLIF(u.business_name,''),u.name) AS owner, u.phone AS owner_phone, u.id AS owner_id,
         (SELECT COUNT(*)::int FROM sub_offers o WHERE o.sub_id=s.id) AS offers,
         (SELECT json_build_object('name', COALESCE(NULLIF(w.business_name,''),w.name), 'price', o.price, 'id', w.id) FROM sub_offers o JOIN users w ON w.id=o.provider_id WHERE o.id=s.awarded_offer_id) AS winner,
         (SELECT COUNT(*)::int FROM sub_msgs m WHERE m.sub_id=s.id) AS msgs,
         (SELECT COUNT(*)::int FROM reports r WHERE r.type LIKE 'مقاول باطن%' AND r.reason LIKE '%طلب #' || s.id || ':%') AS reports,
-        (SELECT status FROM saai_ledger l WHERE l.sub_id=s.id) AS saai_status
+        (SELECT status FROM saai_ledger l WHERE l.sub_id=s.id) AS saai_status,
+        (SELECT COUNT(DISTINCT t.user_id)::int FROM ntrack t WHERE t.ref_id=s.id AND t.kind IN ('sub_new','sub_wa')) AS reached,
+        (SELECT COUNT(*)::int FROM sub_views v WHERE v.sub_id=s.id) AS viewed,
+        (SELECT COUNT(*)::int FROM sub_views v WHERE v.sub_id=s.id AND NOT EXISTS(SELECT 1 FROM sub_offers o WHERE o.sub_id=s.id AND o.provider_id=v.user_id)) AS viewed_no,
+        (EXTRACT(EPOCH FROM NOW() - s.created_at)/3600)::int AS age_h, s.extra_categories
       FROM sub_requests s JOIN users u ON u.id=s.provider_id
-      WHERE ($1::text IS NULL OR s.status=$1) AND ($2='' OR s.description ILIKE '%'||$2||'%' OR s.category ILIKE '%'||$2||'%' OR u.name ILIKE '%'||$2||'%' OR u.business_name ILIKE '%'||$2||'%')
-      ORDER BY s.created_at DESC LIMIT 200`, [st, q])).rows;
+      WHERE ($1::text IS NULL OR s.status=$1) AND (NOT $3::boolean OR (s.created_at < NOW() - INTERVAL '24 hours' AND NOT EXISTS(SELECT 1 FROM sub_offers o WHERE o.sub_id=s.id))) AND ($2='' OR s.description ILIKE '%'||$2||'%' OR s.category ILIKE '%'||$2||'%' OR u.name ILIKE '%'||$2||'%' OR u.business_name ILIKE '%'||$2||'%')
+      ORDER BY s.created_at DESC LIMIT 200`, [st, q, noof])).rows;
     res.json({ kpi: Object.assign(k, { fee: Math.round((parseInt(k.value) || 0) * 0.03) }), list });
   } catch(e) { console.error('admin sub:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -13041,6 +13071,131 @@ app.post('/api/admin/sub/:id/close', requirePermission('requests.edit'), async (
     notify(r.rows[0].provider_id, 'ℹ️ الإدارة أغلقت طلبك', '«' + String(r.rows[0].description).slice(0, 60) + '» — تواصل مع الدعم لو عندك سؤال', 'sub', parseInt(req.params.id)).catch(()=>{});
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ الإدارة: وصول طلب «مقاول باطن» — مين وصله · مين فتح · مين شافه · مين قدّم + إرسال لمزوّدين أكثر ═══
+const _SUBR_SQL = `SELECT t.user_id, MIN(t.created_at) FILTER (WHERE t.kind='sub_new') AS first_at,
+    BOOL_OR(t.kind='sub_new') AS reached, BOOL_OR(t.kind='sub_new' AND t.nid IS NOT NULL) AS notified, BOOL_OR(t.kind='sub_new' AND t.email_id IS NOT NULL) AS emailed,
+    BOOL_OR(t.kind='sub_new' AND (t.opened_at IS NOT NULL OR e.status IN ('opened','clicked'))) AS opened, BOOL_OR(t.kind='sub_wa') AS wa, BOOL_OR(t.kind='sub_rem') AS reminded
+  FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id WHERE t.ref_id=$1 AND t.kind IN ('sub_new','sub_wa','sub_rem') GROUP BY t.user_id`;
+async function _subReachMap(id){
+  const m = {};
+  for (const r of (await pool.query(_SUBR_SQL, [id])).rows) m[r.user_id] = r;
+  for (const v of (await pool.query('SELECT user_id, n, last_at FROM sub_views WHERE sub_id=$1', [id])).rows) m[v.user_id] = Object.assign(m[v.user_id] || { user_id: v.user_id }, { views: v.n, viewed_at: v.last_at });
+  for (const o of (await pool.query('SELECT provider_id, price, status FROM sub_offers WHERE sub_id=$1', [id])).rows) m[o.provider_id] = Object.assign(m[o.provider_id] || { user_id: o.provider_id }, { offer: o.price, offer_st: o.status });
+  return m;
+}
+const _subSt = r => r.offer != null ? 'offered' : (r.views ? 'viewed' : (r.opened ? 'opened' : (r.reached || r.wa ? 'reached' : 'none')));
+app.get('/api/admin/sub/:id/reach', requirePermission('requests.view'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const s = (await pool.query(`SELECT s.*, COALESCE(NULLIF(u.business_name,''),u.name) AS owner_nm, u.phone AS owner_phone FROM sub_requests s JOIN users u ON u.id=s.provider_id WHERE s.id=$1`, [id])).rows[0];
+    if (!s) return res.status(404).json({ message: 'غير موجود' });
+    const m = await _subReachMap(id); delete m[s.provider_id];
+    const ids = Object.keys(m).map(Number);
+    const us = ids.length ? (await pool.query(`SELECT id, COALESCE(NULLIF(business_name,''),name) AS name, city, specialties, EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$2 AND p.partner_id=users.id) AS is_p FROM users WHERE id = ANY($1::int[])`, [ids, s.provider_id])).rows : [];
+    const cats = _subCats(s), ORD = { offered: 0, viewed: 1, opened: 2, reached: 3, none: 4 };
+    const list = us.map(u => { const r = m[u.id]; return { id: u.id, name: u.name, city: u.city, cat: (u.specialties || []).find(c => cats.includes(c)) || (u.specialties || [])[0] || '', is_p: u.is_p, st: _subSt(r), views: r.views || 0, offer: r.offer, notified: !!r.notified, emailed: !!r.emailed, wa: !!r.wa, reminded: !!r.reminded, first_at: r.first_at }; })
+      .sort((a, b) => (ORD[a.st] - ORD[b.st]) || String(a.name || '').localeCompare(String(b.name || ''), 'ar'));
+    const all = Object.values(m);
+    const f = { reached: all.filter(r => r.reached || r.wa).length, opened: all.filter(r => r.opened || r.views || r.offer != null).length, viewed: all.filter(r => r.views || r.offer != null).length, offered: all.filter(r => r.offer != null).length };
+    const remindable = s.status === 'open' ? all.filter(r => r.offer == null && !r.reminded && (r.views || r.opened)).length : 0;
+    const log = (await pool.query(`SELECT action, details, admin_name, created_at FROM admin_logs WHERE target_type='sub' AND target_id=$1 AND action IN ('sub_review','sub_send','sub_remind','sub_wa','sub_edit','sub_close') ORDER BY id DESC LIMIT 15`, [id])).rows;
+    let k = s.share_key; if (!k) { k = crypto.randomBytes(6).toString('hex'); await pool.query('UPDATE sub_requests SET share_key=$1 WHERE id=$2 AND share_key IS NULL', [k, id]); k = (await pool.query('SELECT share_key FROM sub_requests WHERE id=$1', [id])).rows[0].share_key; }
+    const nm = _drFirst(s.owner_nm), short = _subT(s).slice(0, 60), link = SITE_URL + '/dashboard-provider.html#sub/' + id;
+    const owner_wa = _subWa(s.owner_phone, nm, f.offered
+      ? `وصلك ${f.offered === 1 ? 'عرض' : f.offered + ' عروض'} على طلبك في «مقاول باطن» («${short}») — شوفها واختر اللي يناسبك:\n${link}`
+      : `بخصوص طلبك في «مقاول باطن» («${short}») — وصل لـ ${f.reached || 'عدد من'} فنيين وما وصلك عرض للحين.\nتعرف فني ممتاز؟ أرسل له رابط طلبك يسجّل ويقدّم سعره:\n${SITE_URL}/s/${k}\n\nوتقدر تتابع طلبك من هنا:\n${link}`);
+    res.json({ id, status: s.status, cats, city: s.city, funnel: f, remindable, list: list.slice(0, 500), log, owner_wa, age_h: Math.round((Date.now() - new Date(s.created_at).getTime()) / 36e5) });
+  } catch(e) { console.error('sub reach:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/sub/:id/reach/remind', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
+    if (!s || s.status !== 'open') return res.status(400).json({ message: 'الطلب مو مفتوح' });
+    const m = await _subReachMap(id); delete m[s.provider_id];
+    const L = Object.values(m).filter(r => r.offer == null && !r.reminded && (r.views || r.opened)).map(r => r.user_id);
+    if (!_bulkClaim('subrem', [id, L])) return _bulkDup(res);
+    let n = 0;
+    for (const uid of L) { try { await notify(uid, '⏰ لسا تقدر تقدّم على طلب «مقاول باطن»', '«' + _subT(s).slice(0, 60) + '»' + (s.city ? ' · ' + s.city : '') + ' — شفته وما قدّمت للحين، قدّم سعرك قبل ما يختار', 'sub', id, { kind: 'sub_rem', url: '/dashboard-provider.html#sub/' + id }); n++; } catch(e){} }
+    await logAdmin(req, 'sub_remind', 'sub', id, 'تذكير اللي شافوه وما قدّموا (' + n + ')');
+    res.json({ ok: true, n });
+  } catch(e) { console.error('sub remind:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+function _subScopeCats(s, q){
+  const raw = String(q.cats || '').split(',').map(x => x.trim()).filter(c => c && CATEGORIES.includes(c) && c !== 'أخرى');
+  return raw.length ? [...new Set(raw)].slice(0, 8) : _subCats(s);
+}
+// المرشّحين للإرسال (تخصصات + نطاق) مع حالة كل واحد على هالطلب
+app.get('/api/admin/sub/:id/candidates', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
+    if (!s) return res.status(404).json({ message: 'غير موجود' });
+    const cats = _subScopeCats(s, req.query), scope = ['city','region','cities','all'].includes(req.query.scope) ? req.query.scope : 'city';
+    const cities = String(req.query.cities || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 40);
+    const rows = await _subAudRows(Object.assign({}, s, { category: cats[0], extra_categories: cats.slice(1) }), scope, cities);
+    const m = await _subReachMap(id);
+    const ids = rows.map(r => r.id);
+    const info = ids.length ? (await pool.query(`SELECT u.id, u.city, u.specialties, (u.phone IS NOT NULL AND u.phone<>'') AS has_ph, (u.email IS NOT NULL AND u.email NOT ILIKE '%@manaqasa.local') AS has_em,
+        COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS rating, GREATEST(u.last_seen_at, u.last_active) AS last_login FROM users u WHERE u.id = ANY($1::int[])`, [ids])).rows : [];
+    const I = {}; info.forEach(x => I[x.id] = x);
+    const list = rows.map(r => { const x = I[r.id] || {}, q = m[r.id] || {}; return { id: r.id, name: r.nm, is_p: r.is_p, city: x.city || '', cat: (x.specialties || []).find(c => cats.includes(c)) || cats[0], rating: parseFloat(x.rating) || 0,
+        has_ph: !!x.has_ph, has_em: !!x.has_em, st: _subSt(q), notified: !!q.notified, emailed: !!q.emailed, wa: !!q.wa, last: x.last_login }; });
+    const same = c => s.city && c === s.city ? 0 : 1, ord = { none: 0, reached: 1, opened: 1, viewed: 2, offered: 3 };
+    list.sort((a, b) => (ord[a.st] - ord[b.st]) || (same(a.city) - same(b.city)) || ((b.last ? new Date(b.last).getTime() : 0) - (a.last ? new Date(a.last).getTime() : 0)) || (b.rating - a.rating));
+    const out = { cats, scope, total: list.length, fresh: list.filter(x => x.st === 'none').length, list: list.slice(0, 400).map(x => { delete x.last; return x; }) };
+    // عدد المزوّدين لكل تخصص بنفس النطاق (لقائمة «أضف تخصص»)
+    if (req.query.counts) {
+      const A = await _subAudRows(Object.assign({}, s, { category: CATEGORIES[0], extra_categories: CATEGORIES.slice(1) }), scope, cities);
+      const sp = A.length ? (await pool.query('SELECT COALESCE(specialties, ARRAY[]::text[]) || COALESCE(notify_categories, ARRAY[]::text[]) AS c FROM users WHERE id = ANY($1::int[])', [A.map(x => x.id)])).rows : [];
+      const C = {}; sp.forEach(r => [...new Set(r.c || [])].forEach(c => { if (CATEGORIES.includes(c) && c !== 'أخرى') C[c] = (C[c] || 0) + 1; }));
+      out.counts = CATEGORIES.filter(c => c !== 'أخرى').map(c => ({ c, n: C[c] || 0 })).sort((a, b) => b.n - a.n);
+    }
+    res.json(out);
+  } catch(e) { console.error('sub cand:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// إرسال (إشعار/إيميل) لمزوّدين محددين — ما يكرر نفس القناة لنفس المزوّد
+app.post('/api/admin/sub/:id/send', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), b = req.body || {};
+    const doN = b.notify !== false && !!b.notify, doE = !!b.email;
+    if (!doN && !doE) return res.status(400).json({ message: 'اختر إشعار أو إيميل' });
+    const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
+    if (!s || s.status !== 'open') return res.status(400).json({ message: 'الطلب مو مفتوح' });
+    const ids = [...new Set((Array.isArray(b.ids) ? b.ids : []).map(x => parseInt(x)).filter(Boolean))].slice(0, 400);
+    if (!ids.length) return res.status(400).json({ message: 'اختر مزوّد' });
+    if (ids.length > 1 && !_bulkClaim('subsend', [id, ids, doN, doE])) return _bulkDup(res);
+    const us = (await pool.query(`SELECT u.id, u.email, COALESCE(NULLIF(u.business_name,''),u.name) AS nm, EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$2 AND p.partner_id=u.id) AS is_p FROM users u
+      WHERE u.id = ANY($1::int[]) AND u.role='provider' AND u.is_active=TRUE AND u.id<>$2
+        AND NOT EXISTS(SELECT 1 FROM user_blocks x WHERE (x.blocker_id=u.id AND x.blocked_id=$2) OR (x.blocker_id=$2 AND x.blocked_id=u.id))`, [ids, s.provider_id])).rows;
+    const m = await _subReachMap(id);
+    const own = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [s.provider_id])).rows[0] || {};
+    let n = 0, e = 0; const done = {};
+    await _inChunks(us, 8, async u => {
+      const q = m[u.id] || {};
+      const r = await _noSoft(() => _subPush(s, u, own.nm, { notify: doN && !q.notified, email: doE && !q.emailed, wait: true }));
+      n += r.n; e += r.e; done[u.id] = { notified: !!(q.notified || r.n), emailed: !!(q.emailed || r.e) };
+    });
+    const ch = [doN ? 'إشعار' : '', doE ? 'إيميل' : ''].filter(Boolean).join('+');
+    await logAdmin(req, 'sub_send', 'sub', id, 'أرسل لـ ' + us.length + ' مزوّد (' + ch + ')' + (us.length === 1 ? ': ' + us[0].nm : ''));
+    res.json({ ok: true, providers: us.length, notified: n, emailed: e, done });
+  } catch(e) { console.error('sub send:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// واتساب لمزوّد واحد (رسالة جاهزة من رقم الإدارة) — نسجّله عشان يطلع ✓
+app.post('/api/admin/sub/:id/wa', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id), uid = parseInt((req.body || {}).uid);
+    const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1', [id])).rows[0];
+    if (!s) return res.status(404).json({ message: 'غير موجود' });
+    const u = (await pool.query("SELECT id, phone, COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1 AND role='provider'", [uid])).rows[0];
+    if (!u) return res.status(404).json({ message: 'المزوّد غير موجود' });
+    const wa = _subWa(u.phone, _drFirst(u.nm), `فيه مقاول يحتاج «${s.category}»${s.city ? ' في ' + s.city : ''} على منصة مناقصة:\n«${_subT(s).slice(0, 120)}»\n\nشوف التفاصيل وقدّم سعرك من هنا:\n${SITE_URL}/dashboard-provider.html#sub/${id}`);
+    if (!wa) return res.status(400).json({ message: 'ما عنده رقم جوال' });
+    await pool.query("INSERT INTO ntrack (user_id, kind, ref_id) VALUES ($1,'sub_wa',$2)", [uid, id]);
+    logAdmin(req, 'sub_wa', 'sub', id, 'واتساب: ' + u.nm).catch(()=>{});
+    res.json({ ok: true, wa_link: wa });
+  } catch(e) { console.error('sub wa:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // ═══ الإدارة: مراجعة طلبات مقاول باطن قبل النشر (مثل مراجعة مشاريع العملاء) ═══
 async function _subDups(s){
