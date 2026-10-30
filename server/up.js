@@ -510,6 +510,8 @@
   if (window.__mqViewer) return; window.__mqViewer = true;
   var W = window, D = document, ua = navigator.userAgent || '';
   var app = !!W.ReactNativeWebView || /ManaqasaApp|Expo|; wv\)/i.test(ua);
+  // تطبيق الآيفون: أي رابط «تحميل» يفتح الملف مكان الصفحة كلها (عارض آبل) بدون زر رجوع → المستخدم يعلق. نعرضه في نافذتنا بدل كذا
+  var iosApp = app && (/iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && 'ontouchend' in D));
   var standalone = false; try { standalone = W.navigator.standalone === true || (W.matchMedia && W.matchMedia('(display-mode: standalone)').matches); } catch(e){}
   // كل الأجهزة: PDF والصور تنفتح فوق الصفحة (ما نطلع لتبويب جديد)
 
@@ -591,11 +593,12 @@
       fetch(su).then(function(r){ return r.blob(); }).then(function(bl){
         var f = new File([bl], (o.fileName || 'manaqasa') + '.pdf', { type: 'application/pdf' });
         b.disabled = false;
-        if (navigator.canShare && !navigator.canShare({ files: [f] })) { location.href = su + (su.indexOf('?') > -1 ? '&' : '?') + 'dl=1'; return; }
+        if (navigator.canShare && !navigator.canShare({ files: [f] })) { if (iosApp) { flash(b, 'استخدم «مشاركة»'); return; } location.href = su + (su.indexOf('?') > -1 ? '&' : '?') + 'dl=1'; return; }
         return navigator.share({ files: [f], title: o.fileName || '' }).catch(function(){});
       }).catch(function(){ b.disabled = false; flash(b, 'تعذّر الحفظ'); });
       return;
     }
+    if (iosApp) { flash(b, 'استخدم «مشاركة»'); return; } // ما نطلع من الصفحة داخل تطبيق الآيفون
     location.href = su + (su.indexOf('?') > -1 ? '&' : '?') + 'dl=1';
   }
   // مشاركة: نرسل رابط الصفحة (مو الملف) عشان اللي يوصله يحمّله من التطبيق
@@ -698,11 +701,32 @@
     });
   }
 
+  // روابط التحميل (/api/dl?u=… و files.zip) داخل تطبيق الآيفون: نعرض الملف نفسه في النافذة بدل ما تنستبدل الصفحة
+  function dlTarget(h){
+    try { var a = new URL(h, location.href); if (a.origin !== location.origin && !/manaqasa|railway\.app/i.test(a.host)) return null;
+      if (a.pathname === '/api/dl') return { u: a.searchParams.get('u') || '', n: a.searchParams.get('n') || '' };
+      if (/^\/api\/requests\/\d+\/files\.zip$/.test(a.pathname)) return { zip: a.href };
+    } catch(e){}
+    return null;
+  }
+  function openDl(t){
+    if (t.u && kind(t.u) && kind(t.u) !== 'other') return open(t.u, t.n);
+    ui(); token++; curOpts = null; curUrl = t.u || t.zip;
+    box.querySelector('[data-a="save"]').hidden = true; box.querySelector('[data-a="share"]').hidden = true;
+    box.querySelectorAll('.mqv-z').forEach(function(z){ z.style.display = 'none'; });
+    ttl.textContent = t.zip ? 'كل الملفات' : nameOf(t.u, t.n);
+    box.classList.add('on'); isOpen = true; D.documentElement.style.overflow = 'hidden';
+    if (!bk) bk = W.mqBack ? W.mqBack.push(function(){ bk = null; hide(); }) : null;
+    msg(t.zip ? 'تحميل كل الملفات يشتغل من المتصفح' : 'هذا النوع من الملفات ما ينفتح داخل التطبيق', t.zip ? 'افتح كل ملف لحاله من القائمة، أو انسخ الرابط وافتحه في المتصفح.' : 'افتحه من الكمبيوتر، أو انسخ الرابط والصقه في المتصفح.', t.u || t.zip);
+    return true;
+  }
+  W.mqOpenDl = function(h){ var t = dlTarget(h); return t ? openDl(t) : false; };
   // التقاط الروابط
   D.addEventListener('click', function(e){
     if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey) return;
     var a = e.target.closest && e.target.closest('a[href]'); if (!a || a.hasAttribute('data-raw')) return;
     var u = a.getAttribute('href');
+    if (iosApp) { var t = dlTarget(a.href || u); if (t) { e.preventDefault(); e.stopPropagation(); openDl(t); return; } }
     if (!kind(u)) return;
     if (open(a.href && !/^data:/i.test(u) ? a.href : u, a.textContent)) { e.preventDefault(); e.stopPropagation(); }
   }, true);
