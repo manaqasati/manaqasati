@@ -7713,7 +7713,8 @@ function _srEdBox(r,f){
   var h='';
   if(f==='title') h='<input id="sr-e-title" data-focus class="pr-ei" style="font-size:18px;font-weight:900" maxlength="150" value="'+esc(r.title||'')+'">';
   else if(f==='desc') h='<textarea id="sr-e-desc" data-focus class="pr-ei" style="min-height:140px;line-height:1.9">'+esc(r.description||'')+'</textarea>';
-  else if(f==='cat') h='<select id="sr-e-cat" data-focus class="pr-ei">'+cats.map(function(c){return '<option'+(c===r.category?' selected':'')+'>'+esc(c)+'</option>';}).join('')+(cats.indexOf(r.category)<0?'<option selected>'+esc(r.category)+'</option>':'')+'</select>';
+  else if(f==='cat'){ var ex=Array.isArray(r.extra_categories)?r.extra_categories:[]; var co=function(v,none){ return (none?'<option value="">'+none+'</option>':'')+cats.filter(function(c){return !none||c!=='أخرى';}).map(function(c){return '<option'+(c===v?' selected':'')+'>'+esc(c)+'</option>';}).join('')+(v&&cats.indexOf(v)<0?'<option selected>'+esc(v)+'</option>':''); };
+    h='<div class="pr-eg"><label>الأساسي<select id="sr-e-cat" data-focus class="pr-ei">'+co(r.category,'')+'</select></label><label>إضافي 1<select id="sr-e-ex1" class="pr-ei">'+co(ex[0]||'','— بدون —')+'</select></label><label>إضافي 2<select id="sr-e-ex2" class="pr-ei">'+co(ex[1]||'','— بدون —')+'</select></label></div>'; }
   else if(f==='loc') h='<div class="pr-eg"><label>المدينة<select id="sr-e-city" data-focus class="pr-ei"><option value="">— بدون —</option>'+_prCityOpts(r.city||'')+'</select></label><label>الحي<input id="sr-e-dist" class="pr-ei" maxlength="80" value="'+esc(r.district||'')+'"></label></div>';
   else if(f==='start') h='<input id="sr-e-start" data-focus class="pr-ei" maxlength="80" placeholder="مثال: الأسبوع الجاي" value="'+esc(r.start_text||'')+'">';
   else if(f==='budget') h='<input id="sr-e-budget" data-focus class="pr-ei" inputmode="numeric" placeholder="فاضي = غير محددة" value="'+(r.budget?Math.round(r.budget):'')+'">';
@@ -7723,7 +7724,7 @@ function _srEdBox(r,f){
 function _srEd(id,f){ _SR.ed={id:id,f:f}; _srRender(); setTimeout(function(){ var e=document.querySelector('#sr-ed-box [data-focus]'); if(e)e.focus(); },30); }
 function _srEdKey(e,id){ if(e.key==='Escape'){e.preventDefault();_SR.ed=null;_srRender();} else if(e.key==='Enter'&&(e.target.tagName!=='TEXTAREA'||e.metaKey||e.ctrlKey)){e.preventDefault();_srEdSave(id);} }
 function _srEdSave(id,btn){ var E=_SR.ed; if(!E)return; var g=function(x){var e=document.getElementById(x);return e?e.value:'';}; var b={};
-  if(E.f==='title')b.title=g('sr-e-title').trim(); else if(E.f==='desc')b.description=g('sr-e-desc').trim(); else if(E.f==='cat')b.category=g('sr-e-cat'); else if(E.f==='loc'){b.city=g('sr-e-city');b.district=g('sr-e-dist').trim();} else if(E.f==='start')b.start_text=g('sr-e-start').trim(); else if(E.f==='budget')b.budget=g('sr-e-budget'); else if(E.f==='pdesc')b.pending_desc=g('sr-e-pdesc').trim();
+  if(E.f==='title')b.title=g('sr-e-title').trim(); else if(E.f==='desc')b.description=g('sr-e-desc').trim(); else if(E.f==='cat'){ b.category=g('sr-e-cat'); b.extra_categories=[g('sr-e-ex1'),g('sr-e-ex2')].filter(function(x,i,a){return x&&x!==b.category&&a.indexOf(x)===i;}); } else if(E.f==='loc'){b.city=g('sr-e-city');b.district=g('sr-e-dist').trim();} else if(E.f==='start')b.start_text=g('sr-e-start').trim(); else if(E.f==='budget')b.budget=g('sr-e-budget'); else if(E.f==='pdesc')b.pending_desc=g('sr-e-pdesc').trim();
   _srQuick(id,b,null,btn); }
 function _srQuick(id,body,okMsg,btn){
   if(btn){btn.disabled=true;}
@@ -7758,7 +7759,7 @@ function _srMain(r,q){
     +(_SR.undoStrip&&_SR.undoStrip.id===r.id?'<div class="pr-undo">✓ شطبنا رقم التواصل من الوصف <button type="button" onclick="_srUndoStrip()">تراجع</button></div>':'')
     +(_srEdBox(r,'desc')||'<div class="pr-desc pr-ed" onclick="_srEd('+r.id+',\'desc\')" title="اضغط للتعديل">'+_srHl(r.description||'')+'</div>')
     +'<div class="pr-meta">'
-      +(_srEdBox(r,'cat')||'<div class="pr-mf"><small>التخصص</small><button type="button" class="pr-ed pr-mv" onclick="_srEd('+r.id+',\'cat\')"><span class="pr-chip on">'+esc(r.category)+'</span><span class="pr-pen">✏️</span></button></div>')
+      +(_srEdBox(r,'cat')||'<div class="pr-mf"><small>التخصص</small><button type="button" class="pr-ed pr-mv" onclick="_srEd('+r.id+',\'cat\')"><span class="pr-chip on">'+esc(r.category)+'</span>'+((r.extra_categories||[]).map(function(c){return '<span class="pr-chip">+ '+esc(c)+'</span>';}).join(''))+'<span class="pr-pen">✏️</span></button></div>')
       +(_srEdBox(r,'loc')||'<div class="pr-mf"><small>المدينة والحي</small><button type="button" class="pr-ed pr-mv" onclick="_srEd('+r.id+',\'loc\')">'+(r.city?'<span class="pr-chip">'+esc(r.city)+(r.district?' · '+esc(r.district):'')+'</span>':'<span class="pr-chip warn">بدون مدينة</span>')+'<span class="pr-pen">✏️</span></button></div>')
     +'</div>'
     +(_srEdBox(r,'start')||_srEdBox(r,'budget')||'')
@@ -7799,7 +7800,7 @@ function _srAudPaint(id){
   var O=[]; if(d.city) O.push(['city',esc(d.city)+' بس','اللي مقرّهم فيها أو يخدمونها',n.city]);
   if(d.city&&d.region) O.push(['region','منطقة '+esc(d.region)+' كاملة',(d.region_cities||[]).filter(function(c){return c!==d.city;}).slice(0,3).join(' · '),n.region]);
   O.push(['cities','مدن أختارها',A.scope==='cities'&&A.cities.length?A.cities.length+' مدن':'اختر من القائمة',A.scope==='cities'?n.cities:null]);
-  O.push(['all','كل المملكة','لكل مزوّدي «'+esc(d.cat||r.category||'')+'»',n.all]);
+  O.push(['all','كل المملكة','لكل مزوّدي «'+esc((d.cats&&d.cats.length?d.cats:[d.cat||r.category||'']).join('» و«'))+'»',n.all]);
   el.innerHTML='<div style="font-weight:900;font-size:15px;margin-bottom:10px">🔔 يوصل إشعار لمين؟</div>'
     +(pf?'<div style="font-size:12.5px;font-weight:800;background:#f5f3ff;color:#6d28d9;border-radius:10px;padding:8px 10px;margin-bottom:8px">🤝 شركاؤه'+(cur&&cur.p!=null?' ('+cur.p+')':'')+' يوصلهم أول، وبعد ساعتين الباقين</div>':'')
     +O.map(function(o){ return '<button type="button" class="pr-aud-o'+(A.scope===o[0]?' on':'')+'" onclick="_srAudSet('+id+',\''+o[0]+'\')"><i></i><span class="t"><b>'+o[1]+'</b><small>'+o[2]+'</small></span><span class="n">'+(o[0]==='cities'&&A.scope!=='cities'?'':num(o[3]))+'</span></button>'; }).join('')

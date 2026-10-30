@@ -3391,6 +3391,7 @@ async function setupDatabase() {
     await _mig(`CREATE TABLE IF NOT EXISTS provider_actions (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(12), reason TEXT, until TIMESTAMPTZ, admin_id INTEGER, admin_name VARCHAR(120), hidden INTEGER DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW())`);
     await _mig(`CREATE INDEX IF NOT EXISTS provider_actions_p ON provider_actions(provider_id, created_at DESC)`);
     await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS pause_reason VARCHAR(20)`);
+    await _mig(`ALTER TABLE sub_requests ADD COLUMN IF NOT EXISTS extra_categories TEXT[]`);
     await _mig(`CREATE TABLE IF NOT EXISTS pause_log (id SERIAL PRIMARY KEY, request_id INTEGER REFERENCES requests(id) ON DELETE CASCADE, client_id INTEGER, bid_id INTEGER, provider_id INTEGER, reason VARCHAR(20), days INTEGER, started_at TIMESTAMPTZ DEFAULT NOW(), ended_at TIMESTAMPTZ, outcome VARCHAR(20), checked_at TIMESTAMPTZ, checked_by VARCHAR(120))`);
     await _mig(`CREATE INDEX IF NOT EXISTS pause_log_r ON pause_log(request_id, started_at DESC)`);
     await _mig(`CREATE TABLE IF NOT EXISTS support_threads (id SERIAL PRIMARY KEY, user_id INTEGER UNIQUE REFERENCES users(id) ON DELETE CASCADE, status VARCHAR(12) DEFAULT 'open', topic VARCHAR(40), link_kind VARCHAR(8), link_id INTEGER, link_title VARCHAR(160), assigned_to INTEGER REFERENCES users(id) ON DELETE SET NULL, user_unread INTEGER DEFAULT 0, admin_unread INTEGER DEFAULT 0, last_msg_at TIMESTAMPTZ, last_user_at TIMESTAMPTZ, last_admin_at TIMESTAMPTZ, admin_notified_at TIMESTAMPTZ, first_reply_at TIMESTAMPTZ, solved_at TIMESTAMPTZ, rating SMALLINT, rated_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
@@ -12519,11 +12520,13 @@ const _subMatchSQL = `u.role='provider' AND u.is_active=TRUE AND u.id<>$3
   AND (COALESCE(u.specialties, ARRAY[]::text[]) && ARRAY[$1]::text[] OR COALESCE(u.notify_categories, ARRAY[]::text[]) && ARRAY[$1]::text[])
   AND (COALESCE(u.serves_all_cities,FALSE) OR $2::text IS NULL OR (u.city IS NULL AND (u.service_cities IS NULL OR cardinality(u.service_cities)=0)) OR u.city = $2 OR $2 = ANY(COALESCE(u.service_cities,ARRAY[]::text[])))`;
 // المزوّدين اللي يوصلهم الطلب حسب اختيار الإدارة: مدينته (الافتراضي) / المنطقة / مدن محددة / كل المملكة — والشركاء دايم
+// تخصصات طلب «مقاول باطن»: الأساسي + لين 2 إضافيين (نفس مشاريع العملاء)
+function _subCats(s){ return [s && s.category].concat((s && Array.isArray(s.extra_categories)) ? s.extra_categories : []).filter(c => c && c !== 'أخرى'); }
 async function _subAudRows(sub, scope, cities){
   const a = _audOf({ city: sub.city }, scope || sub.notify_scope || 'city', cities || sub.notify_cities || null, false);
   const isP = `EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$2 AND p.partner_id=u.id)`;
-  const cat = `(COALESCE(u.specialties, ARRAY[]::text[]) && ARRAY[$1]::text[] OR COALESCE(u.notify_categories, ARRAY[]::text[]) && ARRAY[$1]::text[])`;
-  let cityC, params = [sub.category, sub.provider_id];
+  const cat = `(COALESCE(u.specialties, ARRAY[]::text[]) && $1::text[] OR COALESCE(u.notify_categories, ARRAY[]::text[]) && $1::text[])`;
+  let cityC, params = [_subCats(sub), sub.provider_id];
   if (a.allCities) cityC = 'TRUE';
   else if (a.scope === 'city') { cityC = `(COALESCE(u.serves_all_cities,FALSE) OR $3::text IS NULL OR (u.city IS NULL AND (u.service_cities IS NULL OR cardinality(u.service_cities)=0)) OR u.city = $3 OR $3 = ANY(COALESCE(u.service_cities,ARRAY[]::text[])))`; params.push(sub.city || null); }
   else { cityC = `(COALESCE(u.serves_all_cities,FALSE) OR u.city = ANY($3::text[]) OR (u.service_cities && $3::text[]))`; params.push(a.cities || []); }
@@ -12565,7 +12568,7 @@ setInterval(() => _soft(async () => { try {
 // إرسال الإشعارات المؤجّلة لوقتها المناسب
 setInterval(() => _jobLock('softq', _softFlush), 5 * 60 * 1000);
 const _subRateSQL = (col) => `(SELECT json_build_object('avg', ROUND(AVG(stars)::numeric,1), 'n', COUNT(*)) FROM sub_ratings WHERE rated_id=${col})`;
-function _subRow(r){ return { id: r.id, expires_at: r.expires_at || new Date(new Date(r.created_at).getTime() + SUB_EXPIRE_DAYS * 864e5), title: r.title || null, pending_title: r.pending_title || null, category: r.category, city: r.city, district: r.district, description: r.description, start_text: r.start_text, budget: r.budget, attachments: r.attachments || [], status: r.status, created_at: r.created_at, partners_first: r.partners_first, review_note: r.review_note || null, approve_note: r.approve_note || null, pending_desc: r.pending_desc || null, reject_kind: r.reject_kind || null, submitted_at: r.submitted_at || null, work_state: r.work_state || null, started_at: r.started_at || null, done_at: r.done_at || null }; }
+function _subRow(r){ return { id: r.id, expires_at: r.expires_at || new Date(new Date(r.created_at).getTime() + SUB_EXPIRE_DAYS * 864e5), title: r.title || null, pending_title: r.pending_title || null, category: r.category, extra_categories: r.extra_categories || [], city: r.city, district: r.district, description: r.description, start_text: r.start_text, budget: r.budget, attachments: r.attachments || [], status: r.status, created_at: r.created_at, partners_first: r.partners_first, review_note: r.review_note || null, approve_note: r.approve_note || null, pending_desc: r.pending_desc || null, reject_kind: r.reject_kind || null, submitted_at: r.submitted_at || null, work_state: r.work_state || null, started_at: r.started_at || null, done_at: r.done_at || null }; }
 // نشر طلب
 app.post('/api/sub', auth, providerOnly, rateLimiter(20, 3600000), async (req, res) => {
   try {
@@ -12585,6 +12588,7 @@ app.post('/api/sub', auth, providerOnly, rateLimiter(20, 3600000), async (req, r
     // ما ينشر مباشرة: يدخل طابور المراجعة عند الإدارة، والإشعارات تطلع وقت الاعتماد
     const r = (await pool.query(`INSERT INTO sub_requests (provider_id, category, city, district, description, start_text, budget, attachments, partners_first, notified_all, status, submitted_at, title) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,FALSE,'review',NOW(),$10) RETURNING *`,
       [req.user.id, cat, city, _cleanTxt(b.district, 100) || null, desc, _cleanTxt(b.start_text, 80) || null, budget && budget < 1e9 ? budget : null, JSON.stringify(atts), pf && hasP, title])).rows[0];
+    { const ex = _normExtras(b.extra_categories, cat); if (ex && ex.length) { await pool.query('UPDATE sub_requests SET extra_categories=$1 WHERE id=$2', [ex, r.id]); r.extra_categories = ex; } }
     _notifyAdmins('🤝 طلب مقاول باطن ينتظر المراجعة', cat + (city ? ' · ' + city : '') + ' — «' + (title || desc).slice(0, 60) + '»', 'sub_review', r.id).catch(()=>{});
     res.json({ ok: true, id: r.id, partners_first: r.partners_first, review: true });
   } catch(e) { console.error('sub post:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -12605,7 +12609,7 @@ app.get('/api/sub/hub', auth, providerOnly, async (req, res) => {
         (SELECT row_to_json(x) FROM (SELECT id, price, days, status, seen_at FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) x) AS my_offer,
         (SELECT COUNT(*)::int FROM sub_offers WHERE sub_id=s.id) AS offers
       FROM sub_requests s JOIN users o ON o.id=s.provider_id
-      WHERE s.provider_id<>$1 AND o.is_active=TRUE AND NOT EXISTS(SELECT 1 FROM user_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=s.provider_id) OR (b.blocker_id=s.provider_id AND b.blocked_id=$1)) AND (EXISTS(SELECT 1 FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) OR (s.status='open' AND s.category = ANY($2::text[])
+      WHERE s.provider_id<>$1 AND o.is_active=TRUE AND NOT EXISTS(SELECT 1 FROM user_blocks b WHERE (b.blocker_id=$1 AND b.blocked_id=s.provider_id) OR (b.blocker_id=s.provider_id AND b.blocked_id=$1)) AND (EXISTS(SELECT 1 FROM sub_offers WHERE sub_id=s.id AND provider_id=$1) OR (s.status='open' AND (s.category = ANY($2::text[]) OR COALESCE(s.extra_categories,'{}') && $2::text[])
         AND ($5::boolean OR s.city IS NULL OR ($3::text IS NULL AND cardinality($4::text[])=0) OR s.city=$3 OR s.city = ANY($4::text[]))
         AND (NOT s.partners_first OR s.created_at < NOW() - INTERVAL '${SUB_PARTNER_HOURS} hours' OR EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=s.provider_id AND p.partner_id=$1))))
       ORDER BY (s.status='open') DESC, s.created_at DESC LIMIT 40`, [me, cats, u.city || null, u.service_cities || [], !!u.serves_all_cities])).rows
@@ -12781,7 +12785,7 @@ app.get('/api/sub-count', auth, async (req, res) => {
     const r = (await pool.query(`SELECT
         (SELECT COUNT(*)::int FROM sub_msgs WHERE receiver_id=$1 AND read_at IS NULL) AS msgs,
         (SELECT COUNT(*)::int FROM sub_offers o JOIN sub_requests s ON s.id=o.sub_id WHERE s.provider_id=$1 AND s.status='open' AND o.created_at > $2) AS offers,
-        (SELECT COUNT(*)::int FROM sub_requests s JOIN users o ON o.id=s.provider_id WHERE s.status='open' AND s.provider_id<>$1 AND o.is_active=TRUE AND s.created_at > $2 AND s.category = ANY($3::text[])
+        (SELECT COUNT(*)::int FROM sub_requests s JOIN users o ON o.id=s.provider_id WHERE s.status='open' AND s.provider_id<>$1 AND o.is_active=TRUE AND s.created_at > $2 AND (s.category = ANY($3::text[]) OR COALESCE(s.extra_categories,'{}') && $3::text[])
           AND ($6::boolean OR s.city IS NULL OR ($4::text IS NULL AND cardinality($5::text[])=0) OR s.city=$4 OR s.city = ANY($5::text[]))
           AND (NOT s.partners_first OR s.created_at < NOW() - INTERVAL '${SUB_PARTNER_HOURS} hours' OR EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=s.provider_id AND p.partner_id=$1))
           AND NOT EXISTS(SELECT 1 FROM sub_offers x WHERE x.sub_id=s.id AND x.provider_id=$1)) AS feed`, [me, u.seen, cats, u.city || null, u.service_cities || [], !!u.serves_all_cities])).rows[0];
@@ -13064,12 +13068,12 @@ app.get('/api/admin/sub-review', requirePermission('requests.review'), async (re
 });
 app.get('/api/admin/sub/:id/audience', requirePermission('requests.review'), async (req, res) => {
   try {
-    const s = (await pool.query('SELECT id, provider_id, category, city FROM sub_requests WHERE id=$1', [parseInt(req.params.id)])).rows[0];
+    const s = (await pool.query('SELECT id, provider_id, category, extra_categories, city FROM sub_requests WHERE id=$1', [parseInt(req.params.id)])).rows[0];
     if (!s) return res.status(404).json({ message: 'غير موجود' });
     const custom = String(req.query.cities || '').split(',').map(x => x.trim()).filter(Boolean).slice(0, 40);
     const cnt = async (sc, cs) => { const L = await _subAudRows(s, sc, cs); return { n: L.length, p: L.filter(x => x.is_p).length }; };
     const aR = _audOf({ city: s.city }, 'region', null, false);
-    const out = { city: s.city || null, region: aR.region || null, region_cities: aR.cities || [], cat: s.category,
+    const out = { city: s.city || null, region: aR.region || null, region_cities: aR.cities || [], cat: s.category, cats: _subCats(s),
       n: { city: s.city ? await cnt('city') : null, region: (s.city && aR.region) ? await cnt('region') : null, all: await cnt('all'), cities: custom.length ? await cnt('cities', custom) : null } };
     res.json(out);
   } catch(e) { console.error('sub aud:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -13087,6 +13091,8 @@ app.patch('/api/admin/sub/:id/quick', requirePermission('requests.review'), asyn
     if ('pending_title' in b) put('pending_title', _cleanTxt(b.pending_title, 150) || null);
     if ('pending_desc' in b) { const d = _needTxt(b.pending_desc, 1500); if (d.length < 10) return res.status(400).json({ message: 'الوصف قصير' }); put('pending_desc', d); }
     if ('category' in b) { const c = _cleanTxt(b.category, 100); if (!c) return res.status(400).json({ message: 'اختر التخصص' }); put('category', c); }
+    if ('extra_categories' in b) { const ex = _normExtras(b.extra_categories || [], 'category' in b ? _cleanTxt(b.category, 100) : s.category) || []; put('extra_categories', ex.length ? ex : null); }
+    else if ('category' in b && Array.isArray(s.extra_categories)) { const ex = s.extra_categories.filter(x => x !== _cleanTxt(b.category, 100)); put('extra_categories', ex.length ? ex : null); }
     if ('city' in b) put('city', _cleanTxt(b.city, 100) || null);
     if ('district' in b) put('district', _cleanTxt(b.district, 100) || null);
     if ('start_text' in b) put('start_text', _cleanTxt(b.start_text, 80) || null);
