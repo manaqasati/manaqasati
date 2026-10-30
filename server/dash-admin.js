@@ -8090,8 +8090,25 @@ function _spShell(){
       +'<div id="sp-list" class="sp-list"><div class="loading"><div class="spinner"></div></div></div></div>'
     +'<div class="sp-c" id="sp-c"><div class="sp-empty">💬<div>اختر محادثة من القائمة</div></div></div>'
     +'<div class="sp-r" id="sp-r"></div></div>';
+  setTimeout(_spFit,0);
 }
-function _spSetView(v){ _SP.view=v; var s=document.querySelector('.sp'); if(s)s.setAttribute('data-v',v); }
+function _spSetView(v){ _SP.view=v; var s=document.querySelector('.sp'); if(s)s.setAttribute('data-v',v); _spFit(); }
+// الجوال: المحادثة تاخذ الشاشة كاملة (مثل محادثة العميل) وتتبع الكيبورد — الكتابة دايم فوقه والهيدر ظاهر
+function _spFit(){
+  var s=document.querySelector('.sp'); if(!s)return;
+  var full=window.innerWidth<=860 && (s.getAttribute('data-v')==='chat'||s.getAttribute('data-v')==='info') && !!(document.getElementById('page-support')||{}).offsetParent;
+  s.classList.toggle('sp-full',full);
+  document.documentElement.classList.toggle('sp-lock',full);
+  if(!full)return;
+  var vv=window.visualViewport;
+  s.style.setProperty('--sph',(vv?vv.height:window.innerHeight)+'px');
+  s.style.setProperty('--spt',(vv?vv.offsetTop:0)+'px');
+}
+(function(){ var t=null, f=function(){ clearTimeout(t); t=setTimeout(_spFit,30); };
+  if(window.visualViewport){ visualViewport.addEventListener('resize',f); visualViewport.addEventListener('scroll',f); }
+  window.addEventListener('resize',f); window.addEventListener('hashchange',function(){ setTimeout(_spFit,60); });
+  document.addEventListener('focusin',function(e){ if(e.target&&e.target.id==='sp-txt'){ setTimeout(function(){ _spFit(); var m=document.getElementById('sp-msgs'); if(m)m.scrollTop=m.scrollHeight; },300); } });
+})();
 function _spFilter(f){ _SP.f=f; [].forEach.call(document.querySelectorAll('#sp-fs button'),function(b){ b.classList.toggle('on',b.getAttribute('data-f')===f); }); _spLoadList(); }
 function _spRoleF(r){ _SP.role=r; [].forEach.call(document.querySelectorAll('.sp-rl button'),function(b){ b.classList.toggle('on',b.getAttribute('data-r')===r); }); _spLoadList(); }
 function _spPaintStats(){ var s=_SP.stats||{}, el=document.getElementById('sp-stats'); if(!el)return; var p=[]; if(s.first_reply_min!=null)p.push('أول رد: '+_spWait(new Date(Date.now()-s.first_reply_min*60000))); if(s.up||s.down)p.push('👍 '+(s.up||0)+' · 👎 '+(s.down||0)); el.textContent=p.join(' · '); el.title='آخر 30 يوم'; }
@@ -8150,12 +8167,15 @@ function _spPaintHead(){
   var mode=(d.msgs||[]).slice().reverse().filter(function(m){return !m.from_admin&&m.meta&&m.meta.mode;})[0];
   var who=_spRole(u.role)+(mode&&((mode.meta.mode==='client')!==(u.role!=='provider'))?' · كتب من حساب '+(mode.meta.mode==='provider'?'المزوّد':'العميل'):'');
   var wait=t.status==='open'&&t.admin_unread>0;
+  var _op=el.classList.contains('open');
   el.innerHTML='<button class="sp-bk" onclick="_spSetView(\'list\')" aria-label="رجوع">‹</button>'
     +'<span class="sp-av">'+esc(_spNm(u).charAt(0))+'</span><span class="sp-chn"><b>'+esc(_spNm(u))+'</b><small>'+esc(who)+(t.link_title?' · 📁 '+esc(t.link_title):'')+(wait?' · <span style="color:#b45309">ينتظر ردك من '+_spWait(d.msgs.filter(function(m){return !m.from_admin;}).slice(-1)[0]&&d.msgs.filter(function(m){return !m.from_admin;}).slice(-1)[0].created_at)+'</span>':'')+'</small></span>'
     +'<span class="sp-cha">'+(can?'<select id="sp-as" onchange="_spAssign(this.value)" aria-label="المسؤول"><option value="">المسؤول: لا أحد</option>'+(_SP.admins||[]).map(function(a){ return '<option value="'+a.id+'"'+(String(t.assigned_to)===String(a.id)?' selected':'')+'>المسؤول: '+esc(a.name)+'</option>'; }).join('')+'</select>'
       +'<button class="sp-b2" onclick="_spReqOpen()">📎 طلب ملف</button>'+(_spUnadded().length&&_spProjCount()?'<button class="sp-b2 bl" onclick="_spAddOpen()">📁 أضف للمشروع ('+_spUnadded().length+')</button>':'')
       +(t.status==='solved'?'<button class="sp-b2" onclick="_spSolve(false)">↺ رجّعها مفتوحة</button>':'<button class="sp-b2 gr" onclick="_spSolve(true)">✓ تم الحل</button>'):'')
-    +'<button class="sp-b2 sp-inf" onclick="_spSetView(\'info\')">بياناته</button></span>';
+    +'<button class="sp-b2 sp-inf" onclick="_spSetView(\'info\')">بياناته</button></span>'
+    +'<button class="sp-more" onclick="this.parentNode.classList.toggle(\'open\')" aria-label="خيارات المحادثة">⋯</button>';
+  if(_op) el.classList.add('open');
 }
 function _spPaintMsgs(){
   var d=_SP.data, el=document.getElementById('sp-msgs'); if(!d||!el)return;
