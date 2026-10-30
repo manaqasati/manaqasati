@@ -12871,6 +12871,18 @@ app.put('/api/sub/:id', auth, providerOnly, rateLimiter(30, 3600000), async (req
     const budget = parseInt(String(b.budget || '').replace(/[^\d]/g, '')) || null;
     const title2 = 'title' in b ? (_cleanTxt(b.title, 150) || null) : (s.title || null);
     const city2 = _cleanTxt(b.city, 100) || s.city, dist2 = _cleanTxt(b.district, 100) || null, start2 = _cleanTxt(b.start_text, 80) || null, bud2 = budget && budget < 1e9 ? budget : null;
+    // التخصصات: قبل النشر يتغيّر الأساسي والإضافي — بعد النشر الإضافي بس (والفنيين الجدد يوصلهم إشعار)
+    const cat2 = inRev && b.category ? (_cleanTxt(b.category, 100) || s.category) : s.category;
+    const ex2 = 'extra_categories' in b ? (_normExtras(b.extra_categories || [], cat2) || []) : (Array.isArray(s.extra_categories) ? s.extra_categories.filter(x => x !== cat2) : []);
+    const exOld = Array.isArray(s.extra_categories) ? s.extra_categories : [];
+    if (cat2 !== s.category || JSON.stringify(ex2) !== JSON.stringify(exOld)) await pool.query('UPDATE sub_requests SET category=$1, extra_categories=$2 WHERE id=$3', [cat2, ex2.length ? ex2 : null, id]);
+    if (!inRev) { const added = ex2.filter(x => !exOld.includes(x) && x !== s.category);
+      if (added.length) { try {
+        const before = new Set((await _subAudRows(s)).map(x => x.id));
+        const now = await _subAudRows(Object.assign({}, s, { extra_categories: ex2 }));
+        const own = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [s.provider_id])).rows[0] || {};
+        for (const u of now) { if (before.has(u.id)) continue; notify(u.id, '🤝 مقاول يحتاج ' + added.join(' و'), '«' + _subT(s).slice(0, 70) + '»' + (s.city ? ' · ' + s.city : '') + ' — من ' + (own.nm || 'مقاول'), 'sub', id, { url: '/dashboard-provider.html#sub/' + id }).catch(() => {}); }
+      } catch(e) { console.error('sub extras notify:', e.message); } } }
     if (inRev) { // قبل النشر: التعديل يمشي مباشرة ويرجع للطابور (لو كان «يحتاج تعديل» ينحسب إرسال جديد)
       await pool.query(`UPDATE sub_requests SET description=$1, city=$2, district=$3, start_text=$4, budget=$5, attachments=$6, edited_at=NOW(), status='review', submitted_at=CASE WHEN status='needs_edit' THEN NOW() ELSE submitted_at END, title=$8 WHERE id=$7`,
         [desc, city2, dist2, start2, bud2, JSON.stringify(atts), id, title2]);
@@ -13147,8 +13159,9 @@ app.put('/api/admin/sub/:id/review', requirePermission('requests.review'), async
         // «شركاؤه أول»: بس لو عنده شريك بنفس التخصص — وإلا يوصل الكل مباشرة بدل ما ينتظر ساعتين على الفاضي
         const pf = !!s.partners_first && (await _subAudRows(s, sc, cl)).some(x => x.is_p);
         const note = _needTxt(b.note, 600) || null;
-        const r = (await pool.query(`UPDATE sub_requests SET status='open', created_at=NOW(), expires_at=NULL, close_kind=NULL, reviewed_at=NOW(), review_note=NULL, approve_note=$1, notify_scope=$2, notify_cities=$3, partners_first=$4, notified_all=$5 WHERE id=$6 AND status='review' RETURNING *`,
-          [note, sc, cl && cl.length ? cl : null, pf, !pf, id])).rows[0];
+        const days = [7, 14, 30, 60].includes(parseInt(b.days)) ? parseInt(b.days) : SUB_EXPIRE_DAYS;
+        const r = (await pool.query(`UPDATE sub_requests SET status='open', created_at=NOW(), expires_at=NOW() + ($7 || ' days')::interval, close_kind=NULL, reviewed_at=NOW(), review_note=NULL, approve_note=$1, notify_scope=$2, notify_cities=$3, partners_first=$4, notified_all=$5 WHERE id=$6 AND status='review' RETURNING *`,
+          [note, sc, cl && cl.length ? cl : null, pf, !pf, id, String(days)])).rows[0];
         if (!r) return res.status(409).json({ message: 'انراجع من قبل' });
         await _subNotify(r, pf);
         const sent = (await _subAudRows(r)).filter(x => !pf || x.is_p).length;

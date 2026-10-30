@@ -216,7 +216,7 @@
     if(!ed&&!introSeen()&&!S.introPass){ intro(false); return; }
     S.introPass=false;
     if(W._curPage!=='sub'){ S.formNext=ed||1; W.gotoPage('sub'); return; }
-    F={cat:ed?ed.category:'',ex:ed?(ed.extra_categories||[]).slice(0,2):[],pickEx:false,catAuto:false,catManual:!!ed,cands:[],atts:[],keep:ed?(ed.attachments||[]).slice():[],edit:ed?ed.id:0}; var d=S.hub||{partners:[]}, me=W._prof||{};
+    F={st:ed?ed.status:'',cat:ed?ed.category:'',ex:ed?(ed.extra_categories||[]).slice(0,2):[],pickEx:false,catAuto:false,catManual:!!ed,cands:[],atts:[],keep:ed?(ed.attachments||[]).slice():[],edit:ed?ed.id:0}; var d=S.hub||{partners:[]}, me=W._prof||{};
     S.view={form:ed?ed.id:'new'};
     try{ var hh=ed?'#sub/'+ed.id+'/edit':'#sub/new'; if(location.hash!==hh) history.pushState({pg:'sub'},'',hh); }catch(e){}
     var o=page('<div class="sb-row" style="justify-content:space-between;margin:4px 0 10px"><b style="font-family:Cairo,sans-serif;font-size:19px">'+(ed?'✏️ تعديل الطلب':'🤝 طلب مقاول باطن')+'</b><a href="#" class="sb-s" style="color:#6d28d9;font-weight:900" onclick="event.preventDefault();SubC.introF()">ℹ️ وش هو؟</a></div>'
@@ -244,10 +244,11 @@
       var arr=CATS.filter(function(c){ return topN.indexOf(c)<0&&(!q||nz(c).indexOf(q)>=0||c.split(' ').some(function(w){return nz(w).indexOf(q)===0;})); });
       L.innerHTML=arr.length?arr.map(function(c){ return '<button type="button" data-k="'+esc(c)+'" class="'+(F.cat===c?'on':'')+'">'+(F.cat===c?'✓ ':'')+esc(c)+'</button>'; }).join(''):'<div class="sb-s">ما لقينا تخصص بهالاسم — اختر «أخرى» واكتبه في التفاصيل</div>'; };
     var pick=function(c){
+      if(F.edit&&F.st==='open')F.pickEx=true;
       if(F.pickEx){ F.pickEx=false; if(c!==F.cat&&F.ex.indexOf(c)<0&&c!=='أخرى'){ if(F.ex.length>=2){ toast('لين تخصصين إضافيين','error'); } else F.ex.push(c); } document.getElementById('sb-catpick').style.display='none'; paintCat(); return; }
       F.cat=c; F.ex=F.ex.filter(function(x){return x!==c;}); F.catManual=true; F.catAuto=false; document.getElementById('sb-catpick').style.display='none'; paintCat(); };
-    if(!ed){
-      var tmr=null; o.querySelector('#sb-title').addEventListener('input',function(){ clearTimeout(tmr); var v=this.value; tmr=setTimeout(function(){ detectCat(v); },300); });
+    if(!ed){ var tmr=null; o.querySelector('#sb-title').addEventListener('input',function(){ clearTimeout(tmr); var v=this.value; tmr=setTimeout(function(){ detectCat(v); },300); }); }
+    {
       o.querySelector('#sb-cats').addEventListener('click',function(e){ var b=e.target.closest('button[data-c]'); if(!b)return; var c=b.getAttribute('data-c'); var box=document.getElementById('sb-cat-all');
         if(c==='_more'){ box.style.display=''; paintCL(); setTimeout(function(){ var q=document.getElementById('sb-cq'); if(q)q.focus(); },30); } else pick(c); });
       o.querySelector('#sb-cq').addEventListener('input',paintCL);
@@ -277,16 +278,17 @@
   function detectCat(v){ if(F.catManual)return; var L=[]; try{ if(W._cpDetect) L=W._cpDetect(v,CATS)||[]; }catch(e){}
     F.cands=L.slice(0,4); F.cat=L[0]||''; F.catAuto=!!F.cat; paintCat(); }
   function paintCat(){ var b=document.getElementById('sb-catbox'), p=document.getElementById('sb-catpick'); if(!b)return;
-    if(F.edit){ b.innerHTML='<div class="sb-cbx"><div style="flex:1"><div class="sb-s">التخصص</div><b>'+emo(F.cat)+' '+esc(F.cat)+'</b>'+(F.ex.length?'<div class="sb-s">+ '+F.ex.map(esc).join(' · ')+'</div>':'')+'</div><span class="sb-s">ما يتغيّر — لتخصص ثاني انشر طلب جديد</span></div>'; return; }
+    if(F.edit&&F.st==='open'){ b.innerHTML='<div class="sb-cbx"><div style="flex:1"><div class="sb-s">التخصص الأساسي</div><b>'+emo(F.cat)+' '+esc(F.cat)+'</b></div><span class="sb-s" style="max-width:150px">انتشر الطلب عليه — تقدر تضيف تخصصات</span></div>'+exBox([]); return; }
     var t=((document.getElementById('sb-title')||{}).value||'').trim();
     if(F.cat){ var alt=(F.cands||[]).filter(function(c){return c!==F.cat;}).slice(0,3);
       b.innerHTML='<div class="sb-cbx ok"><div style="flex:1;min-width:0"><div class="sb-s" style="color:#16a34a">'+(F.catAuto?'✓ فهمنا طلبك — التخصص:':'التخصص:')+'</div><b>'+emo(F.cat)+' '+esc(F.cat)+'</b></div><button type="button" class="sb-b sb-o" style="padding:7px 12px;font-size:12.5px" data-cb="chg">تغيير</button></div>'
-        +(F.cat!=='أخرى'?'<div class="sb-ex"><div class="sb-s" style="font-weight:900;color:var(--text,#0f1d3a)">يحتاج تخصص ثاني؟ <span style="font-weight:700">(اختياري — لين 2)</span></div><div class="sb-row" style="gap:6px;flex-wrap:wrap;margin-top:6px">'
-          +F.ex.map(function(c){return '<button type="button" class="sb-tag sb-exon" data-cb="ex-'+esc(c)+'">'+emo(c)+' '+esc(c)+' ✕</button>';}).join('')
-          +(F.ex.length<2?alt.filter(function(c){return F.ex.indexOf(c)<0;}).slice(0,3).map(function(c){return '<button type="button" class="sb-tag sb-exsg" data-cb="ex+'+esc(c)+'">＋ '+emo(c)+' '+esc(c)+'</button>';}).join('')+'<button type="button" class="sb-tag sb-exsg" data-cb="exadd">＋ غيره</button>':'')
-          +'</div><div class="sb-s" style="margin-top:4px">يوصل طلبك فنيين التخصصات كلها</div></div>':'');
+        +exBox(alt);
       if(p&&!F.catManual)p.style.display='none';
     } else { b.innerHTML=t.length>=3?'<div class="sb-s" style="color:#92400e">اختر التخصص اللي تحتاجه:</div>':''; if(p) p.style.display=t.length>=3?'':'none'; } }
+  function exBox(alt){ return (F.cat!=='أخرى'?'<div class="sb-ex"><div class="sb-s" style="font-weight:900;color:var(--text,#0f1d3a)">يحتاج تخصص ثاني؟ <span style="font-weight:700">(اختياري — لين 2)</span></div><div class="sb-row" style="gap:6px;flex-wrap:wrap;margin-top:6px">'
+          +F.ex.map(function(c){return '<button type="button" class="sb-tag sb-exon" data-cb="ex-'+esc(c)+'">'+emo(c)+' '+esc(c)+' ✕</button>';}).join('')
+          +(F.ex.length<2?alt.filter(function(c){return F.ex.indexOf(c)<0;}).slice(0,3).map(function(c){return '<button type="button" class="sb-tag sb-exsg" data-cb="ex+'+esc(c)+'">＋ '+emo(c)+' '+esc(c)+'</button>';}).join('')+'<button type="button" class="sb-tag sb-exsg" data-cb="exadd">＋ غيره</button>':'')
+          +'</div><div class="sb-s" style="margin-top:4px">'+(F.edit&&F.st==='open'?'الفنيين الجدد يوصلهم إشعار':'يوصل طلبك فنيين التخصصات كلها')+'</div></div>':''); }
   function send(){
     var v=function(id){ var e=document.getElementById(id); return e?String(e.value||'').trim():''; };
     if(v('sb-title').length<5){ toast('اكتب وش تحتاج (عنوان قصير)','error'); var ti=document.getElementById('sb-title'); if(ti)ti.focus(); return; }
@@ -296,7 +298,7 @@
     if(v('sb-desc').length<10){ toast('اكتب وش الشغل بالتفصيل','error'); var t=document.getElementById('sb-desc'); if(t)t.focus(); return; }
     var b=document.getElementById('sb-send'); if(b){ b.disabled=true; b.textContent='جاري النشر...'; }
     var pf=document.getElementById('sb-pf');
-    if(F.edit){ var eid=F.edit; api('/api/sub/'+eid,{method:'PUT',body:JSON.stringify({title:v('sb-title'),city:v('sb-city'),district:v('sb-dist'),description:v('sb-desc'),start_text:v('sb-start'),budget:v('sb-bud'),keep:F.keep.map(function(a){return a.url;}),attachments:F.atts.map(function(a){return {name:a.name,data:a.data};})})}).then(function(r){
+    if(F.edit){ var eid=F.edit; api('/api/sub/'+eid,{method:'PUT',body:JSON.stringify({category:F.st!=='open'?F.cat:undefined,extra_categories:F.cat==='أخرى'?[]:F.ex,title:v('sb-title'),city:v('sb-city'),district:v('sb-dist'),description:v('sb-desc'),start_text:v('sb-start'),budget:v('sb-bud'),keep:F.keep.map(function(a){return a.url;}),attachments:F.atts.map(function(a){return {name:a.name,data:a.data};})})}).then(function(r){
       if(r&&r.ok){ toast(r.review?'تم الحفظ — رجع لفريق مناقصة يراجعه':(r.pending?'التعديل يراجعه فريق مناقصة — طلبك باقي ظاهر بالوصف السابق':'تم حفظ التعديل')); hub(true); open(eid); } else { toast((r&&r.message)||'تعذّر الحفظ','error'); if(b){ b.disabled=false; b.textContent='احفظ التعديل'; } } }).catch(function(){ toast('تعذّر الاتصال','error'); if(b){ b.disabled=false; b.textContent='احفظ التعديل'; } }); return; }
     api('/api/sub',{method:'POST',body:JSON.stringify({title:v('sb-title'),category:F.cat,extra_categories:F.cat==='أخرى'?[]:F.ex,city:v('sb-city'),district:v('sb-dist'),description:v('sb-desc'),start_text:v('sb-start'),budget:v('sb-bud'),attachments:F.atts.map(function(a){return {name:a.name,data:a.data};}),partners_first:pf?pf.checked:false})}).then(function(r){
       if(r&&r.ok){ S.tab='mine'; hub(true); S.view={done:r.id};

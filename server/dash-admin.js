@@ -7626,7 +7626,7 @@ function _scOpen(id){
 function _scClose(id){ if(!confirm('تقفل الطلب؟ يوصل صاحبه إشعار.'))return; fetch(API+'/api/admin/sub/'+id+'/close',Object.assign({method:'POST',body:'{}'},hdr())).then(function(r){return r.json();}).then(function(d){ if(d&&d.ok){ toast('تم الإغلاق','success'); var o=document.getElementById('scOv'); if(o)o.remove(); _loadSubc(); } else toast((d&&d.message)||'تعذّر','error'); }); }
 
 // ═══ مراجعة طلبات «مقاول باطن» قبل النشر — نفس فكرة مراجعة المشاريع ═══
-var _SR={list:[],sel:null,aud:{},audN:{},done:0,today:0,ed:null,undoStrip:null,pend:null,hist:null};
+var _SR={list:[],sel:null,aud:{},audN:{},done:0,today:0,ed:null,undoStrip:null,pend:null,hist:null,dur:{}};
 var _SR_AD=/(أسعار مناسب|اسعار مناسب|بأفضل الأسعار|بافضل الاسعار|أسعار منافس|اسعار منافس|جود[هة] عالي|بجود[هة]|نقد[ّ]?م (لكم|خدمات)|خدماتنا|تواصل معنا|للتواصل|لدينا|خبرتنا|سنوات خبرة|نفّ?ذنا|جميع أعمال|جميع اعمال|تحت اشراف|تحت إشراف|اشراف هندسي|إشراف هندسي|ضمان \d|نستقبل)/;
 function _srBadge(n){ var b=document.getElementById('subrev-badge'); if(b){ n=parseInt(n)||0; b.textContent=n; b.style.display=n?'flex':'none'; } }
 function _srCount(){ fetch(API+'/api/admin/sub-review?count=1',hdr()).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d)_srBadge(d.n); }).catch(function(){}); }
@@ -7740,10 +7740,16 @@ function _srStrip(id,btn){ var r=_srRow(id); if(!r)return; var f=r.kind==='edit'
   if(nw===old){toast('ما لقيت رقم أشيله');return;} var b={}; b[f]=nw; _srQuick(id,b,'شطبنا الرقم ✓',btn).then(function(ok){ if(ok){ _SR.undoStrip={id:id,f:f,v:old}; _srRender(); } }); }
 function _srUndoStrip(){ var u=_SR.undoStrip; if(!u)return; _SR.undoStrip=null; var b={}; b[u.f]=u.v; _srQuick(u.id,b,'رجّعنا النص زي ما كان'); }
 function _srFiles(r){
-  var at=_srAtts(r);
-  return '<div class="pr-sec"><div class="pr-sh">📎 المرفقات <span>'+at.length+'</span></div><div class="pr-files">'+at.map(function(a,i){ var u=_safeUrl(a.url), nm=String(a.name||'ملف'), img=/\.(jpe?g|png|webp|gif|heic)(\?|$)/i.test(nm+' '+u);
-    return '<div class="pr-fw"><a class="pr-file" href="'+esc(u)+'" target="_blank" rel="noopener">'+(img?'<img src="'+esc(u)+'" alt="" loading="lazy" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex-shrink:0">':'<span class="pr-fx" style="background:#fee2e2;color:#b91c1c">'+esc(((nm.match(/\.([a-z0-9]+)$/i)||[])[1]||'ملف').toUpperCase())+'</span>')+'<span class="pr-fn" title="'+esc(nm)+'">'+esc(nm)+'</span><span class="pr-fa">فتح ↗</span></a><button type="button" class="pr-x" title="حذف" onclick="_srAttDel('+r.id+','+i+')">✕</button></div>'; }).join('')
-    +'<label class="pr-addf">+ أضف ملف<input type="file" multiple hidden onchange="_srAttAdd('+r.id+',this)"></label></div></div>';
+  var at=_srAtts(r), isI=function(a){ return /\.(jpe?g|png|webp|gif|heic)(\?|$)/i.test(String(a.name||'')+' '+String(a.url||'')); };
+  var row=function(a){ var i=at.indexOf(a), u=_safeUrl(a.url), nm=String(a.name||'ملف'), img=isI(a);
+    return '<div class="pr-fw"><a class="pr-file" href="'+esc(u)+'" target="_blank" rel="noopener">'+(img?'<img src="'+esc(u)+'" alt="" loading="lazy" style="width:38px;height:38px;border-radius:9px;object-fit:cover;flex-shrink:0">':'<span class="pr-fx" style="background:#fee2e2;color:#b91c1c">'+esc(((nm.match(/\.([a-z0-9]+)$/i)||[])[1]||'ملف').toUpperCase())+'</span>')+'<span class="pr-fn" title="'+esc(nm)+'">'+esc(nm)+'</span><span class="pr-fa">فتح ↗</span></a><button type="button" class="pr-x" title="حذف" onclick="_srAttDel('+r.id+','+i+')">✕</button></div>'; };
+  var im=at.filter(isI), fl=at.filter(function(a){return !isI(a);});
+  return '<div class="pr-sec"><div class="pr-sh">🖼️ الصور <span>'+im.length+'</span></div>'
+      +(im.length?'<div class="pr-imgs">'+im.map(function(a){ var i=at.indexOf(a), u=_safeUrl(a.url); return '<div class="pr-iw"><a href="'+esc(u)+'" target="_blank" rel="noopener"><img src="'+esc(u)+'" alt="'+esc(a.name||'صورة')+'" loading="lazy"></a><button type="button" class="pr-x" title="حذف" onclick="_srAttDel('+r.id+','+i+')">✕</button></div>'; }).join('')+'</div>':'<div class="pr-none">ما فيه صور</div>')
+      +'<label class="pr-addf">+ أضف صور<input type="file" accept="image/*" multiple hidden onchange="_srAttAdd('+r.id+',this)"></label></div>'
+    +'<div class="pr-sec"><div class="pr-sh">📎 المخططات والملفات <span>'+fl.length+'</span></div><div class="pr-files">'+fl.map(row).join('')
+      +(fl.length?'':'<div class="pr-none">ما فيه مخططات أو ملفات</div>')
+      +'<label class="pr-addf">+ أضف ملف<input type="file" accept=".pdf,.dwg,.dxf,.xlsx,.xls,.docx,.doc,.zip,.rar" multiple hidden onchange="_srAttAdd('+r.id+',this)"></label></div></div>';
 }
 async function _srAttDel(id,i){ var r=_srRow(id); if(!r)return; if(!await askConfirm({title:'حذف الملف',message:'الملف ينحذف من الطلب.',confirmText:'احذفه'}))return; var at=_srAtts(r).map(function(a){return {name:a.name,url:a.url};}); at.splice(i,1); _srQuick(id,{attachments:at},'انحذف الملف'); }
 function _srAttAdd(id,inp){ var r=_srRow(id); var fs=[].slice.call(inp.files||[]); inp.value=''; if(!r||!fs.length)return;
@@ -7763,7 +7769,7 @@ function _srMain(r,q){
       +(_srEdBox(r,'loc')||'<div class="pr-mf"><small>المدينة والحي</small><button type="button" class="pr-ed pr-mv" onclick="_srEd('+r.id+',\'loc\')">'+(r.city?'<span class="pr-chip">'+esc(r.city)+(r.district?' · '+esc(r.district):'')+'</span>':'<span class="pr-chip warn">بدون مدينة</span>')+'<span class="pr-pen">✏️</span></button></div>')
     +'</div>'
     +(_srEdBox(r,'start')||_srEdBox(r,'budget')||'')
-    +'<div class="pr-facts"><div class="pr-ed" onclick="_srEd('+r.id+',\'start\')"><small>يبدأ ✏️</small>'+(r.start_text?esc(r.start_text):'غير محدد')+'</div><div class="pr-ed" onclick="_srEd('+r.id+',\'budget\')"><small>الميزانية ✏️</small>'+(r.budget?fmtNum(r.budget)+' ر.س':'غير محددة')+'</div><div><small>يوصله الإشعار</small><span style="color:#1d4ed8" id="sr-audf-'+r.id+'">…</span></div></div>'
+    +'<div class="pr-facts"><div class="pr-ed" onclick="_srEd('+r.id+',\'start\')"><small>يبدأ ✏️</small>'+(r.start_text?esc(r.start_text):'غير محدد')+'</div><div class="pr-ed" onclick="_srEd('+r.id+',\'budget\')"><small>الميزانية ✏️</small>'+(r.budget?fmtNum(r.budget)+' ر.س':'غير محددة')+'</div><div><small>يوصله الإشعار</small><span style="color:#1d4ed8" id="sr-audf-'+r.id+'">…</span></div><div><small>يستقبل عروض لمدة</small><select class="pr-ei" style="padding:4px 8px;font-size:13px;font-weight:900" onchange="_SR.dur['+r.id+']=+this.value" aria-label="مدة استقبال العروض">'+[7,14,30,60].map(function(d){ var cur=(_SR.dur&&_SR.dur[r.id])||30; return '<option value="'+d+'"'+(d===cur?' selected':'')+'>'+(d===7?'أسبوع':(d===14?'أسبوعين':(d===30?'شهر':'شهرين')))+'</option>'; }).join('')+'</select></div></div>'
     +_srFiles(r)
     +(words<12&&!q.ad?'<div style="border:1px solid #fde68a;background:#fffbeb;border-radius:12px;padding:10px 12px"><b style="font-size:13px">💡 نساعده يوضّح طلبه</b><div style="font-size:12.5px;line-height:1.8;color:#92400e;font-weight:700">الوصف قصير — عدّله أنت مكانه (مثال: «توريد وتركيب 10 أبواب WBC داخلية مقاس 90×210 + باب مطبّق، حسب المخطط المرفق») أو اطلب منه تعديل.</div></div>':'')
     +_srOwner(r)
@@ -7816,7 +7822,7 @@ function _srAct(id,act){
   var reason=((ta&&ta.value)||'').trim(), body={action:act};
   if(act==='ad'){ body={action:'reject',kind:'ad',reason:reason||null}; }
   else if(act==='approve'){ var A=_srAudGet(id); if(A.scope==='cities'&&!A.cities.length){toast('اختر مدينة وحدة على الأقل','error');return;} if(_SR.dup&&_SR.dup.id===id&&r.dups&&r.dups.length&&_SR.dup.act!=='new'){toast('اختر فوق وش تسوي بالتكرار أول','error');return;}
-    body.audience={scope:A.scope,cities:A.scope==='cities'?A.cities:[]}; body.note=((tip&&tip.value)||'').trim()||null; }
+    body.audience={scope:A.scope,cities:A.scope==='cities'?A.cities:[]}; body.note=((tip&&tip.value)||'').trim()||null; body.days=(_SR.dur&&_SR.dur[id])||30; }
   else if(act==='needs_edit'||act==='reject'){ if(!reason){toast(act==='needs_edit'?'اكتب أو اختر وش يحتاج يعدّل':'اكتب سبب الرفض','error'); if(ta)ta.focus(); return;} body.reason=reason; }
   else if(act==='edit_no'){ body.reason=reason||null; }
   else if(act==='dup_merge'||act==='dup_back'){ var d=r.dups[(_SR.dup&&_SR.dup.i)||0]; body.dup_id=d.id; }
