@@ -4924,7 +4924,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
       req.body.portfolio_images = uploaded;
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'company_profile_url')) { const _cu = req.body.company_profile_url ? _safeUrl(req.body.company_profile_url) : null; if (req.body.company_profile_url && !_cu) delete req.body.company_profile_url; else { req.body.company_profile_url = _cu; req.body.company_profile_name = _cu ? _cleanTxt(String(req.body.company_profile_name||'بروفايل الشركة'),120) : null; } }
-    const allowed = { company_profile_url:'company_profile_url', company_profile_name:'company_profile_name', name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' };
+    const allowed = { company_profile_url:'company_profile_url', company_profile_name:'company_profile_name', name:'name', phone:'phone', email:'email', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', portfolio_images:'portfolio_images', profile_image:'profile_image', business_name:'business_name', website:'website', location_url:'location_url', instagram:'instagram', twitter:'twitter', snapchat:'snapchat', tiktok:'tiktok', youtube:'youtube' , serves_all_cities:'serves_all_cities', service_cities:'service_cities' };
     const sets=[]; const params=[]; let idx=1;
     for (const key in allowed) {
       if (Object.prototype.hasOwnProperty.call(req.body, key)) {
@@ -4933,6 +4933,8 @@ app.put('/api/provider/profile', auth, async (req, res) => {
         if (key==='business_name' && val) val=_cleanTxt(val,100);
         if (key==='email') val=String(val||'').trim().toLowerCase();
         if (key==='experience_years') { val=(val===''||val===null||val===undefined)?null:parseInt(val); if(isNaN(val))val=null; }
+        if (key==='serves_all_cities') val=!!val;
+        if (key==='service_cities') { const prim=_cityNorm(_cleanTxt(req.body.city||'',40)); val=[...new Set((Array.isArray(val)?val:[]).map(c=>_cityNorm(_cleanTxt(c,40))).filter(c=>c&&c!==prim))].slice(0,30); }
         if (val==='') val=null;
         sets.push(`${allowed[key]}=$${idx}`); params.push(val); idx++;
       }

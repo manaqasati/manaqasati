@@ -7742,7 +7742,7 @@ function _ssPaint(){
   if(!_SS.list){ B.innerHTML=h+'<div class="loading"><div class="spinner"></div></div>'; if(Ft)Ft.innerHTML=''; return; }
   var V=L.filter(function(p){ return _SS.show==='all'||p.st==='none'; }), nSel=Object.keys(_SS.sel).length;
   var stTag={offered:['قدّم عرض','#dcfce7','#166534'],viewed:['وصله · شافه','#fef3c7','#92400e'],opened:['وصله · فتح','#dbeafe','#1d4ed8'],reached:['وصله من قبل','#f1f5f9','#475569']};
-  h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--border);padding-top:10px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:7px;font-weight:900;font-size:13.5px;cursor:pointer"><input type="checkbox" '+(fresh&&L.every(function(p){return p.st!=='none'||_SS.sel[p.id];})?'checked':'')+' onchange="_ssAll(this.checked)"> حدّد الجدد ('+fresh+')</label><span style="font-size:12px;color:var(--muted);font-weight:700">مرتّبين: الجدد · نفس المدينة · الأنشط · الأعلى تقييم</span></div>';
+  h+='<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid var(--border);padding-top:10px;flex-wrap:wrap"><span style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><b style="font-size:13px">حدّد:</b>'+(fresh?'<button type="button" class="ss-ch" onclick="_ssAll(\'new\')">الجدد ('+fresh+')</button>':'')+'<button type="button" class="ss-ch" onclick="_ssAll(\'all\')">الكل ('+V.filter(function(p){return p.st!=='offered';}).length+')</button>'+(nSel?'<button type="button" class="ss-ch" onclick="_ssAll(\'none\')">إلغاء التحديد</button>':'')+'</span><span style="font-size:12px;color:var(--muted);font-weight:700">مرتّبين: الجدد · نفس المدينة · الأنشط · الأعلى تقييم</span></div>';
   h+=V.length?V.map(function(p){ var t=stTag[p.st], off=p.st==='offered';
       var b=function(k,lbl,ic,doneF,dis){ return '<button type="button" class="ss-b ss-'+k+(doneF?' done':'')+'"'+(dis?' disabled title="'+dis+'"':'')+' onclick="_ssOne('+p.id+',\''+k+'\',this)">'+ic+lbl+(doneF?' ✓':'')+'</button>'; };
       return '<div class="ss-pr'+(off?' off':'')+'"><input type="checkbox" '+(_SS.sel[p.id]?'checked':'')+(off?' disabled':'')+' onchange="_ssSel('+p.id+',this.checked)"><span class="sc-av">'+esc(String(p.name||'؟').charAt(0))+'</span>'
@@ -7759,7 +7759,8 @@ function _ssDD(opts){ return opts.length?opts.map(function(x){ return '<button t
 function _ssPaintDD(){ var el=document.getElementById('ss-ddl'); if(!el)return; var q=_SS.q.trim(); el.innerHTML=_ssDD((_SS.counts||[]).filter(function(x){ return _SS.cats.indexOf(x.c)<0&&(!q||x.c.indexOf(q)>=0); }).slice(0,40)); }
 function _ssCat(c,add){ if(add){ if(_SS.cats.length>=8){ toast('8 تخصصات بالكثير','error'); return; } if(_SS.cats.indexOf(c)<0)_SS.cats.push(c); _SS.add=false; _SS.q=''; } else _SS.cats=_SS.cats.filter(function(x){return x!==c;}); _ssLoad(false); }
 function _ssSel(id,on){ if(on)_SS.sel[id]=1; else delete _SS.sel[id]; _ssPaint(); }
-function _ssAll(on){ (_SS.list||[]).forEach(function(p){ if(p.st==='none'){ if(on)_SS.sel[p.id]=1; else delete _SS.sel[p.id]; } }); _ssPaint(); }
+function _ssAll(m){ if(m==='none'){ _SS.sel={}; _ssPaint(); return; }
+  (_SS.list||[]).forEach(function(p){ if(p.st==='offered')return; if(_SS.show!=='all'&&p.st!=='none')return; if(m==='all'||p.st==='none')_SS.sel[p.id]=1; }); _ssPaint(); }
 function _ssMark(ids,done){ (_SS.list||[]).forEach(function(p){ var x=done[p.id]; if(x){ p.notified=x.notified; p.emailed=x.emailed; if(p.st==='none')p.st='reached'; delete _SS.sel[p.id]; } }); }
 function _ssOne(uid,k,btn){
   if(k==='wa'){ var w=window.open('about:blank','_blank'); btn.disabled=true;
@@ -7768,8 +7769,10 @@ function _ssOne(uid,k,btn){
       if(w)w.location.href=res.d.wa_link; else location.href=res.d.wa_link;
       (_SS.list||[]).forEach(function(p){ if(p.id===uid){ p.wa=true; if(p.st==='none')p.st='reached'; delete _SS.sel[uid]; } }); _ssPaint(); _SCR.dirty=1; }).catch(function(){ if(w)w.close(); btn.disabled=false; toast('تعذّر الاتصال','error'); });
     return; }
+  var _p=(_SS.list||[]).filter(function(p){return p.id===uid;})[0]||{}, _ag=k==='nt'?!!_p.notified:!!_p.emailed;
+  if(_ag&&!confirm('وصله '+(k==='nt'?'إشعار':'إيميل')+' من قبل — ترسل له تذكير؟'))return;
   btn.disabled=true;
-  fetch(API+'/api/admin/sub/'+_SS.id+'/send',Object.assign({method:'POST',body:JSON.stringify({ids:[uid],notify:k==='nt',email:k==='em'})},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
+  fetch(API+'/api/admin/sub/'+_SS.id+'/send',Object.assign({method:'POST',body:JSON.stringify({ids:[uid],notify:k==='nt',email:k==='em',again:_ag})},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
     if(!res.ok){ btn.disabled=false; toast((res.d&&res.d.message)||'تعذّر','error'); return; }
     if(!res.d.providers){ btn.disabled=false; toast('ما نقدر نرسل له (غير نشط أو بينه وبين صاحب الطلب حظر)','error'); return; }
     if(k==='em'&&!res.d.emailed&&!((res.d.done||{})[uid]||{}).emailed){ btn.disabled=false; toast('تعذّر إرسال الإيميل — جرّب بعد شوي','error'); return; }
@@ -7778,8 +7781,9 @@ function _ssOne(uid,k,btn){
 function _ssSend(btn){
   var ids=Object.keys(_SS.sel).map(Number), n=document.getElementById('ss-n'), e=document.getElementById('ss-e'), dn=!!(n&&n.checked), de=!!(e&&e.checked);
   if(!ids.length)return; if(!dn&&!de){ toast('اختر إشعار أو إيميل','error'); return; }
-  askConfirm({title:'إرسال للمزوّدين',message:'يوصل '+(dn&&de?'إشعار وإيميل':(dn?'إشعار':'إيميل'))+' لـ '+ids.length+' مزوّد عن الطلب #'+_SS.id+'.',confirmText:'نعم، أرسل',safe:true}).then(function(ok){ if(!ok)return; btn.disabled=true;
-    fetch(API+'/api/admin/sub/'+_SS.id+'/send',Object.assign({method:'POST',body:JSON.stringify({ids:ids,notify:dn,email:de})},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
+  var old=(_SS.list||[]).filter(function(p){ return _SS.sel[p.id]&&p.st!=='none'; }).length;
+  askConfirm({title:'إرسال للمزوّدين',message:'يوصل '+(dn&&de?'إشعار وإيميل':(dn?'إشعار':'إيميل'))+' لـ '+ids.length+' مزوّد عن الطلب #'+_SS.id+'.'+(old?' منهم '+old+' وصلهم من قبل — يوصلهم «تذكير».':''),confirmText:'نعم، أرسل',safe:true}).then(function(ok){ if(!ok)return; btn.disabled=true;
+    fetch(API+'/api/admin/sub/'+_SS.id+'/send',Object.assign({method:'POST',body:JSON.stringify({ids:ids,notify:dn,email:de,again:old>0})},hdr())).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
       if(!res.ok){ btn.disabled=false; toast((res.d&&res.d.message)||'تعذّر','error'); return; }
       _ssMark(ids,res.d.done||{}); toast('وصل لـ '+res.d.providers+' مزوّد ✓'+(de&&res.d.emailed<res.d.providers?' · الإيميل وصل لـ '+res.d.emailed:''),'success'); _SCR.dirty=1; _ssPaint(); _scReach(_SS.id); }).catch(function(){ btn.disabled=false; toast('تعذّر الاتصال','error'); }); }); }
 function _scClose(id){ if(!confirm('تقفل الطلب؟ يوصل صاحبه إشعار.'))return; fetch(API+'/api/admin/sub/'+id+'/close',Object.assign({method:'POST',body:'{}'},hdr())).then(function(r){return r.json();}).then(function(d){ if(d&&d.ok){ toast('تم الإغلاق','success'); var o=document.getElementById('scOv'); if(o)o.remove(); _loadSubc(); } else toast((d&&d.message)||'تعذّر','error'); }); }
