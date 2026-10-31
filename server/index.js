@@ -300,9 +300,9 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '14'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '15'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
-const _UP_TAG = '<script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
+const _UP_TAG = '<script>window.__mqGateOn=1;window.addEventListener("popstate",function(e){try{if(window.__mqPopGate&&window.__mqPopGate(e))e.stopImmediatePropagation();}catch(_){}},true);</script><script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
 // ملفات اللوحات المفصولة (dash-*.js/css): نضيف لرابطها بصمة المحتوى تلقائياً (?v=...)
 // → الجوال يخزّنها سنة، وأي تعديل على الملف يغيّر البصمة فيوصل التحديث فوراً بدون ما أحد يغيّر رقم يدوي
@@ -12669,7 +12669,7 @@ async function _subAudRows(sub, scope, cities){
 }
 // يوصّل طلب «مقاول باطن» لمزوّد واحد (إشعار و/أو إيميل) ويتسجّل في ntrack (kind=sub_new) عشان الإدارة تشوف الوصول
 async function _subPush(sub, u, ownNm, ch){
-  const t = '🤝 ' + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category, url = '/dashboard-provider.html#sub/' + sub.id;
+  const t = (ch.again ? '⏰ تذكير — ' : '🤝 ') + (u.is_p ? 'شريكك يطلبك: ' : 'مقاول يحتاج ') + sub.category, url = '/dashboard-provider.html#sub/' + sub.id;
   let tid = null, n = 0, e = 0;
   try {
     if (ch.notify) { tid = await notify(u.id, t, '«' + _subT(sub).slice(0, 70) + '»' + (sub.city ? ' · ' + sub.city : '') + ' — من ' + (ownNm || 'مقاول') + '. قدّم عرضك', 'sub', sub.id, { kind: 'sub_new', url }); n = 1; }
@@ -13305,7 +13305,8 @@ app.post('/api/admin/sub/:id/send', requirePermission('requests.review'), async 
     let n = 0, e = 0; const done = {};
     await _inChunks(us, 8, async u => {
       const q = m[u.id] || {};
-      const r = await _noSoft(() => _subPush(s, u, own.nm, { notify: doN && !q.notified, email: doE && !q.emailed, wait: true }));
+      const ag = !!b.again; // الإدارة اختارت ترسل مرة ثانية لمين وصله
+      const r = await _noSoft(() => _subPush(s, u, own.nm, { notify: doN && (ag || !q.notified), email: doE && (ag || !q.emailed), wait: true, again: ag && !!(q.notified || q.emailed) }));
       n += r.n; e += r.e; done[u.id] = { notified: !!(q.notified || r.n), emailed: !!(q.emailed || r.e) };
     });
     const ch = [doN ? 'إشعار' : '', doE ? 'إيميل' : ''].filter(Boolean).join('+');

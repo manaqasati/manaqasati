@@ -172,12 +172,23 @@
     // نرجع خطوة بس إذا آخر شي في السجل هو حقنا (لو الصفحة انتقلت لقسم ثاني نخليه)
     if (history.state && history.state.mqb === e.id) { skip++; try { (W.__mqRawBack || history.back.bind(history))(); } catch(_){ skip--; } }
   }
-  W.addEventListener('popstate', function(ev){
-    if (skip > 0) { skip--; ev.stopImmediatePropagation(); return; }
-    if (stack.length) { var e = stack.pop(); ev.stopImmediatePropagation(); try { e.close(); } catch(_){} return; }
+  // يرجّع true لو الرجوع كان حقنا (قفل نافذة) — وقتها ما لازم توصل لصفحة اللوحة (وإلا ترسم القسم من جديد وتضيع التعديلات)
+  // آخر رابط كنا عليه — لو الرجوع غيّر القسم (مو بس قفل نافذة) نخلي اللوحة تنقل كمان
+  var lastHref = location.href;
+  ['pushState','replaceState'].forEach(function(k){ var o = history[k]; if (typeof o !== 'function') return; history[k] = function(){ var r = o.apply(history, arguments); lastHref = location.href; return r; }; });
+  W.addEventListener('hashchange', function(){ lastHref = location.href; });
+  function gate(ev){
+    var prev = lastHref; lastHref = location.href;
+    if (skip > 0) { skip--; return true; }
+    if (stack.length) { var e = stack.pop(); try { e.close(); } catch(_){} return prev === location.href; }
     // وصلنا لخطوة قديمة حقتنا (النافذة انقفلت بطريقة ثانية) → نكمل رجوع
-    if (ev.state && ev.state.mqb) { ev.stopImmediatePropagation(); try { (W.__mqRawBack || history.back.bind(history))(); } catch(_){} }
-  }, true);
+    if (ev.state && ev.state.mqb) { try { (W.__mqRawBack || history.back.bind(history))(); } catch(_){} return true; }
+    return false;
+  }
+  W.__mqPopGate = gate;
+  // السيرفر يحط «بوابة» بأول الصفحة (تسجّل قبل مستمعات اللوحات) — في المتصفح مستمعات window تشتغل بترتيب التسجيل
+  // فلو ما فيه بوابة (صفحة ما انحقنت) نسجّل هنا كاحتياط
+  if (!W.__mqGateOn) W.addEventListener('popstate', function(ev){ if (gate(ev)) ev.stopImmediatePropagation(); }, true);
   function drop(e){ var i = stack.indexOf(e); if (i >= 0) stack.splice(i, 1); } // انقفلت لأنه انتقل لصفحة/قسم ثاني: نخلي السجل
   W.mqBack = { push: push, release: release, drop: drop };
 
