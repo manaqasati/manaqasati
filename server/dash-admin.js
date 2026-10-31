@@ -2832,7 +2832,7 @@ function _uaOpen(id){
       +(pend?'<div style="background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:800;margin-bottom:10px">لسا ما وصل المزوّدين شي (العميل اختار قبل أقل من 5 دقايق) — الإلغاء يصير بهدوء</div>':'')
       +'<b style="font-size:13.5px">السبب</b><div style="display:flex;flex-direction:column;gap:7px;margin:8px 0 12px">'
       +opt('mistake','اختار بالغلط','المزوّد يوصله اعتذار لطيف — عرضه باقي ويقدر العميل يختاره',true)
-      +opt('nodeal','ما اتفقوا','المزوّد يوصله إن العميل ما اتفق معه، وعرضه يصير مرفوض',false)+'</div>'
+      +opt('nodeal','ما اتفقوا','المزوّد يوصله إنهم ما اتفقوا — عرضه يبقى، ولو اتفقوا بعدين يقدر العميل يختاره',false)+'</div>'
       +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:11px 13px;font-size:12.5px;font-weight:700;line-height:1.95;color:var(--text2)"><b>وش بيصير:</b><br>✓ المشروع يرجع مفتوح ويستقبل اختيار<br>✓ العروض اللي انرفضت بسبب الترسية ترجع'+(d.restore_n?' ('+d.restore_n+')':'')+' — واللي رفضها العميل بنفسه تبقى<br>✓ السعي على '+esc(d.provider||'المزوّد')+' ينلغي<br>✓ يتسجّل في سجل المشروع والإدارة</div>'
       +'<label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;margin:12px 0 8px;cursor:pointer"><input type="checkbox" id="ua-tell" checked style="width:16px;height:16px;accent-color:#2563eb"> بلّغ المزوّدين اللي قدّموا إن المشروع رجع</label>'
       +'<input id="ua-note" placeholder="ملاحظة داخلية (اختياري)…" style="width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-family:inherit;background:var(--card);color:var(--text)">'

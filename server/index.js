@@ -6392,13 +6392,13 @@ app.post('/api/admin/requests/:id/unaward', requirePermission('requests.edit'), 
     if (sl && ['submitted','approved'].includes(sl.status)) return res.status(400).json({ message: 'المزوّد سدّد السعي على هالمشروع — راجعه من صفحة السعي أول' });
     // لو لسا بمهلة الـ5 دقايق: ما وصل أحد شي → نرجّع بهدوء
     const wasPending = !!(await pool.query('UPDATE requests SET award_pending_until=NULL WHERE id=$1 AND award_pending_until IS NOT NULL RETURNING id', [id])).rows[0];
-    await _awardRevert(rq, { rejectAccepted: why === 'nodeal' });
+    await _awardRevert(rq); // حتى «ما اتفقوا»: عرضه يبقى — ممكن يرجعون يتفقون
     if (sl) await pool.query("UPDATE saai_ledger SET status='cancelled' WHERE request_id=$1 AND provider_id=$2 AND status IN ('pending','deferred')", [id, pid]);
     const note = _cleanTxt(b.note, 300), t = String(rq.title || '').slice(0, 50);
     let told = 0;
     if (!wasPending) {
       if (why === 'mistake') await notify(pid, 'ℹ️ تحديث على «' + t + '»', 'العميل اختار عرضك بالغلط، فرجّعنا المشروع مفتوح للاختيار. عرضك باقي ويقدر العميل يختاره — نعتذر عن اللبس.', 'request', id);
-      else await notify(pid, 'ℹ️ تحديث على «' + t + '»', 'العميل بلّغنا إنه ما تم الاتفاق بينكم، فرجّعنا المشروع مفتوح للاختيار وألغينا السعي.', 'request', id);
+      else await notify(pid, 'ℹ️ تحديث على «' + t + '»', 'العميل بلّغنا إنه ما تم الاتفاق بينكم، فرجّعنا المشروع مفتوح للعروض وألغينا السعي. عرضك باقي — لو اتفقتوا بعدين يقدر يختارك من جديد، وتقدر تحدّث عرضك.', 'request', id);
       if (b.notify_bidders !== false) {
         const L = (await pool.query("SELECT DISTINCT provider_id FROM bids WHERE request_id=$1 AND status='pending' AND provider_id<>$2", [id, pid])).rows;
         await _inChunks(L, 8, x => notify(x.provider_id, '🔄 «' + t + '» رجع يستقبل الاختيار', 'العميل ما كمّل مع المزوّد السابق — عرضك باقي وممكن يختاره. تقدر تحسّنه لو تبي.', 'request', id));
