@@ -1142,8 +1142,9 @@ function _closeRptModal(){var w=document.getElementById('rpt-modal-wrap');if(w)w
 async function _submitReport(){
   var sel=document.querySelector('#rpt-reasons-wrap input[name="rpt-radio"]:checked');
   if(!sel){document.querySelectorAll('#rpt-reasons-wrap label').forEach(function(l){l.style.borderColor='#fca5a5';});setTimeout(function(){document.querySelectorAll('#rpt-reasons-wrap label').forEach(function(l){l.style.borderColor='var(--border)';});},1200);return;}
-  var btn=_el('rpt-send-btn');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   var details=((document.getElementById('rpt-details-inp')||{}).value||'').trim();
+  if(sel.value==='أخرى'&&details.length<5){showToast('اكتب وش صار — مع «أخرى» لازم توضّح','error');var _di=document.getElementById('rpt-details-inp');if(_di){_di.style.borderColor='#dc2626';_di.focus();}return;}
+  var btn=_el('rpt-send-btn');if(btn){btn.disabled=true;btn.textContent='جاري الإرسال...';}
   var payload={reported_id:_rptTarget.id,type:'user',reason:sel.value};if(details)payload.details=details;if(_rptTarget.reqId)payload.request_id=_rptTarget.reqId;
   try{var r=await _api('/api/reports',{method:'POST',body:JSON.stringify(payload)});_closeRptModal();if(r&&r.ok){showToast('تم إرسال البلاغ — ستتم المراجعة خلال 24 ساعة','success');}else{showToast((r&&r.message)||'حدث خطأ','error');}}
   catch(e){if(btn){btn.disabled=false;btn.textContent='إرسال البلاغ';}showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');}

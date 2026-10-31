@@ -7782,6 +7782,7 @@ app.post('/api/reports', rateLimiter(10, 600000), auth, async (req, res) => {
   try {
     const { reported_id, request_id, type, reason, details } = req.body;
     if (!reason) return res.status(400).json({ message: 'السبب مطلوب' });
+    if (/^(أخرى|اخرى|other)$/i.test(String(reason).trim()) && String(details || '').trim().length < 5) return res.status(400).json({ message: 'اكتب وش صار — مع «أخرى» لازم توضّح عشان نقدر نتصرف' });
     const r = await pool.query(`INSERT INTO reports (reporter_id, reported_id, request_id, type, reason, details, created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`, [req.user.id, reported_id||null, request_id||null, type||'other', reason, details||null]);
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -12242,7 +12243,7 @@ app.get('/api/admin/analytics', requirePermission('analytics.view'), async (req,
 });
 
 app.get('/api/admin/reports', requirePermission('reports.view'), async (req, res) => {
-  try { const r=await pool.query(`SELECT r.*, COALESCE(u1.name,'محذوف') as reporter_name, COALESCE(u2.name,'محذوف') as reported_name, COALESCE(u2.role,'unknown') as reported_role, rq.title as request_title FROM reports r LEFT JOIN users u1 ON r.reporter_id=u1.id LEFT JOIN users u2 ON r.reported_id=u2.id LEFT JOIN requests rq ON r.request_id=rq.id ORDER BY r.created_at DESC LIMIT 200`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  try { const r=await pool.query(`SELECT r.*, COALESCE(NULLIF(u1.business_name,''),u1.name,'محذوف') as reporter_name, COALESCE(u1.role,'') as reporter_role, COALESCE(NULLIF(u2.business_name,''),u2.name,'محذوف') as reported_name, COALESCE(u2.role,'unknown') as reported_role, COALESCE(u2.can_provide,FALSE) AS reported_cp, rq.title as request_title, (SELECT COUNT(*)::int FROM reports z WHERE z.reported_id=r.reported_id AND r.reported_id IS NOT NULL) AS against_n FROM reports r LEFT JOIN users u1 ON r.reporter_id=u1.id LEFT JOIN users u2 ON r.reported_id=u2.id LEFT JOIN requests rq ON r.request_id=rq.id ORDER BY r.created_at DESC LIMIT 200`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.put('/api/admin/reports/:id', requirePermission('reports.resolve'), async (req, res) => {

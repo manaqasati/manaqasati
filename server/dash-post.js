@@ -424,7 +424,7 @@ function _cliReport(provId,reqId){
     +'<div style="width:36px;height:4px;background:#d1d5db;border-radius:2px;margin:0 auto 14px"></div>'
     +'<div style="font-size:15px;font-weight:800;color:#1e293b;margin-bottom:14px">الإبلاغ عن المزوّد</div>'
     +'<div style="font-size:12px;font-weight:700;color:#475569;margin-bottom:8px">سبب البلاغ</div>'+rh
-    +'<textarea id="crpt-details" placeholder="تفاصيل إضافية (اختياري)" style="width:100%;padding:10px;border:1.5px solid #e2e8f0;border-radius:10px;font-family:Tajawal;font-size:13px;min-height:70px;margin-top:8px;box-sizing:border-box"></textarea>'
+    +'<textarea id="crpt-details" placeholder="وش صار؟ (لازم لو اخترت «أخرى»)" style="width:100%;padding:10px;border:1.5px solid #e2e8f0;border-radius:10px;font-family:Tajawal;font-size:13px;min-height:70px;margin-top:8px;box-sizing:border-box"></textarea>'
     +'<div style="display:flex;gap:8px;margin-top:14px"><button onclick="_closeCliRpt()" style="padding:11px 18px;border-radius:10px;background:#fff;border:1px solid #e2e8f0;color:#64748b;font-weight:700;font-family:Tajawal;cursor:pointer">إلغاء</button>'
     +'<button id="crpt-send" onclick="_sendCliReport()" style="flex:1;padding:11px;border-radius:10px;background:#dc2626;color:#fff;border:none;font-weight:800;font-family:Tajawal;cursor:pointer">إرسال البلاغ</button></div></div>';
   document.body.appendChild(ov);
@@ -461,6 +461,7 @@ function _closeCliRpt(){var o=document.getElementById('cliRptOv');if(o)o.remove(
 function _sendCliReport(){
   var sel=document.querySelector('input[name="crpt"]:checked');
   if(!sel){showToast('اختر سبباً','error');return;}
+  var _dt=document.getElementById('crpt-details'); if(sel.value==='أخرى'&&(!_dt||(_dt.value||'').trim().length<5)){showToast('اكتب وش صار — مع «أخرى» لازم توضّح','error'); if(_dt){_dt.style.borderColor='#dc2626';_dt.focus();} return;}
   var btn=document.getElementById('crpt-send');if(btn){btn.disabled=true;btn.textContent='جارٍ الإرسال...';}
   var payload={reported_id:_cliRptTarget.pid,type:'user',reason:sel.value};
   var det=(document.getElementById('crpt-details')||{}).value;if(det&&det.trim())payload.details=det.trim();

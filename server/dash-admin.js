@@ -3062,12 +3062,45 @@ async function deleteReview(id){
 function loadReports(){
   _adSeen('reports');
   fetch(API+'/api/admin/reports',hdr()).then(function(r){return r.json();}).then(function(reps){
-    if(!Array.isArray(reps)||!reps.length){document.getElementById('reports-table').innerHTML=emptyState('لا يوجد بلاغات');return;}
-    document.getElementById('reports-table').innerHTML='<table><thead><tr><th>النوع</th><th>المُبلِّغ</th><th>السبب</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>'+reps.map(function(rp){
-      var resolved=rp.status==='resolved';
-      return '<tr><td style="font-size:12.5px">'+esc(rp.type||rp.target_type||'—')+'</td><td style="font-size:12.5px">'+esc(rp.reporter_name||'—')+'</td><td style="font-size:12.5px;color:var(--muted);max-width:240px">'+esc(rp.reason||rp.description||'—')+'</td><td><span class="badge '+(resolved?'b-completed':'b-review')+'">'+(resolved?'محلول':'جديد')+'</span></td><td style="font-size:11.5px;color:var(--muted)">'+fmtDate(rp.created_at)+'</td></tr>';
-    }).join('')+'</tbody></table>';
+    window._RP=Array.isArray(reps)?reps:[];
+    if(!_RP.length){document.getElementById('reports-table').innerHTML=emptyState('لا يوجد بلاغات');return;}
+    var role=function(r,cp){ return r==='provider'?'مزوّد':(r==='client'?(cp?'عميل/مزوّد':'عميل'):(r==='admin'?'إدارة':'')); };
+    var ST={resolved:['تم','b-completed'],warned:['تحذير','b-completed'],ignored:['بلا مخالفة','b-completed']};
+    document.getElementById('reports-table').innerHTML='<table><thead><tr><th>على مين</th><th>المُبلِّغ</th><th>السبب ووش صار</th><th>وين</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>'+_RP.map(function(rp,i){
+      var st=ST[rp.status]||['جديد','b-review'], det=String(rp.details||'').trim();
+      return '<tr style="cursor:pointer" onclick="_rpOpen('+i+')"><td style="font-size:12.5px"><b>'+esc(rp.reported_name||'—')+'</b> <span style="color:var(--muted)">'+role(rp.reported_role,rp.reported_cp)+'</span>'+(rp.against_n>1?'<div><span class="badge b-review" style="font-size:10.5px">عليه '+rp.against_n+' بلاغات</span></div>':'')+'</td>'
+        +'<td style="font-size:12.5px">'+esc(rp.reporter_name||'—')+' <span style="color:var(--muted)">'+role(rp.reporter_role)+'</span></td>'
+        +'<td style="font-size:12.5px;max-width:300px"><b>'+esc(String(rp.reason||'—').split(' · ')[0])+'</b><div style="color:'+(det?'var(--text2)':'#b45309')+';font-weight:700;margin-top:2px">'+(det?esc(det.slice(0,120))+(det.length>120?'…':''):'ما كتب تفاصيل — اسأله')+'</div></td>'
+        +'<td style="font-size:12px;color:var(--muted)">'+(rp.request_title?'📁 '+esc(rp.request_title).slice(0,40):(String(rp.type||'').indexOf('مقاول باطن')===0?'🤝 '+esc(rp.type):'—'))+'</td>'
+        +'<td><span class="badge '+st[1]+'">'+st[0]+'</span></td><td style="font-size:12px;color:var(--muted)">'+new Date(rp.created_at).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'})+'</td></tr>';
+    }).join('')+'</tbody></table><div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:8px">اضغط على أي بلاغ تشوف تفاصيله وتتواصل مع الطرفين</div>';
   }).catch(function(){document.getElementById('reports-table').innerHTML=emptyState('تعذر التحميل');});
+}
+function _rpOpen(i){
+  var rp=(window._RP||[])[i]; if(!rp)return; var det=String(rp.details||'').trim();
+  var old=document.getElementById('rpOv'); if(old)old.remove();
+  var ov=document.createElement('div'); ov.id='rpOv'; ov.className='overlay show'; ov.style.zIndex='1000';
+  var can=permOK('support.reply'), btn=function(t,oc,c){ return '<button type="button" class="act-btn ab-default" style="justify-content:center'+(c?';'+c:'')+'" onclick="'+oc+'">'+t+'</button>'; };
+  ov.innerHTML='<div class="modal" style="max-width:560px"><div class="modal-body" style="padding:18px;display:flex;flex-direction:column;gap:12px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:17px">🚩 بلاغ #'+rp.id+'</b><button type="button" class="act-btn ab-default" onclick="document.getElementById(\'rpOv\').remove()">✕</button></div>'
+    +'<div style="font-size:12.5px;color:var(--muted);font-weight:700">من <b style="color:var(--text)">'+esc(rp.reporter_name||'—')+'</b> على <b style="color:var(--text)">'+esc(rp.reported_name||'—')+'</b> · '+new Date(rp.created_at).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+(rp.against_n>1?' · <span style="color:#b45309">عليه '+rp.against_n+' بلاغات</span>':'')+'</div>'
+    +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px"><b>'+esc(rp.reason||'—')+'</b><div style="margin-top:6px;font-size:13.5px;line-height:1.8;white-space:pre-wrap;color:'+(det?'var(--text)':'#b45309')+';font-weight:'+(det?'600':'800')+'">'+(det?esc(det):'المُبلِّغ ما كتب وش صار — كلّمه واسأله من الزر تحت')+'</div></div>'
+    +(rp.request_title?'<div style="font-size:13px;font-weight:700">📁 المشروع: <a href="/project/x-'+rp.request_id+'?id='+rp.request_id+'" target="_blank" rel="noopener">'+esc(rp.request_title)+' ↗</a></div>':'')
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +(can&&rp.reporter_id?btn('💬 كلّم المُبلِّغ','document.getElementById(\'rpOv\').remove();spStart('+rp.reporter_id+(rp.request_id?',\'req:'+rp.request_id+'\'':'')+')'):'')
+      +(can&&rp.reported_id?btn('💬 كلّم المُبلَّغ عنه','document.getElementById(\'rpOv\').remove();spStart('+rp.reported_id+(rp.request_id?',\'req:'+rp.request_id+'\'':'')+')'):'')
+      +(rp.reported_id?btn('👤 ملف المُبلَّغ عنه','document.getElementById(\'rpOv\').remove();openUserView('+rp.reported_id+')'):'')
+      +(rp.reported_id&&rp.reported_role==='provider'&&typeof discOpen==='function'?btn('⛔ إيقاف عن العروض','document.getElementById(\'rpOv\').remove();discOpen('+rp.reported_id+')','color:#b91c1c;border-color:#fecaca'):'')
+    +'</div>'
+    +(rp.status==='pending'||!rp.status?'<div style="display:flex;gap:8px">'+btn('⚠️ تحذير (إشعار له)','_rpAct('+rp.id+',\'warn\',this)','flex:1;color:#b45309')+btn('✓ تمت المعالجة','_rpAct('+rp.id+',\'resolve\',this)','flex:1')+btn('بلا مخالفة','_rpAct('+rp.id+',\'ignore\',this)','flex:1')+'</div>':'<div style="font-size:12.5px;color:var(--muted);font-weight:700">انعالج'+(rp.admin_note?': '+esc(rp.admin_note):'')+'</div>')
+    +'</div></div>';
+  ov.addEventListener('click',function(e){ if(e.target===ov)ov.remove(); }); document.body.appendChild(ov);
+}
+function _rpAct(id,a,b){
+  var note=a==='warn'?prompt('نص التحذير اللي يوصله:',''):'';
+  if(a==='warn'&&!note)return; b.disabled=true;
+  fetch(API+'/api/admin/reports/'+id,Object.assign({method:'PUT',body:JSON.stringify({action:a,admin_note:note||null})},hdr())).then(function(r){return r.json();}).then(function(d){
+    if(d&&d.ok){ toast('تم ✓','success'); var o=document.getElementById('rpOv'); if(o)o.remove(); loadReports(); } else { b.disabled=false; toast((d&&d.message)||'تعذّر','error'); } }).catch(function(){ b.disabled=false; toast('تعذّر الاتصال','error'); });
 }
 
 // ═══ الأسئلة والتوضيحات (الإدارة) ═══
@@ -3799,8 +3832,8 @@ function loadNeedsAction(){
 function _niBtn(pg){var b=null;document.querySelectorAll('.ni').forEach(function(n){if((n.getAttribute('onclick')||'').indexOf("showPage('"+pg+"'")>=0)b=n;});return b;}
 function _niGo(pg){showPage(pg,_niBtn(pg));}
 // «شفته»: تختفي بطاقة التنبيه من اللوحة لين يجي شي جديد (القائمة نفسها تبقى)
-var _adSeenAt={}, _FRESH=null;
-function _adSeen(k){ var t=Date.now(); if(_adSeenAt[k]&&t-_adSeenAt[k]<20000)return; _adSeenAt[k]=t; if(_FRESH&&_FRESH[k==='bidrep'?'bid_report_providers':k]!=null){_FRESH[k==='bidrep'?'bid_report_providers':k]=0; if(k==='flags')_FRESH.flag_providers=0; _applyFresh();} try{fetch(API+'/api/admin/seen',Object.assign({method:'POST',body:JSON.stringify({k:k})},hdr())).then(function(){_loadFresh();}).catch(function(){});}catch(e){} }
+var _adSeenAt=_adSeenAt||{}, _FRESH=_FRESH||null;
+function _adSeen(k){ if(!_adSeenAt)_adSeenAt={}; /* يُنادى أحياناً قبل تعريفه (فتح الصفحة مباشرة على #reports) */ var t=Date.now(); if(_adSeenAt[k]&&t-_adSeenAt[k]<20000)return; _adSeenAt[k]=t; if(_FRESH&&_FRESH[k==='bidrep'?'bid_report_providers':k]!=null){_FRESH[k==='bidrep'?'bid_report_providers':k]=0; if(k==='flags')_FRESH.flag_providers=0; _applyFresh();} try{fetch(API+'/api/admin/seen',Object.assign({method:'POST',body:JSON.stringify({k:k})},hdr())).then(function(){_loadFresh();}).catch(function(){});}catch(e){} }
 // أرقام القائمة الجانبية = الجديد بس (منذ آخر مرة فتحت القسم)
 function _loadFresh(){ fetch(API+'/api/admin/fresh',hdr()).then(function(r){return r.ok?r.json():null;}).then(function(f){ if(f){_FRESH=f;_applyFresh();} }).catch(function(){}); }
 function _setBadge(id,n){ var b=document.getElementById(id); if(b){ n=parseInt(n)||0; b.textContent=n>999?'999+':n; b.style.display=n?'flex':'none'; } }
