@@ -265,7 +265,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
           </div>
         </div>
         <div class="fg"><label id="gc-lbl-name">الاسم الكامل <span style="color:var(--red)">*</span></label><input id="gc-name" class="fi" type="text" placeholder="محمد أحمد العمري"></div>
-        <div class="fg"><label>رقم الجوال <span style="color:var(--red)">*</span></label><input id="gc-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="10"><div class="gc-hint" id="gc-ph-hint">عشان المزوّدين يتواصلون معك على مشروعك</div></div>
+        <div class="fg"><label>رقم الجوال <span style="color:var(--red)">*</span></label><input id="gc-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="16"><div class="gc-hint" id="gc-ph-hint">عشان المزوّدين يتواصلون معك على مشروعك</div></div>
         <div class="fg"><label>المدينة <span style="color:var(--red)">*</span></label><select id="gc-city" class="fi-sel"><option value="">اختر مدينتك</option></select></div>
         <div class="specs-wrap" id="gc-specs" style="display:none">
           <div class="specs-hd"><div class="specs-hd-t">تخصصاتك <span style="color:var(--red)">*</span></div><span class="specs-count" id="gc-specs-count">0/5</span></div>
@@ -325,7 +325,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
       </div>
       <div class="fg" id="fg-phone" style="display:none">
         <label>رقم الجوال <span style="color:var(--red)">*</span></label>
-        <input id="i-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="10">
+        <input id="i-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="16">
       </div>
       <div class="fg">
         <label>كلمة المرور <span style="color:var(--red)">*</span></label>
@@ -343,7 +343,7 @@ body{font-family:'Tajawal',sans-serif;background:var(--bg);color:var(--ink);min-
       </div>
       <div class="fg" id="fg-reg-phone" style="display:none">
         <label>رقم الجوال <span style="color:var(--red)">*</span></label>
-        <input id="i-reg-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="10">
+        <input id="i-reg-phone" class="fi" type="tel" placeholder="05xxxxxxxx" inputmode="numeric" maxlength="16">
       </div>
       <div class="fg" id="fg-city" style="display:none">
         <label>المدينة <span style="color:var(--red)">*</span></label>
@@ -646,9 +646,10 @@ function togglePw(id,btn){
 }
 
 function getV(id){var e=document.getElementById(id);var v=e?e.value.trim():'';if(/phone|otp|code/i.test(id))v=v.replace(/[\u0660-\u0669]/g,function(d){return d.charCodeAt(0)-0x660;}).replace(/[\u06F0-\u06F9]/g,function(d){return d.charCodeAt(0)-0x6F0;});return v;}
-function validatePhone(v){var d=v.replace(/[^0-9]/g,'');return d.length===10&&d.startsWith('05');}
+function _ph05(v){var d=String(v||'').replace(/[^0-9]/g,'');if(d.indexOf('00966')===0)d=d.slice(5);else if(d.indexOf('966')===0)d=d.slice(3);if(d.length===9&&d.charAt(0)==='5')d='0'+d;return d;}
+function validatePhone(v){var d=_ph05(v);return d.length===10&&d.startsWith('05');}
 function fmtPhone(v){
-  var d=v.replace(/[^0-9]/g,'');
+  var d=_ph05(v);
   if(d.startsWith('966'))return d;
   if(d.startsWith('0'))d=d.slice(1);
   return '966'+d;
@@ -734,7 +735,7 @@ async function doSubmit(){
       _authDone(d,url);
     } else {
       var errMsg=d.message||'البيانات غير صحيحة';
-      if(METHOD==='phone'&&MODE==='login'){
+      if(METHOD==='phone'&&MODE==='login'&&(!d.message||d.message==='البيانات غير صحيحة')){
         errMsg='رقم الجوال أو كلمة المرور غير صحيحة';
       }
       setAl(null,errMsg,'err');
@@ -747,12 +748,18 @@ async function doSubmit(){
   }
 }
 
+var _fgBusy=false;
 async function doForgot(){
+  if(_fgBusy)return;
   var id=METHOD==='email'?getV('i-email'):getV('i-phone');
-  if(!id){setAl(null,'أدخل بريدك الإلكتروني أولاً','err');return;}
-  var body=METHOD==='phone'?{email:fmtPhone(id)}:{email:id};
-  var r=await apiFetch('/api/auth/forgot-password',{method:'POST',body:JSON.stringify(body)});
-  setAl(null,r.message||'تم إرسال رابط إعادة التعيين',(r._net||r._status)?'err':'ok');
+  if(!id){setAl(null,METHOD==='phone'?'اكتب رقم جوالك أولاً':'اكتب بريدك الإلكتروني أولاً','err');return;}
+  if(METHOD==='phone'&&!validatePhone(id)){setAl(null,'رقم الجوال لازم يبدأ بـ 05 ويكون 10 أرقام','err');return;}
+  _fgBusy=true;
+  try{
+    var body=METHOD==='phone'?{email:fmtPhone(id)}:{email:id};
+    var r=await apiFetch('/api/auth/forgot-password',{method:'POST',body:JSON.stringify(body)});
+    setAl(null,r.message||'تم إرسال رابط إعادة التعيين',(r._net||r._status)?'err':'ok');
+  }finally{ _fgBusy=false; }
 }
 
 document.addEventListener('keydown',function(e){

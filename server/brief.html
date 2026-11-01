@@ -132,6 +132,8 @@ function render(r){
 
   if(Array.isArray(r.attachments)&&r.attachments.length){
     h+='<div class="sec an d3"><div class="sec-t">📎 مخططات وملفات</div>';
+    var _lk=r.attachments.filter(function(a){return a&&a.locked;}).length;
+    if(_lk)h+='<div style="padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;font-weight:700;font-size:13px">🔒 '+_lk+' '+(_lk===1?'ملف':'ملفات')+' — تظهر بعد التسجيل كمزوّد</div>';
     r.attachments.forEach(function(a){
       if(!a||!_safeUrl(a.url))return;
       h+='<a href="'+esc(_safeUrl(a.url))+'" target="_blank" rel="noopener noopener noreferrer" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;text-decoration:none;color:var(--text);font-weight:700;font-size:13px;margin-bottom:8px"><span style="font-size:20px">📄</span><span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(a.name||'ملف PDF')+'</span><span style="font-size:11px;color:var(--p);font-weight:800">تحميل ↓</span></a>';

@@ -907,7 +907,10 @@ function _pjFT(e){ var M={pdf:['#fee2e2','#b91c1c','PDF'],dwg:['#dbeafe','#1d4ed
 function _pjSize(b){ b=+b||0; if(b>=1048576) return (b/1048576).toFixed(b>=10485760?0:1)+'MB'; if(b>=1024) return Math.round(b/1024)+'KB'; return b+'B'; }
 function _pjTab(el,t){ var c=el.closest('.pj-card'); if(!c)return; c.querySelectorAll('.pj-tab,.pj-tile').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-t')===t);}); c.querySelectorAll('.pj-pane').forEach(function(p){ var on=p.getAttribute('data-p')===t; p.hidden=!on; if(on){ p.querySelectorAll('iframe[data-src]').forEach(function(f){ if(!f.src) f.src=f.getAttribute('data-src'); }); } }); }
 function _pjZip(id,btn){
-  var tk=localStorage.getItem('token')||''; var o=btn.innerHTML; btn.disabled=true; btn.textContent='جاري التجهيز…';
+  var tk=localStorage.getItem('token')||'';
+  if(!tk){ goLogin(); return; }
+  if(window.ReactNativeWebView&&window.mqOpenDl){ window.mqOpenDl(API+'/api/requests/'+id+'/files.zip'); return; }
+  var o=btn.innerHTML; btn.disabled=true; btn.textContent='جاري التجهيز…';
   fetch(API+'/api/requests/'+id+'/files.zip',{headers:tk?{'Authorization':'Bearer '+tk}:{}}).then(function(r){ if(!r.ok) throw 0; return r.blob(); }).then(function(b){ var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='مناقصة-مشروع-'+id+'-الملفات.zip'; document.body.appendChild(a); a.click(); setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},4000); }).catch(function(){ alert('تعذّر تجهيز الملفات — حمّلها وحدة وحدة'); }).finally(function(){ btn.disabled=false; btn.innerHTML=o; });
 }
 function _pjDetailsHtml(req){
@@ -926,6 +929,7 @@ function _pjDetailsHtml(req){
   var _glat=parseFloat(req.geo_lat),_glng=parseFloat(req.geo_lng), _hasGeo=!!(req.geo_lat&&req.geo_lng&&isFinite(_glat)&&isFinite(_glng));
   var imgs=(req.images||[]).filter(function(i){return isImg(i);});
   var _atts=[];try{_atts=typeof req.attachments==='string'?JSON.parse(req.attachments):(req.attachments||[]);}catch(e){_atts=[];}
+  var _lockF=(Array.isArray(_atts)?_atts:[]).filter(function(a){return a&&a.locked;});
   _atts=(Array.isArray(_atts)?_atts:[]).filter(function(a){var u=(a&&(a.url||a))||'';return /^https?:/i.test(String(u))&&_safeUrl(u);});
   var _locMode=_hasGeo?'geo':(_mapLinks.length?(getUser()?'link':'lock'):(!getUser()?'lock0':''));
   var P={};
@@ -942,7 +946,11 @@ function _pjDetailsHtml(req){
     }).join('');
     var zipHref=API+'/api/requests/'+req.id+'/files.zip';
     var _pub=['pending_review','review','needs_edit','rejected'].indexOf(req.status)<0;
-    P.files='<div class="pj-fh"><b>'+_atts.length+' '+(_atts.length>=3&&_atts.length<=10?'ملفات':'ملف')+(known===_atts.length&&tot?' · '+_pjSize(tot):'')+'</b>'+(_atts.length>1?(_pub?'<a class="pj-zip" href="'+esc(zipHref)+'">'+_pjDl+' تحميل الكل</a>':'<button type="button" class="pj-zip" onclick="_pjZip('+req.id+',this)">'+_pjDl+' تحميل الكل</button>'):'')+'</div><div class="pj-flist">'+rows+'</div>';
+    P.files='<div class="pj-fh"><b>'+_atts.length+' '+(_atts.length>=3&&_atts.length<=10?'ملفات':'ملف')+(known===_atts.length&&tot?' · '+_pjSize(tot):'')+'</b>'+(_atts.length>1?(false?'':'<button type="button" class="pj-zip" onclick="_pjZip('+req.id+',this)">'+_pjDl+' تحميل الكل</button>'):'')+'</div><div class="pj-flist">'+rows+'</div>';
+  }
+  if(!_atts.length&&_lockF.length){
+    P.files='<div class="pj-lock" style="margin-bottom:10px">🔒 ملفات المشروع (المخططات والمستندات) تظهر للمسجّلين بس</div>'+_lockF.map(function(f){ return '<div class="pj-frow"><span class="pj-fx" style="background:#f1f5f9;color:#64748b">🔒</span><div class="pj-fi"><b title="'+esc(f.name)+'">'+esc(f.name)+'</b><small>'+(+f.size?_pjSize(+f.size):'ملف')+'</small></div></div>'; }).join('')
+      +'<button type="button" class="pj-b" onclick="goLogin()" style="margin-top:10px;width:100%;justify-content:center;cursor:pointer;background:#1d4ed8;color:#fff;border-color:#1d4ed8">سجّل دخولك وشوف الملفات</button>';
   }
   if(imgs.length){
     P.imgs='<div class="pj-imgs">'+imgs.map(function(img){return '<div class="pimg" data-src="'+esc(img)+'" onclick="openViewer(this.getAttribute(\'data-src\'))"><img src="'+esc(img)+'" loading="lazy" alt="صورة"></div>';}).join('')+'</div>';
@@ -957,7 +965,7 @@ function _pjDetailsHtml(req){
     P.loc='<div class="pj-lock">🔒 الموقع الدقيق يظهر للمزوّدين المسجّلين</div>';
   }
   var _fixMap=function(html,first){ return first?html.replace('<iframe class="loc-map" data-src=','<iframe class="loc-map" src='):html; };
-  var _nF=_atts.length, _nI=imgs.length, _w=function(n,one,few,many){return n===1?one:(n===2?(few==='ملفات'?'ملفين':'صورتين'):(n<=10?n+' '+few:n+' '+many));};
+  var _nF=_atts.length||_lockF.length, _nI=imgs.length, _w=function(n,one,few,many){return n===1?one:(n===2?(few==='ملفات'?'ملفين':'صورتين'):(n<=10?n+' '+few:n+' '+many));};
   var _fSub=_w(_nF,'ملف واحد','ملفات','ملف'); if(P.files){ var _tt=0,_kk=0; _atts.forEach(function(a){if(+a.size){_tt+=+a.size;_kk++;}}); if(_kk===_nF&&_tt)_fSub+=' · '+_pjSize(_tt); }
   var tabs=[['desc','الوصف',0,'تفاصيل المطلوب','#dbeafe','#1d4ed8','doc'],['files','الملفات',_nF,_fSub,'#fee2e2','#b91c1c','clip'],['imgs','الصور',_nI,_nI===1?'صورة وحدة':_w(_nI,'صورة','صور','صورة'),'#e0f2fe','#0369a1','cam'],['loc','الموقع',0,_locMode==='geo'?'افتح في الخرائط':(_locMode==='link'?'رابط خرائط جوجل':'للمزوّدين المسجّلين'),'#dcfce7','#15803d','pin']].filter(function(t){return P[t[0]];});
   if(tabs.length>1){
@@ -1237,7 +1245,7 @@ async function submitBid(btn){
   var al=document.getElementById('bid-al');
   if(!price||!days){al.textContent='السعر والمدة مطلوبان';al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}return;}
   var _nb=note.replace(/\s+/g,'');
-  if(!note||_nb.length<15||/^[\d\s.,\-ريالر.س﷼]+$/.test(note)||/^(.)\1{4,}$/.test(_nb)){al.textContent='اكتب رسالة احترافية توضّح خبرتك وطريقة تنفيذك (١٥ حرفاً على الأقل) — العروض العشوائية تُرفض';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';try{document.getElementById('bid-note').style.borderColor='#dc2626';document.getElementById('bid-note').focus();}catch(e){}return;}
+  if(!note||_nb.length<15||/^[\d\s.,\-ريالر.س﷼]+$/.test(note)||/^(.)\1{4,}$/.test(_nb)){al.textContent='اكتب رسالة احترافية توضّح خبرتك وطريقة تنفيذك (15 حرف على الأقل) — العروض العشوائية تُرفض';al.style.cssText='display:block;background:#FEF2F2;color:var(--red)';try{document.getElementById('bid-note').style.borderColor='#dc2626';document.getElementById('bid-note').focus();}catch(e){}return;}
   var _ag=document.getElementById('feeAgree');if(_ag&&!_ag.checked){al.textContent='يجب الإقرار بالموافقة على اتفاقية رسوم المنصة';al.style.cssText='display:block;background:#FEF2F2;color:var(--red);padding:11px 13px;border-radius:10px;font-weight:800';try{al.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}try{_ag.closest('label').style.borderColor='#dc2626';}catch(e){}return;}
   var _vis=((document.querySelector('input[name="bidVis"]:checked')||{}).value)||'client';
   var unit=((document.getElementById('bid-unit')||{}).value||'total');

@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
           <div class="form-grid">
             <div class="fg">
               <label>الميزانية القصوى (ر.س)</label>
-              <input type="number" id="n-budget" placeholder="اختياري" min="0">
+              <input type="text" inputmode="numeric" autocomplete="off" id="n-budget" placeholder="اختياري">
             </div>
             <div class="fg">
               <label>الموعد النهائي</label>
@@ -413,7 +413,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div id="e-loc-hint" style="font-size:11px;color:var(--muted);margin-top:5px"></div>
       </div>
       <div class="form-grid" style="margin-bottom:12px">
-        <div class="fg"><label>الميزانية القصوى (ر.س)</label><input type="number" id="e-budget" min="0" placeholder="اختياري"></div>
+        <div class="fg"><label>الميزانية القصوى (ر.س)</label><input type="text" inputmode="numeric" autocomplete="off" id="e-budget" placeholder="اختياري"></div>
         <div class="fg"><label>الموعد النهائي</label><input type="date" id="e-deadline"></div>
         <div class="fg"><label>مدة استقبال العروض</label><select id="e-closedur"><option value="">افتراضي المنصة</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 أشهر</option><option value="120">4 أشهر</option><option value="180">6 أشهر</option></select></div>
       </div>
@@ -704,7 +704,7 @@ function fmtIns(id,kind){
     <p class="bp-sub">أكمل بياناتك كمزوّد لتظهر للعملاء وتقدّم عروضك. (تقييمك كمزوّد يبدأ من جديد.)</p>
     <div class="bp-f"><label class="bp-l">التخصصات <i>*</i></label><input id="bpQ" type="search" placeholder="ابحث عن تخصصك… مثال: انترلوك" oninput="_bpFilter(this.value)" autocomplete="off"><div id="bpSpecs"></div></div>
     <div class="bp-f"><label class="bp-l" for="bpCity">المدينة <i>*</i></label><select id="bpCity" onchange="this.classList.remove('bp-bad');_bpErr('')"></select></div>
-    <div class="bp-f" style="margin-bottom:16px"><label class="bp-l" for="bpBio">نبذة عنك (اختياري)</label><textarea id="bpBio" rows="3" placeholder="خبرتك ومجال عملك..."></textarea></div>
+    <div class="bp-f" style="margin-bottom:16px"><label class="bp-l" for="bpBio">نبذة عنك (اختياري)</label><textarea id="bpBio" rows="3" maxlength="1000" placeholder="خبرتك ومجال عملك..."></textarea></div>
     <div id="bpErr" role="alert"></div>
     <button type="button" id="bpGo" onclick="submitBecomeProv(this)">تفعيل الآن</button>
   </div>

@@ -505,7 +505,7 @@ window._nsoMount=function(radioName,reqId){
       .then(function(r){ return r.json().then(function(d){ if(r.ok)toast('تم إرسال عرضك المحفوظ ✓','success'); else toast((d&&d.message)||'تعذّر إرسال العرض المحفوظ — قدّمه من جديد','error'); }); }).catch(function(){});
   }
   W._evCode=function(inputId,btn){
-    var i=D.getElementById(inputId); var c=String((i&&i.value)||'').replace(/\D/g,'');
+    var i=D.getElementById(inputId); var c=String((i&&i.value)||'').replace(/[\u0660-\u0669]/g,function(c){return c.charCodeAt(0)-0x660;}).replace(/[\u06F0-\u06F9]/g,function(c){return c.charCodeAt(0)-0x6F0;}).replace(/\D/g,'');
     if(c.length!==6){ toast('اكتب الرمز (6 أرقام) من الإيميل','error'); if(i)i.focus(); return; }
     if(btn){btn.disabled=true;btn.textContent='...';}
     fetch(api()+'/api/auth/verify-code',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok()},body:JSON.stringify({code:c})})

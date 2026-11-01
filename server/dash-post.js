@@ -104,12 +104,16 @@ function hdr(){return{headers:{'Content-Type':'application/json','Authorization'
 // كاش خفيف: يعرض آخر بيانات محفوظة فوراً (سرعة)، ثم يحدّثها من الخادم
 function _cGet(key){ try{ var v=sessionStorage.getItem('mnq_c_'+key); return v?JSON.parse(v):null; }catch(e){ return null; } }
 function _cSet(key,val){ try{ sessionStorage.setItem('mnq_c_'+key,JSON.stringify(val)); }catch(e){} }
+// أرقام يكتبها المستخدم (عربية/فواصل/مسافات) → رقم، أو null لو فاضي
+function _numIn(v){ var s=String(v==null?'':v).replace(/[\u0660-\u0669]/g,function(c){return c.charCodeAt(0)-0x660;}).replace(/[\u06F0-\u06F9]/g,function(c){return c.charCodeAt(0)-0x6F0;}).replace(/[٫]/g,'.').replace(/[^\d.]/g,''); if(!s)return null; var n=parseFloat(s); return isFinite(n)?n:null; }
+// ردّ الخادم: لو فيه خطأ نعرض رسالته العربية بدل «HTTP 403»
+function _rj(r){ if(r.ok) return r.json(); return r.json().catch(function(){return {};}).then(function(d){ var e=new Error((d&&d.message)||(r.status>=500?'صار خطأ عندنا — حاول بعد شوي':'ما قدرنا نكمل الطلب')); e.status=r.status; e.server=true; throw e; }); }
+function _errTxt(e){ return (e&&e.server)?e.message:'تعذّر الاتصال — تأكد من الإنترنت وحاول مرة ثانية'; }
 function jFetch(path,opts){
   return fetch(API+path,Object.assign({headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'},opts||{}))
     .then(function(r){
       if(r.status===401){ _sessionExpired(); throw new Error('انتهت الجلسة'); }
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      return r.json();
+      return _rj(r);
     });
 }
 // انتهاء الجلسة: يُعلم المستخدم ويوجّهه لتسجيل الدخول (بدل أخطاء غامضة)
@@ -737,7 +741,7 @@ function loadBids(id){
   el.innerHTML='<div class="loading">جاري تحميل العروض...</div>';
 
   fetch(API+'/api/requests/'+id+'/bids',hdr())
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(r){return _rj(r);})
     .then(function(bids){
       if(!Array.isArray(bids)){el.innerHTML=errH(function(){loadBids(curRequestId);});return;}
       var _hidN=bids.filter(function(b){return !!b.is_hidden;}).length;
@@ -1292,7 +1296,7 @@ function acceptAgree(){
   var _d=(document.getElementById('n-district')||{}).value||''; if(_d.trim())body.district=_d.trim();
   if(_reqGeo.lat&&_reqGeo.lng){ body.geo_lat=_reqGeo.lat; body.geo_lng=_reqGeo.lng; }
   if(!body.geo_lat){ var _ml=((document.getElementById("n-maploc")||{}).value||"").trim(); if(_ml) body.map_url=_ml.slice(0,1000); }
-  if(budget)body.budget_max=Number(budget);
+  if(_numIn(budget)!==null)body.budget_max=Math.round(_numIn(budget));
   if(deadline)body.deadline=deadline;
   if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});
   if(_reqFiles.length)body.attachments=_reqFiles.map(function(f){return f.url?{name:f.name,url:f.url,size:f.size}:{name:f.name,data:f.data};});
@@ -1307,7 +1311,7 @@ function acceptAgree(){
     body=PlanGate.designBody(body);
   }
   fetch(API+'/api/requests',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(r){return _rj(r);})
     .then(function(r){
       if(r&&r.id){ window._planSt=null; window._planDOk=0;
         _reqImages=[];renderImgGrid();
@@ -1320,7 +1324,7 @@ function acceptAgree(){
         loadHome();loadReqs();show('requests',null,'requests');
       }else{if(msg){msg.textContent=r.message||'حدث خطأ';msg.className='alert err';}}
     })
-    .catch(function(e){if(msg){msg.textContent=''+e.message;msg.className='alert err';}})
+    .catch(function(e){if(msg){msg.textContent=_errTxt(e);msg.className='alert err';}})
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='نشر الطلب';}});
 }
 
@@ -1345,7 +1349,7 @@ function submitEditReq(){
   var desc=document.getElementById('e-desc').value.trim();
   if(!title||!desc){var e=document.getElementById('edit-msg');e.textContent='العنوان والتفاصيل مطلوبة';e.className='alert err';return;}
   var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';
-  var body={title:title,description:desc,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null};
+  var body={title:title,description:desc,budget_max:(_numIn(document.getElementById('e-budget').value)!==null?Math.round(_numIn(document.getElementById('e-budget').value)):null),deadline:document.getElementById('e-deadline').value||null};
   fetch(API+'/api/requests/'+_editReqId,Object.assign({method:'PUT',body:JSON.stringify(body)},hdr()))
     .then(function(r){return r.json();})
     .then(function(r){btn.disabled=false;btn.textContent='حفظ التعديلات';if(r.id){closeEditReq();showToast('تم التحديث','success');loadReqs();loadHome();}else{var e=document.getElementById('edit-msg');e.textContent=r.message||'حدث خطأ';e.className='alert err';}})

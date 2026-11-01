@@ -315,7 +315,7 @@ function toast(m,t){ var e=document.getElementById('toast'); if(!e)return; e.tex
 function api(path,opts){
   return fetch(API+path,Object.assign({},hdr(),opts||{})).then(function(r){
     if(r.status===401){ toast('انتهت جلستك','err'); setTimeout(function(){ try{localStorage.removeItem('token');localStorage.removeItem('user');}catch(e){} try{ if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_LOGOUT'})); }catch(e){} location.replace('/auth.html');},1200); throw new Error('401'); }
-    if(!r.ok)throw new Error('HTTP '+r.status);
+    if(!r.ok) return r.json().catch(function(){return {};}).then(function(d){ var e=new Error((d&&d.message)||'HTTP '+r.status); e.server=!!(d&&d.message); throw e; });
     return r.json();
   });
 }
@@ -869,9 +869,9 @@ function sendMsg(){
   if(isProvider)_maybeRemindBid(txt);
   api('/api/messages',{method:'POST',body:JSON.stringify(payload)})
     .then(function(){ loadMsgs(); })
-    .catch(function(){
+    .catch(function(e){
       msgs=msgs.filter(function(x){return x.id!==tmp.id;}); renderMsgs();
-      inp.value=txt; toast('تعذّر الإرسال — تحقّق من اتصالك','err');
+      inp.value=txt; toast((e&&e.server)?e.message:'تعذّر الإرسال — تحقّق من اتصالك','err');
     })
     .then(function(){ sending=false; if(btn)btn.disabled=false; inp.focus(); });
 }
@@ -923,7 +923,7 @@ function paintBlock(b){
   var inp=document.getElementById('inp');
   if(!inp)return;
   inp.addEventListener('input',function(){ this.style.height='auto'; this.style.height=Math.min(this.scrollHeight,110)+'px'; });
-  inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendMsg(); } });
+  inp.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){ var _touch=window.matchMedia&&matchMedia('(hover: none) and (pointer: coarse)').matches; if(_touch&&inp.tagName==='TEXTAREA')return; e.preventDefault(); sendMsg(); } });   // الجوال: Enter = سطر جديد (يرسل بالزر)
 })();
 
 /* ═══════════ محادثة «فريق مناقصة» (الدعم) ═══════════ */

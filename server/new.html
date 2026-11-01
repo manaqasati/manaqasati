@@ -226,7 +226,7 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
       </div>
       <div>
         <label class="lbl" for="a-phone">رقم الجوال</label>
-        <input type="tel" id="a-phone" class="inp" dir="ltr" style="text-align:right" placeholder="05xxxxxxxx" autocomplete="tel" inputmode="tel" maxlength="14">
+        <input type="tel" id="a-phone" class="inp" dir="ltr" style="text-align:right" placeholder="05xxxxxxxx" autocomplete="tel" inputmode="tel" maxlength="17">
         <div class="err" id="e-phone"></div>
       </div>
       <div>
@@ -487,6 +487,7 @@ function paintStr(s,tips){
 }
 
 // ── المسودّة (بدون الصور وكلمة المرور) ──
+function _ph05(v){var d=String(v||'').replace(/[^0-9]/g,'');if(d.indexOf('00966')===0)d=d.slice(5);else if(d.indexOf('966')===0)d=d.slice(3);if(d.length===9&&d.charAt(0)==='5')d='0'+d;return d;}
 var DKEY='mnq_guest_draft', DFIELDS={t:'n-title',c:'n-cat',co:'n-cat-other',d:'n-desc',b:'n-budget',ci:'n-city',di:'n-district',dl:'n-deadline',nm:'a-name',ph:'a-phone',em:'a-email'};
 var _dTmr;
 function _saveNow(){
@@ -580,7 +581,7 @@ function validate(step,focus){
   if(step===4){
     var nm=($('a-name').value||'').trim();
     chk(fErr('e-name','a-name',nm.length<2?'اكتب اسمك':''),'a-name');
-    var ph=_dig($('a-phone').value).replace(/[\s-]/g,'');
+    var ph=_ph05(_dig($('a-phone').value));
     chk(fErr('e-phone','a-phone',!/^05\d{8}$/.test(ph)?'رقم الجوال لازم يكون 10 أرقام ويبدأ بـ 05':''),'a-phone');
     var em=($('a-email').value||'').trim();
     chk(fErr('e-email','a-email',!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)?'اكتب إيميل صحيح':''),'a-email');
@@ -663,7 +664,7 @@ function submitAll(){
    });
 }
 function register(){
-  var body={name:($('a-name').value||'').trim(),email:($('a-email').value||'').trim(),phone:_dig($('a-phone').value).replace(/[\s-]/g,''),password:$('a-pass').value,role:'client'};
+  var body={name:($('a-name').value||'').trim(),email:($('a-email').value||'').trim(),phone:_ph05(_dig($('a-phone').value)),password:$('a-pass').value,role:'client'};
   if(REF) body.ref=REF;
   return fetch(API+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
     .then(jsonOf)

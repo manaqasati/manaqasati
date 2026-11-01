@@ -521,6 +521,7 @@ app.get('/api/requests/:id/files.zip', rateLimiter(15, 600000), optionalAuth, as
     if (!q.rows.length) return _jOrPage(req, res, 404, 'غير موجود');
     const row = q.rows[0], uid = req.user && req.user.id, isAdmin = req.user && req.user.role === 'admin';
     const isOwner = uid && uid === row.client_id, isAssigned = uid && uid === row.assigned_provider_id;
+    if (!uid) return _jOrPage(req, res, 401, 'سجّل دخولك عشان تحمّل ملفات المشروع');
     if (['pending_review','review','needs_edit','rejected'].includes(row.status) && !(isOwner || isAdmin)) return _jOrPage(req, res, 404, 'غير موجود');
     if (row.category === 'direct' && !(isOwner || isAssigned || isAdmin)) return _jOrPage(req, res, 404, 'غير موجود');
     let atts = row.attachments; if (typeof atts === 'string') { try { atts = JSON.parse(atts); } catch(_) { atts = []; } }
@@ -853,6 +854,7 @@ app.get(/^\/project\/(.+)$/, async (req, res) => {
   } catch(e) { console.error('/project SSR:', e.message); res.sendFile(__dirname + '/project.html'); }
 });
 
+function _lockAtts(a){ let x = a; if (typeof x === 'string') { try { x = JSON.parse(x); } catch(_) { x = []; } } return (Array.isArray(x) ? x : []).filter(Boolean).map(f => ({ name: String((f && f.name) || 'ملف مرفق').slice(0, 120), size: +(f && f.size) || 0, locked: true })); }
 app.get('/api/requests/public/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id); if (!id) return res.status(404).json({ message: 'غير موجود' });
@@ -876,7 +878,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
       const _st = (await pool.query('SELECT status, category, assigned_provider_id FROM requests WHERE id=$1', [id])).rows[0] || {};
       if (['pending_review','review','needs_edit','rejected'].includes(_st.status) || _st.category === 'direct') {
         let _v = null; const _ah = req.headers.authorization || ''; const _tk = _ah.startsWith('Bearer ') ? _ah.slice(7) : null;
-        if (_tk) { try { _v = jwt.verify(_tk, JWT_SECRET); } catch(e) {} }
+        if (_tk) { _v = await _viewer(req); }
         const _ok = _v && (String(_v.id) === String(row.client_id) || _v.role === 'admin' || (_st.category === 'direct' && String(_v.id) === String(_st.assigned_provider_id)));
         if (!_ok) return res.status(404).json({ message: 'غير موجود' });
       }
@@ -884,7 +886,7 @@ app.get('/api/requests/public/:id', async (req, res) => {
     // الدعوة المباشرة: التفاصيل لصاحب المشروع والإدارة فقط، والمزوّد المدعو يعرف إنه مدعو
     try {
       let _v2 = null; const _ah2 = req.headers.authorization || ''; const _tk2 = _ah2.startsWith('Bearer ') ? _ah2.slice(7) : null;
-      if (_tk2) { try { _v2 = jwt.verify(_tk2, JWT_SECRET); if (_v2 && _v2.purpose) _v2 = null; } catch(e) {} }
+      if (_tk2) { _v2 = await _viewer(req); }
       const _own2 = _v2 && (String(_v2.id) === String(row.client_id) || _v2.role === 'admin');
       if (row.invited_provider_id && _own2) {
         const _pv = (await pool.query('SELECT COALESCE(business_name,name) AS nm FROM users WHERE id=$1', [row.invited_provider_id])).rows[0]; row.invited_name = _pv ? _pv.nm : null;
@@ -907,16 +909,18 @@ app.get('/api/requests/public/:id', async (req, res) => {
       let viewer = null;
       const ah = req.headers.authorization || '';
       const tk = ah.startsWith('Bearer ') ? ah.slice(7) : null;
-      if (tk) { try { viewer = jwt.verify(tk, JWT_SECRET); } catch(e) { viewer = null; } }
+      if (tk) { viewer = await _viewer(req); }
       const assigned = (await pool.query('SELECT assigned_provider_id FROM requests WHERE id=$1',[id])).rows[0] || {};
       const ok = viewer && (String(viewer.id)===String(row.client_id) || String(viewer.id)===String(assigned.assigned_provider_id) || viewer.role==='admin' || viewer.role==='provider');
       if (!ok) { row.geo_lat = null; row.geo_lng = null; }
-    } catch(e) { row.geo_lat = null; row.geo_lng = null; }
+      // الملفات (مخططات/صكوك فيها بيانات المالك): للمسجّلين بس — الزائر يشوف أسماءها وعددها
+      if (!viewer) row.attachments = _lockAtts(row.attachments);
+    } catch(e) { row.geo_lat = null; row.geo_lng = null; row.attachments = _lockAtts(row.attachments); }
     try{ const uv = await pool.query('UPDATE requests SET brief_views=COALESCE(brief_views,0)+1 WHERE id=$1 RETURNING brief_views', [id]); row.brief_views = (uv.rows[0] && uv.rows[0].brief_views) || 0; }catch(e){ row.brief_views = 0; }
     // فتح جوال العميل: لصاحب المشروع/الإدارة/المُرسى عليه/مزوّد قدّم عرضاً حقيقياً (سعر + وصف≥25 أو ملف)
     try {
       let vw=null; const ah3=req.headers.authorization||''; const tk3=ah3.startsWith('Bearer ')?ah3.slice(7):null;
-      if(tk3){try{vw=jwt.verify(tk3,JWT_SECRET);}catch(e){}}
+      if(tk3){ vw = await _viewer(req); }
       const uid=vw&&vw.id;
       const isOwner=uid&&String(uid)===String(row.client_id);
       const isAdmin=vw&&vw.role==='admin';
@@ -1041,7 +1045,7 @@ app.post('/api/requests/:id/boost', auth, async (req, res) => {
       try { await notify(p.id, '📣 عميل ينتظر عروضك', `«${q.title}»${q.city?' · '+q.city:''} — صاحب المشروع يبي عروض أكثر، قدّم عرضك`, 'request', id); sent++; } catch(e){}
     }
     await pool.query('UPDATE requests SET boosted_at=NOW() WHERE id=$1',[id]);
-    res.json({ ok:true, sent });
+    res.json({ ok:true, sent: sent > 0 });   // نعم/لا — بدون عدد المزوّدين
   } catch(e){ console.error('boost:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
 });
 
@@ -1053,7 +1057,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
     try {
       const hdr = req.headers.authorization || '';
       const tok = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
-      if (tok) { const v = jwt.verify(tok, JWT_SECRET); isLoggedIn = true; viewerId = v.id; viewerRole = v.role; }
+      if (tok) { const v = await _viewer(req); if (v) { isLoggedIn = true; viewerId = v.id; viewerRole = v.role; } }
     } catch(e) { isLoggedIn = false; }
     // صاحب المشروع (أو المخصّص له أو الإدارة) يشوف الملف الرسمي دائماً — لأنه يحوي السعر
     let isPrivileged = false;
@@ -1105,7 +1109,8 @@ app.get('/api/bids/public/:id', async (req, res) => {
     `, [id, isLoggedIn, isPrivileged, parseInt(viewerId)||0, viewerRole === 'admin']);
     // نطاق مبهم للزوّار: نكشف أدنى سعر فقط بلا ربطه بمزوّد محدّد
     const prices = r.rows.filter(x => !x.is_hidden).map(x => parseFloat(x._p)).filter(v => v > 0);
-    const range = prices.length ? { min: Math.min(...prices), count: prices.length } : null;
+    // أقل سعر يكشف أسعار المنافسين (مع عرض واحد = سعره بالضبط) — للإدارة وصاحب المشروع بس
+    const range = (isPrivileged && prices.length) ? { min: Math.min(...prices), count: prices.length } : null;
     const rows = r.rows.map(x => {
       const { _p, ...rest } = x;
       // إخفاء نص العرض كاملاً للزائر/المنافس إن كان السعر خاصاً — يمنع تسريب السعر داخل النص (يبقى ظاهراً لصاحب المشروع والإدارة)
@@ -1348,7 +1353,7 @@ app.get('/dalil', async (req, res) => {
     const [bg, fg] = PAL[i % PAL.length];
     const n = counts[cat] || 0;
     const links = TOP.map(city => `<a href="/dalil/${seoSlug(cat)}/${seoSlug(city)}" data-city="${seoEsc(city)}">${seoEsc(city)}</a>`).join('');
-    return `<section class="dc" data-n="${seoEsc(cat)}"><div class="dh"><span class="di" style="background:${bg};color:${fg}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 6a4 4 0 00-5 5l-6 6 3 3 6-6a4 4 0 005-5l-3 3-3-3z"/></svg></span><div><h2>${seoEsc(cat)}</h2><span class="dn">${n ? n + ' مزوّد' : 'انشر مشروعك وتوصلك عروض'}</span></div></div><div class="dl">${links}</div></section>`;
+    return `<section class="dc" data-n="${seoEsc(cat)}"><div class="dh"><span class="di" style="background:${bg};color:${fg}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 6a4 4 0 00-5 5l-6 6 3 3 6-6a4 4 0 005-5l-3 3-3-3z"/></svg></span><div><h2>${seoEsc(cat)}</h2><span class="dn">${n ? 'مزوّدين يخدمون هالتخصص' : 'انشر مشروعك وتوصلك عروض'}</span></div></div><div class="dl">${links}</div></section>`;
   }).join('');
   const cityChips = ['<button class="cf on" data-c="">كل المدن</button>'].concat(TOP.map(c => `<button class="cf" data-c="${seoEsc(c)}">${seoEsc(c)}</button>`)).join('');
   res.set('Content-Type','text/html; charset=utf-8').send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>دليل مزوّدي الخدمات في السعودية — كل التخصصات والمدن | مناقصة</title><meta name="description" content="دليل مزوّدي الخدمات في السعودية: تكييف، سباكة، كهرباء، نجارة والمزيد — في الرياض وجدة والدمام وكل المدن. انشر مشروعك واستقبل عروضاً من عدة مزوّدين."><link rel="canonical" href="${SITE_URL}/dalil"><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@900&display=swap" rel="stylesheet">
@@ -1767,7 +1772,8 @@ async function _epApply(uid, cat, a, src){
   return true;
 }
 // ═══ إيقاف الإيميلات بضغطة (بدون تسجيل دخول — الرابط موقّع) ═══
-function _euOk(req){ const uid = parseInt(req.params.uid), cat = String(req.params.cat || ''); return (uid > 0 && (_EP_CATS[cat]) && String(req.params.sig || '') === _euSig(uid, cat)) ? { uid, cat } : null; }
+function _jsIn(v){ return JSON.stringify(v).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029'); }
+function _euOk(req){ if (!/^\d+$/.test(String(req.params.uid || ''))) return null; const uid = parseInt(req.params.uid), cat = String(req.params.cat || ''); return (uid > 0 && (_EP_CATS[cat]) && String(req.params.sig || '') === _euSig(uid, cat)) ? { uid, cat } : null; }
 app.post('/api/e/u/:uid/:cat/:sig', rateLimiter(30, 600000), async (req, res) => {
   try {
     const k = _euOk(req); if (!k) return res.status(400).json({ message: 'الرابط غير صالح' });
@@ -1781,8 +1787,8 @@ app.post('/api/e/u/:uid/:cat/:sig', rateLimiter(30, 600000), async (req, res) =>
 app.get('/e/u/:uid/:cat/:sig', async (req, res) => {
   const k = _euOk(req);
   res.set('Cache-Control', 'no-store'); res.set('X-Robots-Tag', 'noindex');
-  const a0 = String(req.query.a || 'off');
-  const api = '/api/e/u/' + req.params.uid + '/' + req.params.cat + '/' + req.params.sig;
+  const a0 = ['off','daily','instant','on','view'].includes(String(req.query.a)) ? String(req.query.a) : 'off';
+  const api = k ? '/api/e/u/' + k.uid + '/' + k.cat + '/' + _euSig(k.uid, k.cat) : '';
   const nm = k ? _EP_TXT[k.cat] : '';
   res.send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>إعداد الإيميلات — مناقصة</title>
 <style>body{margin:0;background:#eef2f7;font-family:Tajawal,Tahoma,Arial,sans-serif;color:#0f1d3a;direction:rtl}.w{max-width:440px;margin:0 auto;padding:28px 16px}.lg{font-weight:900;font-size:24px;color:#1b2b63;text-align:center;margin-bottom:16px}
@@ -1791,7 +1797,7 @@ app.get('/e/u/:uid/:cat/:sig', async (req, res) => {
 .n{font-size:12.5px;color:#64748b;font-weight:700;margin-top:14px}@media(prefers-color-scheme:dark){body{background:#0b1529;color:#e6edf8}.c{background:#16233f;border-color:#24365e}.b{background:transparent;color:#e6edf8;border-color:#2b4377}.lg{color:#c7d2fe}p,.n{color:#a9b6d3}}</style></head>
 <body><div class="w"><div class="lg">مناقصة</div><div class="c" id="c">${k ? '<div class="ic">⏳</div><h1>لحظة…</h1>' : '<div class="ic">⚠️</div><h1>الرابط غير صالح</h1><p>افتح إعداد الإيميلات من حسابك في مناقصة.</p><a class="b p" href="/auth.html">دخول</a>'}</div></div>
 ${k ? `<script>
-var API=${JSON.stringify(api)}, CAT=${JSON.stringify(k.cat)}, NM=${JSON.stringify(nm)}, A0=${JSON.stringify(a0)};
+var API=${_jsIn(api)}, CAT=${_jsIn(k.cat)}, NM=${_jsIn(nm)}, A0=${_jsIn(a0)};
 var C=document.getElementById('c');
 function go(a){ var bs=C.querySelectorAll('button'); for(var i=0;i<bs.length;i++)bs[i].disabled=true;
   fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({a:a})}).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
@@ -2116,9 +2122,13 @@ async function loadAdmin(req, res, next){
 }
 // ═══ محرّك الاستقطاب: أدوات ═══
 // توحيد صيغة الجوال السعودي → 9665XXXXXXXX
+// أرقام عربية/فارسية → إنجليزية (٠-٩ / ۰-۹)
+function _numOrNull(v){ if (v === null || v === undefined || v === '') return null; const n = parseFloat(_asciiDigits(v).replace(/[^\d.]/g, '')); return (isFinite(n) && n > 0 && n < 1e10) ? Math.round(n) : null; }
+function _dateOrNull(v){ if (!v) return null; const d = new Date(v); return isNaN(d.getTime()) ? null : String(v).slice(0, 10); }
+function _asciiDigits(v){ return String(v == null ? '' : v).replace(/[\u0660-\u0669]/g, c => String(c.charCodeAt(0) - 0x660)).replace(/[\u06F0-\u06F9]/g, c => String(c.charCodeAt(0) - 0x6F0)); }
 function normPhone(p){
   if(!p) return null;
-  let d = String(p).replace(/[^\d]/g, '');
+  let d = _asciiDigits(p).replace(/[^\d]/g, '');
   if(d.startsWith('00966')) d = d.slice(2);
   else if(d.startsWith('966')) { /* كما هو */ }
   else if(d.startsWith('05')) d = '966' + d.slice(1);
@@ -3086,7 +3096,8 @@ setInterval(() => _jobLock('reminders', runReminders), 6*60*60*1000);
 // ═══ ملخّص المشاريع اليومي (الساعة 8 الصبح بتوقيت الرياض) — لمن اختار «ملخّص يومي» (الافتراضي) ═══
 async function _matchDigest(){
   if ((await getSetting('provider_weekly_on','1')) === '0') return;
-  const B = `((date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') + interval '8 hours') AT TIME ZONE 'Asia/Riyadh')`;
+  const _hr = Math.min(23, Math.max(0, parseInt(process.env.DIGEST_HOUR || '8') || 0));   // ساعة الملخّص (الرياض)
+  const B = `((date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') + interval '${_hr} hours') AT TIME ZONE 'Asia/Riyadh')`;
   const provs = await pool.query(
     `SELECT id, email, specialties, notify_categories, city, COALESCE(serves_all_cities,FALSE) AS allcities, service_cities, last_match_email_at
        FROM users WHERE role='provider' AND is_active=TRUE AND COALESCE(email_proj,'daily')='daily'
@@ -3222,6 +3233,17 @@ function auth(req, res, next) {
   }).catch(() => { if (payload.role === 'admin') return res.status(503).json({ message: 'تعذّر التحقق من الحساب — حاول بعد لحظة' }); next(); });
 }
 // مصادقة اختيارية: تقرأ المستخدم إن وُجد التوكن، بدون رفض المشروع
+// المشاهد الحالي (للصفحات العامة): توكن دخول حقيقي فقط + الحساب شغّال + الجلسة ما انلغت + الدور من قاعدة البيانات
+async function _viewer(req){
+  const h = req.headers.authorization || ''; const t = h.startsWith('Bearer ') ? h.slice(7) : null;
+  if (!t) return null;
+  let p; try { p = jwt.verify(t, JWT_SECRET); } catch(e) { return null; }
+  if (!p || p.purpose || !p.id) return null;
+  const st = await _userStateOf(p.id);
+  if (!st.ok || (!st.err && (p.tv || 0) !== (st.tv || 0))) return null;
+  if (st.role) p.role = st.role;
+  return p;
+}
 function optionalAuth(req, res, next) {
   const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
   if (token) { try { const _p = jwt.verify(token, JWT_SECRET); if (_p && !_p.purpose && _p.id) req.user = _p; } catch(e) {} }
@@ -3797,8 +3819,14 @@ app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
     const { email, phone, password } = req.body;
     if ((!email && !phone) || !password) return res.status(400).json({ message: 'البيانات ناقصة' });
     // الإيميل بدون حساسية للحروف الكبيرة (كيبورد الجوال يكبّر أول حرف)
-    const query = phone ? 'SELECT * FROM users WHERE phone=$1' : 'SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY (email=$1) DESC LIMIT 1';
-    const result = await pool.query(query, [String(email || phone).trim()]);
+    // الجوال: نطابق آخر 9 أرقام (محفوظ أحياناً 05… وأحياناً 966…) — ولو فيه أكثر من حساب نختار اللي كلمة مروره صحيحة
+    let result;
+    if (phone) {
+      const d9 = _asciiDigits(phone).replace(/\D/g, '').slice(-9);
+      if (d9.length !== 9) return res.status(400).json({ message: 'البيانات غير صحيحة' });
+      result = await pool.query(`SELECT * FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1 ORDER BY is_active DESC, last_active DESC NULLS LAST LIMIT 5`, [d9]);
+      if (result.rows.length > 1) { for (const u of result.rows) { const h = u.password || u.password_hash || ''; if (h && await bcrypt.compare(password, h)) { result = { rows: [u] }; break; } } }
+    } else result = await pool.query('SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY (email=$1) DESC LIMIT 1', [String(email).trim()]);
     if (!result.rows.length) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const user = result.rows[0];
     // قفل مؤقت للحساب نفسه بعد 10 محاولات غلط خلال 15 دقيقة (مهما تغيّر الجهاز)
@@ -3811,11 +3839,8 @@ app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
     if (!ok) { _loginFail(user).catch(()=>{}); return res.status(400).json({ message: 'البيانات غير صحيحة' }); }
     if (user.login_fail_n || user.locked_until) pool.query('UPDATE users SET login_fail_n=0, login_fail_at=NULL, locked_until=NULL WHERE id=$1', [user.id]).catch(()=>{});
     if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
-    const token = _sessSign(user);
     pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
-    delete user.password; delete user.password_hash; delete user.login_fail_n; delete user.login_fail_at; delete user.locked_until; delete user.lock_mail_at; delete user.token_ver;
-    delete user.reset_token; delete user.reset_expires; delete user.magic_token; delete user.magic_expires;
-    res.json({ user, token });
+    res.json(_loginPayload(user));   // يشيل كل الحقول السرية (منها رمز التحقق)
   } catch(e) { console.error('Login:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -3846,7 +3871,7 @@ app.get('/api/auth/verify-status', auth, async (req, res) => {
 });
 app.post('/api/auth/verify-code', auth, rateLimiter(12, 600000), async (req, res) => {
   try {
-    const code = String(req.body.code || '').replace(/\D/g, '').slice(0, 6);
+    const code = _asciiDigits(req.body.code || '').replace(/\D/g, '').slice(0, 6);
     const u = (await pool.query('SELECT COALESCE(email_verified,true) AS ev, verify_code, verify_code_exp, COALESCE(verify_code_tries,0) AS tries FROM users WHERE id=$1', [req.user.id])).rows[0];
     if (!u) return res.status(404).json({ message: 'غير موجود' });
     if (u.ev) return res.json({ ok: true, already: true });
@@ -3923,7 +3948,8 @@ app.get('/api/auth/google/config', (req, res) => res.json({ client_id: GOOGLE_CL
 async function _socialLogin(res, provider, g){
   const col = provider === 'apple' ? 'apple_sub' : 'google_sub';
   let u = (await pool.query(`SELECT * FROM users WHERE ${col}=$1 LIMIT 1`, [g.sub])).rows[0];
-  if (!u && g.email) u = (await pool.query('SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY id LIMIT 1', [g.email])).rows[0];
+  let byEmail = false;
+  if (!u && g.email) { u = (await pool.query('SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY id LIMIT 1', [g.email])).rows[0]; byEmail = !!u; }
   if (u) {
     if (u.is_active === false) return res.status(403).json({ message: 'الحساب موقوف' });
     if (u.role === 'admin') return res.status(403).json({ message: 'حسابات الإدارة تدخل بكلمة المرور' });
@@ -3934,6 +3960,12 @@ async function _socialLogin(res, provider, g){
         email_verified_at=CASE WHEN COALESCE(email_verified,true)=false AND $3<>'' AND LOWER(email)=LOWER($3) THEN NOW() ELSE email_verified_at END,
         email_verified=CASE WHEN $3<>'' AND LOWER(email)=LOWER($3) THEN true ELSE email_verified END
       WHERE id=$1`, [u.id, g.sub, em, provider]);
+    // حماية من «حجز الحساب مسبقاً»: حساب بنفس البريد بس ما تأكّد → أحد ممكن سجّله ببريد غيره وكلمة مرور من عنده
+    // نلغي كلمة المرور القديمة وكل الجلسات (صاحب البريد الحقيقي يدخل بـ Google/Apple ويقدر يعيّن كلمة مرور جديدة)
+    if (byEmail && u.email_verified === false) {
+      try { const rnd = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 10);
+        await pool.query('UPDATE users SET password=$2, password_hash=$2, token_ver=COALESCE(token_ver,0)+1 WHERE id=$1', [u.id, rnd]); } catch(e) { console.error('social pre-hijack guard:', e.message); }
+    }
     const fresh = (await pool.query('SELECT * FROM users WHERE id=$1', [u.id])).rows[0];
     return res.json(Object.assign({ ok: true, linked: !u[col] }, _loginPayload(fresh)));
   }
@@ -3992,8 +4024,8 @@ async function _registerHandler(req, res) {
       const raw = String(phone).trim();
       const norm = normPhone(raw);
       const dupPhone = await pool.query(
-        `SELECT id FROM users WHERE phone IS NOT NULL AND (phone=$1 OR regexp_replace(phone,'[^0-9]','','g') = $2) LIMIT 1`,
-        [raw, norm ? norm : raw.replace(/[^0-9]/g,'')]
+        `SELECT id FROM users WHERE phone IS NOT NULL AND (phone=$1 OR RIGHT(regexp_replace(phone,'[^0-9]','','g'),9) = $2) LIMIT 1`,
+        [raw, (norm || _asciiDigits(raw)).replace(/[^0-9]/g,'').slice(-9)]
       );
       if (dupPhone.rows.length) return res.status(400).json({ message: 'رقم الجوال مستخدم لحساب آخر' });
     }
@@ -4140,8 +4172,8 @@ app.post('/api/auth/forgot-password', rateLimiter(5, 600000), async (req, res) =
     const phoneNorm = raw.replace(/\D/g, '').replace(/^0/, '966');
     // ابحث بالبريد أو بالجوال (بصيغته المُطبّعة)
     const r = await pool.query(
-      "SELECT id, name, email FROM users WHERE LOWER(email)=LOWER($1) OR (phone IS NOT NULL AND regexp_replace(phone,'[^0-9]','','g')=$2) LIMIT 1",
-      [raw, phoneNorm]);
+      "SELECT id, name, email FROM users WHERE LOWER(email)=LOWER($1) OR (length($2)=9 AND phone IS NOT NULL AND RIGHT(regexp_replace(phone,'[^0-9]','','g'),9)=$2) ORDER BY (LOWER(email)=LOWER($1)) DESC, last_active DESC NULLS LAST LIMIT 1",
+      [raw, raw.includes('@') ? '' : _asciiDigits(raw).replace(/\D/g, '').slice(-9)]);
     if (!r.rows.length) return res.json(generic);
     const u = r.rows[0];
     const token = crypto.randomBytes(32).toString('hex');
@@ -4194,6 +4226,7 @@ app.post('/api/auth/magic-login', rateLimiter(10, 300000), async (req, res) => {
     { const r = await pool.query('SELECT * FROM users WHERE id=$1', [_im.user_id]);
       const user = r.rows[0]; if (!user) return res.status(404).json({ message: 'الحساب غير موجود' });
       if (user.role === 'admin') return res.status(403).json({ message: 'حسابات الإدارة تدخل بكلمة المرور فقط' });
+      if (user.is_active === false) return res.status(403).json({ message: 'الحساب موقوف' });
       const sessionToken = _sessSign(user);
       ['password','password_hash','reset_token','reset_expires','magic_token','magic_expires','verify_code','verify_code_exp','google_sub','apple_sub','token_ver'].forEach(k => { delete user[k]; });
       return res.json({ user, token: sessionToken }); }
@@ -4211,10 +4244,8 @@ app.post('/api/auth/magic-login', rateLimiter(10, 300000), async (req, res) => {
     if (r.rows[0].role === 'admin') return res.status(403).json({ message: 'حسابات الإدارة تدخل بكلمة المرور فقط' });
     const user = r.rows[0];
     if (!user.is_active) return res.status(403).json({ message: 'الحساب موقوف' });
-    const sessionToken = _sessSign(user);
     pool.query('UPDATE users SET last_active=NOW() WHERE id=$1', [user.id]).catch(()=>{});
-    delete user.password; delete user.password_hash; delete user.reset_token; delete user.reset_expires; delete user.magic_token; delete user.magic_expires;
-    res.json({ user, token: sessionToken });
+    res.json(_loginPayload(user));
   } catch(e) { console.error('magic-login:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -4943,7 +4974,7 @@ app.get('/api/profile', auth, async (req, res) => {
     try {
       const hdr = req.headers.authorization || '';
       const tok = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
-      if (tok) viewer = jwt.verify(tok, JWT_SECRET);
+      if (tok) viewer = await _viewer(req);
     } catch(e) { viewer = null; }
     const isOwner = viewer && String(viewer.id) === String(row.client_id);
     const isAssigned = viewer && row.assigned_provider_id && String(viewer.id) === String(row.assigned_provider_id);
@@ -5084,7 +5115,8 @@ app.put('/api/provider/profile', auth, async (req, res) => {
         if (key==='name') { if (val&&_cleanTxt(val,80)) { sets.push(`${allowed[key]}=$${idx}`); params.push(_cleanTxt(val,80)); idx++; } continue; }
         if (key==='business_name' && val) val=_cleanTxt(val,100);
         if (key==='email') val=String(val||'').trim().toLowerCase();
-        if (key==='experience_years') { val=(val===''||val===null||val===undefined)?null:parseInt(val); if(isNaN(val))val=null; }
+        if (key==='experience_years') { val=(val===''||val===null||val===undefined)?null:parseInt(val); if(isNaN(val)||val<0)val=null; else if(val>60)val=60; }
+        if (key==='specialties') { val=[...new Set((Array.isArray(val)?val:[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,15); if(!val.length) return res.status(400).json({ message:'اختر تخصص واحد على الأقل' }); }
         if (key==='serves_all_cities') val=!!val;
         if (key==='service_cities') { const prim=_cityNorm(_cleanTxt(req.body.city||'',40)); val=[...new Set((Array.isArray(val)?val:[]).map(c=>_cityNorm(_cleanTxt(c,40))).filter(c=>c&&c!==prim))].slice(0,30); }
         if (val==='') val=null;
@@ -5281,11 +5313,11 @@ app.get('/api/public/city-map', async (req, res) => {
     const C = {};
     const g = c => (C[c] = C[c] || { city: c, open: 0, provs: 0, first_h: null, top: [] });
     open.rows.forEach(x => { g(x.city).open = x.n; });
-    provs.rows.forEach(x => { if (x.c) g(x.c).provs = x.n; });
+    provs.rows.forEach(x => { if (x.c) g(x.c).provs = x.n > 0 ? 1 : 0; });   // نعم/لا بس — عدد المزوّدين للإدارة فقط
     first.rows.forEach(x => { if (x.k >= 3 && x.med != null) g(x.city).first_h = Math.round(x.med * 10) / 10; });
     const T = {}; top.rows.forEach(x => { (T[x.city] = T[x.city] || []).push(x); });
     Object.keys(T).forEach(c => { g(c).top = T[c].sort((a, b) => b.n - a.n).slice(0, 4).map(x => x.category); });
-    const out = { all_cities_provs: allProv.rows[0] ? allProv.rows[0].n : 0, cities: Object.values(C),
+    const out = { all_cities_provs: (allProv.rows[0] && allProv.rows[0].n > 0) ? 1 : 0, cities: Object.values(C),
       events: ev.rows.map(x => ({ k: x.k, at: x.at, city: x.city, cat: x.category || '' })), at: new Date().toISOString() };
     _cityMapCache = out; _cityMapAt = Date.now();
     res.json(out);
@@ -5295,7 +5327,7 @@ app.get('/api/requests', async (req, res) => {
   try {
     const { category, city, status } = req.query;
     // يرجع كل المشاريع — مفتوح ومغلق وتم الترسية
-    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.extra_categories,r.category_other,r.city,r.budget_max,r.deadline,r.status,r.client_id,COALESCE(r.published_at,r.created_at) AS created_at,r.created_at AS written_at,u.name as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail,(r.plan_status='has' OR (jsonb_typeof(r.attachments)='array' AND jsonb_array_length(r.attachments)>0)) AS has_plan,r.invite_state,r.invited_provider_id AS _ivp FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
+    let query = `SELECT r.id,r.project_number,r.title,r.description,r.category,r.extra_categories,r.category_other,r.city,r.budget_max,r.deadline,r.status,r.client_id,COALESCE(r.published_at,r.created_at) AS created_at,r.created_at AS written_at,split_part(u.name,' ',1) as client_name,u.badge as client_badge,(u.badge='premium' OR (SELECT COUNT(*) FROM requests WHERE client_id=u.id AND status='completed')>=3) as client_premium,COALESCE((SELECT COUNT(*) FROM bids WHERE request_id=r.id),0) as bid_count,(SELECT img FROM unnest(COALESCE(r.images,ARRAY[]::text[])) img WHERE img LIKE 'http%' LIMIT 1) as thumbnail,(r.plan_status='has' OR (jsonb_typeof(r.attachments)='array' AND jsonb_array_length(r.attachments)>0)) AS has_plan,r.invite_state,r.invited_provider_id AS _ivp FROM requests r JOIN users u ON r.client_id=u.id WHERE (r.category IS DISTINCT FROM 'direct') AND r.status NOT IN ('pending_review','review','needs_edit','rejected')`;
     const params = [];
     // المشاريع الموجّهة لمزوّد محدد ما تظهر لغيره خلال المهلة
     { let _vid = 0; try { const _t = (req.headers.authorization||'').split(' ')[1]; if (_t) { const _p = jwt.verify(_t, JWT_SECRET); if (!_p.purpose) _vid = parseInt(_p.id)||0; } } catch(e){}
@@ -5393,6 +5425,12 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (!isAdmin) delete row.admin_notes;
     // المندوب ونسبته للإدارة فقط — لا يظهران للعميل ولا للمزوّد
     if (!isAdmin) { delete row.agent_name; delete row.agent_pct; delete row.offers_report_notified; }
+    const _awp = !!(row.award_pending_until && new Date(row.award_pending_until) > new Date());
+    // حقول داخلية (نطاق الإرسال، عدد المزوّدين اللي شافوه، لقطة الترسية…) — للإدارة وصاحب المشروع بس
+    if (!(isOwner || isAdmin)) { ['notify_scope','notify_cities','notify_base','views_prov','award_prev','dup_hint','close_help','exec_draft','award_pending_until'].forEach(k => { delete row[k]; }); Object.keys(row).forEach(k => { if (/^followup_/.test(k)) delete row[k]; }); }
+    if (!isAdmin) delete row.views_prov;
+    // مهلة الـ5 دقايق بعد اختيار العرض: المزوّدين يشوفونه مفتوح لين ينعتمد (مثل /api/provider/bids)
+    if (_awp && !(isOwner || isAdmin)) { row.status = 'open'; row.assigned_provider_id = null; row.assigned_at = null; row.provider_name = null; if (!isRealBidder) row.client_phone = null; }
     if (isOwner && ['closed_auto','expired','closed'].includes(row.status)) {
       const _base = row.closed_at || row.close_at || (row.created_at ? new Date(new Date(row.created_at).getTime() + 30*86400000) : null);
       const _until = _base ? new Date(new Date(_base).getTime() + ACCEPT_AFTER_CLOSE_DAYS*86400000) : null;
@@ -5457,7 +5495,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
     // 2) أنشئ المشروع باسمه
     const r = await client.query(
       `INSERT INTO requests (client_id, title, description, category, city, budget_max, deadline, district, geo_lat, geo_lng, images, attachments, close_at, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'pending_review',NOW()) RETURNING id, title`,
-      [clientId, title, description || '', category, city, budget_max || null, deadline || null, pxDistrict, pxLat, pxLng,
+      [clientId, title, description || '', category, city, _numOrNull(budget_max), _dateOrNull(deadline), pxDistrict, pxLat, pxLng,
        pxImages.length ? pxImages : null, pxAtts.length ? JSON.stringify(pxAtts) : null, pxCloseAt]);
     await client.query('COMMIT');
     try { if (pxCloseAt && r.rows[0]) await pool.query("UPDATE requests SET close_set_by='admin' WHERE id=$1", [r.rows[0].id]); } catch(e){}
@@ -5530,7 +5568,7 @@ app.post('/api/requests', auth, clientOnly, async (req, res) => {
       if (!processedAttachments.length) processedAttachments = null;
     }
     const pn = generateProjectNumber();
-    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, district, geo_lat, geo_lng, close_at, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, budget_max||null, deadline||null, uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn, district, gLat, gLng, closeAt]);
+    const r = await pool.query(`INSERT INTO requests (client_id, title, description, category, city, address, budget_max, deadline, images, attachments, project_number, district, geo_lat, geo_lng, close_at, status, created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,'pending_review',NOW()) RETURNING *`, [req.user.id, title, description, category||null, city||null, address||null, _numOrNull(budget_max), _dateOrNull(deadline), uploadedImages.length?uploadedImages:null, processedAttachments?JSON.stringify(processedAttachments):null, pn, district, gLat, gLng, closeAt]);
     try { if (closeAt && r.rows[0]) await pool.query("UPDATE requests SET close_set_by='client' WHERE id=$1", [r.rows[0].id]); } catch(e){}
     try { if (_nc.category_other && r.rows[0]) { await pool.query('UPDATE requests SET category_other=$1 WHERE id=$2', [_nc.category_other, r.rows[0].id]); r.rows[0].category_other = _nc.category_other; } } catch(e){}
     try { const _ex = _normExtras(req.body.extra_categories, category); if (_ex && _ex.length && r.rows[0]) { await pool.query('UPDATE requests SET extra_categories=$1 WHERE id=$2', [_ex, r.rows[0].id]); r.rows[0].extra_categories = _ex; } } catch(e){}
@@ -5602,8 +5640,8 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     if (_hasCat) { sets.push('category=$'+i); params.push(category||null); i++; }
     if (_has('city')) { sets.push('city=$'+i); params.push(city||null); i++; }
     if (_has('address')) { sets.push('address=$'+i); params.push(address||null); i++; }
-    if (_has('budget_max')) { sets.push('budget_max=$'+i); params.push(budget_max||null); i++; }
-    if (_has('deadline')) { sets.push('deadline=$'+i); params.push(deadline||null); i++; }
+    if (_has('budget_max')) { sets.push('budget_max=$'+i); params.push(_numOrNull(budget_max)); i++; }
+    if (_has('deadline')) { sets.push('deadline=$'+i); params.push(_dateOrNull(deadline)); i++; }
     if (_has('district')) { sets.push('district=$'+i); params.push(String(req.body.district||'').trim().slice(0,80) || null); i++; }
     if (Array.isArray(req.body.images)) {
       const imgs = [];
@@ -6073,7 +6111,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       attUrl = await uploadToCloud(req.body.attachment, 'manaqasa/bids');
       if (attUrl === null) return res.status(400).json({ message: 'تعذّر رفع الملف — تأكد أنه صورة أو PDF وأصغر من 10MB' });
     }
-    price = parseInt(Math.round(parseFloat(price))); days = parseInt(days);
+    price = parseInt(Math.round(parseFloat(_asciiDigits(price)))); days = parseInt(_asciiDigits(days)); if (note) note = String(note).slice(0, 3000);
     try { const _pz = (await pool.query(`SELECT r.paused_at, r.status, (SELECT 1 FROM bids WHERE request_id=r.id AND provider_id=$2 LIMIT 1) AS mine FROM requests r WHERE r.id=$1`, [requestId, req.user.id])).rows[0];
       if (_pz && _pz.paused_at && _pz.status === 'open' && !_pz.mine) return res.status(400).json({ message: '⏸️ صاحب المشروع يتفاوض حالياً مع أحد المزوّدين — المشروع ما يستقبل عروض جديدة الحين. لو رجع يوصلك إشعار.' }); } catch(e) {}
     if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
@@ -6086,7 +6124,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       || _noteBare.length < 15                       // قصيرة جداً
       || /^[\d\s.,\-ريالر.س﷼]+$/.test(note)          // مجرد أرقام/سعر بدون كلام
       || /^(.)\1{4,}$/.test(_noteBare);              // حرف واحد مكرّر (ااااا)
-    if (_noteBad) return res.status(400).json({ message: 'اكتب رسالة احترافية للعميل (١٥ حرفاً على الأقل) توضّح خبرتك وطريقة تنفيذك — العروض العشوائية أو الفارغة تُرفض، وقد يُحظر الحساب عند تكرارها.', code: 'note_quality' });
+    if (_noteBad) return res.status(400).json({ message: 'اكتب رسالة احترافية للعميل (15 حرف على الأقل) توضّح خبرتك وطريقة تنفيذك — العروض العشوائية أو الفارغة تُرفض، وقد يُحظر الحساب عند تكرارها.', code: 'note_quality' });
     if (_hasUnfilledTemplate(note)) return res.status(400).json({ message: 'عبّئ القالب قبل الإرسال — استبدل الكلمات اللي بين الأقواس مثل (عدد) و(اشرح طريقتك) بمعلوماتك الحقيقية. العروض بالقالب الفاضي تُرفض.', code: 'template_unfilled' });
     const reqRow = await pool.query('SELECT client_id, title, status, city FROM requests WHERE id=$1', [requestId]);
     if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
@@ -6224,11 +6262,16 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
     if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
-    const { price, days, note } = req.body;
+    { const _rs = (await pool.query('SELECT r.status, r.assigned_provider_id FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1', [id])).rows[0];
+      if (_rs && (_rs.status !== 'open' || _rs.assigned_provider_id)) return res.status(400).json({ message: 'المشروع ما عاد يستقبل عروض — ما تقدر تعدّل عرضك' }); }
+    let { price, days, note } = req.body;
+    if (price != null && price !== '') { price = parseInt(Math.round(parseFloat(_asciiDigits(price)))); if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ message: 'السعر غير صحيح' }); } else price = null;
+    if (days != null && days !== '') { days = parseInt(_asciiDigits(days)); if (!Number.isFinite(days) || days <= 0 || days > 3650) return res.status(400).json({ message: 'مدة التنفيذ غير صحيحة' }); } else days = null;
+    if (note) note = String(note).slice(0, 3000);
     if (price!=null && price!=='' && own.rows[0].price_unit==='total' && (parseFloat(price)||0) < BID_MIN_TOTAL) return res.status(400).json({ code:'price_too_low', message: _bidMinMsg() });
     const priceVis = (req.body.price_visibility==='public') ? 'public' : 'client';   // الافتراضي: لصاحب المشروع فقط
     { const _n = String(note||'').trim(), _nb = _n.replace(/\s+/g,'');
-      if (!_n || _nb.length < 15 || /^[\d\s.,\-ريالر.س﷼]+$/.test(_n) || /^(.)\1{4,}$/.test(_nb)) return res.status(400).json({ message: 'اكتب رسالة احترافية للعميل (١٥ حرفاً على الأقل) توضّح خبرتك وطريقة تنفيذك.' }); }
+      if (!_n || _nb.length < 15 || /^[\d\s.,\-ريالر.س﷼]+$/.test(_n) || /^(.)\1{4,}$/.test(_nb)) return res.status(400).json({ message: 'اكتب رسالة احترافية للعميل (15 حرف على الأقل) توضّح خبرتك وطريقة تنفيذك.' }); }
     if (_hasUnfilledTemplate(note)) return res.status(400).json({ message: 'عبّئ القالب قبل الحفظ — استبدل الكلمات اللي بين الأقواس مثل (عدد) و(اشرح طريقتك) بمعلوماتك الحقيقية.', code: 'template_unfilled' });
     let attUrl, attHash = null;
     if (req.body.attachment && typeof req.body.attachment==='string' && req.body.attachment.indexOf('data:')===0) {
@@ -7530,8 +7573,12 @@ async function addTimeline(requestId, event, description) {
 app.post('/api/saved-requests/:id', auth, async (req, res) => {
   try {
     const rid = parseInt(req.params.id);
+    if (!(rid > 0)) return res.status(400).json({ message: 'مشروع غير صالح' });
     const ex = await pool.query('SELECT id FROM saved_requests WHERE user_id=$1 AND request_id=$2', [req.user.id, rid]);
     if (ex.rows.length) { await pool.query('DELETE FROM saved_requests WHERE user_id=$1 AND request_id=$2', [req.user.id, rid]); return res.json({ saved: false }); }
+    // يحفظ بس المشاريع المنشورة للعموم (مو المباشرة ولا اللي تحت المراجعة)
+    const vis = await pool.query(`SELECT 1 FROM requests WHERE id=$1 AND (category IS DISTINCT FROM 'direct') AND status NOT IN ('pending_review','review','needs_edit','rejected')`, [rid]);
+    if (!vis.rows.length) return res.status(404).json({ message: 'المشروع غير متاح' });
     await pool.query('INSERT INTO saved_requests (user_id, request_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, rid]);
     res.json({ saved: true });
   } catch(e) { console.error('saved-requests toggle:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -7543,10 +7590,12 @@ app.get('/api/saved-requests/ids', auth, async (req, res) => {
 app.get('/api/saved-requests', auth, async (req, res) => {
   try {
     const r = await pool.query(`
-      SELECT rq.*, (SELECT COUNT(*) FROM bids WHERE request_id=rq.id) AS bid_count
+      SELECT rq.id, rq.project_number, rq.title, rq.category, rq.city, rq.status, rq.budget_max, rq.deadline, COALESCE(rq.published_at, rq.created_at) AS created_at,
+             (SELECT COUNT(*) FROM bids WHERE request_id=rq.id) AS bid_count
       FROM saved_requests s JOIN requests rq ON rq.id=s.request_id
-      WHERE s.user_id=$1 ORDER BY s.created_at DESC LIMIT 100`, [req.user.id]);
-    res.json(r.rows.map(x => { _stripClientNote(x); delete x.admin_notes; delete x.review_notes; delete x.agent_name; delete x.agent_pct; delete x.agent_phone; return x; }));
+      WHERE s.user_id=$1 AND (rq.category IS DISTINCT FROM 'direct') AND rq.status NOT IN ('pending_review','review','needs_edit','rejected')
+      ORDER BY s.created_at DESC LIMIT 100`, [req.user.id]);
+    res.json(r.rows);
   } catch(e) { res.status(500).json([]); }
 });
 app.post('/api/favorites/provider/:id', auth, async (req, res) => {
@@ -7885,6 +7934,9 @@ app.get('/api/client/question-counts', auth, async (req, res) => {
 });
 app.get('/api/requests/:id/questions', async (req, res) => {
   try {
+    { const _q = (await pool.query('SELECT client_id, status, category FROM requests WHERE id=$1', [parseInt(req.params.id)||0])).rows[0];
+      if (!_q) return res.json([]);
+      if (_q.category === 'direct' || ['pending_review','review','needs_edit','rejected'].includes(_q.status)) { const v = await _viewer(req); if (!v || (v.role !== 'admin' && String(v.id) !== String(_q.client_id))) return res.json([]); } }
     const r = await pool.query(`SELECT q.id, q.request_id, q.body, q.answer, q.answered_at, q.created_at, q.asker_id, u.name as asker_name, u.role as asker_role, u.profile_image as asker_image FROM request_questions q JOIN users u ON q.asker_id=u.id WHERE q.request_id=$1 ORDER BY q.created_at ASC`, [parseInt(req.params.id)]);
     res.json(r.rows);
   } catch(e) { console.error('GET /questions:', e.message); res.json([]); }
@@ -7935,8 +7987,11 @@ app.post('/api/reports', rateLimiter(10, 600000), auth, async (req, res) => {
     const { reported_id, request_id, type, reason, details } = req.body;
     if (!reason) return res.status(400).json({ message: 'السبب مطلوب' });
     if (/^(أخرى|اخرى|other)$/i.test(String(reason).trim()) && String(details || '').trim().length < 5) return res.status(400).json({ message: 'اكتب وش صار — مع «أخرى» لازم توضّح عشان نقدر نتصرف' });
-    const r = await pool.query(`INSERT INTO reports (reporter_id, reported_id, request_id, type, reason, details, created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`, [req.user.id, reported_id||null, request_id||null, type||'other', reason, details||null]);
-    res.json(r.rows[0]);
+    const rid = parseInt(reported_id) || null, qid = parseInt(request_id) || null;
+    if (rid && rid === req.user.id) return res.status(400).json({ message: 'ما تقدر تبلّغ على نفسك' });
+    const r = await pool.query(`INSERT INTO reports (reporter_id, reported_id, request_id, type, reason, details, created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING id`,
+      [req.user.id, rid, qid, String(type || 'other').slice(0, 30), String(reason).slice(0, 120), details ? String(details).slice(0, 2000) : null]);
+    res.json({ ok: true, id: r.rows[0].id });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -7966,7 +8021,7 @@ app.get('/api/providers', async (req, res) => {
     const total = countR.rows[0] ? countR.rows[0].c : 0;
     const q = `SELECT id, name, city, specialties, badge, tier, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects ${base} ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, CASE tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 200`;
     const r = await pool.query(q, params);
-    res.set('X-Total-Count', String(total));
+    if (req.user && req.user.role === 'admin') res.set('X-Total-Count', String(total));   // العدد للإدارة فقط
     res.json(r.rows.map(p => ({ ...p, avg_rating: parseFloat(p.avg_rating)||0, review_count: parseInt(p.review_count)||0, completed_projects: parseInt(p.completed_projects)||0, is_verified: !!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0) })));
   } catch(e) { console.error('GET /api/providers:', e); res.json([]); }
 });
@@ -8041,6 +8096,7 @@ app.post('/api/push/subscribe', auth, async (req, res) => {
   try {
     const { subscription } = req.body;
     if (!subscription||!subscription.endpoint||!subscription.keys) return res.status(400).json({ message: 'بيانات الاشتراك غير صحيحة' });
+    await pool.query('DELETE FROM push_tokens WHERE token=$1 AND user_id<>$2', [JSON.stringify(subscription), req.user.id]).catch(()=>{});   // الجهاز صار لحساب ثاني — الحساب القديم ما يوصله شي
     await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,'web') ON CONFLICT(user_id, token) DO UPDATE SET created_at=NOW()`, [req.user.id, JSON.stringify(subscription)]);
     res.json({ ok: true });
   } catch(e) { console.error('/api/push/subscribe:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -8061,6 +8117,7 @@ app.post('/api/push/register-native', auth, async (req, res) => {
     if (!token) return res.status(400).json({ message: 'token مطلوب' });
     if (!String(token).startsWith('ExponentPushToken')) return res.status(400).json({ message: 'صيغة token غير صحيحة' });
     const plat = (platform==='ios'||platform==='android') ? platform : 'expo';
+    await pool.query('DELETE FROM push_tokens WHERE token=$1 AND user_id<>$2', [token, req.user.id]).catch(()=>{});   // الجهاز صار لحساب ثاني — الحساب القديم ما يوصله شي
     await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3) ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`, [req.user.id, token, plat]);
     console.log(`📱 Native push registered: user=${req.user.id}, platform=${plat}`);
     res.json({ ok: true });
@@ -8073,7 +8130,7 @@ app.get('/api/push/badge', auth, async (req, res) => {
   try { const r=await pool.query(`SELECT (SELECT COUNT(*)::int FROM notifications WHERE user_id=$1 AND is_read=false)+(SELECT COUNT(*)::int FROM messages WHERE receiver_id=$1 AND (is_read=false OR is_read IS NULL)) AS total`,[req.user.id]); res.json({ badge: r.rows[0]?.total||0 }); } catch(e) { res.json({ badge:0 }); }
 });
 app.post('/api/push-token', auth, async (req, res) => {
-  try { const { token, platform } = req.body; if (!token) return res.status(400).json({ message: 'token مطلوب' }); await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3) ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`, [req.user.id, token, platform||'expo']); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  try { const { token, platform } = req.body; if (!token) return res.status(400).json({ message: 'token مطلوب' }); await pool.query('DELETE FROM push_tokens WHERE token=$1 AND user_id<>$2', [token, req.user.id]).catch(()=>{}); await pool.query(`INSERT INTO push_tokens(user_id, token, platform) VALUES($1,$2,$3) ON CONFLICT(user_id, token) DO UPDATE SET platform=$3, created_at=NOW()`, [req.user.id, token, platform||'expo']); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.delete('/api/push-token', auth, async (req, res) => {
   try { await pool.query('DELETE FROM push_tokens WHERE user_id=$1 AND token=$2',[req.user.id, req.body.token]); res.json({ ok: true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -8122,8 +8179,8 @@ app.get('/api/categories', (req, res) => { res.set('Cache-Control','public, max-
 app.get('/api/stats', async (req, res) => {
   try {
     const s = await Promise.all([pool.query("SELECT COUNT(*) as count FROM requests WHERE status='completed' AND (category IS DISTINCT FROM 'direct')"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='provider' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM users WHERE role='client' AND is_active=true"),pool.query("SELECT COUNT(*) as count FROM requests WHERE status='open' AND (category IS DISTINCT FROM 'direct')")]);
-    res.json({ completed_projects:+s[0].rows[0].count||0, active_providers:+s[1].rows[0].count||0, active_clients:+s[2].rows[0].count||0, open_requests:+s[3].rows[0].count||0 });
-  } catch(e) { res.json({ completed_projects:0, active_providers:0, active_clients:0, open_requests:0 }); }
+    res.json({ completed_projects:+s[0].rows[0].count||0, active_clients:+s[2].rows[0].count||0, open_requests:+s[3].rows[0].count||0 });
+  } catch(e) { res.json({ completed_projects:0, active_clients:0, open_requests:0 }); }
 });
 
 // عام: تسجيل مشاهدة صفحة مزوّد (لا يحسب صاحبها)
@@ -12485,7 +12542,7 @@ app.post('/api/admin/broadcast', requirePermission('broadcast.send'), async (req
 app.get('/og/project/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query("SELECT title, category, city FROM requests WHERE id=$1", [id]);
+    const r = await pool.query("SELECT title, category, city FROM requests WHERE id=$1 AND (category IS DISTINCT FROM 'direct') AND status NOT IN ('pending_review','review','needs_edit','rejected')", [id]);
     if (!r.rows.length) return res.status(404).end();
     const p = r.rows[0];
     const esc = s => String(s==null?'':s).replace(/[<>&]/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));

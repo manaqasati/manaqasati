@@ -140,7 +140,7 @@ function verifyPane(x,em){
   +'<button class="go" id="vgo" onclick="_vDo(\''+x.slug+'\')">تفعيل وتحميل العقد</button>'
   +'<button type="button" id="vre" onclick="_vSend(true)" style="width:100%;margin-top:10px;background:none;border:0;color:#1d4ed8;font:800 14px Tajawal,sans-serif;cursor:pointer;padding:8px">ما وصلك؟ أرسل رمز جديد</button>'
   +'<p style="font-size:12.5px;color:#64748b;margin-top:6px">شيّك على «البريد المزعج / Junk» لو ما لقيته. بريدك مكتوب غلط؟ <a href="'+_profUrl()+'" style="color:#1d4ed8;font-weight:800">صحّحه من حسابك</a></p>');
- var i=document.getElementById('vcode'); if(i){ i.oninput=function(){ this.value=this.value.replace(/\D/g,'').slice(0,6); if(this.value.length===6)_vDo(x.slug); }; setTimeout(function(){try{i.focus();}catch(e){}},200); }
+ var i=document.getElementById('vcode'); if(i){ i.oninput=function(){ this.value=this.value.replace(/[\u0660-\u0669]/g,function(c){return c.charCodeAt(0)-0x660;}).replace(/[\u06F0-\u06F9]/g,function(c){return c.charCodeAt(0)-0x6F0;}).replace(/\D/g,'').slice(0,6); if(this.value.length===6)_vDo(x.slug); }; setTimeout(function(){try{i.focus();}catch(e){}},200); }
  if(!_vSent)_vSend(false);
 }
 function _profUrl(){var u={};try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}return u.role==='provider'?'/dashboard-provider.html#profile':'/dashboard-client.html#profile';}
@@ -152,7 +152,7 @@ function _vSend(manual){ var b=document.getElementById('vre'); if(b)b.disabled=t
   else _vMsg((r.d&&r.d.message)||'تعذّر الإرسال — حاول بعد شوي','#b91c1c');
  }).catch(function(){_vMsg('تأكد من الاتصال','#b91c1c');}).then(function(){ if(b)setTimeout(function(){b.disabled=false;},manual?30000:3000); }); }
 var _vBusy=false;
-function _vDo(slug){ if(_vBusy)return; var i=document.getElementById('vcode'), c=i?i.value.replace(/\D/g,''):''; if(c.length!==6){_vMsg('اكتب الرمز كامل (6 أرقام)','#b91c1c');return;}
+function _vDo(slug){ if(_vBusy)return; var i=document.getElementById('vcode'), c=i?i.value.replace(/[\u0660-\u0669]/g,function(c){return c.charCodeAt(0)-0x660;}).replace(/[\u06F0-\u06F9]/g,function(c){return c.charCodeAt(0)-0x6F0;}).replace(/\D/g,''):''; if(c.length!==6){_vMsg('اكتب الرمز كامل (6 أرقام)','#b91c1c');return;}
  _vBusy=true; var g=document.getElementById('vgo'); if(g){g.disabled=true;g.textContent='جاري التفعيل…';}
  _vApi('/api/auth/verify-code',{code:c}).then(function(r){
   if(r.s===200&&r.d&&r.d.ok){ try{var u=JSON.parse(localStorage.getItem('user')||'{}');u.email_verified=true;localStorage.setItem('user',JSON.stringify(u));}catch(e){}

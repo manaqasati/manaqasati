@@ -263,12 +263,16 @@ function _cmcConfirm(){
 // كاش خفيف: يعرض آخر بيانات محفوظة فوراً (سرعة)، ثم يحدّثها من الخادم
 function _cGet(key){ try{ var v=sessionStorage.getItem('mnq_c_'+key); return v?JSON.parse(v):null; }catch(e){ return null; } }
 function _cSet(key,val){ try{ sessionStorage.setItem('mnq_c_'+key,JSON.stringify(val)); }catch(e){} }
+// أرقام يكتبها المستخدم (عربية/فواصل/مسافات) → رقم، أو null لو فاضي
+function _numIn(v){ var s=String(v==null?'':v).replace(/[\u0660-\u0669]/g,function(c){return c.charCodeAt(0)-0x660;}).replace(/[\u06F0-\u06F9]/g,function(c){return c.charCodeAt(0)-0x6F0;}).replace(/[٫]/g,'.').replace(/[^\d.]/g,''); if(!s)return null; var n=parseFloat(s); return isFinite(n)?n:null; }
+// ردّ الخادم: لو فيه خطأ نعرض رسالته العربية بدل «HTTP 403»
+function _rj(r){ if(r.ok) return r.json(); return r.json().catch(function(){return {};}).then(function(d){ var e=new Error((d&&d.message)||(r.status>=500?'صار خطأ عندنا — حاول بعد شوي':'ما قدرنا نكمل الطلب')); e.status=r.status; e.server=true; throw e; }); }
+function _errTxt(e){ return (e&&e.server)?e.message:'تعذّر الاتصال — تأكد من الإنترنت وحاول مرة ثانية'; }
 function jFetch(path,opts){
   return fetch(API+path,Object.assign({headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'},opts||{}))
     .then(function(r){
       if(r.status===401){ _sessionExpired(); throw new Error('انتهت الجلسة'); }
-      if(!r.ok)throw new Error('HTTP '+r.status);
-      return r.json();
+      return _rj(r);
     });
 }
 // انتهاء الجلسة: يُعلم المستخدم ويوجّهه لتسجيل الدخول (بدل أخطاء غامضة)
@@ -588,7 +592,7 @@ function _cliReport(provId,reqId){
   if(!provId)return;
   _cliRptTarget={pid:provId,rid:reqId};
   var reasons=['خدمة غير لائقة','معلومات مضلّلة','سلوك غير مهني','محتوى مخالف','أخرى'];
-  var rh=reasons.map(function(r,i){return '<label style="display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:6px;cursor:pointer;font-size:13px"><input type="radio" name="crpt" value="'+r+'"'+(i===0?' checked':'')+'>'+r+'</label>';}).join('');
+  var rh=reasons.map(function(r,i){return '<label style="display:flex;align-items:center;gap:8px;padding:9px;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:6px;cursor:pointer;font-size:13px"><input type="radio" name="crpt" value="'+r+'">'+r+'</label>';}).join('');
   var ov=document.createElement('div');ov.id='cliRptOv';
   ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.5);display:flex;align-items:flex-end;justify-content:center;font-family:Tajawal,sans-serif';
   ov.innerHTML='<div style="background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;padding:20px">'
@@ -631,7 +635,7 @@ function _bidRepUndo(bidId,reqId){
 function _closeCliRpt(){var o=document.getElementById('cliRptOv');if(o)o.remove();}
 function _sendCliReport(){
   var sel=document.querySelector('input[name="crpt"]:checked');
-  if(!sel){showToast('اختر سبباً','error');return;}
+  if(!sel){showToast('اختر سبب البلاغ','error');return;}
   var _dt=document.getElementById('crpt-details'); if(sel.value==='أخرى'&&(!_dt||(_dt.value||'').trim().length<5)){showToast('اكتب وش صار — مع «أخرى» لازم توضّح','error'); if(_dt){_dt.style.borderColor='#dc2626';_dt.focus();} return;}
   var btn=document.getElementById('crpt-send');if(btn){btn.disabled=true;btn.textContent='جارٍ الإرسال...';}
   var payload={reported_id:_cliRptTarget.pid,type:'user',reason:sel.value};
@@ -639,7 +643,7 @@ function _sendCliReport(){
   if(_cliRptTarget.rid)payload.request_id=_cliRptTarget.rid;
   jFetch('/api/reports',{method:'POST',body:JSON.stringify(payload)})
     .then(function(r){_closeCliRpt();showToast('تم إرسال البلاغ — ستتم المراجعة','success');})
-    .catch(function(){if(btn){btn.disabled=false;btn.textContent='إرسال البلاغ';}showToast('تعذّر الإرسال — تحقّق من اتصالك','error');});
+    .catch(function(e){if(btn){btn.disabled=false;btn.textContent='إرسال البلاغ';}showToast(_errTxt(e),'error');});
 }
 var _cliRptTarget={};
 // ── الرئيسية الجديدة: بطاقة المشروع ──
@@ -1050,7 +1054,7 @@ function loadBids(id){
   el.innerHTML='<div class="loading">جاري تحميل العروض...</div>';
 
   fetch(API+'/api/requests/'+id+'/bids',hdr())
-    .then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(r){return _rj(r);})
     .then(function(bids){
       if(!Array.isArray(bids)){el.innerHTML=errH(function(){loadBids(curRequestId);});return;}
       var _hidN=bids.filter(function(b){return !!b.is_hidden;}).length;
@@ -2009,7 +2013,7 @@ function acceptAgree(){
   var _d=(document.getElementById('n-district')||{}).value||''; if(_d.trim())body.district=_d.trim();
   if(_reqGeo.lat&&_reqGeo.lng){ body.geo_lat=_reqGeo.lat; body.geo_lng=_reqGeo.lng; }
   else { var _ml=((document.getElementById("n-maploc")||{}).value||"").trim(); if(_ml) body.map_url=_ml.slice(0,1000); }
-  if(budget)body.budget_max=Number(budget);
+  if(_numIn(budget)!==null)body.budget_max=Math.round(_numIn(budget));
   if(deadline)body.deadline=deadline;
   if(_reqImages.length)body.images=_reqImages.map(function(i){return i.data;});
   if(_reqFiles.length)body.attachments=_reqFiles.map(function(f){return f.url?{name:f.name,url:f.url,size:f.size}:{name:f.name,data:f.data};});
@@ -2025,7 +2029,7 @@ function acceptAgree(){
   }
   body.dup_check=1; if(window._dupCh){ body.dup_intent=window._dupCh.intent; body.dup_hint=window._dupCh.hint; }
   fetch(API+'/api/requests',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
-    .then(function(r){ if(r.status===409) return r.json().then(function(x){ return {_dup:x&&x.dup}; }); if(!r.ok)throw new Error('HTTP '+r.status);return r.json();})
+    .then(function(r){ if(r.status===409) return r.json().then(function(x){ return {_dup:x&&x.dup}; }); return _rj(r);})
     .then(function(r){
       if(r&&r._dup){
         _dupAsk(r._dup,function(c){
@@ -2048,7 +2052,7 @@ function acceptAgree(){
         loadHome();loadReqs();show('requests',null,'requests');
       }else{if(msg){msg.textContent=r.message||'حدث خطأ';msg.className='alert err';}}
     })
-    .catch(function(e){if(msg){msg.textContent=''+e.message;msg.className='alert err';}})
+    .catch(function(e){if(msg){msg.textContent=_errTxt(e);msg.className='alert err';}})
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='نشر المشروع';}});
 }
 
@@ -2190,7 +2194,7 @@ function submitEditReq(){
   if((_editAtts||[]).some(function(a){return a.up;})){showToast('انتظر حتى يكتمل رفع الملفات','error');return;}
   if(_editGeo.pending){showToast('لحظة… نقرأ الموقع من الرابط','info');setTimeout(submitEditReq,900);return;}
   var btn=document.getElementById('edit-btn');btn.disabled=true;btn.textContent='جاري الحفظ...';
-  var body={title:title,description:desc,category:(document.getElementById('e-cat')||{}).value||null,city:(document.getElementById('e-city')||{}).value||null,budget_max:parseInt(document.getElementById('e-budget').value||0)||null,deadline:document.getElementById('e-deadline').value||null,attachments:(_editAtts||[]).map(function(a){return a.url?{name:a.name,url:a.url,size:a.size}:{name:a.name,data:a.data};})};
+  var body={title:title,description:desc,category:(document.getElementById('e-cat')||{}).value||null,city:(document.getElementById('e-city')||{}).value||null,budget_max:(_numIn(document.getElementById('e-budget').value)!==null?Math.round(_numIn(document.getElementById('e-budget').value)):null),deadline:document.getElementById('e-deadline').value||null,attachments:(_editAtts||[]).map(function(a){return a.url?{name:a.name,url:a.url,size:a.size}:{name:a.name,data:a.data};})};
   var _cdv=_cdVal('e-closedur'); if(_cdv!==undefined) body.close_days=_cdv;
   var _cat=body.category||'';
   if(!_cat){var e3=document.getElementById('edit-msg');e3.textContent='اختر التخصص الرئيسي';e3.className='alert err';btn.disabled=false;btn.textContent=window._editNeeds?'حفظ وإرسال للمراجعة':'حفظ التعديلات';return;}
