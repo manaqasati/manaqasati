@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sub.js','/award.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/sub.js','/award.js','/emailpref.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -255,6 +255,8 @@ app.post('/api/webhooks/resend', express.raw({ type: () => true, limit: '1mb' })
         const err = (st === 'bounced' || st === 'suppressed') ? JSON.stringify((ev.data && (ev.data.bounce || ev.data.suppressed || ev.data.failed)) || {}).slice(0, 500) : null;
         await pool.query('UPDATE email_log SET status=$1, error=COALESCE($2,error), updated_at=NOW() WHERE id=$3', [st, err, cur.id]);
       }
+      // ضغط «Spam»: نوقف عنه كل الإيميلات غير الأساسية فوراً (نحمي سمعة بريد مناقصة)
+      if (st === 'complained') { try { const lg = (await pool.query('SELECT user_id FROM email_log WHERE resend_id=$1 LIMIT 1', [rid])).rows[0]; if (lg && lg.user_id) await _epApply(lg.user_id, 'all', 'off', 'spam'); } catch(_) {} }
     }
     res.json({ ok: true });
   } catch(e) { console.error('resend webhook:', e.message); res.status(400).json({ message: 'bad payload' }); }
@@ -649,7 +651,7 @@ async function notifyMatchingProviders(request, _force){
     for(const p of r.rows){
       try{
         const _tid = await notify(p.id, '🆕 مشروع جديد يناسبك', `"${request.title}"${city?(' · '+city):''} — بادر بتقديم عرضك`, 'request', request.id, { kind: 'new_project', url: '/project/x-' + request.id + '?id=' + request.id });
-        if(p.email){ const eBody=`<p>مرحباً${p.nm?' '+eEsc(p.nm):''}،</p><p>نُشر مشروع جديد يناسب تخصصك على منصة مناقصة:</p><p><strong>${eEsc(request.title)}</strong>${city?' · '+eEsc(city):''}</p><p>ادخل وقدّم عرضك قبل غيرك.</p>`; sendEmail(p.email, '🆕 مشروع جديد يناسبك', emailTpl('🆕 مشروع جديد يناسبك', eBody, 'تقديم عرض', _withN(link, _tid, 'e')), { uid: p.id, kind: 'new_project', tid: _tid }).catch(()=>{}); }
+        if(p.email){ const eBody=`<p>مرحباً${p.nm?' '+eEsc(p.nm):''}،</p><p>نُشر مشروع جديد يناسب تخصصك على منصة مناقصة:</p><p><strong>${eEsc(request.title)}</strong>${city?' · '+eEsc(city):''}</p><p>ادخل وقدّم عرضك قبل غيرك.</p>`; sendEmail(p.email, '🆕 مشروع جديد يناسبك', emailTpl('🆕 مشروع جديد يناسبك', eBody, 'تقديم عرض', _withN(link, _tid, 'e')), { uid: p.id, kind: 'new_project', tid: _tid, cat: 'proj', instant: true, cats }).catch(()=>{}); }
         sent++;
       }catch(e){}
     }
@@ -1711,11 +1713,140 @@ app.get('/api/e/o/:tok', async (req, res) => {
     await pool.query(`UPDATE email_log SET status='opened', updated_at=NOW() WHERE id=$1 AND status IN ('sending','sent','delayed','delivered')`, [parseInt(m[1])]);
   } catch(e) {}
 });
+// ═══ إعداد الإيميلات ═══
+const _EP_CATS = { proj: 1, sub: 1, tips: 1, news: 1 };
+function _euSig(uid, cat){ return crypto.createHmac('sha256', String(JWT_SECRET)).update('eu:' + uid + ':' + cat).digest('hex').slice(0, 16); }
+async function _emailPrefOf(uid, to){
+  try {
+    const q = uid ? await pool.query('SELECT id, role, specialties, notify_categories, email_proj, email_sub, email_tips, email_news FROM users WHERE id=$1', [uid])
+                  : await pool.query('SELECT id, role, specialties, notify_categories, email_proj, email_sub, email_tips, email_news FROM users WHERE LOWER(email)=LOWER($1) LIMIT 1', [String(to||'')]);
+    return q.rows[0] || null;
+  } catch(e) { return null; }
+}
+function _emailAllowed(u, meta){
+  const c = meta.cat;
+  if (c === 'proj') {
+    const m = u.email_proj || 'daily';
+    if (m === 'off') return false;
+    if (meta.instant && m !== 'instant') return false;
+    if (meta.digest && m !== 'daily') return false;
+    // «بس هالتخصصات»: لو حدّد تخصصات للإيميل، المشروع لازم يطابق وحدة منها
+    const sp = Array.isArray(u.specialties) ? u.specialties : [];
+    const nc = Array.isArray(u.notify_categories) ? u.notify_categories.filter(x => x && sp.includes(x)) : [];   // القديم اللي ما عاد من تخصصاته ما يحسب
+    if (Array.isArray(meta.cats) && meta.cats.length && nc.length && !meta.cats.some(x => nc.includes(x))) return false;
+    return true;
+  }
+  if (c === 'sub') return u.email_sub !== false;
+  if (c === 'tips') return u.email_tips !== false;
+  if (c === 'news') return u.email_news !== false;
+  return true;
+}
+const _EP_TXT = { proj: 'إيميلات المشاريع الجديدة', sub: 'إيميلات طلبات المقاولين', tips: 'التذكيرات والنصائح', news: 'أخبار مناقصة' };
+function _epFooter(html, uid, cat, u){
+  const base = SITE_URL + '/e/u/' + uid + '/' + cat + '/' + _euSig(uid, cat);
+  const L = (h, t) => '<a href="' + h + '" style="color:#1d4ed8;text-decoration:underline">' + t + '</a>';
+  const links = [];
+  if (cat === 'proj' && (u.email_proj || 'daily') === 'instant') links.push(L(base + '?a=daily', 'خلّها ملخّص يومي'));
+  links.push(L(base + '?a=off', 'وقّف ' + _EP_TXT[cat]));
+  links.push(L(SITE_URL + (u.role === 'provider' ? '/dashboard-provider.html#emails' : '/e/u/' + uid + '/' + cat + '/' + _euSig(uid, cat) + '?a=view'), 'كل الإعدادات'));
+  const why = cat === 'proj' ? 'وصلك هذا لأنك مزوّد في مناقصة والمشروع يطابق تخصصك.' : cat === 'sub' ? 'وصلك هذا لأنك مزوّد في مناقصة.' : 'وصلك هذا لأن عندك حساب في مناقصة.';
+  const f = '<div style="max-width:580px;margin:0 auto;padding:4px 18px 26px;text-align:center;font-family:Tahoma,Arial,sans-serif;font-size:12px;color:#64748b;line-height:2;direction:rtl">' + why + '<br>' + links.join(' &nbsp;·&nbsp; ') + '</div>';
+  return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, f + '</body>') : html + f;
+}
+async function _epApply(uid, cat, a, src){
+  const sets = []; const p = [];
+  if (cat === 'proj') { if (!['off','daily','instant'].includes(a)) return false; p.push(a); sets.push('email_proj=$1'); }
+  else if (_EP_CATS[cat]) { if (!['off','on'].includes(a)) return false; p.push(a === 'on'); sets.push('email_' + cat + '=$1'); }
+  else if (cat === 'all' && a === 'off') { sets.push("email_proj='off', email_sub=FALSE, email_tips=FALSE, email_news=FALSE"); }
+  else return false;
+  p.push(String(src || 'link').slice(0, 20)); p.push(uid);
+  await pool.query('UPDATE users SET ' + sets.join(', ') + ', email_pref_at=NOW(), email_pref_src=$' + (p.length - 1) + ' WHERE id=$' + p.length, p);
+  return true;
+}
+// ═══ إيقاف الإيميلات بضغطة (بدون تسجيل دخول — الرابط موقّع) ═══
+function _euOk(req){ const uid = parseInt(req.params.uid), cat = String(req.params.cat || ''); return (uid > 0 && (_EP_CATS[cat]) && String(req.params.sig || '') === _euSig(uid, cat)) ? { uid, cat } : null; }
+app.post('/api/e/u/:uid/:cat/:sig', rateLimiter(30, 600000), async (req, res) => {
+  try {
+    const k = _euOk(req); if (!k) return res.status(400).json({ message: 'الرابط غير صالح' });
+    let a = (req.body && typeof req.body === 'object' && typeof req.body.a === 'string') ? req.body.a : 'off';   // Gmail «إلغاء الاشتراك» = off
+    const src = (req.body && req.body.a) ? 'link' : 'oneclick';
+    if (a !== '__view' && !(await _epApply(k.uid, k.cat, a, src))) return res.status(400).json({ message: 'اختيار غير صالح' });
+    const u = (await pool.query('SELECT email_proj, email_sub, email_tips, email_news FROM users WHERE id=$1', [k.uid])).rows[0] || {};
+    res.json({ ok: true, proj: u.email_proj || 'daily', sub: u.email_sub !== false, tips: u.email_tips !== false, news: u.email_news !== false });
+  } catch(e) { console.error('/api/e/u:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/e/u/:uid/:cat/:sig', async (req, res) => {
+  const k = _euOk(req);
+  res.set('Cache-Control', 'no-store'); res.set('X-Robots-Tag', 'noindex');
+  const a0 = String(req.query.a || 'off');
+  const api = '/api/e/u/' + req.params.uid + '/' + req.params.cat + '/' + req.params.sig;
+  const nm = k ? _EP_TXT[k.cat] : '';
+  res.send(`<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>إعداد الإيميلات — مناقصة</title>
+<style>body{margin:0;background:#eef2f7;font-family:Tajawal,Tahoma,Arial,sans-serif;color:#0f1d3a;direction:rtl}.w{max-width:440px;margin:0 auto;padding:28px 16px}.lg{font-weight:900;font-size:24px;color:#1b2b63;text-align:center;margin-bottom:16px}
+.c{background:#fff;border:1px solid #e3eaf6;border-radius:20px;padding:24px 20px;text-align:center}.ic{font-size:44px}h1{font-size:19px;margin:10px 0 6px}p{font-size:14px;color:#5b6b82;font-weight:700;line-height:1.8;margin:0 0 6px}
+.b{display:block;width:100%;box-sizing:border-box;border:1.5px solid #dbe3ef;background:#fff;color:#0f1d3a;border-radius:14px;padding:13px;font:inherit;font-weight:800;font-size:14.5px;cursor:pointer;margin-top:9px;text-decoration:none}.b.p{background:#2563eb;border-color:#2563eb;color:#fff}.b:disabled{opacity:.6}
+.n{font-size:12.5px;color:#64748b;font-weight:700;margin-top:14px}@media(prefers-color-scheme:dark){body{background:#0b1529;color:#e6edf8}.c{background:#16233f;border-color:#24365e}.b{background:transparent;color:#e6edf8;border-color:#2b4377}.lg{color:#c7d2fe}p,.n{color:#a9b6d3}}</style></head>
+<body><div class="w"><div class="lg">مناقصة</div><div class="c" id="c">${k ? '<div class="ic">⏳</div><h1>لحظة…</h1>' : '<div class="ic">⚠️</div><h1>الرابط غير صالح</h1><p>افتح إعداد الإيميلات من حسابك في مناقصة.</p><a class="b p" href="/auth.html">دخول</a>'}</div></div>
+${k ? `<script>
+var API=${JSON.stringify(api)}, CAT=${JSON.stringify(k.cat)}, NM=${JSON.stringify(nm)}, A0=${JSON.stringify(a0)};
+var C=document.getElementById('c');
+function go(a){ var bs=C.querySelectorAll('button'); for(var i=0;i<bs.length;i++)bs[i].disabled=true;
+  fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({a:a})}).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});})
+  .then(function(r){ if(!r.ok) throw 0; paint(a,r.d); }).catch(function(){ C.innerHTML='<div class="ic">⚠️</div><h1>ما قدرنا نحفظ</h1><p>جرّب مرة ثانية.</p><button class="b p" onclick="go(\\''+a+'\\')">حاول مرة ثانية</button>'; }); }
+function paint(a,d){
+  var h='', alt='';
+  if(CAT==='proj'){
+    if(d.proj==='off'){ h='<div class="ic">✅</div><h1>وقّفنا إيميلات المشاريع الجديدة</h1><p>ما راح يوصلك إيميل عن المشاريع الجديدة. تقدر تشوفها في التطبيق متى ما بغيت.</p>'; alt='<button class="b" onclick="go(\\'daily\\')">📬 لا — خلّها ملخّص واحد باليوم</button><button class="b" onclick="go(\\'instant\\')">↩️ رجّعها أول بأول</button>'; }
+    else if(d.proj==='daily'){ h='<div class="ic">📬</div><h1>صار يوصلك ملخّص واحد باليوم</h1><p>إيميل واحد الصبح فيه كل المشاريع الجديدة اللي تناسبك.</p>'; alt='<button class="b" onclick="go(\\'instant\\')">أبيها أول بأول</button><button class="b" onclick="go(\\'off\\')">وقّفها كلها</button>'; }
+    else { h='<div class="ic">⚡</div><h1>رجّعناها أول بأول</h1><p>يوصلك إيميل مع كل مشروع جديد يناسبك.</p>'; alt='<button class="b" onclick="go(\\'daily\\')">خلّها ملخّص يومي</button><button class="b" onclick="go(\\'off\\')">وقّفها</button>'; }
+  } else {
+    var on=d[CAT];
+    h=on?'<div class="ic">'+(a==='__view'?'📧':'↩️')+'</div><h1>'+(a==='__view'?NM+' شغّالة':'رجّعنا '+NM)+'</h1>':'<div class="ic">✅</div><h1>'+(a==='__view'?NM+' موقّفة':'وقّفنا '+NM)+'</h1>';
+    alt=on?'<button class="b" onclick="go(\\'off\\')">وقّفها</button>':'<button class="b" onclick="go(\\'on\\')">↩️ رجّعها</button>';
+  }
+  C.innerHTML=h+alt+'<a class="b p" href="/dashboard-provider.html#emails">كل إعدادات الإيميل</a><div class="n">🔒 قبول عرضك ورسائل العملاء وأمان حسابك توصلك دايم</div>';
+}
+go(A0==='view'?'__view':A0);
+</script>` : ''}
+</body></html>`);
+});
+// إعداد الإيميلات من داخل الحساب
+app.get('/api/me/email-prefs', auth, async (req, res) => {
+  try {
+    const u = (await pool.query('SELECT role, specialties, notify_categories, email_proj, email_sub, email_tips, email_news FROM users WHERE id=$1', [req.user.id])).rows[0];
+    if (!u) return res.status(404).json({ message: 'غير موجود' });
+    const sp = Array.isArray(u.specialties) ? u.specialties.filter(Boolean) : [];
+    const nc = Array.isArray(u.notify_categories) ? u.notify_categories.filter(x => sp.includes(x)) : [];
+    res.json({ proj: u.email_proj || 'daily', sub: u.email_sub !== false, tips: u.email_tips !== false, news: u.email_news !== false, specialties: sp, cats: nc.length ? nc : sp });
+  } catch(e) { console.error('GET email-prefs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.put('/api/me/email-prefs', auth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const proj = ['off','daily','instant'].includes(b.proj) ? b.proj : null;
+    if (!proj) return res.status(400).json({ message: 'اختر طريقة وصول المشاريع' });
+    const u = (await pool.query('SELECT specialties FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
+    const sp = Array.isArray(u.specialties) ? u.specialties.filter(Boolean) : [];
+    let cats = Array.isArray(b.cats) ? [...new Set(b.cats.map(x => String(x || '').trim()).filter(x => sp.includes(x)))] : sp;
+    if (proj !== 'off' && sp.length && !cats.length) return res.status(400).json({ message: 'اختر تخصص واحد على الأقل — أو اختر «لا ترسل»' });
+    const nc = (!cats.length || cats.length === sp.length) ? null : cats;   // الكل = null (يمشي مع تخصصاته لو تغيّرت)
+    await pool.query(`UPDATE users SET email_proj=$1, email_sub=$2, email_tips=$3, email_news=$4, notify_categories=$5, email_pref_at=NOW(), email_pref_src='settings' WHERE id=$6`,
+      [proj, b.sub !== false, b.tips !== false, b.news !== false, nc, req.user.id]);
+    res.json({ ok: true });
+  } catch(e) { console.error('PUT email-prefs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
 async function sendEmail(to, subject, html, meta) {
   meta = meta || {};
   if (_softOn() && to && await _softQ(meta.uid || null, 'e', [to, subject, html, meta], '', to)) return true;
   if (!RESEND_KEY) { console.warn(' RESEND_KEY not set — skipping email to', to); return false; }
   if (!to || /@manaqasa\.local$/i.test(String(to))) return false;
+  // إيميلات غير أساسية (مشاريع/باطن/تذكيرات/أخبار): نحترم إعداد المستخدم + رابط إيقاف بضغطة
+  let _ep = null;
+  if (meta.cat && _EP_CATS[meta.cat]) {
+    _ep = await _emailPrefOf(meta.uid, to);
+    if (_ep && !_emailAllowed(_ep, meta)) return false;
+    if (_ep) html = _epFooter(html, _ep.id, meta.cat, _ep);
+  }
   let logId = null;
   try { logId = (await pool.query('INSERT INTO email_log (user_id, to_email, subject, kind, status) VALUES ($1,$2,$3,$4,$5) RETURNING id', [meta.uid || null, String(to).slice(0,200), String(subject||'').slice(0,200), meta.kind || 'other', 'sending'])).rows[0].id; } catch(e) {}
   if (logId && meta.tid) pool.query('UPDATE ntrack SET email_id=$1 WHERE id=$2', [logId, meta.tid]).catch(()=>{});
@@ -1726,7 +1857,8 @@ async function sendEmail(to, subject, html, meta) {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: `${FROM_NAME} <${FROM_EMAIL}>`, to: [to], subject, html, text: _htmlToText(html), reply_to: FROM_EMAIL })
+      body: JSON.stringify(Object.assign({ from: `${FROM_NAME} <${FROM_EMAIL}>`, to: [to], subject, html, text: _htmlToText(html), reply_to: FROM_EMAIL },
+        _ep ? { headers: { 'List-Unsubscribe': '<' + SITE_URL + '/api/e/u/' + _ep.id + '/' + meta.cat + '/' + _euSig(_ep.id, meta.cat) + '>', 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}))
     });
     const txt = await r.text(); let d = null; try { d = JSON.parse(txt); } catch(_) {}
     if (!r.ok) { console.error('Resend error:', txt); _fail((d && (d.message || d.name)) || txt); return false; }
@@ -2190,14 +2322,14 @@ async function notify(userId, title, body, type, refId, opts) {
   return tid;
 }
 
-async function notifyWithEmail(userId, title, body, type, refId, emailSubject, emailBody, btnText, btnUrl) {
-  if (_softOn() && await _softQ(userId, 'nwe', [userId, title, body, type, refId, emailSubject, emailBody, btnText, btnUrl], btnUrl || type)) return;
+async function notifyWithEmail(userId, title, body, type, refId, emailSubject, emailBody, btnText, btnUrl, emeta) {
+  if (_softOn() && await _softQ(userId, 'nwe', [userId, title, body, type, refId, emailSubject, emailBody, btnText, btnUrl, emeta || null], btnUrl || type)) return;
   return _noSoft(async () => {
   const tid = await notify(userId, title, body, type, refId);
   try {
     const u = await pool.query('SELECT email, name FROM users WHERE id=$1', [userId]);
     if (u.rows.length && u.rows[0].email) {
-      sendEmail(u.rows[0].email, emailSubject||title, emailTpl(title, emailBody.replace(/\{name\}/g, u.rows[0].name||''), btnText, btnUrl||SITE_URL), { uid: userId, kind: type, tid }).catch(() => {});
+      sendEmail(u.rows[0].email, emailSubject||title, emailTpl(title, emailBody.replace(/\{name\}/g, u.rows[0].name||''), btnText, btnUrl||SITE_URL), Object.assign({ uid: userId, kind: type, tid }, emeta || {})).catch(() => {});
     }
   } catch(e) { console.error('notifyWithEmail email part:', e.message); }
   });
@@ -2227,7 +2359,7 @@ async function _remindOnce(userId, kind, refId, title, body, emailSubject, email
       [userId, kind, refId||0]
     );
     if(!ins.rows.length) return false; // أُرسل سابقاً
-    await notifyWithEmail(userId, title, body, 'reminder', refId, emailSubject, emailBody, btnText, btnUrl);
+    await notifyWithEmail(userId, title, body, 'reminder', refId, emailSubject, emailBody, btnText, btnUrl, /^(complete_profile|react_inactive|react_nobids|low_rating|bid_followup)/.test(String(kind)) ? { cat: 'tips' } : null);
     return true;
   }catch(e){ console.error('_remindOnce '+kind+':', e.message); return false; }
 }
@@ -2853,34 +2985,7 @@ async function _runRemindersAll(){
       }
     }
 
-    // ط) إيميل مطابقة مُجمّع للمزوّد — يجمع المشاريع الجديدة المطابقة منذ آخر إيميل (بدل الأسبوعي)
-    if((await getSetting('provider_weekly_on','1'))!=='0'){
-      const provs = await pool.query(
-        `SELECT id, email, COALESCE(notify_categories, specialties) AS cats, city, COALESCE(serves_all_cities,FALSE) AS allcities, service_cities, last_match_email_at
-           FROM users WHERE role='provider' AND is_active=TRUE`);
-      for(const p of provs.rows){
-        try{
-          if(!p.email || /@manaqasa\.local$/i.test(p.email)) continue; // بريد حقيقي فقط
-          const cats = Array.isArray(p.cats)?p.cats:[];
-          if(!cats.length) continue;
-          const opp = await pool.query(
-            `SELECT r.id, r.title, r.city FROM requests r
-             WHERE r.status='open' AND r.assigned_provider_id IS NULL
-               AND r.created_at > COALESCE($3::timestamp, NOW() - INTERVAL '24 hours')
-               AND (r.category = ANY($1::text[]) OR COALESCE(r.extra_categories,'{}') && $1::text[])
-               AND ($4::boolean OR r.city IS NULL OR ($2::text IS NULL AND ($5::text[] IS NULL OR cardinality($5::text[])=0)) OR r.city = $2 OR r.city = ANY(COALESCE($5::text[],ARRAY[]::text[])))
-             ORDER BY r.created_at DESC LIMIT 12`,
-            [cats, p.city||null, p.last_match_email_at||null, p.allcities, p.service_cities||null]);
-          const rows = opp.rows||[];
-          if(!rows.length) continue;
-          const items = rows.map(r=>`<li style="margin-bottom:6px"><strong>${eEsc(r.title||'')}</strong>${r.city?(' — '+eEsc(r.city)):''}</li>`).join('');
-          const title = `🔔 ${rows.length} مشروع جديد يناسب تخصصك`;
-          const body = `<p>ظهرت مشاريع جديدة تطابق تخصصك${p.city&&!p.allcities?(' في '+eEsc(p.city)):''}:</p><ul style="padding-inline-start:18px;margin:10px 0">${items}</ul><p>سارع بتقديم عروضك — المبادرة المبكرة ترفع فرص الفوز.</p>`;
-          sendEmail(p.email, title, emailTpl(title, body, 'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
-          await pool.query('UPDATE users SET last_match_email_at=NOW() WHERE id=$1', [p.id]);
-        }catch(e){}
-      }
-    }
+    // ط) إيميل المطابقة المُجمّع صار ملخّص يومي الساعة 8 الصبح — شف _matchDigest
 
     /* ═══ تذكيرات إضافية ═══ */
     // ي) تذكير العميل بالرد على أسئلة المزودين — مرّتين: بعد يوم ثم بعد 3 أيام (لكل سؤال جديد)
@@ -2974,7 +3079,44 @@ async function _runRemindersAll(){
   }catch(e){ console.error('runReminders:', e.message); }
   try { await nudgeAcceptAsks(); } catch(e){ console.error('nudgeAcceptAsks:', e.message); }
 }
-setInterval(() => _jobLock('reminders', runReminders), 6*60*60*1000); // كل 6 ساعات
+setInterval(() => _jobLock('reminders', runReminders), 6*60*60*1000);
+// ═══ ملخّص المشاريع اليومي (الساعة 8 الصبح بتوقيت الرياض) — لمن اختار «ملخّص يومي» (الافتراضي) ═══
+async function _matchDigest(){
+  if ((await getSetting('provider_weekly_on','1')) === '0') return;
+  const B = `((date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') + interval '8 hours') AT TIME ZONE 'Asia/Riyadh')`;
+  const provs = await pool.query(
+    `SELECT id, email, specialties, notify_categories, city, COALESCE(serves_all_cities,FALSE) AS allcities, service_cities, last_match_email_at
+       FROM users WHERE role='provider' AND is_active=TRUE AND COALESCE(email_proj,'daily')='daily'
+        AND NOW() >= ${B} AND (last_match_email_at IS NULL OR last_match_email_at < ${B})
+        AND email IS NOT NULL AND email NOT ILIKE '%@manaqasa.local'
+      ORDER BY id LIMIT 400`);
+  for (const p of provs.rows) {
+    try {
+      const sp = Array.isArray(p.specialties) ? p.specialties.filter(Boolean) : [];
+      const nc = Array.isArray(p.notify_categories) ? p.notify_categories.filter(x => sp.includes(x)) : [];
+      const cats = nc.length ? nc : sp;
+      await pool.query('UPDATE users SET last_match_email_at=NOW() WHERE id=$1', [p.id]);   // نعلّم قبل الإرسال — ما يتكرر لو صار خطأ
+      if (!cats.length) continue;
+      const rows = (await pool.query(
+        `SELECT r.id, r.title, r.city FROM requests r
+          WHERE r.status='open' AND r.assigned_provider_id IS NULL AND r.paused_at IS NULL AND (r.category IS DISTINCT FROM 'direct')
+            AND COALESCE(r.published_at, r.created_at) > GREATEST(COALESCE($3::timestamp, NOW() - INTERVAL '24 hours'), NOW() - INTERVAL '3 days')
+            AND (r.category = ANY($1::text[]) OR COALESCE(r.extra_categories,'{}') && $1::text[])
+            AND ($4::boolean OR r.city IS NULL OR ($2::text IS NULL AND ($5::text[] IS NULL OR cardinality($5::text[])=0)) OR r.city = $2 OR r.city = ANY(COALESCE($5::text[],ARRAY[]::text[])))
+            AND NOT EXISTS (SELECT 1 FROM bids b WHERE b.request_id=r.id AND b.provider_id=$6)
+          ORDER BY COALESCE(r.published_at, r.created_at) DESC LIMIT 12`,
+        [cats, p.city || null, p.last_match_email_at || null, p.allcities, p.service_cities || null, p.id])).rows;
+      if (!rows.length) continue;
+      const items = rows.map(r => `<li style="margin-bottom:6px"><a href="${SITE_URL}/project/x-${r.id}?id=${r.id}" style="color:#0f172a;text-decoration:none"><strong>${eEsc(r.title || '')}</strong></a>${r.city ? (' — ' + eEsc(r.city)) : ''}</li>`).join('');
+      const title = rows.length === 1 ? '🔔 مشروع جديد يناسب تخصصك' : `🔔 ${rows.length} مشاريع جديدة تناسب تخصصك`;
+      const body = `<p>ملخّص اليوم — مشاريع جديدة تطابق تخصصك${p.city && !p.allcities ? (' في ' + eEsc(p.city)) : ''}:</p><ul style="padding-inline-start:18px;margin:10px 0">${items}</ul><p>قدّم عرضك بدري — العميل يرد أكثر على أول العروض.</p>`;
+      await sendEmail(p.email, title, emailTpl(title, body, 'تصفّح المشاريع', SITE_URL + '/dashboard-provider.html'), { uid: p.id, kind: 'match_digest', cat: 'proj', digest: true, cats });
+    } catch(e) { console.error('matchDigest', p.id, e.message); }
+  }
+}
+setInterval(() => _jobLock('matchdigest', _matchDigest), 15 * 60 * 1000);
+setTimeout(() => _jobLock('matchdigest', _matchDigest), 60 * 1000);   // بعد التشغيل بدقيقة (لو النشر صار بعد 8 الصبح)
+ // كل 6 ساعات
 async function runEngagementReminders(){
   try {
     const users = await pool.query(`
@@ -3182,6 +3324,13 @@ async function setupDatabase() {
     if ((await getSetting('mig_cat_other_done','')) !== '1') try { await _mig(`UPDATE requests SET category_other=LEFT(category,120), category='أخرى' WHERE category IS NOT NULL AND category<>'' AND category<>'direct' AND category<>'صيانة مصاعد' AND category<>'أبواب' AND category<>'جبس وطباشير' AND NOT (category = ANY($1::text[]))`, [CATEGORIES]); await setSetting('mig_cat_other_done','1'); } catch(_e){ console.error('cat_other migrate:', _e.message); }
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_cities TEXT[]`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_match_email_at TIMESTAMP`);
+    // إعداد الإيميلات: المشاريع (ملخّص يومي افتراضي / أول بأول / لا) + باطن + تذكيرات + أخبار
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_proj TEXT DEFAULT 'daily'`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_sub BOOLEAN DEFAULT TRUE`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_tips BOOLEAN DEFAULT TRUE`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_news BOOLEAN DEFAULT TRUE`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_pref_at TIMESTAMPTZ`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_pref_src TEXT`);
     // ترحيل التخصصات القديمة إلى الأسماء الموحّدة (يُشغّل مرة — بعدها لا يطابق شيئاً)
     try {
       await _mig("UPDATE users SET specialties=array_replace(specialties,'أبواب','أبواب وبوابات') WHERE 'أبواب'=ANY(specialties)");
@@ -10483,7 +10632,7 @@ app.post('/api/admin/requests/:id/reach/remind', requirePermission('requests.rev
       try {
         const t = '⏰ لسا تقدر تقدّم عرضك';
         const tid = await notify(p.user_id, t, `«${rq.title}»${rq.city ? ' · ' + rq.city : ''} — شفت المشروع وما قدّمت. صاحب المشروع يستقبل العروض الحين.`, 'request', id, { kind: 'new_project_rem', url: '/project/x-' + id + '?id=' + id });
-        if (p.email) sendEmail(p.email, t + ' — ' + rq.title, emailTpl(t, `<p>مرحباً${p.nm ? ' ' + eEsc(p.nm) : ''}،</p><p>شفت مشروع «<strong>${eEsc(rq.title)}</strong>»${rq.city ? ' · ' + eEsc(rq.city) : ''} وما قدّمت عرض.</p><p>صاحب المشروع لسا يستقبل العروض — قدّم عرضك قبل لا يقرر.</p>`, 'قدّم عرضك', _withN(link, tid, 'e')), { uid: p.user_id, kind: 'new_project_rem', tid }).catch(()=>{});
+        if (p.email) sendEmail(p.email, t + ' — ' + rq.title, emailTpl(t, `<p>مرحباً${p.nm ? ' ' + eEsc(p.nm) : ''}،</p><p>شفت مشروع «<strong>${eEsc(rq.title)}</strong>»${rq.city ? ' · ' + eEsc(rq.city) : ''} وما قدّمت عرض.</p><p>صاحب المشروع لسا يستقبل العروض — قدّم عرضك قبل لا يقرر.</p>`, 'قدّم عرضك', _withN(link, tid, 'e')), { uid: p.user_id, kind: 'new_project_rem', tid, cat: 'proj' }).catch(()=>{});
         n++;
       } catch(e) {}
     }
@@ -12322,7 +12471,7 @@ app.post('/api/admin/broadcast', requirePermission('broadcast.send'), async (req
     if (!_bulkClaim('broadcast', [req.user.id, title, message, !!ch.app, !!ch.email, users.rows.map(u => u.id)])) return _bulkDup(res);
     const _html = emailTpl(title, '<p>'+eEsc(message).replace(/\n/g,'<br>')+'</p>', 'فتح التطبيق', 'https://manaqasa.com');
     if (ch.app) await _inChunks(users.rows, 10, u => notify(u.id, title, message, 'admin', null));
-    if (ch.email) for (const u of users.rows) { if (u.email) { try { await sendEmail(u.email, title, _html); } catch(e) {} } }
+    if (ch.email) for (const u of users.rows) { if (u.email) { try { await sendEmail(u.email, title, _html, { uid: u.id, kind: 'broadcast', cat: 'news' }); } catch(e) {} } }
     const sent = users.rows.length;
     await logAdmin(req, 'broadcast', null, null, 'رسالة جماعية: '+(title||'')+' ('+sent+' مستلم)');
     res.json({ ok: true, total: sent });
@@ -12680,7 +12829,7 @@ async function _subPush(sub, u, ownNm, ch){
       const own = !tid;
       if (own) tid = (await pool.query("INSERT INTO ntrack (user_id, kind, ref_id) VALUES ($1,'sub_new',$2) RETURNING id", [u.id, sub.id])).rows[0].id;
       const et = t + (sub.city ? ' في ' + sub.city : '');
-      const p = sendEmail(u.email, et, emailTpl(et, `<p>مرحباً${u.nm ? ' ' + eEsc(u.nm) : ''}،</p><p><strong>${eEsc(ownNm || 'مقاول')}</strong> يحتاج <strong>${eEsc(sub.category)}</strong>${sub.city ? ' في ' + eEsc(sub.city) : ''}:</p><div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:14px;margin:14px 0">${(sub.title ? '<b>' + eEsc(sub.title) + '</b><br>' : '') + eEsc(String(sub.description).slice(0, 300))}</div><p>قدّم سعرك من حسابك — ويظهر لك رقمه بعد العرض.</p>`, 'شوف الطلب وقدّم', SITE_URL + url), { uid: u.id, kind: 'sub_new', tid });
+      const p = sendEmail(u.email, et, emailTpl(et, `<p>مرحباً${u.nm ? ' ' + eEsc(u.nm) : ''}،</p><p><strong>${eEsc(ownNm || 'مقاول')}</strong> يحتاج <strong>${eEsc(sub.category)}</strong>${sub.city ? ' في ' + eEsc(sub.city) : ''}:</p><div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:14px;margin:14px 0">${(sub.title ? '<b>' + eEsc(sub.title) + '</b><br>' : '') + eEsc(String(sub.description).slice(0, 300))}</div><p>قدّم سعرك من حسابك — ويظهر لك رقمه بعد العرض.</p>`, 'شوف الطلب وقدّم', SITE_URL + url), Object.assign({ uid: u.id, kind: 'sub_new', tid }, u.is_p ? {} : { cat: 'sub' }));
       if (ch.wait) { const ok = await p.catch(() => false); if (ok) e = 1; else if (own) await pool.query('DELETE FROM ntrack WHERE id=$1', [tid]).catch(()=>{}); }
       else { p.catch(()=>{}); e = 1; }
     }

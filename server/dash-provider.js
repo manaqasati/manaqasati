@@ -1750,7 +1750,12 @@ function _pfEnhance(pg,n){
     +(_pushOK?'<span id="pushStatusBadge" class="push-status-badge"></span><button type="button" id="pushToggleSwitch" class="push-toggle-switch" aria-label="تفعيل الإشعارات" onclick="togglePush().then(updatePushToggleUI)"></button>':'')+'</div>';
   head2.parentNode.insertBefore(nt,head2.nextSibling);
   if(_pushOK){ try{ updatePushToggleUI(); }catch(e){} }
-  nt.parentNode.insertBefore(n.pw,nt.nextSibling);
+  // الإيميلات: وش يوصله (ملخّص يومي / أول بأول / لا) + تخصصات الإيميل
+  var em=document.createElement('div'); em.className='pf-sec pf-nt'; em.id='pf-sec-emails';
+  em.innerHTML='<div class="pf-nt-h" style="cursor:pointer" onclick="if(window.mnqEmailPrefs)mnqEmailPrefs()"><span class="pf-sec-ic">'+I('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>')+'</span><span class="pf-sec-tx"><b>الإيميلات</b><small id="ep-row-sub">وش يوصلك على الإيميل</small></span><button type="button" class="ep-open" style="border:1.5px solid #dbe3ef;background:transparent;color:inherit;border-radius:10px;padding:7px 12px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap">تعديل</button></div>';
+  nt.parentNode.insertBefore(em,nt.nextSibling);
+  try{ fetch(API+'/api/me/email-prefs',{headers:{Authorization:'Bearer '+localStorage.getItem('token')}}).then(function(r){return r.ok?r.json():null;}).then(function(d){ var x=document.getElementById('ep-row-sub'); if(d&&x&&window.mnqEmailSummary)x.textContent=mnqEmailSummary(d); }).catch(function(){}); }catch(e){}
+  em.parentNode.insertBefore(n.pw,em.nextSibling);
   _pfSection('pw','كلمة المرور','غيّر كلمة المرور',I('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>'),n.pw,false);
   // قائمة الحساب: صفوف بدل أزرار كبيرة
   var a=n.acct; a.className='pf-menu'; a.style.cssText='';
@@ -2472,6 +2477,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var _h=(location.hash||'').replace('#','');
   if(/^sub\/\d+$/.test(_h)){ window._subOpen=parseInt(_h.split('/')[1]); _h='sub'; }
   if(/^sub\/(new|\d+\/edit)$/.test(_h)){ _h='sub'; }
+  if(_h==='emails'){ window._mnqEmailsDeep=1; _h='profile'; }
   var pg=(_h&&_pages[_h])?_h:((saved&&_pages[saved])?saved:'home');
   gotoPage(pg);
 });
