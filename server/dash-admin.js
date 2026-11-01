@@ -8090,6 +8090,15 @@ function _subPreview(x){
 // ═══════════ المحادثات: محادثة «فريق مناقصة» مع العملاء والمزوّدين ═══════════
 var _SP={f:'wait',q:'',role:'',list:[],counts:{},cur:null,data:null,view:'list',note:false,replies:[],admins:[],stats:{},sig:'',lsig:'',busy:false};
 function _spJ(u,o){ return fetch(API+u,Object.assign({},hdr(),o||{})).then(function(r){ return r.json().then(function(d){ if(!r.ok)throw d; return d; }); }); }
+function _spLinkify(s){ // روابط قابلة للضغط (النص مهرّب مسبقاً) — روابط مناقصة تفتح بنفس الصفحة
+  return String(s).replace(/(\bhttps?:\/\/[^\s<]+|\b(?:www\.)?manaqasa\.com(?:\/[^\s<]*)?)/gi,function(m){
+    var tail='', q=m.search(/&(quot|#39|lt|gt);/); if(q>=0){ tail=m.slice(q); m=m.slice(0,q); } var t=m.match(/[.,،؛!?؟)\]»"']+$/); if(t){ tail=t[0]+tail; m=m.slice(0,-t[0].length); }
+    var raw=m.replace(/&amp;/g,'&'); if(!/^https?:\/\//i.test(raw))raw='https://'+raw;
+    var u=_safeUrl(raw); if(!u)return m+tail;
+    var own=/^https?:\/\/(www\.)?manaqasa\.com(\/|$)/i.test(u);
+    return '<a href="'+esc(u)+'"'+(own?'':' target="_blank" rel="noopener nofollow"')+' style="color:inherit;text-decoration:underline;word-break:break-all">'+m+'</a>'+tail;
+  });
+}
 function _spBadge(n){ n=parseInt(n)||0; var b=document.getElementById('support-badge'); if(b){ b.textContent=n; b.style.display=n?'flex':'none'; } }
 function _spCount(){ if(!permOK('support.view'))return; _spJ('/api/admin/support/count').then(function(d){ _spBadge(d.n); }).catch(function(){}); }
 setInterval(function(){ if(!document.hidden)_spCount(); },60000); setTimeout(_spCount,2500);
@@ -8238,7 +8247,7 @@ function _spPaintMsgs(){
       else if(_spProjCount()&&permOK('support.reply'))f+='<button class="sp-fa" onclick="_spAddOpen(['+m.id+'])">+ أضف للمشروع</button>';
       if(m.meta&&m.meta.fr_label)f='<div class="sp-frr">📎 رداً على طلب: '+esc(m.meta.fr_label)+'</div>'+f;
     }
-    return x+'<div class="sp-m '+(mine?'me':'you')+(m.kind==='auto'?' auto':'')+'">'+(mine?'<div class="sp-who">'+(m.kind==='auto'?'رد تلقائي':esc(m.who||'الإدارة'))+'</div>':'')+f+(m.body?'<div class="sp-tx">'+esc(m.body)+'</div>':'')
+    return x+'<div class="sp-m '+(mine?'me':'you')+(m.kind==='auto'?' auto':'')+'">'+(mine?'<div class="sp-who">'+(m.kind==='auto'?'رد تلقائي':esc(m.who||'الإدارة'))+'</div>':'')+f+(m.body?'<div class="sp-tx">'+_spLinkify(esc(m.body))+'</div>':'')
       +'<div class="sp-mm">'+tm+(mine&&m.kind!=='auto'?(m.read_at?' <span title="قرأها">✓✓</span>':' <span title="ما قرأها للحين">✓</span>'):'')+'</div></div>';
   }).join('');
   el.innerHTML=h||'<div class="sp-empty">ما فيه رسائل للحين — اكتب له أول رسالة</div>';

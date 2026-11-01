@@ -1080,7 +1080,15 @@ function _supMsgHtml(m){
   h+='<div class="bub-meta">'+_supTime(m.created_at)+tick+'</div></div>';
   return h;
 }
-function _supLinkify(s){ return s.replace(/(https?:\/\/[^\s<]+)/g,function(u){ var x=_safeUrl(u.replace(/&amp;/g,'&')); return x?'<a href="'+esc(x)+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">'+u+'</a>':u; }); }
+function _supLinkify(s){ // روابط قابلة للضغط (النص مهرّب مسبقاً) — روابط مناقصة تفتح بنفس الصفحة
+  return String(s).replace(/(\bhttps?:\/\/[^\s<]+|\b(?:www\.)?manaqasa\.com(?:\/[^\s<]*)?)/gi,function(m){
+    var tail='', q=m.search(/&(quot|#39|lt|gt);/); if(q>=0){ tail=m.slice(q); m=m.slice(0,q); } var t=m.match(/[.,،؛!?؟)\]»"']+$/); if(t){ tail=t[0]+tail; m=m.slice(0,-t[0].length); }
+    var raw=m.replace(/&amp;/g,'&'); if(!/^https?:\/\//i.test(raw))raw='https://'+raw;
+    var u=_safeUrl(raw); if(!u)return m+tail;
+    var own=/^https?:\/\/(www\.)?manaqasa\.com(\/|$)/i.test(u);
+    return '<a href="'+esc(u)+'"'+(own?'':' target="_blank" rel="noopener nofollow"')+' style="color:inherit;text-decoration:underline;word-break:break-all">'+m+'</a>'+tail;
+  });
+}
 function _supTime(d){ try{ return new Date(d).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'}); }catch(e){ return ago(d); } }
 function _supPendHtml(p){
   var h='<div class="bub me sup-pend'+(p.state==='fail'?' fail':'')+'" id="sp_'+p.ck+'">';
