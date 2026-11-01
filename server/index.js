@@ -1750,7 +1750,10 @@ function _epFooter(html, uid, cat, u){
   links.push(L(base + '?a=off', 'وقّف ' + _EP_TXT[cat]));
   links.push(L(SITE_URL + (u.role === 'provider' ? '/dashboard-provider.html#emails' : '/e/u/' + uid + '/' + cat + '/' + _euSig(uid, cat) + '?a=view'), 'كل الإعدادات'));
   const why = cat === 'proj' ? 'وصلك هذا لأنك مزوّد في مناقصة والمشروع يطابق تخصصك.' : cat === 'sub' ? 'وصلك هذا لأنك مزوّد في مناقصة.' : 'وصلك هذا لأن عندك حساب في مناقصة.';
-  const f = '<div style="max-width:580px;margin:0 auto;padding:4px 18px 26px;text-align:center;font-family:Tahoma,Arial,sans-serif;font-size:12px;color:#64748b;line-height:2;direction:rtl">' + why + '<br>' + links.join(' &nbsp;·&nbsp; ') + '</div>';
+  const G = 'وصلتك هذه الرسالة لأنك مسجّل في منصة مناقصة';
+  const inner = why + '<br>' + links.join(' &nbsp;·&nbsp; ');
+  if (html.includes(G)) return html.replace(G, '<span style="font-size:12px;color:#64748b;line-height:2.1">' + inner + '</span>');
+  const f = '<div style="max-width:580px;margin:0 auto;padding:4px 18px 26px;text-align:center;font-family:Tahoma,Arial,sans-serif;font-size:12px;color:#64748b;line-height:2;direction:rtl">' + inner + '</div>';
   return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, f + '</body>') : html + f;
 }
 async function _epApply(uid, cat, a, src){
@@ -3098,7 +3101,7 @@ async function _matchDigest(){
       await pool.query('UPDATE users SET last_match_email_at=NOW() WHERE id=$1', [p.id]);   // نعلّم قبل الإرسال — ما يتكرر لو صار خطأ
       if (!cats.length) continue;
       const rows = (await pool.query(
-        `SELECT r.id, r.title, r.city FROM requests r
+        `SELECT r.id, r.title, r.city, r.category FROM requests r
           WHERE r.status='open' AND r.assigned_provider_id IS NULL AND r.paused_at IS NULL AND (r.category IS DISTINCT FROM 'direct')
             AND COALESCE(r.published_at, r.created_at) > GREATEST(COALESCE($3::timestamp, NOW() - INTERVAL '24 hours'), NOW() - INTERVAL '3 days')
             AND (r.category = ANY($1::text[]) OR COALESCE(r.extra_categories,'{}') && $1::text[])
@@ -3107,9 +3110,9 @@ async function _matchDigest(){
           ORDER BY COALESCE(r.published_at, r.created_at) DESC LIMIT 12`,
         [cats, p.city || null, p.last_match_email_at || null, p.allcities, p.service_cities || null, p.id])).rows;
       if (!rows.length) continue;
-      const items = rows.map(r => `<li style="margin-bottom:6px"><a href="${SITE_URL}/project/x-${r.id}?id=${r.id}" style="color:#0f172a;text-decoration:none"><strong>${eEsc(r.title || '')}</strong></a>${r.city ? (' — ' + eEsc(r.city)) : ''}</li>`).join('');
+      const items = rows.map(r => `<a href="${SITE_URL}/project/x-${r.id}?id=${r.id}" style="display:block;text-decoration:none;color:#0f172a;border:1px solid #e3eaf6;border-radius:12px;padding:12px 14px;margin:0 0 9px;background:#f8fafc"><span style="display:block;font-weight:800;font-size:15px;line-height:1.6">${eEsc(r.title || '')}</span><span style="display:block;font-size:12.5px;color:#64748b;margin-top:2px">${[r.category, r.city].filter(Boolean).map(eEsc).join(' · ')}</span><span style="display:inline-block;margin-top:7px;font-size:13px;font-weight:800;color:#1d4ed8">شوف المشروع وقدّم ←</span></a>`).join('');
       const title = rows.length === 1 ? '🔔 مشروع جديد يناسب تخصصك' : `🔔 ${rows.length} مشاريع جديدة تناسب تخصصك`;
-      const body = `<p>ملخّص اليوم — مشاريع جديدة تطابق تخصصك${p.city && !p.allcities ? (' في ' + eEsc(p.city)) : ''}:</p><ul style="padding-inline-start:18px;margin:10px 0">${items}</ul><p>قدّم عرضك بدري — العميل يرد أكثر على أول العروض.</p>`;
+      const body = `<p>ملخّص اليوم — مشاريع جديدة تطابق تخصصك${p.city && !p.allcities ? (' في ' + eEsc(p.city)) : ''}:</p><div style="margin:12px 0 6px">${items}</div><p style="font-size:13.5px;color:#64748b">💡 قدّم بدري — العميل يرد أكثر على أول العروض.</p>`;
       await sendEmail(p.email, title, emailTpl(title, body, 'تصفّح المشاريع', SITE_URL + '/dashboard-provider.html'), { uid: p.id, kind: 'match_digest', cat: 'proj', digest: true, cats });
     } catch(e) { console.error('matchDigest', p.id, e.message); }
   }
