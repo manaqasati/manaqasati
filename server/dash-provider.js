@@ -1039,7 +1039,7 @@ async function _submitBid(projId){
   // خطوة تأكيد قبل الإرسال — يشوف المزوّد عرضه فعلياً ويتعهّد بالجودة
   var vis=((document.querySelector('input[name="bidVis"]:checked')||{}).value||'client');
   var unit=((_el('bid-unit')||{}).value||'total');
-  window._pendingBid={projId:projId,price:Math.max(1,Math.round(priceNum)),days:Math.max(1,Math.round(daysNum)),note:note,vis:vis,unit:unit,mat:((_el('bid-mat')||{}).value||'')};
+  window._pendingBid={projId:projId,price:(unit==='total'?Math.max(1,Math.round(priceNum)):Math.max(0.01,Math.round(priceNum*100)/100)),days:Math.max(1,Math.round(daysNum)),note:note,vis:vis,unit:unit,mat:((_el('bid-mat')||{}).value||'')};
   _showBidConfirm();
 }
 function _showBidConfirm(){
@@ -1218,7 +1218,7 @@ function _editBid(id,price,days,note,pvis,mat){
   window._ebAttach=null;
   var fin='padding:11px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:Tajawal,sans-serif;font-size:13.5px;outline:none;width:100%;box-sizing:border-box';
   var body='<div style="display:flex;flex-direction:column;gap:12px">'
-    +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">السعر (ر.س)</label><input id="eb-price" type="number" inputmode="numeric" value="'+(price||'')+'" style="'+fin+'"></div>'
+    +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">السعر (ر.س)</label><input id="eb-price" type="text" inputmode="decimal" dir="ltr" value="'+(price||'')+'" style="'+fin+'"></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">مدة التنفيذ (أيام)</label><input id="eb-days" type="number" inputmode="numeric" value="'+(days||'')+'" style="'+fin+'"></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">ملاحظة للعميل</label><textarea id="eb-note" rows="3" style="'+fin+';resize:vertical">'+_esc(note||'')+'</textarea></div>'
     +'<div><label style="font-size:12px;font-weight:800;color:var(--muted);display:block;margin-bottom:6px">ظهور السعر</label><select id="eb-pvis" style="'+fin+';cursor:pointer"><option value="client"'+(pvis!=='public'?' selected':'')+'>خاص بصاحب المشروع فقط</option><option value="public"'+(pvis==='public'?' selected':'')+'>ظاهر للجميع</option></select></div>'
@@ -1243,8 +1243,8 @@ function _ebFile(inp){
 }
 async function _saveBidEdit(id){
   var btn=_el('eb-save'); if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
-  var price=parseFloat((_el('eb-price')||{}).value||0);
-  var days=parseInt((_el('eb-days')||{}).value||0);
+  var price=_pNum((_el('eb-price')||{}).value)||0;
+  var days=Math.round(_pNum((_el('eb-days')||{}).value)||0);
   var note=((_el('eb-note')||{}).value||'').trim();
   if(!price||price<=0){ if(typeof showToast==='function')showToast('أدخل سعراً صحيحاً','error'); if(btn){btn.disabled=false;btn.textContent='حفظ التعديل';} return; }
   try{
@@ -1533,7 +1533,7 @@ async function loadProfile(){
     +'<div class="fg" style="grid-column:1/-1"><label>نبذة عن الأعمال</label><textarea id="p-bio" style="min-height:80px" placeholder="اكتب نبذة احترافية..."></textarea></div>'
     +'</div>';
   pg.appendChild(infoCard);
-  _el('p-name').value=p.name||'';_el('p-bname').value=p.business_name||'';_el('p-phone').value=p.phone||'';_el('p-exp').value=p.experience_years||'';_el('p-email').value=p.email||'';_el('p-bio').value=p.bio||'';var _ac=_el('p-allcities');if(_ac)_ac.checked=!!p.serves_all_cities;window._pSvc=Array.isArray(p.service_cities)?p.service_cities.slice():[];var _ss=_el('p-svc-sel');if(_ss&&typeof CITIES!=='undefined'){CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;_ss.appendChild(o);});}_pSvcRender();var _pw=_el('p-svcwrap');if(_pw)_pw.style.display=(_ac&&_ac.checked)?'none':'';if(_ac)_ac.onchange=function(){var w=_el('p-svcwrap');if(w)w.style.display=this.checked?'none':'';};
+  _el('p-name').value=p.name||'';_el('p-bname').value=p.business_name||'';_el('p-phone').value=p.phone||'';_el('p-exp').value=p.experience_years||'';_el('p-email').value=p.email||'';window._pLoadedEmail=p.email||'';_el('p-bio').value=p.bio||'';var _ac=_el('p-allcities');if(_ac)_ac.checked=!!p.serves_all_cities;window._pSvc=Array.isArray(p.service_cities)?p.service_cities.slice():[];var _ss=_el('p-svc-sel');if(_ss&&typeof CITIES!=='undefined'){CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;_ss.appendChild(o);});}_pSvcRender();var _pw=_el('p-svcwrap');if(_pw)_pw.style.display=(_ac&&_ac.checked)?'none':'';if(_ac)_ac.onchange=function(){var w=_el('p-svcwrap');if(w)w.style.display=this.checked?'none':'';};
   var citySelect=document.createElement('select');citySelect.id='p-city';
   var defOpt=document.createElement('option');defOpt.value='';defOpt.textContent='اختر المدينة';citySelect.appendChild(defOpt);
   CITIES.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;if(c===p.city)o.selected=true;citySelect.appendChild(o);});
@@ -1798,11 +1798,15 @@ async function _saveProfile(){
   if(!email||!email.includes('@')||!email.includes('.')){showToast('يرجى إدخال بريد إلكتروني صحيح','error');return;}
   var specs=(window._provSpecSel||[]).slice();
   if(!specs.length){showToast('اختر تخصص واحد على الأقل — بدونه ما توصلك مشاريع','error');var _ss=_el('pf-sec-specs');if(_ss){_ss.open=true;_ss.scrollIntoView({block:'center',behavior:'smooth'});}return;}
-  var _oldEm=String((_me&&_me.email)||'').toLowerCase();
+  var _oldEm=String((window._pLoadedEmail||(_me&&_me.email))||'').toLowerCase();
+  var _cpw=null;
+  if(_oldEm&&email.toLowerCase()!==_oldEm){ if(!window.mnqAskPw){showToast('حدّث الصفحة وحاول مرة ثانية','error');return;} _cpw=await mnqAskPw('عشان نغيّر بريدك إلى '+email+'، اكتب كلمة المرور الحالية'); if(!_cpw)return; }
   if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
   var body={name:(_el('p-name')||{}).value,business_name:(_el('p-name')||{}).value||null,phone:(_el('p-phone')||{}).value||null,email:email,city:(_el('p-city')||{}).value||null,bio:(_el('p-bio')||{}).value||null,experience_years:parseInt((_el('p-exp')||{}).value)||null,specialties:specs,notify_categories:specs,website:(_el('p-website')||{}).value||null,location_url:(_el('p-location')||{}).value||null,instagram:(_el('p-instagram')||{}).value||null,twitter:(_el('p-twitter')||{}).value||null,snapchat:(_el('p-snapchat')||{}).value||null,tiktok:(_el('p-tiktok')||{}).value||null,youtube:(_el('p-youtube')||{}).value||null,serves_all_cities:(_el('p-allcities')||{}).checked||false,service_cities:((_el('p-allcities')||{}).checked?[]:(window._pSvc||[]).filter(function(c){return c!==(_el('p-city')||{}).value;}))};
+  if(_cpw)body.current_password=_cpw;
   var r=await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});
   if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
+  if(r&&r.id&&r.email)window._pLoadedEmail=r.email;
   if(r&&r.id){_me.name=r.name;if(r.email)_me.email=r.email;var _emCh=_oldEm&&r.email&&String(r.email).toLowerCase()!==_oldEm;if(_emCh)_me.email_verified=false;localStorage.setItem('user',JSON.stringify(_me));var un=_el('userName');if(un)un.textContent=r.name;showToast(_emCh?'تم الحفظ ✓ — أرسلنا رمز تأكيد لبريدك الجديد، أكّده عشان تقدر تقدّم عروض':'تم الحفظ بنجاح','success');}
   else{showToast((r&&r.message)||'حدث خطأ','error');}
 }

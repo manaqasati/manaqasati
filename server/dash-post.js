@@ -1262,8 +1262,10 @@ function submitReq(){
   var cityErr=document.getElementById('city-err');
   var err='';_fErrClear();
   if(!title){err='يرجى كتابة عنوان الطلب';_fErr('n-title','اكتب عنوان الطلب');}
+  else if(title.length<3){err='العنوان قصير — وضّح أكثر';_fErr('n-title','العنوان قصير — وضّح أكثر');}
   else if(!cat){err='حدّد التخصص — اضغط «اختر التخصص» تحت العنوان';try{var _cb=document.getElementById('n-catbox');if(_cb){_cb.scrollIntoView({behavior:'smooth',block:'center'});_cb.style.outline='2px solid #dc2626';_cb.style.borderRadius='14px';setTimeout(function(){_cb.style.outline='';},2500);}}catch(e){}}
   else if(!desc){err='يرجى كتابة تفاصيل الطلب';_fErr('n-desc','اكتب تفاصيل الطلب — وش المطلوب بالضبط والكمية أو المساحة');}
+  else if(desc.length<15){err='الوصف قصير — اكتب 15 حرف على الأقل (أو جاوب الأسئلة بالضغط)';_fErr('n-desc','الوصف قصير — اكتب 15 حرف على الأقل');}
   else if(!city){err='يرجى اختيار المدينة';_fErr('n-city','');document.getElementById('n-city').style.borderColor='var(--red)';if(cityErr)cityErr.style.display='block';}
   if(err){if(msg){msg.textContent=err;msg.className='alert err';}return;}
   if(cityErr)cityErr.style.display='none';
@@ -1310,9 +1312,13 @@ function acceptAgree(){
     if(!window._planDOk){ _rb(); PlanGate.designAsk(body).then(function(ok){ if(ok){ window._planDOk=1; acceptAgree(); } else window._planSt=null; }); return; }
     body=PlanGate.designBody(body);
   }
+  body.dup_check=1; if(window._dupChP){ body.dup_intent='new'; body.dup_hint=window._dupChP; }
   fetch(API+'/api/requests',Object.assign({method:'POST',body:JSON.stringify(body)},hdr()))
-    .then(function(r){return _rj(r);})
+    .then(function(r){ if(r.status===409) return r.json().then(function(x){ return {_dup:x&&x.dup}; }); return _rj(r);})
     .then(function(r){
+      if(r&&r._dup){ var _dp=r._dup; if(btn){btn.disabled=false;btn.textContent='نشر الطلب';}
+        if(confirm('عندك طلب مشابه مفتوح: «'+(_dp.title||'')+'»\nتبي تنشر طلب جديد منفصل؟')){ window._dupChP=_dp.id||1; acceptAgree(); } return; }
+      window._dupChP=null;
       if(r&&r.id){ window._planSt=null; window._planDOk=0;
         _reqImages=[];renderImgGrid();
         _reqFiles=[];renderFileList();
@@ -1393,7 +1399,7 @@ function loadProfile(){
     if(isImg(p.profile_image)){localStorage.setItem('client_avatar_'+user.id,p.profile_image);applyAvatar(p.profile_image);}
     document.getElementById('prof-name').value=p.name||'';
     document.getElementById('prof-phone').value=p.phone||'';
-    var emEl=document.getElementById('prof-email');if(emEl)emEl.value=p.email||'';
+    var emEl=document.getElementById('prof-email');if(emEl)emEl.value=p.email||''; window._loadedEmailP=p.email||'';
     var ctEl=document.getElementById('prof-city');if(ctEl){if(!ctEl.options.length)fillCitySelect(ctEl);ctEl.value=p.city||'';}
     document.getElementById('profNameDisp').textContent=p.name||'—';
     _prFill(p);
@@ -1417,20 +1423,28 @@ function uploadClientAvatar(input){
   r.readAsDataURL(f);
 }
 function saveClientProfile(btn){
+  var _pwh=btn||saveClientProfile;
   var name=(document.getElementById('prof-name').value||'').trim();
   var phone=(document.getElementById('prof-phone').value||'').trim();
   var email=(document.getElementById('prof-email').value||'').trim();
   var cityEl=document.getElementById('prof-city');var city=cityEl?cityEl.value:'';
   if(!name){showToast('الاسم مطلوب','error');return;}
   if(email&&(!email.includes('@')||!email.includes('.'))){showToast('بريد إلكتروني غير صحيح','error');return;}
+  var _bd={name:name,phone:phone,city:city};
+  var _oe=String(window._loadedEmailP||((user&&user.email)||'')).toLowerCase();
+  if(email&&email.toLowerCase()!==_oe){ _bd.email=email;
+    if(!_pwh._pw){ if(!window.mnqAskPw){showToast('حدّث الصفحة وحاول مرة ثانية','error');return;} mnqAskPw('عشان نغيّر بريدك إلى '+email+'، اكتب كلمة المرور الحالية').then(function(pw){ if(!pw)return; _pwh._pw=pw; saveClientProfile(btn); }); return; }
+    _bd.current_password=_pwh._pw; }
+  _pwh._pw=null;
   if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
-  fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify({name:name,phone:phone,email:email,city:city})},hdr()))
-    .then(function(r){if(!r.ok)throw new Error();return r.json();})
+  fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify(_bd)},hdr()))
+    .then(function(r){return _rj(r);})
     .then(function(p){
+      if(email)window._loadedEmailP=email;
       showToast('تم الحفظ','success');
       if(p&&p.name){user.name=p.name;localStorage.setItem('user',JSON.stringify(user));document.getElementById('userName').textContent=p.name;document.getElementById('profNameDisp').textContent=p.name;}
     })
-    .catch(function(){showToast('تعذّر الحفظ — تحقّق من اتصالك','error');})
+    .catch(function(e){showToast(_errTxt(e),'error');})
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='حفظ التغييرات';}});
 }
 function _newSess(d){ if(!d||!d.token)return; try{ localStorage.setItem('token',d.token); }catch(e){} try{ token=d.token; }catch(e){} try{ _token=d.token; }catch(e){} try{ if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_SAVE',token:d.token,user:localStorage.getItem('user')||''})); }catch(e){} }

@@ -1953,8 +1953,10 @@ function submitReq(){
   var cityErr=document.getElementById('city-err');
   var err='';_fErrClear();
   if(!title){err='يرجى كتابة عنوان المشروع';_fErr('n-title','اكتب عنوان المشروع');}
+  else if(title.length<3){err='العنوان قصير — وضّح أكثر';_fErr('n-title','العنوان قصير — وضّح أكثر');}
   else if(!cat){err='حدّد التخصص — اضغط «اختر التخصص» تحت العنوان';try{var _cb=document.getElementById('n-catbox');if(_cb){_cb.scrollIntoView({behavior:'smooth',block:'center'});_cb.style.outline='2px solid #dc2626';_cb.style.borderRadius='14px';setTimeout(function(){_cb.style.outline='';},2500);}}catch(e){}}
   else if(!desc){err='يرجى كتابة تفاصيل المشروع';_fErr('n-desc','اكتب تفاصيل المشروع — وش المطلوب بالضبط والكمية أو المساحة');}
+  else if(desc.length<15){err='الوصف قصير — اكتب 15 حرف على الأقل (أو جاوب الأسئلة بالضغط)';_fErr('n-desc','الوصف قصير — اكتب 15 حرف على الأقل');}
   else if(!city){err='يرجى اختيار المدينة';_fErr('n-city','');document.getElementById('n-city').style.borderColor='var(--red)';if(cityErr)cityErr.style.display='block';}
   if(err){if(msg){msg.textContent=err;msg.className='alert err';}return;}
   if(cityErr)cityErr.style.display='none';
@@ -2284,6 +2286,7 @@ function uploadClientAvatar(input){
   r.readAsDataURL(f);
 }
 function saveClientProfile(btn){
+  var _pwh=btn||saveClientProfile;
   if(window._profFail){ showToast('بياناتك ما تحمّلت — نعيد التحميل قبل الحفظ','error'); loadProfile(); return; }   // لا نحفظ نموذج فاضي فوق بياناته
   var name=(document.getElementById('prof-name').value||'').trim();
   var phone=(document.getElementById('prof-phone').value||'').trim();
@@ -2291,9 +2294,12 @@ function saveClientProfile(btn){
   var cityEl=document.getElementById('prof-city');var city=cityEl?cityEl.value:'';
   if(!name){showToast('الاسم مطلوب','error');return;}
   if(email&&(!email.includes('@')||!email.includes('.'))){showToast('بريد إلكتروني غير صحيح','error');return;}
-  if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
   var _body={name:name,phone:phone,city:city};
   if(email!==(window._loadedEmail||''))_body.email=email; // نرسل البريد فقط إذا تغيّر
+  if(_body.email&&!_pwh._pw){ if(!window.mnqAskPw){showToast('حدّث الصفحة وحاول مرة ثانية','error');return;} mnqAskPw('عشان نغيّر بريدك إلى '+email+'، اكتب كلمة المرور الحالية').then(function(pw){ if(!pw)return; _pwh._pw=pw; saveClientProfile(btn); }); return; }
+  if(_body.email&&_pwh._pw){ _body.current_password=_pwh._pw; }
+  _pwh._pw=null;
+  if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
   var _msg='';
   fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify(_body)},hdr()))
     .then(function(r){ return r.json().catch(function(){return {};}).then(function(d){ if(!r.ok){_msg=(d&&d.message)||'';throw new Error();} return d; }); })

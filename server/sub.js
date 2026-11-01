@@ -271,6 +271,16 @@
         r.readAsDataURL(f); }); };
     o.querySelector('#sb-img').addEventListener('change',function(){ add(this,'img'); });
     o.querySelector('#sb-doc').addEventListener('change',function(){ add(this,'doc'); });
+    // مسودّة تلقائية (طلب جديد): لو رجع أو حدّث الصفحة ما يضيع اللي كتبه
+    if(!ed){ var DK='mnq_sub_draft', IDS=['sb-title','sb-desc','sb-city','sb-dist','sb-bud','sb-start'], dt=null;
+      var dsave=function(){ clearTimeout(dt); dt=setTimeout(function(){ var o={at:Date.now(),cat:F.cat||'',ex:F.ex||[]}; IDS.forEach(function(i){ var e=document.getElementById(i); if(e)o[i]=e.value; }); if(!(o['sb-title']||o['sb-desc']))return; try{ localStorage.setItem(DK,JSON.stringify(o)); }catch(e){} },400); };
+      var dr=null; try{ dr=JSON.parse(localStorage.getItem(DK)||'null'); }catch(e){}
+      if(dr&&Date.now()-(dr.at||0)<14*86400000){ IDS.forEach(function(i){ var e=document.getElementById(i); if(e&&dr[i]&&!e.value)e.value=dr[i]; });
+        if(dr.cat){ F.cat=dr.cat; F.ex=Array.isArray(dr.ex)?dr.ex.slice(0,2):[]; F.catManual=true; try{ paintCat(); }catch(e){} }
+        if(dr['sb-title']||dr['sb-desc']) toast('رجّعنا اللي كتبته قبل ✓'); }
+      IDS.forEach(function(i){ var e=o.querySelector('#'+i); if(e){ e.addEventListener('input',dsave); e.addEventListener('change',dsave); } });
+      o.addEventListener('click',function(){ setTimeout(dsave,60); });
+    }
     if(!ed&&!me.city) api('/api/provider/profile').then(function(p){ W._prof=W._prof||p; var c=document.getElementById('sb-city'); if(c&&!c.value&&p&&p.city){ c.value=p.city; try{ c.dispatchEvent(new Event('change')); }catch(e){} } }).catch(function(){});
   }
   // التخصص يتحدّد تلقائياً من «وش تحتاج؟» (نفس فكرة نموذج العميل)
@@ -301,7 +311,7 @@
     if(F.edit){ var eid=F.edit; api('/api/sub/'+eid,{method:'PUT',body:JSON.stringify({category:F.st!=='open'?F.cat:undefined,extra_categories:F.cat==='أخرى'?[]:F.ex,title:v('sb-title'),city:v('sb-city'),district:v('sb-dist'),description:v('sb-desc'),start_text:v('sb-start'),budget:v('sb-bud'),keep:F.keep.map(function(a){return a.url;}),attachments:F.atts.map(function(a){return {name:a.name,data:a.data};})})}).then(function(r){
       if(r&&r.ok){ toast(r.review?'تم الحفظ — رجع لفريق مناقصة يراجعه':(r.pending?'التعديل يراجعه فريق مناقصة — طلبك باقي ظاهر بالوصف السابق':'تم حفظ التعديل')); hub(true); open(eid); } else { toast((r&&r.message)||'تعذّر الحفظ','error'); if(b){ b.disabled=false; b.textContent='احفظ التعديل'; } } }).catch(function(){ toast('تعذّر الاتصال','error'); if(b){ b.disabled=false; b.textContent='احفظ التعديل'; } }); return; }
     api('/api/sub',{method:'POST',body:JSON.stringify({title:v('sb-title'),category:F.cat,extra_categories:F.cat==='أخرى'?[]:F.ex,city:v('sb-city'),district:v('sb-dist'),description:v('sb-desc'),start_text:v('sb-start'),budget:v('sb-bud'),attachments:F.atts.map(function(a){return {name:a.name,data:a.data};}),partners_first:pf?pf.checked:false})}).then(function(r){
-      if(r&&r.ok){ S.tab='mine'; hub(true); S.view={done:r.id};
+      if(r&&r.ok){ try{ localStorage.removeItem('mnq_sub_draft'); }catch(e){} S.tab='mine'; hub(true); S.view={done:r.id};
         page('<div class="sb-card" style="text-align:center;padding:26px 16px"><div style="font-size:46px">🕐</div><div class="sb-t" style="font-size:18px;margin-top:6px">وصلنا طلبك — تحت المراجعة</div><div class="sb-s" style="margin-top:6px;font-size:13px">فريق مناقصة يراجعه ويساعدك توضّحه إذا احتاج، وبعدها يوصل '+(r.partners_first?'شركاءك أول، وبعدهم ':'')+'الفنيين المناسبين في مدينتك.</div>'+steps({status:'review'})+'<button type="button" class="sb-b sb-v" style="width:100%;margin-top:14px;padding:12px" onclick="SubC.open('+r.id+')">افتح طلبي</button><button type="button" class="sb-b sb-o" style="width:100%;margin-top:8px" onclick="SubC.go(\'mine\')">طلباتي</button></div>','SubC.go(\'mine\')'); }
       else { toast((r&&r.message)||'تعذّر النشر','error'); if(b){ b.disabled=false; b.textContent='انشر الطلب'; } }
     }).catch(function(){ toast('تعذّر الاتصال','error'); if(b){ b.disabled=false; b.textContent='انشر الطلب'; } });

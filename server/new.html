@@ -752,9 +752,20 @@ function goLogin(){
   var bv=parseFloat(_dig($('n-budget').value).replace(/[,\s٬]/g,''));
   var dr={title:($('n-title').value||'').trim().slice(0,200),category:catVal(),description:fullDesc(),city:$('n-city').value,budget_max:bv>0?bv:'',deadline:$('n-deadline').value||'',open:1};
   try{ var _dd=localStorage.getItem('mnq_did'); if(_dd) dr.did=_dd; }catch(e){}
-  try{ sessionStorage.setItem('mnq_req_draft',JSON.stringify(dr)); sessionStorage.setItem('auth_mode','login'); sessionStorage.setItem('auth_role','client'); }catch(e){}
+  try{ sessionStorage.setItem('mnq_req_draft',JSON.stringify(dr)); sessionStorage.setItem('auth_mode','login'); sessionStorage.setItem('auth_role','client'); sessionStorage.setItem('mnq_resume_new','1'); }catch(e){}
   _saveNow();
-  location.href='/auth.html?redirect=postdraft';
+  // الصور وملفات المخطط تنحفظ بالجهاز (IndexedDB) وترجع بعد الدخول
+  var _go=function(){ location.href='/auth.html?redirect=postdraft'; };
+  _rsSave().then(_go,_go); setTimeout(_go,2500);
+}
+// ── حفظ/استعادة الصور والملفات عبر تسجيل الدخول ──
+function _rsDb(){ return new Promise(function(res,rej){ try{ var q=indexedDB.open('mnq_new',1); q.onupgradeneeded=function(){ q.result.createObjectStore('kv'); }; q.onsuccess=function(){ res(q.result); }; q.onerror=function(){ rej(q.error); }; }catch(e){ rej(e); } }); }
+function _rsSave(){
+  var v={imgs:IMGS.slice(0,MAX_IMGS),pf:PFILES.filter(function(f){return f.file||f.url;}).map(function(f){return {name:f.name,file:f.file||null,url:f.url||null,size:f.size||(f.file&&f.file.size)||0};}),plan:PLAN||'',step:CUR,at:Date.now()};
+  return _rsDb().then(function(db){ return new Promise(function(res,rej){ var t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,'resume'); t.oncomplete=function(){res();}; t.onerror=function(){rej(t.error);}; }); });
+}
+function _rsLoad(){
+  return _rsDb().then(function(db){ return new Promise(function(res){ var t=db.transaction('kv','readwrite'), st=t.objectStore('kv'), g=st.get('resume'); g.onsuccess=function(){ var v=g.result; st.delete('resume'); res(v&&Date.now()-v.at<6*3600000?v:null); }; g.onerror=function(){ res(null); }; }); });
 }
 $('btn-login').addEventListener('click',goLogin);
 document.addEventListener('click',function(e){ var b=e.target.closest('[data-act="login"]'); if(b){ e.preventDefault(); goLogin(); } });
@@ -822,6 +833,19 @@ function _restore(){
 }
 if(!GUEST_UI){ $('st-4').parentNode.removeChild($('st-4')); }
 go(1,true);
+// رجع من «عندي حساب» بعد الدخول: نرجّع الصور والملفات ونكمّل من نفس الخطوة
+if(TOKEN&&QP.get('resume')==='1'){
+  _rsLoad().then(function(v){
+    try{ history.replaceState({s:1},'','/new.html'); }catch(e){}
+    if(!v) return;
+    if(Array.isArray(v.imgs)&&v.imgs.length){ IMGS=v.imgs.filter(function(x){return typeof x==='string';}).slice(0,MAX_IMGS); renderImgs(); }
+    if(Array.isArray(v.pf)&&v.pf.length){ v.pf.forEach(function(f){ if(f.url) PFILES.push({name:f.name,url:f.url,size:f.size,up:false}); else if(f.file) PFILES.push({name:f.name,file:f.file,size:f.size,up:false,wait:true}); }); planPaint(); }
+    if(v.plan) PLAN=v.plan;
+    renderStrength();
+    var stp=Math.min(3,Math.max(1,parseInt(v.step)||1)); if(stp>1) go(stp);
+    showToast('رجّعنا مشروعك مثل ما كان — كمّل وانشر','success');
+  }).catch(function(){});
+}
 try{ history.replaceState({s:1},'',location.href); }catch(e){}
 // ── رجع من رابط التذكير (?draft=…): نجيب مسودّته من السيرفر ونفتحه على نفس الخطوة ──
 function _boot(){

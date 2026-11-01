@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sub.js','/award.js','/emailpref.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/sub.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -493,6 +493,36 @@ app.use(express.static('.', {
 // تحميل مرفق كملف (بدل فتحه) — فقط من تخزيننا (R2/Cloudinary)
 // ── أحجام المرفقات: تُقرأ من R2 مرة وحدة وتنحفظ مع المشروع ──
 function _r2KeyOf(u){ try{ const base = String(R2_PUBLIC_URL||'').replace(/\/+$/,'') + '/'; u = String(u||''); if (!R2_PUBLIC_URL || u.indexOf(base) !== 0) return null; return decodeURIComponent(u.slice(base.length).split(/[?#]/)[0]); }catch(_){ return null; } }
+
+// ═══ ملفات خاصة (إيصالات السعي + مرفقات المحادثات + ملفات الدعم): تنحفظ «r2p:<key>» وتنعرض برابط موقّع ينتهي بعد ساعتين ═══
+const PF_TTL = 2 * 3600;
+async function uploadPrivate(data, folder, filename){
+  if (typeof data !== 'string' || !data.startsWith('data:')) return _safeUrl(data);
+  if (!r2Client) return uploadToCloud(data, 'manaqasa/' + folder, filename);   // بيئة بدون R2 (اختبار)
+  const u = await uploadToR2(data, 'prv/' + String(folder || 'f').replace(/[^a-zA-Z0-9_-]/g, ''), filename);
+  if (!u || !/^https?:/.test(u)) return null;
+  const k = _r2KeyOf(u); return k ? 'r2p:' + k : null;
+}
+// نسخة عامة من ملف خاص (لما الإدارة تضيف ملف من الدعم لملفات المشروع)
+async function _pubCopy(v){
+  if (typeof v !== 'string' || !v.startsWith('r2p:')) return v;
+  if (!r2Client) return null;
+  try {
+    const { CopyObjectCommand } = require('@aws-sdk/client-s3');
+    const src = v.slice(4), ext = (src.match(/\.([a-z0-9]+)$/i) || [])[1] || 'bin';
+    const dst = 'attachments/' + crypto.randomBytes(16).toString('hex') + '.' + ext;
+    await r2Client.send(new CopyObjectCommand({ Bucket: R2_BUCKET, CopySource: R2_BUCKET + '/' + src, Key: dst }));
+    return R2_PUBLIC_URL + '/' + dst;
+  } catch(e) { console.error('pubCopy:', e.message); return null; }
+}
+function _pfSig(k, e){ return crypto.createHmac('sha256', String(JWT_SECRET)).update('pf:' + k + ':' + e).digest('base64url').slice(0, 22); }
+// يحوّل القيمة المحفوظة لرابط يقدر المتصفح يفتحه (القديمة العامة ترجع زي ما هي)
+function _pf(v){
+  if (typeof v !== 'string' || !v.startsWith('r2p:')) return v;
+  const k = v.slice(4), e = Math.floor(Date.now() / 1000 / 600) * 600 + PF_TTL;   // نقرّب الوقت عشان الكاش يستفيد
+  const ext = (k.match(/\.([a-z0-9]{2,5})$/i) || [])[1] || 'bin';   // الامتداد بآخر الرابط عشان عارض الصور/الـPDF يعرف نوعه
+  return SITE_URL + '/api/pf/' + Buffer.from(k).toString('base64url') + '.' + ext + '?e=' + e + '&s=' + _pfSig(k, e);
+}
 async function _attSizes(id, atts){
   if (!r2Client || !Array.isArray(atts)) return atts;
   const { HeadObjectCommand } = require('@aws-sdk/client-s3');
@@ -553,11 +583,27 @@ app.get('/api/requests/:id/files.zip', rateLimiter(15, 600000), optionalAuth, as
   } catch(e) { console.error('files.zip:', e.message); if (!res.headersSent) _jOrPage(req, res, 500, 'تعذّر تجهيز الملفات'); else res.end(); }
 });
 
+app.get('/api/pf/:k', async (req, res) => {
+  try {
+    let k = ''; try { k = Buffer.from(String(req.params.k || '').replace(/\.[a-z0-9]{2,5}$/i, ''), 'base64url').toString('utf8'); } catch(_) {}
+    const e = parseInt(req.query.e) || 0, sg = String(req.query.s || '');
+    const exp = _pfSig(k, e);
+    if (!/^prv\//.test(k) || sg.length !== exp.length || !crypto.timingSafeEqual(Buffer.from(sg), Buffer.from(exp))) return _jOrPage(req, res, 403, 'الرابط غير صالح');
+    if (e < Date.now() / 1000) return _jOrPage(req, res, 410, 'انتهت صلاحية الرابط — ارجع للصفحة وافتحه من جديد');
+    if (!r2Client) return _jOrPage(req, res, 404, 'الملف غير موجود');
+    const g = await r2Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: k }));
+    res.setHeader('Content-Type', g.ContentType || 'application/octet-stream');
+    if (g.ContentLength) res.setHeader('Content-Length', String(g.ContentLength));
+    if (g.ContentDisposition) res.setHeader('Content-Disposition', g.ContentDisposition);
+    res.setHeader('Cache-Control', 'private, max-age=3600'); res.setHeader('X-Robots-Tag', 'noindex');
+    g.Body.pipe(res);
+  } catch(err) { if (!res.headersSent) _jOrPage(req, res, 404, 'الملف غير موجود'); }
+});
 app.get('/api/dl', async (req, res) => {
   try {
     const u = String(req.query.u || '');
     const ok = (R2_PUBLIC_URL && u.startsWith(R2_PUBLIC_URL + '/')) || /^https:\/\/res\.cloudinary\.com\//.test(u);
-    if (!ok) return _jOrPage(req, res, 400, 'رابط غير مسموح');
+    if (!ok || /^prv\//.test(_r2KeyOf(u) || '')) return _jOrPage(req, res, 400, 'رابط غير مسموح');
     const r = await fetch(u);
     if (!r.ok || !r.body) return _jOrPage(req, res, 404, 'الملف غير موجود');
     const urlExt = (u.split('?')[0].match(/\.([a-z0-9]{2,5})$/i) || [])[1] || '';
@@ -3350,6 +3396,8 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS service_cities TEXT[]`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_match_email_at TIMESTAMP`);
     // إعداد الإيميلات: المشاريع (ملخّص يومي افتراضي / أول بأول / لا) + باطن + تذكيرات + أخبار
+    // سعر المتر/الوحدة بالكسور (12.5) — العمود كان عدد صحيح
+    try { const _pt = (await pool.query("SELECT data_type FROM information_schema.columns WHERE table_name='bids' AND column_name='price'")).rows[0]; if (_pt && _pt.data_type === 'integer') await _mig('ALTER TABLE bids ALTER COLUMN price TYPE double precision'); } catch(e) { console.error('bids.price type:', e.message); }
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_proj TEXT DEFAULT 'daily'`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_sub BOOLEAN DEFAULT TRUE`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_tips BOOLEAN DEFAULT TRUE`);
@@ -4991,6 +5039,18 @@ app.get('/api/profile', auth, async (req, res) => {
 // تحقق مشترك لتعديل الملف: الجوال صيغته صحيحة وما يتكرر مع حساب ثاني (الدخول بالجوال يعتمد عليه)، والنبذة لها حد
 async function _profGuard(req){
   const b = req.body || {};
+  // تغيير البريد = يحتاج كلمة المرور الحالية (لو أحد مسك جلسة مفتوحة ما يقدر يغيّر البريد ثم «نسيت كلمة المرور» ويستولي على الحساب)
+  if (Object.prototype.hasOwnProperty.call(b, 'email') && String(b.email || '').trim()) {
+    const ne = String(b.email).trim().toLowerCase();
+    const cu = (await pool.query('SELECT email, password, password_hash FROM users WHERE id=$1', [req.user.id])).rows[0];
+    if (cu && ne !== String(cu.email || '').trim().toLowerCase()) {
+      const pw = String(b.current_password || '');
+      if (!pw) return 'لتغيير البريد اكتب كلمة المرور الحالية';
+      const h = cu.password || cu.password_hash || '';
+      if (!h || !(await bcrypt.compare(pw, h))) return 'كلمة المرور الحالية غير صحيحة';
+    }
+  }
+  delete b.current_password;
   if (typeof b.bio === 'string') b.bio = b.bio.slice(0, 2000);
   if (Object.prototype.hasOwnProperty.call(b, 'phone') && b.phone != null && String(b.phone).trim()) {
     const raw = String(b.phone).replace(/[\s-]/g, '').trim(), norm = normPhone(raw);
@@ -5837,7 +5897,7 @@ app.get('/api/file-view', rateLimiter(60, 60000), async (req, res) => {
     const base = R2_PUBLIC_URL.replace(/\/+$/, '') + '/';
     if (!r2Client || !R2_PUBLIC_URL || u.indexOf(base) !== 0) return res.status(400).json({ message: 'رابط غير مدعوم' });
     const key = decodeURIComponent(u.slice(base.length).split(/[?#]/)[0]);
-    if (!/^[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*\.[a-z0-9]{2,5}$/.test(key) || key.indexOf('..') !== -1) return res.status(400).json({ message: 'رابط غير مدعوم' });
+    if (!/^[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)*\.[a-z0-9]{2,5}$/.test(key) || key.indexOf('..') !== -1 || /^prv\//.test(key)) return res.status(400).json({ message: 'رابط غير مدعوم' });
     const g = await r2Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: key }));
     const ext = key.split('.').pop();
     const ct = ext === 'pdf' ? 'application/pdf' : (/^(jpe?g|png|webp|gif|heic)$/.test(ext) ? ('image/' + (ext === 'jpg' ? 'jpeg' : ext)) : 'application/octet-stream');
@@ -6111,7 +6171,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       attUrl = await uploadToCloud(req.body.attachment, 'manaqasa/bids');
       if (attUrl === null) return res.status(400).json({ message: 'تعذّر رفع الملف — تأكد أنه صورة أو PDF وأصغر من 10MB' });
     }
-    price = parseInt(Math.round(parseFloat(_asciiDigits(price)))); days = parseInt(_asciiDigits(days)); if (note) note = String(note).slice(0, 3000);
+    { const _pf0 = parseFloat(_asciiDigits(price)); price = priceUnit === 'total' ? Math.round(_pf0) : Math.round(_pf0 * 100) / 100; } days = parseInt(_asciiDigits(days)); if (note) note = String(note).slice(0, 3000);   // المتر/الوحدة: لين خانتين عشريتين
     try { const _pz = (await pool.query(`SELECT r.paused_at, r.status, (SELECT 1 FROM bids WHERE request_id=r.id AND provider_id=$2 LIMIT 1) AS mine FROM requests r WHERE r.id=$1`, [requestId, req.user.id])).rows[0];
       if (_pz && _pz.paused_at && _pz.status === 'open' && !_pz.mine) return res.status(400).json({ message: '⏸️ صاحب المشروع يتفاوض حالياً مع أحد المزوّدين — المشروع ما يستقبل عروض جديدة الحين. لو رجع يوصلك إشعار.' }); } catch(e) {}
     if (!Number.isFinite(price)||price<=0) return res.status(400).json({ message: 'السعر غير صحيح' });
@@ -6265,7 +6325,7 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     { const _rs = (await pool.query('SELECT r.status, r.assigned_provider_id FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1', [id])).rows[0];
       if (_rs && (_rs.status !== 'open' || _rs.assigned_provider_id)) return res.status(400).json({ message: 'المشروع ما عاد يستقبل عروض — ما تقدر تعدّل عرضك' }); }
     let { price, days, note } = req.body;
-    if (price != null && price !== '') { price = parseInt(Math.round(parseFloat(_asciiDigits(price)))); if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ message: 'السعر غير صحيح' }); } else price = null;
+    if (price != null && price !== '') { const _pf1 = parseFloat(_asciiDigits(price)); price = own.rows[0].price_unit === 'total' ? Math.round(_pf1) : Math.round(_pf1 * 100) / 100; if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ message: 'السعر غير صحيح' }); } else price = null;
     if (days != null && days !== '') { days = parseInt(_asciiDigits(days)); if (!Number.isFinite(days) || days <= 0 || days > 3650) return res.status(400).json({ message: 'مدة التنفيذ غير صحيحة' }); } else days = null;
     if (note) note = String(note).slice(0, 3000);
     if (price!=null && price!=='' && own.rows[0].price_unit==='total' && (parseFloat(price)||0) < BID_MIN_TOTAL) return res.status(400).json({ code:'price_too_low', message: _bidMinMsg() });
@@ -7079,7 +7139,7 @@ app.post('/api/direct-message', rateLimiter(30, 600000), auth, async (req, res) 
 });
 
 // الإدارة يراسل عميلاً — رسالة عامة أو مرتبطة بمشروع + إشعار + إيميل (باسم "إدارة مناقصة")
-app.post('/api/admin/message-client', auth, adminOnly, async (req, res) => {
+app.post('/api/admin/message-client', requirePermission('support.reply'), async (req, res) => {
   // من 2026-10: رسائل الإدارة تروح لمحادثة «فريق مناقصة» (محادثة الدعم) بدل محادثات المشاريع
   try {
     const clientId = parseInt(req.body.client_id);
@@ -7101,7 +7161,7 @@ app.post('/api/admin/message-client', auth, adminOnly, async (req, res) => {
 });
 
 // صندوق وارد الإدارة: محادثاته مع العملاء (آخر رسالة + غير المقروء)
-app.get('/api/admin/inbox', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/inbox', requirePermission('support.view'), async (req, res) => {
   try {
     const me = req.user.id;
     const r = await pool.query(`
@@ -7118,7 +7178,7 @@ app.get('/api/admin/inbox', auth, adminOnly, async (req, res) => {
 });
 
 // محادثة الإدارة مع عميل محدّد (كل الرسائل بينهما) + تعليمها مقروءة
-app.get('/api/admin/inbox/:clientId', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/inbox/:clientId', requirePermission('support.view'), async (req, res) => {
   try {
     const me = req.user.id, cid = parseInt(req.params.clientId);
     const r = await pool.query(`
@@ -7132,7 +7192,7 @@ app.get('/api/admin/inbox/:clientId', auth, adminOnly, async (req, res) => {
     res.json(r.rows);
   } catch(e){ console.error('admin-inbox-thread:', e.message); res.json([]); }
 });
-app.get('/api/admin/client-projects', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/client-projects', requirePermission('requests.view'), async (req, res) => {
   try {
     const uid = parseInt(req.query.uid);
     if (!uid) return res.json([]);
@@ -7168,7 +7228,7 @@ app.get('/api/client/quote-context', auth, async (req, res) => {
 });
 
 // الإدارة: قائمة السعي (المُرسل للاعتماد + الملتزمون) + الاعتماد
-app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/saai', requirePermission('settings.manage'), async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT s.id, s.request_id, s.contract_value, s.saai_amount, s.status, s.proof_url, s.edits_log, s.created_at, s.submitted_at, s.approved_at,
@@ -7203,6 +7263,7 @@ app.get('/api/admin/saai', auth, adminOnly, async (req, res) => {
               COALESCE((SELECT SUM(saai_amount) FROM saai_ledger WHERE status='approved' AND date_trunc('month', approved_at::timestamptz AT TIME ZONE 'Asia/Riyadh')=m),0)::float AS collected
        FROM generate_series(date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') - INTERVAL '5 months', date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh'), INTERVAL '1 month') m ORDER BY m`)).rows;
     sum.due_total = (sum.due||0) + (sum.overdue||0);
+    r.rows.forEach(x => { if (x.proof_url) x.proof_url = _pf(x.proof_url); });
     res.json({ items: r.rows, summary: Object.assign(sum, { awaiting_sum: sum.awaiting }), monthly });
   } catch(e){ console.error('admin-saai:', e.message); res.json({ items: [], summary: {}, monthly: [] }); }
 });
@@ -7220,7 +7281,7 @@ app.post('/api/tour', auth, async (req, res) => {
   catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // عروض انقبلت في فترة (اليوم/أمس/أسبوع/شهر/مخصص) — بتوقيت الرياض
-app.get('/api/admin/saai/accepted', auth, adminOnly, async (req, res) => {
+app.get('/api/admin/saai/accepted', requirePermission('settings.manage'), async (req, res) => {
   try {
     const re = /^\d{4}-\d{2}-\d{2}$/; const today = new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
     let from = re.test(req.query.from || '') ? req.query.from : today, to = re.test(req.query.to || '') ? req.query.to : from;
@@ -7246,7 +7307,7 @@ app.post('/api/admin/saai/:id/reject', requirePermission('settings.manage'), asy
     res.json({ ok: true });
   } catch(e){ console.error('admin-saai-reject:', e.message); res.status(500).json({ message: 'تعذّر الرفض' }); }
 });
-app.post('/api/admin/saai/remind', auth, adminOnly, async (req, res) => {
+app.post('/api/admin/saai/remind', requirePermission('settings.manage'), async (req, res) => {
   try {
     const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(Number).filter(Boolean) : null;
     const q = ids && ids.length
@@ -7321,7 +7382,7 @@ app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
     if (row.status === 'approved') return res.status(400).json({ message: 'هذا السعي معتمد مسبقاً' });
     let proofUrl = row.proof_url;
     if (proof && typeof proof === 'string' && proof.startsWith('data:')) {
-      try { proofUrl = await uploadToR2(proof, 'manaqasa/saai-proofs', 'saai-'+id+'-'+Date.now()); } catch(e){ proofUrl = row.proof_url; }
+      try { proofUrl = await uploadPrivate(proof, 'saai', 'saai-'+id+'-'+Date.now()); } catch(e){ proofUrl = row.proof_url; }
     }
     const newFee = Math.round(newVal * 0.03);
     // سجل التعديل لو تغيّر المبلغ
@@ -7467,7 +7528,7 @@ app.post('/api/provider/saai/self', auth, rateLimiter(10, 600000), async (req, r
       if (b.assigned_provider_id && String(b.assigned_provider_id) !== String(req.user.id)) return res.status(400).json({ message: 'هالمشروع انرسى على مزوّد ثاني' });
       bidId = b.id;
     }
-    const proofUrl = proof.startsWith('data:') ? await uploadToR2(proof, 'manaqasa/saai-proofs', 'saai-self-' + req.user.id + '-' + Date.now()) : _safeUrl(proof);
+    const proofUrl = proof.startsWith('data:') ? await uploadPrivate(proof, 'saai', 'saai-self-' + req.user.id + '-' + Date.now()) : _safeUrl(proof);
     if (!proofUrl) return res.status(400).json({ message: 'تعذّر رفع الإيصال — صورة أو PDF فقط' });
     const fee = Math.round(val * 0.03);
     const note = _cleanTxt(req.body.note || '', 200) || null;
@@ -7508,6 +7569,7 @@ app.get('/api/provider/saai', auth, async (req, res) => {
       if (x.status==='approved') approved += parseFloat(x.saai_amount)||0;
       else if (x.status==='pending' || x.status==='submitted') pending += parseFloat(x.saai_amount)||0;
     });
+    r.rows.forEach(x => { if (x.proof_url) x.proof_url = _pf(x.proof_url); });
     res.json({ items: r.rows, pending_total: Math.round(pending), approved_total: Math.round(approved), contract_total: Math.round(contract) });
   } catch(e){ console.error('provider-saai:', e.message); res.json({ items: [], pending_total: 0, approved_total: 0, contract_total: 0 }); }
 });
@@ -7768,7 +7830,7 @@ app.get('/api/messages/:requestId', auth, async (req, res) => {
       const _rd = await pool.query('UPDATE messages SET is_read=TRUE WHERE request_id=$1 AND receiver_id=$2 AND is_read=FALSE RETURNING sender_id', [requestId, req.user.id]);
       [...new Set(_rd.rows.map(x => x.sender_id).filter(Boolean))].forEach(sid => wsBroadcast(sid, { type:'messages_read', reader_id: req.user.id, request_id: requestId }));
     }
-    res.json(r.rows);
+    res.json(r.rows.map(m => (m && m.attachment_url) ? Object.assign(m, { attachment_url: _pf(m.attachment_url) }) : m));
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -7808,7 +7870,7 @@ app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
     let attUrl = attachment_url || null;
     if (attUrl && !String(attUrl).startsWith('data:')) { attUrl = _safeUrl(attUrl); if (!attUrl) return res.status(400).json({ message: 'رابط المرفق غير صالح' }); }
     if (attUrl && String(attUrl).startsWith('data:')) {
-      try { const up = await uploadToCloud(attUrl, 'manaqasa/chat', attachment_name || (String(attachment_type||'').indexOf('audio')===0?'voice.webm':'file')); if (up) attUrl = up; } catch(e){}
+      try { const up = await uploadPrivate(attUrl, 'chat', attachment_name || (String(attachment_type||'').indexOf('audio')===0?'voice.webm':'file')); if (up) attUrl = up; } catch(e){}
     }
     const r = await pool.query(
       `INSERT INTO messages (request_id, sender_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to, waveform, created_at)
@@ -7832,6 +7894,7 @@ app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
         }
       } catch(e) { console.error('message email:', e.message); }
     }
+    if (r.rows[0] && r.rows[0].attachment_url) r.rows[0].attachment_url = _pf(r.rows[0].attachment_url);
     res.json(r.rows[0]);
     const newMsg = r.rows[0];
     wsBroadcast(receiver_id, { type:'new_message', message:{...newMsg,sender_name:senderName}, request_id, sender_id:req.user.id, sender_name:senderName });
@@ -8634,7 +8697,7 @@ app.get('/api/showcase', async (req, res) => {
 });
 
 // تثبيت/إلغاء تثبيت مشروع في معرض النجاح (الإدارة)
-app.post('/api/admin/requests/:id/featured', auth, adminOnly, async (req, res) => {
+app.post('/api/admin/requests/:id/featured', requirePermission('requests.edit'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const on = req.body.featured === true || req.body.featured === 'true';
@@ -13402,6 +13465,7 @@ app.get('/api/admin/sub/:id/full', requirePermission('requests.view'), async (re
     const msgs = (await pool.query(`SELECT m.id, m.sender_id, m.receiver_id, m.body, m.created_at, m.read_at, COALESCE(NULLIF(a.business_name,''),a.name) AS sender FROM sub_msgs m JOIN users a ON a.id=m.sender_id WHERE m.sub_id=$1 ORDER BY m.id`, [id])).rows;
     const ratings = (await pool.query(`SELECT r.stars, r.comment, r.created_at, COALESCE(NULLIF(a.business_name,''),a.name) AS rater, COALESCE(NULLIF(b.business_name,''),b.name) AS rated FROM sub_ratings r JOIN users a ON a.id=r.rater_id JOIN users b ON b.id=r.rated_id WHERE r.sub_id=$1`, [id])).rows;
     const saai = (await pool.query(`SELECT l.id, l.contract_value, l.saai_amount, l.status, l.defer_state, l.defer_note, l.proof_url, l.submitted_at, l.approved_at, COALESCE(NULLIF(u.business_name,''),u.name) AS provider FROM saai_ledger l JOIN users u ON u.id=l.provider_id WHERE l.sub_id=$1`, [id])).rows[0] || null;
+    if (saai && saai.proof_url) saai.proof_url = _pf(saai.proof_url);
     const reports = (await pool.query(`SELECT r.reason, r.details, r.type, r.status, r.created_at, COALESCE(NULLIF(u.business_name,''),u.name) AS reporter FROM reports r LEFT JOIN users u ON u.id=r.reporter_id WHERE r.type LIKE 'مقاول باطن%' AND r.reason LIKE '%طلب #' || $1 || ':%' ORDER BY r.id DESC`, [String(id)])).rows;
     res.json({ sub: Object.assign(_subRow(s), { owner_name: s.owner_name, owner_phone: s.owner_phone, owner_id: s.provider_id, edited_at: s.edited_at, closed_at: s.closed_at, share: !!s.share_key }), offers, msgs, ratings, saai, reports });
   } catch(e) { console.error('admin sub full:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -13783,8 +13847,8 @@ async function _supUpload(f){
   const size = Math.floor(b64.length * 3 / 4);
   if (!size || size > SUP_MAX_FILE) return { err: 'حجم الملف أكبر من 30 ميجا' };
   let url = null;
-  try { url = await uploadToCloud(f.data, 'manaqasa/support', name); } catch(e) {}
-  if (!url || !/^https?:\/\//.test(url)) return { err: 'نوع الملف غير مسموح — صور، PDF، مخططات DWG/DXF، Excel أو Word' };
+  try { url = await uploadPrivate(f.data, 'support', name); } catch(e) {}
+  if (!url || !(/^https?:\/\//.test(url) || /^r2p:prv\//.test(url))) return { err: 'نوع الملف غير مسموح — صور، PDF، مخططات DWG/DXF، Excel أو Word' };
   const out = { name, url, type: String(f.type || '').slice(0, 80), size };
   if (typeof f.wave === 'string') out.wave = f.wave.slice(0, 300);
   return out;
@@ -13809,7 +13873,7 @@ async function _supLinkTitle(kind, id, uid){
   return null;
 }
 function _supMsgOut(m, forAdmin){
-  const o = { id: m.id, from_admin: m.from_admin, kind: m.kind, body: m.body, file: m.file, created_at: m.created_at, read_at: m.read_at, meta: m.meta || null };
+  const o = { id: m.id, from_admin: m.from_admin, kind: m.kind, body: m.body, file: (m.file && m.file.url) ? Object.assign({}, m.file, { url: _pf(m.file.url) }) : m.file, created_at: m.created_at, read_at: m.read_at, meta: m.meta || null };
   if (m.sender_name) o.who = forAdmin ? m.sender_name : _supFirst(m.sender_name);
   if (forAdmin) o.sender_id = m.sender_id;
   return o;
@@ -14087,8 +14151,9 @@ async function _supAddFiles(t, rq, msgs, adminId, o){
   const imgs = Array.isArray(rq.images) ? rq.images.slice() : [];
   const added = [];
   for (const m of msgs) {
-    const f = m.file; if (!f || !f.url) continue;
+    let f = m.file; if (!f || !f.url) continue;
     if (m.meta && m.meta.added && String(m.meta.added.rid) === String(rq.id)) continue;
+    if (/^r2p:/.test(f.url)) { const pu = await _pubCopy(f.url); if (!pu) continue; f = Object.assign({}, f, { url: pu }); }   // ملف الدعم خاص — نسخة عامة للمشروع
     if (_SUP_IMG_RX.test(f.type || '')) { if (!imgs.includes(f.url)) imgs.push(f.url); }
     else if (!atts.some(a => a && a.url === f.url)) atts.push({ name: String(f.name || 'ملف').slice(0, 120), type: f.type || null, url: f.url, uploaded_at: new Date().toISOString(), by: 'support' });
     added.push(f.name || 'ملف');
