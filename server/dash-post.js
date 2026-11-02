@@ -107,7 +107,7 @@ function _cSet(key,val){ try{ sessionStorage.setItem('mnq_c_'+key,JSON.stringify
 // أرقام يكتبها المستخدم (عربية/فواصل/مسافات) → رقم، أو null لو فاضي
 function _numIn(v){ var s=String(v==null?'':v).replace(/[\u0660-\u0669]/g,function(c){return c.charCodeAt(0)-0x660;}).replace(/[\u06F0-\u06F9]/g,function(c){return c.charCodeAt(0)-0x6F0;}).replace(/[٫]/g,'.').replace(/[^\d.]/g,''); if(!s)return null; var n=parseFloat(s); return isFinite(n)?n:null; }
 // ردّ الخادم: لو فيه خطأ نعرض رسالته العربية بدل «HTTP 403»
-function _rj(r){ if(r.ok) return r.json(); return r.json().catch(function(){return {};}).then(function(d){ var e=new Error((d&&d.message)||(r.status>=500?'صار خطأ عندنا — حاول بعد شوي':'ما قدرنا نكمل الطلب')); e.status=r.status; e.server=true; throw e; }); }
+function _rj(r){ if(r.ok) return r.json(); return r.json().catch(function(){return {};}).then(function(d){ var e=new Error((d&&d.message)||(r.status>=500?'صار خطأ عندنا — حاول بعد شوي':'ما قدرنا نكمل الطلب')); e.status=r.status; e.server=true; e.code=d&&d.code; throw e; }); }
 function _errTxt(e){ return (e&&e.server)?e.message:'تعذّر الاتصال — تأكد من الإنترنت وحاول مرة ثانية'; }
 function jFetch(path,opts){
   return fetch(API+path,Object.assign({headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},cache:'no-store'},opts||{}))
@@ -1433,8 +1433,7 @@ function saveClientProfile(btn){
   var _bd={name:name,phone:phone,city:city};
   var _oe=String(window._loadedEmailP||((user&&user.email)||'')).toLowerCase();
   if(email&&email.toLowerCase()!==_oe){ _bd.email=email;
-    if(!_pwh._pw){ if(!window.mnqAskPw){showToast('حدّث الصفحة وحاول مرة ثانية','error');return;} mnqAskPw('عشان نغيّر بريدك إلى '+email+'، اكتب كلمة المرور الحالية').then(function(pw){ if(!pw)return; _pwh._pw=pw; saveClientProfile(btn); }); return; }
-    _bd.current_password=_pwh._pw; }
+    if(_pwh._pw)_bd.current_password=_pwh._pw; }
   _pwh._pw=null;
   if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
   fetch(API+'/api/client/profile',Object.assign({method:'PUT',body:JSON.stringify(_bd)},hdr()))
@@ -1444,7 +1443,7 @@ function saveClientProfile(btn){
       showToast('تم الحفظ','success');
       if(p&&p.name){user.name=p.name;localStorage.setItem('user',JSON.stringify(user));document.getElementById('userName').textContent=p.name;document.getElementById('profNameDisp').textContent=p.name;}
     })
-    .catch(function(e){showToast(_errTxt(e),'error');})
+    .catch(function(e){ if(e&&(e.code==='need_pw'||e.code==='bad_pw')&&window.mnqAskPw){ if(btn){btn.disabled=false;btn.textContent='حفظ التغييرات';} mnqAskPw(e.code==='bad_pw'?'كلمة المرور غلط — اكتبها مرة ثانية':'عشان نغيّر بريدك إلى '+email+'، اكتب كلمة المرور الحالية').then(function(pw){ if(pw){ _pwh._pw=pw; saveClientProfile(btn); } }); return; } showToast(_errTxt(e),'error');})
     .finally(function(){if(btn){btn.disabled=false;btn.textContent='حفظ التغييرات';}});
 }
 function _newSess(d){ if(!d||!d.token)return; try{ localStorage.setItem('token',d.token); }catch(e){} try{ token=d.token; }catch(e){} try{ _token=d.token; }catch(e){} try{ if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_SAVE',token:d.token,user:localStorage.getItem('user')||''})); }catch(e){} }

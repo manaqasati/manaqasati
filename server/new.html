@@ -756,7 +756,7 @@ function goLogin(){
   _saveNow();
   // الصور وملفات المخطط تنحفظ بالجهاز (IndexedDB) وترجع بعد الدخول
   var _go=function(){ location.href='/auth.html?redirect=postdraft'; };
-  _rsSave().then(_go,_go); setTimeout(_go,2500);
+  _rsSave().then(_go,_go); setTimeout(_go,8000);
 }
 // ── حفظ/استعادة الصور والملفات عبر تسجيل الدخول ──
 function _rsDb(){ return new Promise(function(res,rej){ try{ var q=indexedDB.open('mnq_new',1); q.onupgradeneeded=function(){ q.result.createObjectStore('kv'); }; q.onsuccess=function(){ res(q.result); }; q.onerror=function(){ rej(q.error); }; }catch(e){ rej(e); } }); }

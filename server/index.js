@@ -970,7 +970,9 @@ app.get('/api/requests/public/:id', async (req, res) => {
       const uid=vw&&vw.id;
       const isOwner=uid&&String(uid)===String(row.client_id);
       const isAdmin=vw&&vw.role==='admin';
-      const asg=(await pool.query('SELECT assigned_provider_id FROM requests WHERE id=$1',[id])).rows[0]||{};
+      const asg=(await pool.query('SELECT assigned_provider_id, (award_pending_until > NOW()) AS awp FROM requests WHERE id=$1',[id])).rows[0]||{};
+      // مهلة الـ5 دقايق بعد الاختيار: نعامله كأنه ما انرسى للحين (لا رقم ولا حالة) — إلا لصاحب المشروع والإدارة
+      if (asg.awp && !isOwner && !isAdmin) { row.status = 'open'; asg.assigned_provider_id = null; }
       const isAssigned=uid&&asg.assigned_provider_id&&String(uid)===String(asg.assigned_provider_id);
       // إيقاف مؤقت: الرقم للمزوّد المختار للتفاوض بس
       const _pzOn = row.status==='open' && !!row.paused_at; let _pzMe=false;
@@ -1056,8 +1058,9 @@ app.post('/api/requests/:id/client-note/hide', auth, async (req, res) => {
 app.post('/api/requests/:id/extend', auth, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const q = (await pool.query('SELECT client_id, status, assigned_provider_id, created_at, close_at, close_auto_kind FROM requests WHERE id=$1',[id])).rows[0];
+    const q = (await pool.query('SELECT client_id, status, assigned_provider_id, created_at, close_at, close_auto_kind, close_reason FROM requests WHERE id=$1',[id])).rows[0];
     if (!q) return res.status(404).json({ message:'غير موجود' });
+    if (q.close_reason === 'admin_closed' && q.status !== 'open') return res.status(403).json({ message:'المشروع قفلته الإدارة — تواصل مع فريق مناقصة' });
     if (q.close_auto_kind === 'unpublished') return res.status(400).json({ message:'المشروع ما انعتمد بعد — استخدم «إعادة النشر» ويرجع للمراجعة' });
     if (String(q.client_id)!==String(req.user.id)) return res.status(403).json({ message:'ليس مشروعك' });
     if (q.assigned_provider_id || ['in_progress','completed'].includes(q.status)) return res.status(400).json({ message:'المشروع تم اختيار مزوّد له' });
@@ -1066,7 +1069,7 @@ app.post('/api/requests/:id/extend', auth, async (req, res) => {
     const cur = q.close_at ? new Date(q.close_at) : new Date(new Date(q.created_at).getTime()+closeDays*86400000);
     const from = cur > new Date() ? cur : new Date();
     const nx = new Date(from.getTime() + 7*86400000);
-    await pool.query(`UPDATE requests SET close_at=$1, status='open', close_set_by='client_extend', closed_at=NULL, close_auto_kind=NULL, close_auto_days=NULL WHERE id=$2`, [nx, id]);
+    await pool.query(`UPDATE requests SET close_at=$1, status='open', close_set_by='client_extend', closed_at=NULL, close_auto_kind=NULL, close_auto_days=NULL, close_reason=NULL, paused_at=NULL, paused_until=NULL, pause_bid_id=NULL WHERE id=$2`, [nx, id]);
     try { await pool.query(`DELETE FROM reminders_log WHERE ref_id=$1 AND kind IN ('close_warn','closed_offers','closed_offers_2d')`, [id]); } catch(e){}
     res.json({ ok:true, close_at: nx });
   } catch(e){ console.error('extend:', e.message); res.status(500).json({ message:'حدث خطأ' }); }
@@ -1830,6 +1833,11 @@ app.post('/api/e/u/:uid/:cat/:sig', rateLimiter(30, 600000), async (req, res) =>
     res.json({ ok: true, proj: u.email_proj || 'daily', sub: u.email_sub !== false, tips: u.email_tips !== false, news: u.email_news !== false });
   } catch(e) { console.error('/api/e/u:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// زر «إلغاء الاشتراك» الرسمي (Gmail/Apple — RFC 8058): POST على نفس رابط الصفحة = وقف مباشر
+app.post('/e/u/:uid/:cat/:sig', rateLimiter(30, 600000), async (req, res) => {
+  try { const k = _euOk(req); if (!k) return res.status(400).send('bad link'); await _epApply(k.uid, k.cat, 'off', 'oneclick'); res.send('ok'); }
+  catch(e) { res.status(500).send('error'); }
+});
 app.get('/e/u/:uid/:cat/:sig', async (req, res) => {
   const k = _euOk(req);
   res.set('Cache-Control', 'no-store'); res.set('X-Robots-Tag', 'noindex');
@@ -1859,9 +1867,12 @@ function paint(a,d){
     h=on?'<div class="ic">'+(a==='__view'?'📧':'↩️')+'</div><h1>'+(a==='__view'?NM+' شغّالة':'رجّعنا '+NM)+'</h1>':'<div class="ic">✅</div><h1>'+(a==='__view'?NM+' موقّفة':'وقّفنا '+NM)+'</h1>';
     alt=on?'<button class="b" onclick="go(\\'off\\')">وقّفها</button>':'<button class="b" onclick="go(\\'on\\')">↩️ رجّعها</button>';
   }
-  C.innerHTML=h+alt+'<a class="b p" href="/dashboard-provider.html#emails">كل إعدادات الإيميل</a><div class="n">🔒 قبول عرضك ورسائل العملاء وأمان حسابك توصلك دايم</div>';
+  C.innerHTML=h+alt+((CAT==='proj'||CAT==='sub')?'<a class="b p" href="/dashboard-provider.html#emails">كل إعدادات الإيميل</a>':'')+'<div class="n">🔒 قبول عرضك ورسائل العملاء وأمان حسابك توصلك دايم</div>';
 }
-go(A0==='view'?'__view':A0);
+// ما نغيّر شي بمجرد فتح الصفحة (برامج فحص الروابط بالإيميل الشركات تفتحها) — ضغطة تأكيد وحدة
+if(A0==='view') go('__view');
+else { var _T={off:CAT==='proj'?'توقف إيميلات المشاريع الجديدة؟':'توقف '+NM+'؟',daily:'يوصلك ملخّص واحد باليوم بدل كل مشروع؟',instant:'ترجع توصلك أول بأول؟',on:'ترجّع '+NM+'؟'};
+  C.innerHTML='<div class="ic">📧</div><h1>'+(_T[A0]||'تأكيد')+'</h1><p>قبول عرضك ورسائل العملاء توصلك دايم.</p><button class="b p" onclick="go(\\''+A0+'\\')">'+(A0==='off'?'نعم، وقّفها':'نعم')+'</button>'+(A0==='off'&&CAT==='proj'?'<button class="b" onclick="go(\\'daily\\')">📬 لا — خلّها ملخّص واحد باليوم</button>':''); }
 </script>` : ''}
 </body></html>`);
 });
@@ -1913,7 +1924,7 @@ async function sendEmail(to, subject, html, meta) {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(Object.assign({ from: `${FROM_NAME} <${FROM_EMAIL}>`, to: [to], subject, html, text: _htmlToText(html), reply_to: FROM_EMAIL },
-        _ep ? { headers: { 'List-Unsubscribe': '<' + SITE_URL + '/api/e/u/' + _ep.id + '/' + meta.cat + '/' + _euSig(_ep.id, meta.cat) + '>', 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}))
+        _ep ? { headers: { 'List-Unsubscribe': '<' + SITE_URL + '/e/u/' + _ep.id + '/' + meta.cat + '/' + _euSig(_ep.id, meta.cat) + '>', 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}))
     });
     const txt = await r.text(); let d = null; try { d = JSON.parse(txt); } catch(_) {}
     if (!r.ok) { console.error('Resend error:', txt); _fail((d && (d.message || d.name)) || txt); return false; }
@@ -2358,7 +2369,12 @@ async function notify(userId, title, body, type, refId, opts) {
   try {
     const _ni = await pool.query('INSERT INTO notifications(user_id,title,body,type,ref_id) VALUES($1,$2,$3,$4,$5) RETURNING id', [userId, title, body, type, refId]);
     try { tid = (await pool.query('INSERT INTO ntrack (nid, user_id, kind, ref_id) VALUES ($1,$2,$3,$4) RETURNING id', [_ni.rows[0].id, userId, String(opts.kind || type || 'other').slice(0,30), refId || null])).rows[0].id; } catch(e) {}
-    const url = opts.url || (() => {
+    // نفس النوع يوصل للعميل والمزوّد — الرابط حسب مين المستلم (صاحب المشروع يروح لتفاصيل مشروعه)
+    let _own = null;
+    if (!opts.url && refId && ['bid','bid_accepted','bid_rejected','request','request_published'].includes(type)) {
+      try { const _q = (await pool.query('SELECT client_id FROM requests WHERE id=$1', [refId])).rows[0]; if (_q) _own = String(_q.client_id) === String(userId); } catch(e) {}
+    }
+    const url = opts.url || (_own === true ? '/dashboard-client.html#detail/' + refId : (_own === false && (type === 'request' || type === 'request_published') ? '/project/x-' + refId + '?id=' + refId : null)) || (() => {
       if (!type) return '/';
       if (type === 'becomeprov') return '/dashboard-client.html#becomeprov';
       if (type === 'sub') return '/dashboard-provider.html#sub' + (refId ? '/' + refId : '');
@@ -2399,7 +2415,7 @@ async function notifyWithEmail(userId, title, body, type, refId, emailSubject, e
 function _nOffers(n){ return n===1?'عرض واحد':(n===2?'عرضين':(n>=3&&n<=10?n+' عروض':n+' عرض')); }
 async function _notifyClosedWithOffers(x, fallbackText){
   try{
-    const n = (await pool.query("SELECT COUNT(*)::int AS n FROM bids WHERE request_id=$1 AND COALESCE(status,'pending')<>'rejected'", [x.id])).rows[0].n;
+    const n = (await pool.query("SELECT COUNT(*)::int AS n FROM bids WHERE request_id=$1 AND COALESCE(status,'pending')<>'rejected' AND COALESCE(hold_state,'') NOT IN ('held','rejected')", [x.id])).rows[0].n;
     if (n > 0) {
       const t = 'أُغلق مشروعك — وعندك ' + _nOffers(n) + ' تقدر تختار منها';
       const b = `«${x.title}» انتهت مدة استقبال العروض، بس العروض اللي وصلتك باقية وتقدر تقبل منها خلال ${ACCEPT_AFTER_CLOSE_DAYS} يوم`;
@@ -2849,9 +2865,9 @@ async function _runRemindersAll(){
         const warnFrom = Number(closeDays) - Number(warnBefore);
         const w = await pool.query(
           `SELECT id, client_id, title FROM requests
-           WHERE status='open' AND assigned_provider_id IS NULL
-             AND created_at <= NOW() - ($1 || ' days')::interval
-             AND created_at >  NOW() - ($2 || ' days')::interval`, [String(warnFrom), String(closeDays)]);
+           WHERE status='open' AND assigned_provider_id IS NULL AND close_at IS NULL AND paused_at IS NULL
+             AND COALESCE(published_at, created_at) + make_interval(secs => COALESCE(paused_total_sec,0)) <= NOW() - ($1 || ' days')::interval
+             AND COALESCE(published_at, created_at) + make_interval(secs => COALESCE(paused_total_sec,0)) >  NOW() - ($2 || ' days')::interval`, [String(warnFrom), String(closeDays)]);
         for(const x of w.rows){
           await _remindOnce(x.client_id, 'close_warn', x.id,
             'مشروعك على وشك الإغلاق ⏰', `سيُغلق "${eEsc(x.title)}" تلقائياً بعد ${warnBefore} يوم — بادر باختيار عرض`,
@@ -2863,7 +2879,7 @@ async function _runRemindersAll(){
       const cl = await pool.query(
         `UPDATE requests SET status='closed_auto', closed_at=NOW(), close_auto_kind='default', close_auto_days=$2
          WHERE status='open' AND assigned_provider_id IS NULL AND close_at IS NULL AND paused_at IS NULL
-           AND created_at + make_interval(secs => COALESCE(paused_total_sec,0)) <= NOW() - ($1 || ' days')::interval
+           AND COALESCE(published_at, created_at) + make_interval(secs => COALESCE(paused_total_sec,0)) <= NOW() - ($1 || ' days')::interval
          RETURNING id, client_id, title`, [String(closeDays), closeDays]);
       for(const x of cl.rows){
         await _notifyClosedWithOffers(x, `أُغلق "${eEsc(x.title)}" تلقائياً لعدم اختيار عرض خلال المدة`);
@@ -3159,7 +3175,7 @@ async function _matchDigest(){
       if (!cats.length) continue;
       const rows = (await pool.query(
         `SELECT r.id, r.title, r.city, r.category FROM requests r
-          WHERE r.status='open' AND r.assigned_provider_id IS NULL AND r.paused_at IS NULL AND (r.category IS DISTINCT FROM 'direct')
+          WHERE r.status='open' AND r.assigned_provider_id IS NULL AND r.paused_at IS NULL AND (r.category IS DISTINCT FROM 'direct') AND COALESCE(r.invite_state,'') <> 'exclusive' AND (r.award_pending_until IS NULL OR r.award_pending_until <= NOW())
             AND COALESCE(r.published_at, r.created_at) > GREATEST(COALESCE($3::timestamp, NOW() - INTERVAL '24 hours'), NOW() - INTERVAL '3 days')
             AND (r.category = ANY($1::text[]) OR COALESCE(r.extra_categories,'{}') && $1::text[])
             AND ($4::boolean OR r.city IS NULL OR ($2::text IS NULL AND ($5::text[] IS NULL OR cardinality($5::text[])=0)) OR r.city = $2 OR r.city = ANY(COALESCE($5::text[],ARRAY[]::text[])))
@@ -3170,12 +3186,70 @@ async function _matchDigest(){
       const items = rows.map(r => `<a href="${SITE_URL}/project/x-${r.id}?id=${r.id}" style="display:block;text-decoration:none;color:#0f172a;border:1px solid #e3eaf6;border-radius:12px;padding:12px 14px;margin:0 0 9px;background:#f8fafc"><span style="display:block;font-weight:800;font-size:15px;line-height:1.6">${eEsc(r.title || '')}</span><span style="display:block;font-size:12.5px;color:#64748b;margin-top:2px">${[r.category, r.city].filter(Boolean).map(eEsc).join(' · ')}</span><span style="display:inline-block;margin-top:7px;font-size:13px;font-weight:800;color:#1d4ed8">شوف المشروع وقدّم ←</span></a>`).join('');
       const title = rows.length === 1 ? '🔔 مشروع جديد يناسب تخصصك' : `🔔 ${rows.length} مشاريع جديدة تناسب تخصصك`;
       const body = `<p>ملخّص اليوم — مشاريع جديدة تطابق تخصصك${p.city && !p.allcities ? (' في ' + eEsc(p.city)) : ''}:</p><div style="margin:12px 0 6px">${items}</div><p style="font-size:13.5px;color:#64748b">💡 قدّم بدري — العميل يرد أكثر على أول العروض.</p>`;
-      await sendEmail(p.email, title, emailTpl(title, body, 'تصفّح المشاريع', SITE_URL + '/dashboard-provider.html'), { uid: p.id, kind: 'match_digest', cat: 'proj', digest: true, cats });
+      const _sent = await sendEmail(p.email, title, emailTpl(title, body, 'تصفّح المشاريع', SITE_URL + '/dashboard-provider.html'), { uid: p.id, kind: 'match_digest', cat: 'proj', digest: true, cats });
+      if (!_sent) await pool.query('UPDATE users SET last_match_email_at=$2 WHERE id=$1', [p.id, p.last_match_email_at || null]);   // ما وصل → نعيد المحاولة الدورة الجاية
+      await new Promise(z => setTimeout(z, 150));   // ما نضغط على مزوّد الإيميل
     } catch(e) { console.error('matchDigest', p.id, e.message); }
   }
 }
 setInterval(() => _jobLock('matchdigest', _matchDigest), 15 * 60 * 1000);
-setTimeout(() => _jobLock('matchdigest', _matchDigest), 60 * 1000);   // بعد التشغيل بدقيقة (لو النشر صار بعد 8 الصبح)
+setTimeout(() => _jobLock('matchdigest', _matchDigest), 60 * 1000);
+// ═══ نقل الملفات القديمة للتخزين الخاص (مرة وحدة): إيصالات السعي + مرفقات المحادثات + ملفات الدعم ═══
+// ننسخ لـ prv/ ونحدّث القاعدة، وبعدها نحذف الأصل — إلا لو الرابط مستخدم بمكان ثاني (مثل ملف دعم انضاف لمشروع)
+async function _urlUsedElsewhere(u){
+  try {
+    const q = await pool.query(`SELECT 1 WHERE
+        EXISTS (SELECT 1 FROM requests WHERE attachments::text LIKE '%' || $1 || '%' OR $1 = ANY(COALESCE(images,'{}')) OR image_url = $1)
+     OR EXISTS (SELECT 1 FROM bids WHERE attachment_url = $1 OR $1 = ANY(COALESCE(work_images,'{}')))
+     OR EXISTS (SELECT 1 FROM users WHERE profile_image = $1 OR $1 = ANY(COALESCE(portfolio_images,'{}')) OR company_profile_url = $1)
+     OR EXISTS (SELECT 1 FROM sub_requests WHERE attachments::text LIKE '%' || $1 || '%')
+     OR EXISTS (SELECT 1 FROM sub_offers WHERE photos::text LIKE '%' || $1 || '%')
+     OR EXISTS (SELECT 1 FROM reviews WHERE $1 = ANY(COALESCE(images,'{}')))`, [u]);
+    return q.rows.length > 0;
+  } catch(e) { return true; }   // لو ما تأكدنا نخلّي الأصل
+}
+async function _toPrivate(u, folder){
+  if (typeof u !== 'string' || !u) return null;
+  if (u.startsWith('r2p:')) return null;
+  if (u.startsWith('data:')) { const v = await uploadPrivate(u, folder, folder + '-file'); return (v && v.startsWith('r2p:')) ? { v, old: null } : null; }
+  const k = _r2KeyOf(u); if (!k || /^prv\//.test(k)) return null;   // روابط خارجية (Cloudinary) ما نقدر ننقلها
+  const { CopyObjectCommand } = require('@aws-sdk/client-s3');
+  const ext = (k.match(/\.([a-z0-9]{2,5})$/i) || [])[1] || 'bin';
+  const nk = 'prv/' + folder + '/' + crypto.randomBytes(16).toString('hex') + '.' + ext.toLowerCase();
+  await r2Client.send(new CopyObjectCommand({ Bucket: R2_BUCKET, CopySource: R2_BUCKET + '/' + encodeURI(k), Key: nk }));
+  return { v: 'r2p:' + nk, old: k };
+}
+async function _privMigrate(){
+  if (!r2Client || !R2_PUBLIC_URL) return;
+  if ((await getSetting('mig_private_files_done', '')) === '1') return;
+  const base = String(R2_PUBLIC_URL).replace(/\/+$/, '') + '/%';
+  let moved = 0, kept = 0, failed = 0, total = 0;
+  const del = async (old, u) => { if (!old) return; if (await _urlUsedElsewhere(u)) { kept++; return; } try { await r2Client.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: old })); } catch(e) {} };
+  // 1) إيصالات السعي
+  for (const r of (await pool.query(`SELECT DISTINCT proof_url AS u FROM saai_ledger WHERE proof_url LIKE $1 LIMIT 500`, [base])).rows) {
+    total++; try { const x = await _toPrivate(r.u, 'saai'); if (!x) continue; await pool.query('UPDATE saai_ledger SET proof_url=$2 WHERE proof_url=$1', [r.u, x.v]); moved++; await del(x.old, r.u); } catch(e) { failed++; console.error('privmig saai:', e.message); }
+  }
+  // 2) مرفقات المحادثات
+  for (const r of (await pool.query(`SELECT DISTINCT attachment_url AS u FROM messages WHERE attachment_url LIKE $1 LIMIT 2000`, [base])).rows) {
+    total++; try { const x = await _toPrivate(r.u, 'chat'); if (!x) continue; await pool.query('UPDATE messages SET attachment_url=$2 WHERE attachment_url=$1', [r.u, x.v]); moved++; await del(x.old, r.u); } catch(e) { failed++; console.error('privmig chat:', e.message); }
+  }
+  // مرفقات انحفظت base64 داخل القاعدة (لما فشل الرفع قديماً): واحد واحد عشان الذاكرة
+  for (const r of (await pool.query(`SELECT id FROM messages WHERE attachment_url LIKE 'data:%' ORDER BY id LIMIT 300`)).rows) {
+    total++; try { const u = (await pool.query('SELECT attachment_url FROM messages WHERE id=$1', [r.id])).rows[0]; const x = u && await _toPrivate(u.attachment_url, 'chat'); if (!x) { failed++; continue; } await pool.query('UPDATE messages SET attachment_url=$2 WHERE id=$1', [r.id, x.v]); moved++; } catch(e) { failed++; }
+  }
+  // 3) ملفات الدعم
+  for (const r of (await pool.query(`SELECT DISTINCT file->>'url' AS u FROM support_msgs WHERE file->>'url' LIKE $1 LIMIT 2000`, [base])).rows) {
+    total++; try { const x = await _toPrivate(r.u, 'support'); if (!x) continue; await pool.query(`UPDATE support_msgs SET file = jsonb_set(file, '{url}', to_jsonb($2::text)) WHERE file->>'url' = $1`, [r.u, x.v]); moved++; await del(x.old, r.u); } catch(e) { failed++; console.error('privmig support:', e.message); }
+  }
+  console.log(`[privmig] نُقل ${moved} ملف للتخزين الخاص · أصل محفوظ لأنه مستخدم بمكان ثاني: ${kept} · فشل: ${failed}`);
+  if (moved) try { await logAdmin({ user: { id: null, name: 'النظام' } }, 'private_files_migrated', 'system', 0, `نُقل ${moved} ملف للتخزين الخاص (إيصالات/محادثات/دعم) · محفوظ الأصل: ${kept} · فشل: ${failed}`); } catch(e) {}
+  // نكمل الدفعة الجاية لو باقي، وإلا نعلّمها خلصت
+  const left = (await pool.query(`SELECT (SELECT COUNT(*) FROM saai_ledger WHERE proof_url LIKE $1) + (SELECT COUNT(*) FROM messages WHERE attachment_url LIKE $1 OR attachment_url LIKE 'data:%') + (SELECT COUNT(*) FROM support_msgs WHERE file->>'url' LIKE $1) AS n`, [base])).rows[0].n;
+  if (+left === 0 || moved === 0) await setSetting('mig_private_files_done', '1');   // خلص، أو الباقي ما ينقل (ما نعيد كل نص ساعة على الفاضي)
+}
+setTimeout(() => _jobLock('privmig', _privMigrate), parseInt(process.env.PRIVMIG_DELAY_MS) || 2 * 60 * 1000);
+setInterval(() => _jobLock('privmig', _privMigrate), 30 * 60 * 1000);
+   // بعد التشغيل بدقيقة (لو النشر صار بعد 8 الصبح)
  // كل 6 ساعات
 async function runEngagementReminders(){
   try {
@@ -3873,7 +3947,12 @@ app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
       const d9 = _asciiDigits(phone).replace(/\D/g, '').slice(-9);
       if (d9.length !== 9) return res.status(400).json({ message: 'البيانات غير صحيحة' });
       result = await pool.query(`SELECT * FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1 ORDER BY is_active DESC, last_active DESC NULLS LAST LIMIT 5`, [d9]);
-      if (result.rows.length > 1) { for (const u of result.rows) { const h = u.password || u.password_hash || ''; if (h && await bcrypt.compare(password, h)) { result = { rows: [u] }; break; } } }
+      if (result.rows.length > 1) {
+        let hit = null;
+        for (const u of result.rows) { if (u.locked_until && new Date(u.locked_until) > new Date()) continue; const h = u.password || u.password_hash || ''; if (h && await bcrypt.compare(password, h)) { hit = u; break; } }
+        if (hit) result = { rows: [hit] };
+        else { for (const u of result.rows.slice(1)) _loginFail(u).catch(()=>{}); }   // ولا وحدة صحيحة: نحسب المحاولة على كل الحسابات بنفس الرقم
+      }
     } else result = await pool.query('SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY (email=$1) DESC LIMIT 1', [String(email).trim()]);
     if (!result.rows.length) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const user = result.rows[0];
@@ -4304,7 +4383,7 @@ app.get('/api/account/deletion-preview', auth, async (req, res) => {
     if (role === 'client') { const r1 = await pool.query("SELECT COUNT(*)::int as c FROM requests WHERE client_id=$1 AND (category IS DISTINCT FROM 'direct')", [userId]); stats.projects = r1.rows[0].c; }
     if (role === 'provider') {
       const r2 = await pool.query('SELECT COUNT(*)::int as c FROM bids WHERE provider_id=$1', [userId]); stats.bids = r2.rows[0].c;
-      const r3 = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct')`, [userId]); stats.active_projects = r3.rows[0].c;
+      const r3 = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct') AND (award_pending_until IS NULL OR award_pending_until <= NOW())`, [userId]); stats.active_projects = r3.rows[0].c;
     }
     { const ro = await pool.query("SELECT COUNT(*)::int as c FROM requests WHERE client_id=$1 AND status IN ('open','pending_review','review','needs_edit','in_progress','accepted') AND (category IS DISTINCT FROM 'direct')", [userId]); stats.open_projects = ro.rows[0].c; }
     const r4 = await pool.query('SELECT COUNT(*)::int as c FROM messages WHERE sender_id=$1 OR receiver_id=$1', [userId]); stats.messages = r4.rows[0].c;
@@ -4330,7 +4409,7 @@ app.delete('/api/account/delete', auth, async (req, res) => {
     if (confirmation !== 'حذف' && confirmation !== 'DELETE') return res.status(400).json({ message: 'يجب كتابة "حذف" أو "DELETE" للتأكيد', code: 'CONFIRMATION_REQUIRED' });
     if (role === 'admin') return res.status(403).json({ message: 'لا يمكن حذف حسابات الإدارة من التطبيق' });
     { // أي حساب (حتى لو دوره الحالي عميل) عنده مشروع قيد التنفيذ كمزوّد ما ينحذف
-      const active = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct')`, [userId]);
+      const active = await pool.query(`SELECT COUNT(*)::int as c FROM requests WHERE assigned_provider_id=$1 AND status='in_progress' AND (category IS DISTINCT FROM 'direct') AND (award_pending_until IS NULL OR award_pending_until <= NOW())`, [userId]);
       if (active.rows[0].c > 0) return res.status(400).json({ message: `لديك ${active.rows[0].c} مشروع قيد التنفيذ. يجب إكمالها أولاً.`, code: 'ACTIVE_PROJECTS' });
     }
     const userInfo = await pool.query('SELECT id, name, email FROM users WHERE id=$1', [userId]);
@@ -5042,12 +5121,17 @@ async function _profGuard(req){
   // تغيير البريد = يحتاج كلمة المرور الحالية (لو أحد مسك جلسة مفتوحة ما يقدر يغيّر البريد ثم «نسيت كلمة المرور» ويستولي على الحساب)
   if (Object.prototype.hasOwnProperty.call(b, 'email') && String(b.email || '').trim()) {
     const ne = String(b.email).trim().toLowerCase();
-    const cu = (await pool.query('SELECT email, password, password_hash FROM users WHERE id=$1', [req.user.id])).rows[0];
+    const cu = (await pool.query('SELECT email, password, password_hash, google_sub, apple_sub FROM users WHERE id=$1', [req.user.id])).rows[0];
     if (cu && ne !== String(cu.email || '').trim().toLowerCase()) {
-      const pw = String(b.current_password || '');
-      if (!pw) return 'لتغيير البريد اكتب كلمة المرور الحالية';
-      const h = cu.password || cu.password_hash || '';
-      if (!h || !(await bcrypt.compare(pw, h))) return 'كلمة المرور الحالية غير صحيحة';
+      const proxy = /@manaqasa\.local$/i.test(String(cu.email || ''));   // حساب أنشأته الإدارة بدون بريد حقيقي
+      const social = !!(cu.google_sub || cu.apple_sub);
+      const fresh = req.user.iat && (Date.now() / 1000 - req.user.iat) < 30 * 60;   // دخل قبل أقل من 30 دقيقة
+      if (!proxy && !(social && fresh)) {
+        const pw = String(b.current_password || '');
+        if (!pw) return social ? { code: 'reauth', message: 'حسابك داخل بـ Google/Apple — اطلع وادخل من جديد، وبعدها غيّر البريد خلال نص ساعة (أو اكتب كلمة المرور لو عندك وحدة)' } : { code: 'need_pw', message: 'لتغيير البريد اكتب كلمة المرور الحالية' };
+        const h = cu.password || cu.password_hash || '';
+        if (!h || !(await bcrypt.compare(pw, h))) return { code: 'bad_pw', message: 'كلمة المرور الحالية غير صحيحة' };
+      }
     }
   }
   delete b.current_password;
@@ -5057,7 +5141,7 @@ async function _profGuard(req){
     const cur = (await pool.query('SELECT phone FROM users WHERE id=$1', [req.user.id])).rows[0];
     if (cur && cur.phone && (cur.phone === String(b.phone).trim() || (norm && normPhone(cur.phone) === norm))) { b.phone = cur.phone; return null; }   // نفس رقمه (حتى لو صيغته القديمة غريبة)
     if (!norm) return 'رقم الجوال غير صحيح — اكتبه بصيغة 05xxxxxxxx';
-    const d = await pool.query(`SELECT id FROM users WHERE id<>$1 AND phone IS NOT NULL AND (phone=$2 OR regexp_replace(phone,'[^0-9]','','g')=$3 OR regexp_replace(phone,'[^0-9]','','g')=$4) LIMIT 1`, [req.user.id, raw, norm, '0' + norm.slice(3)]);
+    const d = await pool.query(`SELECT id FROM users WHERE id<>$1 AND phone IS NOT NULL AND (phone=$2 OR RIGHT(regexp_replace(phone,'[^0-9]','','g'),9)=$3) LIMIT 1`, [req.user.id, raw, norm.slice(-9)]);
     if (d.rows.length) return 'رقم الجوال مستخدم لحساب آخر';
     b.phone = '0' + norm.slice(3);
   }
@@ -5065,7 +5149,7 @@ async function _profGuard(req){
 }
 app.put('/api/profile', auth, async (req, res) => {
   try {
-    { const _g = await _profGuard(req); if (_g) return res.status(400).json({ message: _g }); }
+    { const _g = await _profGuard(req); if (_g) return res.status(400).json(typeof _g === 'object' ? _g : { message: _g }); }
     if (req.body.profile_image) { const _pi = await uploadToCloud(String(req.body.profile_image), 'manaqasa/profiles'); if (_pi) req.body.profile_image = _pi; else delete req.body.profile_image; }
     const allowed = { name:'name', phone:'phone', city:'city', bio:'bio', specialties:'specialties', notify_categories:'notify_categories', experience_years:'experience_years', profile_image:'profile_image', serves_all_cities:'serves_all_cities', service_cities:'service_cities' };
     const sets=[]; const params=[]; let idx=1;
@@ -5096,7 +5180,7 @@ app.get('/api/client/profile', auth, async (req, res) => {
 
 app.put('/api/client/profile', auth, async (req, res) => {
   try {
-    { const _g = await _profGuard(req); if (_g) return res.status(400).json({ message: _g }); }
+    { const _g = await _profGuard(req); if (_g) return res.status(400).json(typeof _g === 'object' ? _g : { message: _g }); }
     if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
       const newEmail = String(req.body.email||'').trim().toLowerCase();
       if (!newEmail||!newEmail.includes('@')||!newEmail.includes('.')) return res.status(400).json({ message: 'بريد إلكتروني غير صحيح' });
@@ -5154,7 +5238,7 @@ app.get('/api/ratings/provider/:id', async (req, res) => {
 
 app.put('/api/provider/profile', auth, async (req, res) => {
   try {
-    { const _g = await _profGuard(req); if (_g) return res.status(400).json({ message: _g }); }
+    { const _g = await _profGuard(req); if (_g) return res.status(400).json(typeof _g === 'object' ? _g : { message: _g }); }
     if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
       const newEmail = String(req.body.email||'').trim().toLowerCase();
       if (!newEmail||!newEmail.includes('@')||!newEmail.includes('.')) return res.status(400).json({ message: 'بريد إلكتروني غير صحيح' });
@@ -5221,7 +5305,7 @@ app.get('/api/provider/bids', auth, async (req, res) => {
 
 app.get('/api/provider/projects', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max, r.image_url, r.images, r.project_number, r.status, r.assigned_at, r.completed_at, r.client_id, u.name as client_name, u.phone as client_phone, b.price, b.days, (SELECT status FROM completion_claims cc WHERE cc.request_id=r.id AND cc.provider_id=$1) AS claim_status, EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewed_id=$1) AS has_review FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN bids b ON b.request_id=r.id AND b.provider_id=$1 AND b.status='accepted' WHERE r.assigned_provider_id=$1 AND r.status IN ('in_progress','completed') AND (r.category IS DISTINCT FROM 'direct') ORDER BY r.assigned_at DESC NULLS LAST`, [req.user.id]);
+    const r = await pool.query(`SELECT r.id, r.title, r.description, r.category, r.city, r.budget_max, r.image_url, r.images, r.project_number, r.status, r.assigned_at, r.completed_at, r.client_id, u.name as client_name, u.phone as client_phone, b.price, b.days, (SELECT status FROM completion_claims cc WHERE cc.request_id=r.id AND cc.provider_id=$1) AS claim_status, EXISTS(SELECT 1 FROM reviews rv WHERE rv.request_id=r.id AND rv.reviewed_id=$1) AS has_review FROM requests r JOIN users u ON r.client_id=u.id LEFT JOIN bids b ON b.request_id=r.id AND b.provider_id=$1 AND b.status='accepted' WHERE r.assigned_provider_id=$1 AND r.status IN ('in_progress','completed') AND (r.category IS DISTINCT FROM 'direct') AND (r.award_pending_until IS NULL OR r.award_pending_until <= NOW()) ORDER BY r.assigned_at DESC NULLS LAST`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('/provider/projects:', e); res.json([]); }
 });
@@ -5491,6 +5575,7 @@ app.get('/api/requests/:id', optionalAuth, async (req, res) => {
     if (!(isOwner || isAdmin)) { ['notify_scope','notify_cities','notify_base','views_prov','award_prev','dup_hint','close_help','exec_draft','award_pending_until'].forEach(k => { delete row[k]; }); Object.keys(row).forEach(k => { if (/^followup_/.test(k)) delete row[k]; }); }
     if (!isAdmin) delete row.views_prov;
     // مهلة الـ5 دقايق بعد اختيار العرض: المزوّدين يشوفونه مفتوح لين ينعتمد (مثل /api/provider/bids)
+    if (!uid) row.attachments = _lockAtts(row.attachments);   // الملفات للمسجّلين بس (نفس الصفحة العامة)
     if (_awp && !(isOwner || isAdmin)) { row.status = 'open'; row.assigned_provider_id = null; row.assigned_at = null; row.provider_name = null; if (!isRealBidder) row.client_phone = null; }
     if (isOwner && ['closed_auto','expired','closed'].includes(row.status)) {
       const _base = row.closed_at || row.close_at || (row.created_at ? new Date(new Date(row.created_at).getTime() + 30*86400000) : null);
@@ -5689,6 +5774,9 @@ app.put('/api/requests/:id', auth, async (req, res) => {
     const own = await pool.query('SELECT client_id, status, images, attachments FROM requests WHERE id=$1', [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].client_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ message: 'ليس مشروعك' });
+    // بعد اختيار المزوّد: تفاصيل المشروع تثبت (اللي اتفقوا عليه) — التعديل عن طريق الإدارة
+    if (req.user.role !== 'admin' && ['in_progress','completed'].includes(own.rows[0].status) && ['title','description','category','city','budget_max','attachments','images','district'].some(k => Object.prototype.hasOwnProperty.call(req.body, k)))
+      return res.status(400).json({ message: 'اخترت مزوّد لهالمشروع — تفاصيله ما تتعدّل الحين. لو فيه تغيير تواصل مع فريق مناقصة' });
     await _geoFill(req.body);
     const { title, description, city, address, budget_max, deadline, geo_lat, geo_lng, attachments } = req.body;
     const _has = k => Object.prototype.hasOwnProperty.call(req.body, k);
@@ -5937,6 +6025,8 @@ app.post('/api/requests/:id/attachments', auth, async (req, res) => {
 app.put('/api/requests/:id/complete', auth, clientOnly, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    // لو لسا بمهلة التراجع: العميل كمّل = اعتمد الاختيار (نرسل «انقبل عرضك» أول ثم «اكتمل»)
+    try { const _p = (await pool.query('SELECT 1 FROM requests WHERE id=$1 AND client_id=$2 AND award_pending_until IS NOT NULL', [id, req.user.id])).rows[0]; if (_p) await _awardFinalize(id); } catch(e) {}
     const r = await pool.query(`UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 AND client_id=$2 AND assigned_provider_id IS NOT NULL AND status NOT IN ('completed','cancelled') RETURNING id, assigned_provider_id, title`, [id, req.user.id]);
     if (!r.rows.length) return res.status(400).json({ message: 'لا يمكن إنهاء المشروع (تأكد أنه قيد التنفيذ ومُسنَد لمزوّد)' });
     if (r.rows[0].assigned_provider_id) { recomputeProviderTier(r.rows[0].assigned_provider_id); }
@@ -5958,13 +6048,14 @@ app.put('/api/requests/:id/repost', auth, clientOnly, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     // مشروع أُغلق قبل ما ينعتمد → يرجع لقائمة المراجعة بدل ما ينشر مباشرة (يمنع تخطّي مراجعة الإدارة)
-    const _pre = (await pool.query('SELECT close_auto_kind, status FROM requests WHERE id=$1 AND client_id=$2', [id, req.user.id])).rows[0];
+    const _pre = (await pool.query('SELECT close_auto_kind, status, close_reason FROM requests WHERE id=$1 AND client_id=$2', [id, req.user.id])).rows[0];
+    if (_pre && _pre.close_reason === 'admin_closed') return res.status(403).json({ message:'المشروع قفلته الإدارة — تواصل مع فريق مناقصة' });
     if (_pre && _pre.close_auto_kind === 'unpublished' && ['closed_auto','cancelled','expired'].includes(_pre.status)) {
       await pool.query(`UPDATE requests SET status='pending_review', submitted_at=NOW(), closed_at=NULL, close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL WHERE id=$1`, [id]);
       return res.json({ ok:true, pending_review:true, message:'رجع مشروعك للمراجعة — ينشر بعد اعتماد الإدارة' });
     }
     const r = await pool.query(
-      `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, silent_stage=0, silent_at=NULL, revisit_at=NULL, assigned_provider_id=NULL, closed_at=NULL, close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
+      `UPDATE requests SET status='open', created_at=NOW(), confirm_requested_at=NULL, silent_stage=0, silent_at=NULL, revisit_at=NULL, assigned_provider_id=NULL, closed_at=NULL, close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL, close_at=NULL, published_at=NOW(), paused_at=NULL, paused_until=NULL, pause_bid_id=NULL
        WHERE id=$1 AND client_id=$2 AND status IN ('closed_auto','cancelled','expired')
        RETURNING id, title, category, city, client_id`, [id, req.user.id]);
     if(!r.rows.length) return res.status(404).json({ message:'غير موجود أو لا يمكن إعادة نشره' });
@@ -6187,16 +6278,18 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       || /^(.)\1{4,}$/.test(_noteBare);              // حرف واحد مكرّر (ااااا)
     if (_noteBad) return res.status(400).json({ message: 'اكتب رسالة احترافية للعميل (15 حرف على الأقل) توضّح خبرتك وطريقة تنفيذك — العروض العشوائية أو الفارغة تُرفض، وقد يُحظر الحساب عند تكرارها.', code: 'note_quality' });
     if (_hasUnfilledTemplate(note)) return res.status(400).json({ message: 'عبّئ القالب قبل الإرسال — استبدل الكلمات اللي بين الأقواس مثل (عدد) و(اشرح طريقتك) بمعلوماتك الحقيقية. العروض بالقالب الفاضي تُرفض.', code: 'template_unfilled' });
-    const reqRow = await pool.query('SELECT client_id, title, status, city FROM requests WHERE id=$1', [requestId]);
+    const reqRow = await pool.query('SELECT client_id, title, status, city, (award_pending_until > NOW()) AS awp FROM requests WHERE id=$1', [requestId]);
+    if (reqRow.rows[0] && reqRow.rows[0].awp) return res.status(409).json({ message: 'صاحب المشروع يراجع العروض الحين — جرّب بعد دقايق' });
     if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     if (reqRow.rows[0].client_id === req.user.id) return res.status(403).json({ message: 'لا يمكنك تقديم عرض على مشروعك' });
     if (reqRow.rows[0].status !== 'open') return res.status(400).json({ message: 'المشروع غير مفتوح للعروض' });
     try { const _iv = (await pool.query('SELECT invited_provider_id, invite_state FROM requests WHERE id=$1', [requestId])).rows[0];
       if (_iv && _iv.invite_state === 'exclusive' && String(_iv.invited_provider_id) !== String(req.user.id)) return res.status(403).json({ message: 'هذا المشروع موجّه لمزوّد محدد حالياً — ينفتح للجميع قريباً' }); } catch(e){}
-    const existing = await pool.query('SELECT id, status FROM bids WHERE request_id=$1 AND provider_id=$2', [requestId, req.user.id]);
+    const existing = await pool.query('SELECT id, status, (chance_until > NOW()) AS chance FROM bids WHERE request_id=$1 AND provider_id=$2', [requestId, req.user.id]);
     let row; let isUpdate = false;
     if (existing.rows.length) {
       if (existing.rows[0].status === 'accepted') return res.status(400).json({ message: 'عرضك مقبول مسبقاً' });
+      if (existing.rows[0].status === 'rejected' && !existing.rows[0].chance) return res.status(400).json({ message: 'العميل ما اختار عرضك على هالمشروع — ما تقدر تعدّله' });
       // COALESCE: لو ما رفع ملفاً جديداً نُبقي القديم
       const upd = await pool.query(`UPDATE bids SET price=$1, days=$2, note=$3, price_visibility=$4, price_unit=$5, attachment_url=COALESCE($6,attachment_url), attachment_hash=CASE WHEN $6::text IS NOT NULL THEN $9 ELSE attachment_hash END, created_at=NOW() WHERE request_id=$7 AND provider_id=$8 RETURNING *`, [price, days, note||null, priceVis, priceUnit, attUrl, requestId, req.user.id, attHash]);
       row = upd.rows[0]; isUpdate = true;
@@ -6322,9 +6415,12 @@ app.put('/api/bids/:id', auth, providerOnly, async (req, res) => {
     const own = await pool.query("SELECT provider_id, status, COALESCE(price_unit,'total') AS price_unit FROM bids WHERE id=$1", [id]);
     if (!own.rows.length) return res.status(404).json({ message: 'غير موجود' });
     if (own.rows[0].provider_id !== req.user.id) return res.status(403).json({ message: 'ليس عرضك' });
-    if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
-    { const _rs = (await pool.query('SELECT r.status, r.assigned_provider_id FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1', [id])).rows[0];
-      if (_rs && (_rs.status !== 'open' || _rs.assigned_provider_id)) return res.status(400).json({ message: 'المشروع ما عاد يستقبل عروض — ما تقدر تعدّل عرضك' }); }
+    { const _rs = (await pool.query('SELECT r.status, r.assigned_provider_id, (r.award_pending_until > NOW()) AS awp FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1', [id])).rows[0];
+      if (_rs && _rs.awp) return res.status(409).json({ message: 'صاحب المشروع يراجع العروض الحين — جرّب تعدّل بعد دقايق' });   // مهلة الاختيار: ما نكشف شي
+      if (own.rows[0].status === 'accepted') return res.status(400).json({ message: 'العرض مقبول ولا يمكن تعديله' });
+      if (_rs && (_rs.status !== 'open' || _rs.assigned_provider_id)) return res.status(400).json({ message: 'المشروع ما عاد يستقبل عروض — ما تقدر تعدّل عرضك' });
+      // عرض رفضه العميل: التعديل بس من «فرصة التحسين» (مرة وحدة وبسعر أقل)
+      if (own.rows[0].status === 'rejected') { const _ch = (await pool.query('SELECT (chance_until > NOW()) AS ok FROM bids WHERE id=$1', [id])).rows[0]; if (!(_ch && _ch.ok)) return res.status(400).json({ message: 'العميل ما اختار هذا العرض — ما تقدر تعدّله' }); } }
     let { price, days, note } = req.body;
     if (price != null && price !== '') { const _pf1 = parseFloat(_asciiDigits(price)); price = own.rows[0].price_unit === 'total' ? Math.round(_pf1) : Math.round(_pf1 * 100) / 100; if (!Number.isFinite(price) || price <= 0) return res.status(400).json({ message: 'السعر غير صحيح' }); } else price = null;
     if (days != null && days !== '') { days = parseInt(_asciiDigits(days)); if (!Number.isFinite(days) || days <= 0 || days > 3650) return res.status(400).json({ message: 'مدة التنفيذ غير صحيحة' }); } else days = null;
@@ -6540,7 +6636,7 @@ async function _awardFinalize(requestId){
       await pool.query(
         `INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status)
          VALUES ($1,$2,$3,$4,$5,'pending')
-         ON CONFLICT (request_id, provider_id) DO UPDATE SET status='pending', bid_id=EXCLUDED.bid_id, contract_value=EXCLUDED.contract_value, saai_amount=EXCLUDED.saai_amount WHERE saai_ledger.status='cancelled'`,
+         ON CONFLICT (request_id, provider_id) DO UPDATE SET bid_id=EXCLUDED.bid_id, contract_value=EXCLUDED.contract_value, saai_amount=EXCLUDED.saai_amount, status='pending', due_from=NOW(), submitted_at=NULL, proof_url=NULL, approved_at=NULL, decided_at=NULL, defer_kind=NULL, defer_state=NULL, defer_note=NULL, defer_until=NULL, defer_at=NULL, client_answer=NULL, client_answer_at=NULL, sub_reminded=FALSE WHERE saai_ledger.status='cancelled'`,
         [acceptedBid.request_id, acceptedBid.provider_id, bidId, _cval, _fee]);
     } catch(e){ console.error('saai accrue:', e.message); }
     await notify(acceptedBid.provider_id, 'تم قبول عرضك! 🎉', 'العميل قبل عرضك على «'+eEsc(acceptedBid.title)+'» — تواصل معه لإتمام العمل.'+(_fee>0?' سعي المنصة التقديري '+_fee.toLocaleString('en-US')+' ر.س (3% من سعر عرضك) — يُحسب النهائي على مبلغ اتفاقك الفعلي مع العميل، وتعدّله من «محفظة السعي» عند السداد خلال 10 أيام.':' سعي المنصة 3% من مبلغ اتفاقك النهائي مع العميل — حدّده من «محفظة السعي» وسدّده خلال 10 أيام.'), 'bid_accepted', acceptedBid.request_id);
@@ -6549,7 +6645,7 @@ async function _awardFinalize(requestId){
         const body = `<p>تهانينا <strong>${eEsc(acceptedProv.rows[0].name)}</strong>! تم قبول عرضك.</p><div style="background:#fff8e6;border:1px solid #fde68a;border-radius:10px;padding:14px;margin:16px 0"><div style="font-size:13px;color:#475569;line-height:1.9"><div><strong>العميل:</strong> ${eEsc(cName)}</div>${cPhone?`<div><strong>الجوال:</strong> ${cPhone}</div>`:''}<div><strong>السعر:</strong> ${Number(acceptedBid.price).toLocaleString('en-US')} ر.س</div><div><strong>المدة:</strong> ${acceptedBid.days} يوم</div></div></div>`;
         sendEmail(acceptedProv.rows[0].email, subject, emailTpl(subject, body, 'فتح المشروع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
       }
-      const rejected = await pool.query(`SELECT b.provider_id, u.name, u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 AND b.id!=$2 AND b.status='rejected'`, [acceptedBid.request_id, bidId]);
+      const rejected = await pool.query(`SELECT b.provider_id, u.name, u.email FROM bids b JOIN users u ON b.provider_id=u.id WHERE b.request_id=$1 AND b.id!=$2 AND b.status='rejected' AND b.rejected_at IS NULL AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')`, [acceptedBid.request_id, bidId]);   // بس اللي انرفضوا بسبب هالاختيار (مو اللي رفضهم العميل قبل أو المخفية)
       for (const rej of rejected.rows) {
         await notify(rej.provider_id, 'رست على مزوّد آخر هالمرة', `اختار العميل عرضاً آخر على «${eEsc(acceptedBid.title)}». نصيحة للمرّة الجاية: قدّم سعراً منافساً مع إبراز جودتك وخبرتك، وردّ بسرعة — فرص جديدة تنتظرك.`, 'bid_rejected', acceptedBid.request_id);
         if (rej.email) sendEmail(rej.email, `تحديث عرضك على «${eEsc(acceptedBid.title)}»`, emailTpl('رست على مزوّد آخر هالمرة', `<p>عزيزي <strong>${eEsc(rej.name)}</strong>،</p><p>اختار العميل عرضاً آخر على «${eEsc(acceptedBid.title)}» — لا بأس، فرص كثيرة قادمة.</p><div style="background:#f0f6ff;border:1px solid #cdddf9;border-radius:10px;padding:14px;margin:16px 0"><div style="font-weight:800;color:#1e40af;margin-bottom:8px">لتزيد فرص قبولك المرّة الجاية:</div><ul style="margin:0;padding-right:18px;color:#334155;line-height:2;font-size:14px"><li>قدّم <strong>سعراً منافساً</strong> يوازن بين القيمة والجودة</li><li>أبرز <strong>خبرتك وأعمالك السابقة</strong> في وصف العرض</li><li><strong>بادر بسرعة</strong> — العروض المبكرة تلفت انتباه العميل</li><li>أضف <strong>تفاصيل واضحة</strong> عن المدة وما يشمله العرض</li></ul></div>`, 'تصفّح المشاريع', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
@@ -6607,9 +6703,14 @@ app.post('/api/requests/:id/award-undo', auth, rateLimiter(20, 600000), async (r
     const rq = (await pool.query('SELECT * FROM requests WHERE id=$1', [id])).rows[0];
     if (!rq || String(rq.client_id) !== String(req.user.id)) return res.status(404).json({ message: 'غير موجود' });
     // نحجزها ذرّياً: لو انتهت المهلة أو انرسلت الإشعارات ما نتراجع
-    const ok = (await pool.query('UPDATE requests SET award_pending_until=NULL WHERE id=$1 AND award_pending_until > NOW() RETURNING id', [id])).rows[0];
+    const ok = (await pool.query("UPDATE requests SET award_pending_until=NULL WHERE id=$1 AND award_pending_until > NOW() AND status='in_progress' RETURNING id", [id])).rows[0];
     if (!ok) return res.status(400).json({ message: 'انتهت مهلة التراجع — تواصل مع فريق مناقصة لو تحتاج تغيّر' });
-    await _awardRevert(rq);
+    try { await _awardRevert(rq); }
+    catch(e) {   // ما كمل التراجع: نرجّع المهلة دقيقة عشان الاعتماد التلقائي يكمّل الصفقة بدل ما تعلق
+      console.error('award undo revert:', e.message);
+      await pool.query("UPDATE requests SET award_pending_until=NOW()+INTERVAL '1 minute' WHERE id=$1 AND status='in_progress' AND assigned_provider_id IS NOT NULL", [id]).catch(()=>{});
+      return res.status(500).json({ message: 'ما قدرنا نتراجع — حاول مرة ثانية' });
+    }
     try { await addTimeline(id, 'award_undo', 'العميل تراجع عن اختياره خلال دقايق'); } catch(e){}
     res.json({ ok: true });
   } catch(e) { console.error('award undo:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -6728,7 +6829,7 @@ app.put('/api/admin/bids/:id/reject', requirePermission('bids.delete'), async (r
     const reason = String(req.body.reason||'').trim();
     const b = await pool.query('SELECT b.provider_id, r.title FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1', [bidId]);
     if (!b.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    await pool.query("UPDATE bids SET status='rejected' WHERE id=$1", [bidId]);
+    await pool.query("UPDATE bids SET status='rejected', hold_state='rejected', rejected_at=COALESCE(rejected_at,NOW()), chance_until=NULL WHERE id=$1", [bidId]);
     await notify(b.rows[0].provider_id, '❌ رُفض عرضك', `رُفض عرضك على "${eEsc(b.rows[0].title)}" من إدارة المنصة${reason?': '+eEsc(reason):''}.`, 'bid_rejected', null);
     await logAdmin(req, 'reject_bid', 'bid', bidId, 'رفض عرض');
     res.json({ ok: true });
@@ -6910,8 +7011,8 @@ app.post('/api/client/claims/:id/answer', auth, async (req, res) => {
       if (c.kind === 'awarded') {
         const u = await client.query(`UPDATE requests SET status='completed', completed_at=NOW() WHERE id=$1 AND assigned_provider_id=$2 AND status NOT IN ('completed','cancelled') RETURNING id`, [c.request_id, c.provider_id]);
         if (!u.rows.length && c.req_status !== 'completed') throw Object.assign(new Error('state'), { http: 'المشروع تغيّرت حالته — حدّث الصفحة' });
-        if (val && val !== parseInt(c.value)) await client.query(`UPDATE saai_ledger SET contract_value=$3, saai_amount=$4 WHERE request_id=$1 AND provider_id=$2 AND status='pending'`, [c.request_id, c.provider_id, val, fee]);
         await client.query(`UPDATE saai_ledger SET status='pending', defer_state='resumed', due_from=COALESCE(due_from, NOW()) WHERE request_id=$1 AND provider_id=$2 AND status='deferred'`, [c.request_id, c.provider_id]);
+        if (val && val !== parseInt(c.value)) await client.query(`UPDATE saai_ledger SET contract_value=$3, saai_amount=$4 WHERE request_id=$1 AND provider_id=$2 AND status='pending'`, [c.request_id, c.provider_id, val, fee]);   // بعد ما يرجع المؤجّل مستحق
       } else {
         const lk = await client.query(`UPDATE requests SET status='completed', assigned_provider_id=$2, assigned_at=COALESCE(assigned_at, NOW()), completed_at=NOW(),
             close_reason=NULL, close_reason_note=NULL, close_auto_kind=NULL, close_auto_days=NULL
@@ -6920,7 +7021,8 @@ app.post('/api/client/claims/:id/answer', auth, async (req, res) => {
         await client.query(`UPDATE bids SET status='accepted', chance_until=NULL WHERE id=$1`, [c.bid_id]);
         await client.query(`UPDATE bids SET status='rejected', chance_until=NULL WHERE request_id=$1 AND id<>$2`, [c.request_id, c.bid_id]);
         await client.query(`INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status, due_from)
-          VALUES ($1,$2,$3,$4,$5,'pending',NOW()) ON CONFLICT (request_id, provider_id) DO UPDATE SET contract_value=EXCLUDED.contract_value, saai_amount=EXCLUDED.saai_amount
+          VALUES ($1,$2,$3,$4,$5,'pending',NOW()) ON CONFLICT (request_id, provider_id) DO UPDATE SET contract_value=EXCLUDED.contract_value, saai_amount=EXCLUDED.saai_amount, bid_id=EXCLUDED.bid_id,
+            status='pending', due_from=CASE WHEN saai_ledger.status='cancelled' THEN NOW() ELSE saai_ledger.due_from END
           WHERE saai_ledger.status IN ('pending','cancelled')`, [c.request_id, c.provider_id, c.bid_id, val, fee]);
       }
       await client.query(`UPDATE completion_claims SET status='confirmed', client_value=$2, responded_at=NOW() WHERE id=$1`, [id, val || null]);
@@ -7350,8 +7452,8 @@ app.post('/api/admin/saai/:id/edit', requirePermission('settings.manage'), async
 app.post('/api/admin/saai/:id/approve', requirePermission('settings.manage'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query("UPDATE saai_ledger SET status='approved', approved_at=NOW(), decided_at=NOW() WHERE id=$1 RETURNING provider_id, request_id, saai_amount", [id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    const r = await pool.query("UPDATE saai_ledger SET status='approved', approved_at=NOW(), decided_at=NOW() WHERE id=$1 AND status IN ('submitted','pending','deferred') RETURNING provider_id, request_id, saai_amount", [id]);
+    if (!r.rows.length) { const ex = (await pool.query('SELECT status FROM saai_ledger WHERE id=$1', [id])).rows[0]; return res.status(ex ? 409 : 404).json({ message: ex ? (ex.status === 'approved' ? 'معتمد من قبل' : 'هذا السعي ملغي') : 'غير موجود' }); }
     // سداد ذاتي على مشروع ما انرسى داخل المنصة ← نعتبرها ترسية لهالمزوّد (يدخل في سجله ويقدر يطلب تقييم)
     if (req.body && req.body.mark_deal && r.rows[0].request_id) {
       try {
@@ -7377,14 +7479,17 @@ app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
     const id = parseInt(req.params.id);
     const newVal = Math.max(0, parseFloat(req.body.contract_value)||0);
     const proof = req.body.proof || null;
-    if (!newVal) return res.status(400).json({ message: 'أدخل مبلغ العقد' });
+    if (newVal < 50) return res.status(400).json({ message: 'أدخل مبلغ العقد اللي اتفقتوا عليه' });
     const row = (await pool.query('SELECT * FROM saai_ledger WHERE id=$1 AND provider_id=$2', [id, req.user.id])).rows[0];
     if (!row) return res.status(404).json({ message: 'السجل غير موجود' });
     if (row.status === 'approved') return res.status(400).json({ message: 'هذا السعي معتمد مسبقاً' });
     let proofUrl = row.proof_url;
     if (proof && typeof proof === 'string' && proof.startsWith('data:')) {
-      try { proofUrl = await uploadPrivate(proof, 'saai', 'saai-'+id+'-'+Date.now()); } catch(e){ proofUrl = row.proof_url; }
+      let _up = null; try { _up = await uploadPrivate(proof, 'saai', 'saai-'+id+'-'+Date.now()); } catch(e){}
+      if (!_up || String(_up).startsWith('data:')) return res.status(400).json({ message: 'تعذّر رفع الإيصال — صورة أو PDF وأقل من 10 ميجا' });
+      proofUrl = _up;
     }
+    if (!proofUrl) return res.status(400).json({ message: 'ارفع إيصال التحويل' });
     const newFee = Math.round(newVal * 0.03);
     // سجل التعديل لو تغيّر المبلغ
     let log = row.edits_log || [];
@@ -7397,6 +7502,7 @@ app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
       `UPDATE saai_ledger SET contract_value=$1, saai_amount=$2, proof_url=$3, status='submitted', submitted_at=NOW(), edits_log=$4::jsonb WHERE id=$5`,
       [newVal, newFee, proofUrl, JSON.stringify(log), id]);
     res.json({ ok: true });
+    try { await _notifyAdmins('💰 مزوّد رفع إيصال سعي', `${newFee.toLocaleString('en-US')} ر.س على عقد ${newVal.toLocaleString('en-US')} ر.س — يحتاج اعتماد`, 'saai', id); } catch(e) {}
   } catch(e){ console.error('saai-submit:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 
@@ -7447,7 +7553,7 @@ app.post('/api/client/saai-questions/:id', auth, async (req, res) => {
     if (ans === 'postponed') {
       const st = (x.defer_count || 0) >= 2 ? 'await_admin' : 'confirmed';
       q = [`UPDATE saai_ledger SET defer_state=$2, client_answer=$3, client_answer_at=NOW() WHERE id=$1`, [id, st, ans]];
-      pmsg = st === 'confirmed' ? `العميل أكّد التأجيل على ${T} — السعي متوقف لين ${new Date(x.defer_until).toLocaleDateString('en-GB')} وبعدها نسألكم «بدأتوا؟».` : `العميل أكّد التأجيل الثاني على ${T} — بانتظار موافقة الإدارة.`;
+      pmsg = st === 'confirmed' ? `العميل أكّد التأجيل على ${T} — السعي متوقف لين ${new Date(x.defer_until).toLocaleDateString('en-GB',{timeZone:'Asia/Riyadh'})} وبعدها نسألكم «بدأتوا؟».` : `العميل أكّد التأجيل الثاني على ${T} — بانتظار موافقة الإدارة.`;
       if (st === 'await_admin') admin = ['⏸ تأجيل سعي ثاني ينتظر موافقتك', `${T} — العميل أكّد التأجيل`];
     } else if (ans === 'cancelled') {
       q = [`UPDATE saai_ledger SET status='cancelled', defer_state='client_cancel', client_answer=$2, client_answer_at=NOW() WHERE id=$1`, [id, ans]];
@@ -7466,7 +7572,7 @@ app.post('/api/client/saai-questions/:id', auth, async (req, res) => {
 app.post('/api/admin/saai/:id/defer-action', requirePermission('settings.manage'), async (req, res) => {
   try {
     const id = parseInt(req.params.id); const act = String(req.body && req.body.action || '');
-    const x = (await pool.query(`SELECT s.*, r.title FROM saai_ledger s JOIN requests r ON r.id=s.request_id WHERE s.id=$1`, [id])).rows[0];
+    const x = (await pool.query(`SELECT s.*, COALESCE(r.title, s.self_title, sr.title, 'طلب باطن') AS title FROM saai_ledger s LEFT JOIN requests r ON r.id=s.request_id LEFT JOIN sub_requests sr ON sr.id=s.sub_id WHERE s.id=$1`, [id])).rows[0];   // سعي الباطن والسعي الذاتي ما لهم مشروع
     if (!x) return res.status(404).json({ message: 'غير موجود' });
     if (x.status === 'approved' || x.status === 'submitted') return res.status(400).json({ message: 'ما يمكن على سعي مسدّد' });
     const T = '«' + (x.title || 'مشروع') + '»'; let msg, pmsg;
@@ -7477,7 +7583,7 @@ app.post('/api/admin/saai/:id/defer-action', requirePermission('settings.manage'
       if (!x.defer_until) return res.status(400).json({ message: 'ما فيه تاريخ تأجيل' });
       const until = new Date(x.defer_until) > new Date() ? x.defer_until : new Date(Date.now() + 30 * 86400000);
       await pool.query(`UPDATE saai_ledger SET status='deferred', defer_kind='postpone', defer_until=$2, defer_state='confirmed', decided_at=NOW() WHERE id=$1`, [id, until]);
-      msg = 'اعتُمد التأجيل'; pmsg = `اعتمدت الإدارة تأجيل السعي على ${T} لين ${new Date(until).toLocaleDateString('en-GB')}.`;
+      msg = 'اعتُمد التأجيل'; pmsg = `اعتمدت الإدارة تأجيل السعي على ${T} لين ${new Date(until).toLocaleDateString('en-GB',{timeZone:'Asia/Riyadh'})}.`;
     } else if (act === 'cancel') {
       await pool.query(`UPDATE saai_ledger SET status='cancelled', defer_state='admin_cancel', decided_at=NOW() WHERE id=$1`, [id]);
       msg = 'انلغى السعي'; pmsg = `انلغى السعي على ${T} بقرار الإدارة.`;
@@ -7530,7 +7636,7 @@ app.post('/api/provider/saai/self', auth, rateLimiter(10, 600000), async (req, r
       bidId = b.id;
     }
     const proofUrl = proof.startsWith('data:') ? await uploadPrivate(proof, 'saai', 'saai-self-' + req.user.id + '-' + Date.now()) : _safeUrl(proof);
-    if (!proofUrl) return res.status(400).json({ message: 'تعذّر رفع الإيصال — صورة أو PDF فقط' });
+    if (!proofUrl || String(proofUrl).startsWith('data:')) return res.status(400).json({ message: 'تعذّر رفع الإيصال — صورة أو PDF فقط' });
     const fee = Math.round(val * 0.03);
     const note = _cleanTxt(req.body.note || '', 200) || null;
     let id;
@@ -7871,7 +7977,9 @@ app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
     let attUrl = attachment_url || null;
     if (attUrl && !String(attUrl).startsWith('data:')) { attUrl = _safeUrl(attUrl); if (!attUrl) return res.status(400).json({ message: 'رابط المرفق غير صالح' }); }
     if (attUrl && String(attUrl).startsWith('data:')) {
-      try { const up = await uploadPrivate(attUrl, 'chat', attachment_name || (String(attachment_type||'').indexOf('audio')===0?'voice.webm':'file')); if (up) attUrl = up; } catch(e){}
+      let up = null; try { up = await uploadPrivate(attUrl, 'chat', attachment_name || (String(attachment_type||'').indexOf('audio')===0?'voice.webm':'file')); } catch(e){}
+      if (!up || String(up).startsWith('data:')) return res.status(400).json({ message: 'تعذّر رفع المرفق — صور، PDF أو تسجيل صوتي، وأقل من 10 ميجا' });
+      attUrl = up;
     }
     const r = await pool.query(
       `INSERT INTO messages (request_id, sender_id, receiver_id, content, attachment_url, attachment_type, attachment_name, reply_to, waveform, created_at)
@@ -7923,9 +8031,12 @@ app.get('/api/requests/:id/my-review', auth, async (req, res) => {
 
 app.post('/api/reviews', auth, async (req, res) => {
   try {
-    const { request_id, reviewed_id, rating, comment, images } = req.body;
+    let { request_id, reviewed_id, rating, comment, images } = req.body;
+    rating = Math.round(parseFloat(rating));
     if (!request_id||!reviewed_id||!rating) return res.status(400).json({ message: 'البيانات ناقصة' });
     if (rating<1||rating>5) return res.status(400).json({ message: 'التقييم من 1 إلى 5' });
+    images = Array.isArray(images) ? images.filter(u => typeof u === 'string' && /^https?:\/\//.test(u)).slice(0, 6) : null;
+    if (comment != null) comment = String(comment).slice(0, 2000);
     const reqRow = await pool.query('SELECT status, title, client_id, assigned_provider_id FROM requests WHERE id=$1', [request_id]);
     if (!reqRow.rows.length) return res.status(404).json({ message: 'المشروع غير موجود' });
     if (reqRow.rows[0].status !== 'completed') return res.status(400).json({ message: 'يجب أن يكون المشروع مكتملاً' });
@@ -8976,6 +9087,8 @@ app.put('/api/admin/bids/:id', requirePermission('bids.edit'), async (req, res) 
 app.delete('/api/admin/bids/:id', requirePermission('bids.delete'), async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    { const b0 = (await pool.query('SELECT status FROM bids WHERE id=$1', [id])).rows[0];
+      if (b0 && b0.status === 'accepted') return res.status(400).json({ message: 'هذا العرض المختار للمشروع — استخدم «إلغاء الترسية» أول، بعدها تقدر تحذفه' }); }
     const r = await pool.query('DELETE FROM bids WHERE id=$1 RETURNING id, request_id, provider_id', [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'العرض غير موجود' });
     try { await pool.query("UPDATE contact_unlocks SET bid_deleted_by='admin', bid_deleted_at=NOW() WHERE request_id=$1 AND provider_id=$2", [r.rows[0].request_id, r.rows[0].provider_id]); } catch(_) {}
@@ -9127,7 +9240,7 @@ function _renderOffersReportHTML(proj, bids) {
     const acc=b.status==='accepted'?' <span style="background:#dcfce7;color:#166534;padding:1px 7px;border-radius:20px;font-size:10px;font-weight:800">مقبول</span>':'';
     return `<tr><td style="text-align:center;color:#94a3b8;font-weight:800">${i+1}</td><td><div style="font-weight:800;color:#0f2a4f">${nm}${acc}</div><div style="font-size:11px;color:#64748b">${meta}</div></td><td style="font-weight:900;color:#1e40af;white-space:nowrap">${pr}</td><td style="text-align:center;white-space:nowrap">${b.days?e2(b.days)+' يوم':'—'}</td><td style="font-size:11px;color:#475569;line-height:1.7">${e2(b.note||'')}${b.attachment_url?' <span style="color:#1e40af;font-weight:700">(مرفق ملف)</span>':''}</td></tr>`;
   }).join('');
-  const today=new Date().toLocaleDateString('en-GB');
+  const today=new Date().toLocaleDateString('en-GB',{timeZone:'Asia/Riyadh'});
   return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تقرير العروض — ${e2(proj.title||'')}</title><link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&family=Cairo:wght@700;900&display=swap" rel="stylesheet"><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Tajawal,sans-serif;color:#1e293b;padding:34px;background:#fff}.hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #1e40af;padding-bottom:15px;margin-bottom:20px}.brand{font-family:Cairo,sans-serif;font-size:26px;font-weight:900;color:#0f2a4f}.brand span{color:#1e40af}.pbox{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:15px;margin-bottom:16px}.pbox h1{font-size:16px;color:#0f2a4f;margin-bottom:6px}.pmeta{font-size:12px;color:#64748b;line-height:1.9}.cnt{font-size:13px;font-weight:800;color:#1e40af;margin-bottom:10px}table{width:100%;border-collapse:collapse}th{background:#0f2a4f;color:#fff;font-size:11px;padding:9px;text-align:right;font-weight:700}td{border-bottom:1px solid #e2e8f0;padding:9px;font-size:12px;vertical-align:top}tr:nth-child(even) td{background:#fafbfc}.ft{margin-top:22px;padding-top:13px;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;display:flex;justify-content:space-between}.pb{position:fixed;top:16px;left:16px;background:#1e40af;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-family:Tajawal;font-size:14px;font-weight:800;cursor:pointer}@media print{.pb{display:none}body{padding:0}}</style></head><body><button class="pb" onclick="window.print()">حفظ PDF / طباعة</button><div class="hd"><div><div class="brand">مناقص<span>ة</span></div><div style="font-size:13px;color:#64748b;margin-top:2px">تقرير العروض المقدّمة على المشروع</div></div><div style="text-align:left;font-size:11px;color:#94a3b8">تاريخ التقرير<br>${today}</div></div><div class="pbox"><h1>${e2(proj.title||'—')}</h1><div class="pmeta">رقم المشروع: #${proj.id} · التصنيف: ${e2(proj.category||'—')} · المدينة: ${e2(proj.city||'—')}<br>العميل: ${e2(proj.client_name||'—')}</div></div><div class="cnt">عدد العروض المقدّمة: ${bids.length}</div><table><thead><tr><th style="width:28px">#</th><th>المزوّد</th><th>السعر</th><th style="text-align:center">المدة</th><th>ملاحظة العرض</th></tr></thead><tbody>${rows||'<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:22px">لا توجد عروض بعد</td></tr>'}</tbody></table><div class="ft"><span>منصة مناقصة · manaqasa.com</span><span>تقرير رسمي</span></div></body></html>`;
 }
 
@@ -10994,8 +11107,12 @@ app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), 
       return res.status(400).json({ message: action==='needs_edit' ? 'اكتب ملاحظات التعديل للعميل' : 'اكتب سبب الرفض' });
     }
     const newStatus = action==='approve' ? 'open' : (action==='needs_edit' ? 'needs_edit' : 'rejected');
-    const r = await pool.query(`UPDATE requests SET status=$1, review_notes=$2 WHERE id=$3 RETURNING id, client_id, title, category, city, status`, [newStatus, action==='approve' ? null : (reason||null), id]);
-    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    // الاعتماد بس من حالات المراجعة (ضغطتين أو شاشة قديمة ما تعيد الإشعارات ولا تفتح مشروع منرسي/مقفل)
+    const _from = action==='approve' ? ['pending_review','review','needs_edit','rejected'] : ['pending_review','review','needs_edit','rejected','open'];
+    const r = await pool.query(`UPDATE requests SET status=$1, review_notes=$2 WHERE id=$3 AND status = ANY($4::text[]) RETURNING id, client_id, title, category, city, status`, [newStatus, action==='approve' ? null : (reason||null), id, _from]);
+    if (!r.rows.length) { const ex = (await pool.query('SELECT status FROM requests WHERE id=$1', [id])).rows[0]; return res.status(ex ? 409 : 404).json({ message: ex ? 'حالة المشروع تغيّرت — حدّث الصفحة' : 'غير موجود' }); }
+    // المدة اللي اختارها العميل تبدأ من الاعتماد (مو من يوم ما كتب المشروع)
+    if (action === 'approve') { try { await pool.query(`UPDATE requests SET close_at = NOW() + GREATEST(close_at - created_at, INTERVAL '1 day') WHERE id=$1 AND close_at IS NOT NULL AND COALESCE(close_set_by,'') = 'client'`, [id]); } catch(e) { console.error('approve close_at:', e.message); } }
     const row = r.rows[0];
     if (action === 'approve' && req.body.audience && typeof req.body.audience === 'object') {
       try { const A = req.body.audience; const sc = ['city','region','cities','all'].includes(A.scope) ? A.scope : 'city';
@@ -11146,7 +11263,7 @@ async function _pauseResume(id, by){
       close_at = CASE WHEN close_at IS NOT NULL THEN close_at + (NOW() - paused_at) ELSE close_at END,
       paused_total_sec = COALESCE(paused_total_sec,0) + CASE WHEN close_at IS NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (NOW() - paused_at)))::int ELSE 0 END,
       paused_at = NULL, paused_until = NULL, pause_bid_id = NULL, pause_asked_at = NULL, published_at = NOW()
-    WHERE id=$1 AND paused_at IS NOT NULL RETURNING id, title, client_id`, [id])).rows[0];
+    WHERE id=$1 AND paused_at IS NOT NULL AND status='open' RETURNING id, title, client_id`, [id])).rows[0];
   if (!r) return null;
   try { await pool.query(`UPDATE pause_log SET ended_at=NOW(), outcome=$2 WHERE request_id=$1 AND ended_at IS NULL`, [id, by === 'auto' ? 'auto_resumed' : 'resumed']); } catch(e) {}
   try { await _pauseNotifyBidders({ id: r.id, title: r.title }, 'resumed'); } catch(e) {}
@@ -11235,7 +11352,7 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
     const _unpub = ['pending_review','review','needs_edit','rejected'].includes(r.rows[0].status);
     const _miss = reason === 'no_suitable_offers' && ['price','far','few','weak'].includes(req.body.missing) ? req.body.missing : null;
     const _help = reason === 'no_suitable_offers' && req.body.help === true;
-    await pool.query("UPDATE requests SET status='closed_auto', close_reason=$1, close_reason_note=$2, closed_at=NOW(), close_auto_kind=$4, close_missing=$5, close_help=$6, close_help_done=FALSE WHERE id=$3", [reason, note||null, id, _unpub ? 'unpublished' : null, _miss, _help]);
+    await pool.query("UPDATE requests SET status='closed_auto', paused_at=NULL, paused_until=NULL, pause_bid_id=NULL, close_reason=$1, close_reason_note=$2, closed_at=NOW(), close_auto_kind=$4, close_missing=$5, close_help=$6, close_help_done=FALSE WHERE id=$3", [reason, note||null, id, _unpub ? 'unpublished' : null, _miss, _help]);
     if (_help) { try { await _notifyAdmins('🙋 عميل يبي مساعدة يلقى مزوّد', `«${_projTitle}» — ما لقى عرض مناسب${_miss ? ' (' + ({price:'الأسعار عالية',far:'ما فيه مزوّد قريب',few:'العروض قليلة',weak:'العروض ضعيفة'})[_miss] + ')' : ''}. تواصل معه من «أسباب الإغلاق».`, 'close_help', id); } catch(e){} }
     try { await remindClosedContacts(id, _projTitle); } catch(e){}
     // إشعار المزوّدين الذين قدّموا عروضاً — رسالة محايدة بلا كشف السبب، مرّة واحدة فقط عند الإغلاق من حالة "مفتوح"
@@ -11357,7 +11474,7 @@ app.post('/api/admin/requests/:id/close', requirePermission('requests.edit'), as
     const st = r.rows[0].status;
     if (['completed','in_progress','assigned'].includes(st)) return res.status(400).json({ message: 'لا يمكن إغلاق مشروع تمت ترسيته أو اكتمل' });
     const note = String(req.body && req.body.reason || '').trim().slice(0, 300) || null;
-    const up = await pool.query("UPDATE requests SET status='closed_auto', close_reason='admin_closed', close_note=$2, closed_at=NOW() WHERE id=$1 RETURNING client_id, title", [id, note]);
+    const up = await pool.query("UPDATE requests SET status='closed_auto', close_reason='admin_closed', close_note=$2, closed_at=NOW(), paused_at=NULL, paused_until=NULL, pause_bid_id=NULL WHERE id=$1 RETURNING client_id, title", [id, note]);
     try { await logAdmin(req, 'close_request', 'request', id, 'إغلاق مشروع: ' + ((up.rows[0]||{}).title||'') + (note ? ' — ' + note : '')); } catch(_){}
     if (req.body && req.body.notify_client && up.rows[0]) {
       try { await notify(up.rows[0].client_id, 'تم إغلاق مشروعك', `أُغلق مشروعك "${up.rows[0].title}" من فريق المنصة${note ? ' — ' + note : ''}. تقدر تتواصل معنا لو تحتاج مساعدة.`, 'request', id); } catch(_){}
@@ -13063,7 +13180,7 @@ app.get('/api/sub/:id', auth, providerOnly, async (req, res) => {
     if (isOwner) {
       let k = s.share_key; if (!k) { k = crypto.randomBytes(6).toString('hex'); await pool.query('UPDATE sub_requests SET share_key=$1 WHERE id=$2 AND share_key IS NULL', [k, id]); k = (await pool.query('SELECT share_key FROM sub_requests WHERE id=$1', [id])).rows[0].share_key; }
       out.share_url = SITE_URL + '/s/' + k;
-      if (s.status === 'awarded') { const l = (await pool.query("SELECT defer_state, status FROM saai_ledger WHERE sub_id=$1", [id])).rows[0]; if (l && l.status === 'deferred' && l.defer_state === 'asked') out.nodeal_ask = true; }
+      if (s.status === 'awarded') { const l = (await pool.query("SELECT defer_state, status FROM saai_ledger WHERE sub_id=$1", [id])).rows[0]; if (l && l.status === 'deferred' && (l.defer_state === 'asked' || l.defer_state === 'noreply')) out.nodeal_ask = true; }
       out.threads = (await pool.query(`SELECT m.other, COALESCE(NULLIF(u.business_name,''),u.name) AS name, u.profile_image, MAX(m.created_at) AS last_at, COUNT(*) FILTER (WHERE m.receiver_id=$2 AND m.read_at IS NULL)::int AS unread,
           (SELECT body FROM sub_msgs z WHERE z.sub_id=$1 AND (z.sender_id=m.other OR z.receiver_id=m.other) ORDER BY z.id DESC LIMIT 1) AS last_body
         FROM (SELECT CASE WHEN sender_id=$2 THEN receiver_id ELSE sender_id END AS other, created_at, receiver_id, read_at FROM sub_msgs WHERE sub_id=$1) m JOIN users u ON u.id=m.other
@@ -13139,8 +13256,9 @@ app.post('/api/sub/:id/accept', auth, providerOnly, async (req, res) => {
     if (s.status !== 'open') return res.status(400).json({ message: 'الطلب مغلق' });
     const o = (await pool.query('SELECT * FROM sub_offers WHERE id=$1 AND sub_id=$2', [oid, id])).rows[0];
     if (!o) return res.status(404).json({ message: 'العرض غير موجود' });
+    const _lk = await pool.query("UPDATE sub_requests SET status='awarded', awarded_offer_id=$1, closed_at=NOW(), work_state=NULL, started_at=NULL, done_at=NULL, fu_next=NOW() + INTERVAL '3 days' WHERE id=$2 AND status='open' RETURNING id", [oid, id]);
+    if (!_lk.rows.length) return res.status(409).json({ message: 'الطلب انقفل أو انعتمد فيه عرض' });
     await pool.query("UPDATE sub_offers SET status=CASE WHEN id=$1 THEN 'accepted' ELSE 'rejected' END WHERE sub_id=$2", [oid, id]);
-    await pool.query("UPDATE sub_requests SET status='awarded', awarded_offer_id=$1, closed_at=NOW(), work_state=NULL, started_at=NULL, done_at=NULL, fu_next=NOW() + INTERVAL '3 days' WHERE id=$2", [oid, id]);
     await _subSaai(s, o);
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [req.user.id])).rows[0].nm;
     notify(o.provider_id, '🎉 ' + (nm || 'المقاول') + ' اعتمد عرضك', 'على «' + _subT(s).slice(0, 60) + '» — تواصلوا واتفقوا. سعي المنصة 3% انضاف في محفظة السعي حقتك', 'sub', id, { kind: 'sub_won', url: '/dashboard-provider.html#sub/' + id }).catch(()=>{});
@@ -13165,7 +13283,7 @@ async function _subSaai(s, o){
     const val = parseInt(o.price) || 0, fee = Math.round(val * 0.03);
     const title = '🤝 مقاول باطن: ' + s.category + ' — ' + _subT(s).slice(0, 60);
     await pool.query(`INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status, due_from, source, self_title, sub_id)
-      VALUES (NULL,$1,NULL,$2,$3,'pending',NOW(),'sub',$4,$5) ON CONFLICT (sub_id) WHERE sub_id IS NOT NULL DO UPDATE SET provider_id=EXCLUDED.provider_id, contract_value=EXCLUDED.contract_value, saai_amount=EXCLUDED.saai_amount, status='pending', defer_kind=NULL, defer_state=NULL
+      VALUES (NULL,$1,NULL,$2,$3,'pending',NOW(),'sub',$4,$5) ON CONFLICT (sub_id) WHERE sub_id IS NOT NULL DO UPDATE SET provider_id=EXCLUDED.provider_id, contract_value=EXCLUDED.contract_value, saai_amount=EXCLUDED.saai_amount, status='pending', defer_kind=NULL, defer_state=NULL, defer_note=NULL, defer_until=NULL, defer_at=NULL, due_from=NOW(), sub_reminded=FALSE, submitted_at=NULL, proof_url=NULL
       WHERE saai_ledger.status IN ('pending','cancelled','deferred')`, [o.provider_id, val, fee, title, s.id]);
   } catch(e){ console.error('sub saai:', e.message); }
 }
@@ -13188,13 +13306,13 @@ app.post('/api/sub/:id/nodeal-answer', auth, providerOnly, async (req, res) => {
     const id = parseInt(req.params.id), yes = !!(req.body && req.body.yes);
     const s = (await pool.query('SELECT * FROM sub_requests WHERE id=$1 AND provider_id=$2', [id, req.user.id])).rows[0];
     if (!s) return res.status(403).json({ message: 'ليس طلبك' });
-    const l = (await pool.query("SELECT * FROM saai_ledger WHERE sub_id=$1 AND status='deferred' AND defer_state='asked'", [id])).rows[0];
+    const l = (await pool.query("SELECT * FROM saai_ledger WHERE sub_id=$1 AND status='deferred' AND defer_state IN ('asked','noreply')", [id])).rows[0];   // حتى لو تأخر بالرد (noreply)
     if (!l) return res.status(400).json({ message: 'ما فيه سؤال معلّق' });
     if (yes) {
       await pool.query("UPDATE saai_ledger SET status='cancelled', defer_state='confirmed', client_answer='yes', decided_at=NOW() WHERE id=$1", [l.id]);
       await pool.query("UPDATE sub_offers SET status='rejected' WHERE id=$1", [s.awarded_offer_id]);
       await pool.query("UPDATE sub_offers SET status='pending' WHERE sub_id=$1 AND id<>$2 AND status='rejected'", [id, s.awarded_offer_id]);
-      await pool.query("UPDATE sub_requests SET status='open', awarded_offer_id=NULL, closed_at=NULL, created_at=NOW(), nudge_noof=TRUE, work_state=NULL, started_at=NULL, done_at=NULL, fu_next=NULL WHERE id=$1", [id]);
+      await pool.query("UPDATE sub_requests SET status='open', awarded_offer_id=NULL, closed_at=NULL, close_kind=NULL, created_at=NOW(), expires_at=NULL, nudge_noof=TRUE, work_state=NULL, started_at=NULL, done_at=NULL, fu_next=NULL WHERE id=$1", [id]);
       notify(l.provider_id, 'ℹ️ المقاول أكّد إن ما تم الاتفاق', 'انلغى السعي على «' + _subT(s).slice(0, 50) + '»', 'sub', id, { url: '/dashboard-provider.html#saai' }).catch(()=>{});
     } else {
       await pool.query("UPDATE saai_ledger SET status='pending', defer_state='conflict', client_answer='no' WHERE id=$1", [l.id]);
@@ -13337,6 +13455,8 @@ app.delete('/api/sub/:id/offers', auth, providerOnly, async (req, res) => {
     const id = parseInt(req.params.id);
     const s = (await pool.query('SELECT provider_id, description, status FROM sub_requests WHERE id=$1', [id])).rows[0];
     if (!s || s.status !== 'open') return res.status(400).json({ message: 'ما تقدر تسحب العرض بعد إغلاق الطلب' });
+    const _mo = (await pool.query("SELECT seen_at FROM sub_offers WHERE sub_id=$1 AND provider_id=$2 AND status='pending'", [id, req.user.id])).rows[0];
+    if (_mo && _mo.seen_at && Date.now() - new Date(_mo.seen_at).getTime() > 24 * 3600e3) return res.status(400).json({ message: 'المقاول شاف عرضك ورقمك — تقدر تعدّل السعر بدال ما تسحبه' });
     const r = await pool.query("DELETE FROM sub_offers WHERE sub_id=$1 AND provider_id=$2 AND status='pending' RETURNING id", [id, req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'ما عندك عرض على هذا الطلب' });
     const nm = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS nm FROM users WHERE id=$1", [req.user.id])).rows[0].nm;

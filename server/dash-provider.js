@@ -1799,13 +1799,14 @@ async function _saveProfile(){
   var specs=(window._provSpecSel||[]).slice();
   if(!specs.length){showToast('اختر تخصص واحد على الأقل — بدونه ما توصلك مشاريع','error');var _ss=_el('pf-sec-specs');if(_ss){_ss.open=true;_ss.scrollIntoView({block:'center',behavior:'smooth'});}return;}
   var _oldEm=String((window._pLoadedEmail||(_me&&_me.email))||'').toLowerCase();
-  var _cpw=null;
-  if(_oldEm&&email.toLowerCase()!==_oldEm){ if(!window.mnqAskPw){showToast('حدّث الصفحة وحاول مرة ثانية','error');return;} _cpw=await mnqAskPw('عشان نغيّر بريدك إلى '+email+'، اكتب كلمة المرور الحالية'); if(!_cpw)return; }
+  var _cpw=window._pPwRetry||null; window._pPwRetry=null;
   if(btn){btn.disabled=true;btn.textContent='جاري الحفظ...';}
-  var body={name:(_el('p-name')||{}).value,business_name:(_el('p-name')||{}).value||null,phone:(_el('p-phone')||{}).value||null,email:email,city:(_el('p-city')||{}).value||null,bio:(_el('p-bio')||{}).value||null,experience_years:parseInt((_el('p-exp')||{}).value)||null,specialties:specs,notify_categories:specs,website:(_el('p-website')||{}).value||null,location_url:(_el('p-location')||{}).value||null,instagram:(_el('p-instagram')||{}).value||null,twitter:(_el('p-twitter')||{}).value||null,snapchat:(_el('p-snapchat')||{}).value||null,tiktok:(_el('p-tiktok')||{}).value||null,youtube:(_el('p-youtube')||{}).value||null,serves_all_cities:(_el('p-allcities')||{}).checked||false,service_cities:((_el('p-allcities')||{}).checked?[]:(window._pSvc||[]).filter(function(c){return c!==(_el('p-city')||{}).value;}))};
+  var body={name:(_el('p-name')||{}).value,business_name:(_el('p-name')||{}).value||null,phone:(_el('p-phone')||{}).value||null,email:email,city:(_el('p-city')||{}).value||null,bio:(_el('p-bio')||{}).value||null,experience_years:parseInt((_el('p-exp')||{}).value)||null,specialties:specs,website:(_el('p-website')||{}).value||null,location_url:(_el('p-location')||{}).value||null,instagram:(_el('p-instagram')||{}).value||null,twitter:(_el('p-twitter')||{}).value||null,snapchat:(_el('p-snapchat')||{}).value||null,tiktok:(_el('p-tiktok')||{}).value||null,youtube:(_el('p-youtube')||{}).value||null,serves_all_cities:(_el('p-allcities')||{}).checked||false,service_cities:((_el('p-allcities')||{}).checked?[]:(window._pSvc||[]).filter(function(c){return c!==(_el('p-city')||{}).value;}))};
   if(_cpw)body.current_password=_cpw;
   var r=await _api('/api/provider/profile',{method:'PUT',body:JSON.stringify(body)});
   if(btn){btn.disabled=false;btn.textContent='حفظ جميع التغييرات';}
+  // البريد تغيّر والخادم يبي كلمة المرور الحالية → نسأل ونعيد الحفظ
+  if(r&&(r.code==='need_pw'||r.code==='bad_pw')&&window.mnqAskPw){ var _pw=await mnqAskPw(r.code==='bad_pw'?'كلمة المرور غلط — اكتبها مرة ثانية':'عشان نغيّر بريدك إلى '+email+'، اكتب كلمة المرور الحالية'); if(_pw){ window._pPwRetry=_pw; return _saveProfile(); } return; }
   if(r&&r.id&&r.email)window._pLoadedEmail=r.email;
   if(r&&r.id){_me.name=r.name;if(r.email)_me.email=r.email;var _emCh=_oldEm&&r.email&&String(r.email).toLowerCase()!==_oldEm;if(_emCh)_me.email_verified=false;localStorage.setItem('user',JSON.stringify(_me));var un=_el('userName');if(un)un.textContent=r.name;showToast(_emCh?'تم الحفظ ✓ — أرسلنا رمز تأكيد لبريدك الجديد، أكّده عشان تقدر تقدّم عروض':'تم الحفظ بنجاح','success');}
   else{showToast((r&&r.message)||'حدث خطأ','error');}
