@@ -1215,7 +1215,7 @@ app.get(/^\/pro\/(.+)$/, async (req, res) => {
     const fs = require('fs');
     let html = fs.readFileSync(__dirname + '/pro.html', 'utf8');
     // JSON-LD آمن: نبنيه ككائن ونمنع كسر وسم <script> بأي نص من المستخدم
-    const _ld = { '@context':'https://schema.org', '@type':'LocalBusiness', name: pName, description: desc, url: pageUrl, telephone: p.phone || '', address: { '@type':'PostalAddress', addressLocality: pCity, addressCountry:'SA' } };
+    const _ld = { '@context':'https://schema.org', '@type':'LocalBusiness', name: pName, description: desc, url: pageUrl, address: { '@type':'PostalAddress', addressLocality: pCity, addressCountry:'SA' } };
     if (avg > 0) _ld.aggregateRating = { '@type':'AggregateRating', ratingValue: avg.toFixed(1), reviewCount: String(cnt), bestRating:'5' };
     const _ldJson = JSON.stringify(_ld).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026');
     const eT = seoEsc(title), eD = seoEsc(desc), eK = seoEsc(keywords), eU = seoEsc(pageUrl);
@@ -5138,6 +5138,7 @@ app.get('/api/provider/:id/profile', async (req, res) => {
     const id = parseInt(req.params.id);
     const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
+    if (!(await _viewer(req))) { r.rows[0].phone_locked = !!r.rows[0].phone; r.rows[0].phone = null; }   // رقم المزوّد للمسجّلين (يشجّع التسجيل)
     res.json(r.rows[0]);
   } catch(e) { console.error('/api/provider/:id/profile:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -8101,6 +8102,7 @@ app.get('/api/providers/:id', async (req, res) => {
     }
     try { const sp = await _replySpeed(prov.id); if (sp) prov.reply_speed = sp.label; } catch(e){}
     try { prov.named_count = (await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE invited_provider_id=$1 AND status NOT IN ('pending_review','review','needs_edit','rejected','deleted')", [prov.id])).rows[0].n; } catch(e){}   // «طلبه العملاء بالاسم»
+    if (prov && !(await _viewer(req))) { prov.phone_locked = !!prov.phone; prov.phone = null; }   // رقم المزوّد للمسجّلين
     res.json(prov);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });

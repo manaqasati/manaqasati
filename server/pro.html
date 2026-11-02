@@ -478,6 +478,9 @@ function render(p,rat){
   if(ph){
     R+='<div class="pp-ct"><a class="pp-btn pp-wa" href="https://wa.me/'+ph966(ph)+'" target="_blank" rel="noopener noreferrer">'+_IC.wa+'واتساب</a><a class="pp-btn pp-call" href="tel:'+esc(ph)+'">'+_IC.call+'اتصال</a></div>';
   }
+  else if(p.phone_locked){
+    R+='<div class="pp-ct"><button type="button" class="pp-btn pp-wa" onclick="_askLogin()">'+_IC.wa+'واتساب</button><button type="button" class="pp-btn pp-call" onclick="_askLogin()">'+_IC.call+'اتصال</button></div><div style="font-size:12px;color:var(--muted,#64748b);font-weight:700;text-align:center">🔒 سجّل دخولك عشان يظهر رقمه</div>';
+  }
   R+='<button class="pp-msg" onclick="_ppMsg()">'+_IC.msg+'رسالة عبر المنصة</button>';
   R+='</div>';
   if(_safeUrl(p.company_profile_url))R+='<a class="pp-card o6 pp-cpf" href="'+esc(_safeUrl(p.company_profile_url))+'" target="_blank" rel="noopener"><span class="pp-cpi">📁</span><span style="flex:1;min-width:0"><b>بروفايل الشركة</b><small>'+esc(p.company_profile_name||'ملف PDF')+'</small></span><span class="pp-cpa">فتح ↗</span></a>';
@@ -525,7 +528,7 @@ function render(p,rat){
   R+='<div class="pp-card o7" id="pp-sim-card" style="display:none"></div>';
 
   // ── دعوة للنشر ──
-  h+='<div class="pp-cta o8"><b>تبي تقارن أكثر من سعر؟</b><p>انشر مشروعك مجاناً وتوصلك عروض من عدة مزوّدين خلال ساعات</p><button onclick="location.href=\'/new.html?invite='+pid+'\'">انشر مشروعك الآن</button></div>';
+  h+='<div class="pp-cta o8"><b>تبي تقارن أكثر من سعر؟</b><p>انشر مشروعك وتوصلك عروض من عدة مزوّدين خلال ساعات</p><button onclick="location.href=\'/new.html?invite='+pid+'\'">انشر مشروعك الآن</button></div>';
 
   // ── رمز الصفحة ──
   var _qrUrl='https://www.manaqasa.com/pro/'+pid;
@@ -539,7 +542,7 @@ function render(p,rat){
   var st=document.getElementById('pp-sticky');
   if(st){
     // الزر الأساسي: اطلب عرض سعر (دعوة مباشرة)
-    st.innerHTML='<div class="in">'+(ph?'<a class="pp-btn pp-wa" href="https://wa.me/'+ph966(ph)+'" target="_blank" rel="noopener noreferrer">'+_IC.wa+'واتساب</a>':'<button class="pp-btn pp-msg" onclick="_ppMsg()">'+_IC.msg+'راسله</button>')+(pid?'<a class="pp-btn pp-call pp-req" href="/new.html?invite='+pid+'">اطلب عرض سعر</a>':'')+'</div>';
+    st.innerHTML='<div class="in">'+(ph?'<a class="pp-btn pp-wa" href="https://wa.me/'+ph966(ph)+'" target="_blank" rel="noopener noreferrer">'+_IC.wa+'واتساب</a>':(p.phone_locked?'<button type="button" class="pp-btn pp-wa" onclick="_askLogin()">'+_IC.wa+'واتساب</button>':'<button class="pp-btn pp-msg" onclick="_ppMsg()">'+_IC.msg+'راسله</button>'))+(pid?'<a class="pp-btn pp-call pp-req" href="/new.html?invite='+pid+'">اطلب عرض سعر</a>':'')+'</div>';
     var onS=function(){st.classList.toggle('on',window.scrollY>320);};
     window.addEventListener('scroll',onS,{passive:true});onS();
   }
@@ -553,7 +556,7 @@ function render(p,rat){
   var d1=null,d2=null,done=0,rendered=false;
   function tryRender(){done++;if(done<2||rendered)return;rendered=true;if(!d1){document.getElementById('wrap').innerHTML='<p style="padding:40px;text-align:center;color:var(--muted)">المزود غير موجود</p>';return;}render(d1,d2||{});}
   setTimeout(function(){if(rendered)return;rendered=true;if(d1)render(d1,d2||{});else document.getElementById('wrap').innerHTML='<p style="padding:40px;text-align:center;color:var(--muted)">تعذر التحميل</p>';},8000);
-  var x1=new XMLHttpRequest();x1.open('GET',API+'/api/providers/'+id,true);x1.timeout=10000;
+  var x1=new XMLHttpRequest();x1.open('GET',API+'/api/providers/'+id,true);x1.timeout=10000;try{var _tk=localStorage.getItem('token');if(_tk)x1.setRequestHeader('Authorization','Bearer '+_tk);}catch(e){}
   x1.onload=function(){try{d1=JSON.parse(x1.responseText);}catch(e){d1=null;}tryRender();};
   x1.onerror=x1.ontimeout=function(){tryRender();};x1.send();
   var x2=new XMLHttpRequest();x2.open('GET',API+'/api/ratings/provider/'+id,true);x2.timeout=10000;
@@ -589,7 +592,7 @@ function _smartBack(){
 </script>
 <script>
 function _askLogin(){
-  if(confirm('سجّل دخولك لعرض رقم المزوّد والتواصل معه.\nالتسجيل مجاني ولا يستغرق دقيقة.')){
+  if(confirm('سجّل دخولك عشان يظهر رقم المزوّد وتتواصل معه.\nالتسجيل ياخذ أقل من دقيقة.')){
     try{ localStorage.setItem('_after_login', location.href); }catch(e){}
     location.href='/auth.html';
   }
