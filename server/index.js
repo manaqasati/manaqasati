@@ -302,7 +302,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '15'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '16'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 const _UP_TAG = '<script>window.__mqGateOn=1;window.addEventListener("popstate",function(e){try{if(window.__mqPopGate&&window.__mqPopGate(e))e.stopImmediatePropagation();}catch(_){}},true);</script><script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
 function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
@@ -594,7 +594,8 @@ app.get('/api/pf/:k', async (req, res) => {
     const g = await r2Client.send(new GetObjectCommand({ Bucket: R2_BUCKET, Key: k }));
     res.setHeader('Content-Type', g.ContentType || 'application/octet-stream');
     if (g.ContentLength) res.setHeader('Content-Length', String(g.ContentLength));
-    if (g.ContentDisposition) res.setHeader('Content-Disposition', g.ContentDisposition);
+    if (req.query.dl) res.setHeader('Content-Disposition', 'attachment; filename="manaqasa-' + (k.split('/').pop() || 'file').replace(/[^a-z0-9._-]/gi, '') + '"');
+    else if (g.ContentDisposition) res.setHeader('Content-Disposition', g.ContentDisposition);
     res.setHeader('Cache-Control', 'private, max-age=3600'); res.setHeader('X-Robots-Tag', 'noindex');
     g.Body.pipe(res);
   } catch(err) { if (!res.headersSent) _jOrPage(req, res, 404, 'الملف غير موجود'); }

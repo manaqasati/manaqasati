@@ -276,7 +276,7 @@
     if (!u) return false; u = String(u);
     if (/^data:image\//i.test(u)) return true;
     if (!/^(https?:)?\/\//i.test(u) && u.charAt(0) !== '/') return false;
-    try { var a = new URL(u, location.href); if (a.pathname.indexOf('/api/') === 0) return false; return IMGX.test(a.pathname); } catch(e){ return false; }
+    try { var a = new URL(u, location.href); if (a.pathname.indexOf('/api/') === 0 && a.pathname.indexOf('/api/pf/') !== 0) return false; return IMGX.test(a.pathname); } catch(e){ return false; }
   }
   function abs(u){ if (/^data:/i.test(u)) return u; try { return new URL(u, location.href).href; } catch(e){ return u; } }
   var VIEW = /openImgFull|oImg|openViewer|_viewImg|window\.open\(this/;
@@ -385,8 +385,9 @@
     for (var k = cur - 1; k <= cur + 2; k++) load(k);
     var u = imgs[cur] || '';
     shareB.hidden = !(navigator.share && /^https?:/i.test(u));
-    var canDl = !app && shareB.hidden && /^https?:/i.test(u) && /\.r2\.dev\/|r2\.cloudflarestorage\.com\/|res\.cloudinary\.com\//i.test(u);
-    dlB.hidden = !canDl; if (canDl) dlB.href = '/api/dl?u=' + encodeURIComponent(u) + '&n=' + encodeURIComponent('manaqasa-' + (cur + 1));
+    var pfU = /\/api\/pf\//.test(u) && u.indexOf(location.origin) === 0;
+    var canDl = !app && shareB.hidden && /^https?:/i.test(u) && (pfU || /\.r2\.dev\/|r2\.cloudflarestorage\.com\/|res\.cloudinary\.com\//i.test(u));
+    dlB.hidden = !canDl; if (canDl) dlB.href = pfU ? u + '&dl=1' : '/api/dl?u=' + encodeURIComponent(u) + '&n=' + encodeURIComponent('manaqasa-' + (cur + 1));
   }
   function load(k){
     var s = track.children[k]; if (!s || s._l) return; s._l = 1;
@@ -533,7 +534,7 @@
     if (/^data:image\//i.test(u)) return 'img';
     if (!/^(https?:)?\/\//i.test(u) && u.charAt(0) !== '/') return null;
     var a; try { a = new URL(u, location.href); } catch(e){ return null; }
-    if (a.pathname.indexOf('/api/') === 0) return null;
+    if (a.pathname.indexOf('/api/') === 0 && a.pathname.indexOf('/api/pf/') !== 0) return null; // ملفاتنا الخاصة (/api/pf/…) تنفتح في النافذة
     var ext = ((a.pathname.match(/\.([a-z0-9]{2,5})$/i) || [])[1] || '').toLowerCase();
     if (ext === 'pdf') return 'pdf';
     if (IMG.test(ext)) return 'img';
@@ -627,6 +628,7 @@
     ui(); token++; var my = token;
     curOpts = opts || null; curUrl = u;
     // المتصفح: زر «حفظ» لملفات المنصة (ينزل الملف بدون ما تطلع من الصفحة)
+    if (!curOpts && !app && k === 'pdf' && /\/api\/pf\/[^?]+\?/.test(u)) { curOpts = { save: u + '&dl=1', fileName: nameOf(u, txt).replace(/\.pdf$/i, '') }; }
     if (!curOpts && !app && k === 'pdf' && /\.r2\.dev\/|r2\.cloudflarestorage\.com\/|res\.cloudinary\.com\//i.test(u)) { var fn = nameOf(u, txt).replace(/\.pdf$/i, ''); curOpts = { save: '/api/dl?u=' + encodeURIComponent(u) + '&n=' + encodeURIComponent(fn + '.pdf'), fileName: fn }; }
     box.querySelector('[data-a="save"]').hidden = !(curOpts && curOpts.save);
     box.querySelector('[data-a="share"]').hidden = !(curOpts && curOpts.share);
