@@ -7479,7 +7479,7 @@ app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
     const id = parseInt(req.params.id);
     const newVal = Math.max(0, parseFloat(req.body.contract_value)||0);
     const proof = req.body.proof || null;
-    if (newVal < 50) return res.status(400).json({ message: 'أدخل مبلغ العقد اللي اتفقتوا عليه' });
+    if (!(newVal > 0)) return res.status(400).json({ message: 'أدخل مبلغ العقد اللي اتفقتوا عليه' });
     const row = (await pool.query('SELECT * FROM saai_ledger WHERE id=$1 AND provider_id=$2', [id, req.user.id])).rows[0];
     if (!row) return res.status(404).json({ message: 'السجل غير موجود' });
     if (row.status === 'approved') return res.status(400).json({ message: 'هذا السعي معتمد مسبقاً' });
@@ -7489,7 +7489,6 @@ app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
       if (!_up || String(_up).startsWith('data:')) return res.status(400).json({ message: 'تعذّر رفع الإيصال — صورة أو PDF وأقل من 10 ميجا' });
       proofUrl = _up;
     }
-    if (!proofUrl) return res.status(400).json({ message: 'ارفع إيصال التحويل' });
     const newFee = Math.round(newVal * 0.03);
     // سجل التعديل لو تغيّر المبلغ
     let log = row.edits_log || [];
@@ -7502,7 +7501,7 @@ app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
       `UPDATE saai_ledger SET contract_value=$1, saai_amount=$2, proof_url=$3, status='submitted', submitted_at=NOW(), edits_log=$4::jsonb WHERE id=$5`,
       [newVal, newFee, proofUrl, JSON.stringify(log), id]);
     res.json({ ok: true });
-    try { await _notifyAdmins('💰 مزوّد رفع إيصال سعي', `${newFee.toLocaleString('en-US')} ر.س على عقد ${newVal.toLocaleString('en-US')} ر.س — يحتاج اعتماد`, 'saai', id); } catch(e) {}
+    try { await _notifyAdmins('💰 مزوّد أرسل سداد سعي', `${newFee.toLocaleString('en-US')} ر.س على عقد ${newVal.toLocaleString('en-US')} ر.س — يحتاج اعتماد`, 'saai', id); } catch(e) {}
   } catch(e){ console.error('saai-submit:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 
@@ -7622,9 +7621,8 @@ app.post('/api/provider/saai/self', auth, rateLimiter(10, 600000), async (req, r
   try {
     if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
     const val = Math.round(Math.max(0, parseFloat(req.body.contract_value) || 0));
-    if (val < 50) return res.status(400).json({ message: 'أدخل المبلغ اللي اتفقتوا عليه' });
+    if (!(val > 0)) return res.status(400).json({ message: 'أدخل المبلغ اللي اتفقتوا عليه' });
     const proof = String(req.body.proof || '');
-    if (!proof.startsWith('data:') && !_safeUrl(proof)) return res.status(400).json({ message: 'ارفع إيصال التحويل' });
     const rid = parseInt(req.body.request_id) || null;
     const title = _cleanTxt(req.body.title || '', 120);
     if (!rid && title.length < 3) return res.status(400).json({ message: 'اختر المشروع أو اكتب اسمه' });
@@ -7635,8 +7633,8 @@ app.post('/api/provider/saai/self', auth, rateLimiter(10, 600000), async (req, r
       if (b.assigned_provider_id && String(b.assigned_provider_id) !== String(req.user.id)) return res.status(400).json({ message: 'هالمشروع انرسى على مزوّد ثاني' });
       bidId = b.id;
     }
-    const proofUrl = proof.startsWith('data:') ? await uploadPrivate(proof, 'saai', 'saai-self-' + req.user.id + '-' + Date.now()) : _safeUrl(proof);
-    if (!proofUrl || String(proofUrl).startsWith('data:')) return res.status(400).json({ message: 'تعذّر رفع الإيصال — صورة أو PDF فقط' });
+    const proofUrl = !proof ? null : proof.startsWith('data:') ? await uploadPrivate(proof, 'saai', 'saai-self-' + req.user.id + '-' + Date.now()).catch(() => null) : _safeUrl(proof);
+    if (proof && (!proofUrl || String(proofUrl).startsWith('data:'))) return res.status(400).json({ message: 'تعذّر رفع الإيصال — صورة أو PDF فقط' });
     const fee = Math.round(val * 0.03);
     const note = _cleanTxt(req.body.note || '', 200) || null;
     let id;
