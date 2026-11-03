@@ -2055,7 +2055,7 @@ function _spRender(step, diff){
     +'<div style="background:#eff4ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:11px;text-align:center"><div style="font-size:12px;color:#1d4ed8;font-weight:800">السعي المستحق (3%)</div><div id="sp-fee" style="font-family:Cairo,sans-serif;font-size:24px;font-weight:900;color:#0f2544">'+fmtN(Math.round((S.amt||0)*0.03))+' ر.س</div></div>'
     +(bk.iban?'<div class="sd-info"><b>حوّل على:</b> '+_esc(bk.bank_name||'')+(bk.account_name?' · '+_esc(bk.account_name):'')
       +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:5px"><span style="direction:ltr;font-weight:900;word-break:break-all">'+_esc(bk.iban)+'</span>'+cp(bk.iban)+'</div></div>':'')
-    +'<label style="display:flex;gap:10px;align-items:center;border:1.8px dashed #93c5fd;background:#f8fbff;border-radius:13px;padding:13px;font-size:13px;font-weight:800;color:#1e3a8a;cursor:pointer">📎 <span id="saai-proof-lbl">ارفع إيصال التحويل (اختياري)</span><span style="margin-right:auto;font-size:11.5px;color:#64748b">صورة أو PDF</span>'
+    +'<label style="display:flex;gap:10px;align-items:center;border:1.8px dashed #93c5fd;background:#f8fbff;border-radius:13px;padding:13px;font-size:13px;font-weight:800;color:#1e3a8a;cursor:pointer">📎 <span id="saai-proof-lbl">ارفع إيصال التحويل</span><span style="margin-right:auto;font-size:11.5px;color:#64748b">صورة أو PDF</span>'
       +'<input type="file" id="saai-proof" accept="image/*,application/pdf" onchange="_onSaaiProof(this)" style="display:none"></label>'
     +'<button type="button" id="saai-send" class="sd-send" onclick="submitSaai()">إرسال للاعتماد</button>'
     +(S.contract>0?'<button type="button" class="sd-x" onclick="_spRender(1)">رجوع</button>':'<button type="button" class="sd-x" onclick="_el(\'saaiModal\').remove()">إلغاء</button>')
@@ -2093,7 +2093,7 @@ function _ssRender(){
     +(S.rid?'<div><label style="display:block;font-size:12.5px;font-weight:800;color:#334766;margin-bottom:6px">المبلغ اللي اتفقتوا عليه (ر.س)</label><input id="ss-amt" type="number" inputmode="numeric" value="'+(S.amt||'')+'" oninput="window._ss.amt=parseFloat(this.value)||0;var e=_el(\'ss-fee\');if(e)e.textContent=fmtN(Math.round(window._ss.amt*0.03))+\' ر.س\'" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-family:Tajawal,sans-serif;font-size:16px;font-weight:900"></div>'
       +'<div style="background:#eff4ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px;text-align:center"><div style="font-size:12px;color:#1d4ed8;font-weight:800">السعي (3%)</div><div id="ss-fee" style="font-family:Cairo,sans-serif;font-size:22px;font-weight:900;color:#0f2544">'+fmtN(Math.round((S.amt||0)*0.03))+' ر.س</div></div>'
       +(bk.iban?'<div class="sd-info"><b>حوّل على:</b> '+_esc(bk.bank_name||'')+(bk.account_name?' · '+_esc(bk.account_name):'')+'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:5px"><span style="direction:ltr;font-weight:900;word-break:break-all">'+_esc(bk.iban)+'</span><button type="button" class="sd-ch" style="padding:4px 10px;font-size:11.5px" onclick="_copyTxt(\''+_esc(String(bk.iban).replace(/\'/g,''))+'\',this)">نسخ</button></div></div>':'')
-      +'<label style="display:flex;gap:10px;align-items:center;border:1.8px dashed #93c5fd;background:#f8fbff;border-radius:13px;padding:13px;font-size:13px;font-weight:800;color:#1e3a8a;cursor:pointer">📎 <span id="saai-proof-lbl">'+(window._saaiProof?'✓ تم إرفاق الإيصال':'ارفع إيصال التحويل (اختياري)')+'</span><span style="margin-right:auto;font-size:11.5px;color:#64748b">صورة أو PDF</span><input type="file" accept="image/*,application/pdf" onchange="_onSaaiProof(this)" style="display:none"></label>'
+      +'<label style="display:flex;gap:10px;align-items:center;border:1.8px dashed #93c5fd;background:#f8fbff;border-radius:13px;padding:13px;font-size:13px;font-weight:800;color:#1e3a8a;cursor:pointer">📎 <span id="saai-proof-lbl">'+(window._saaiProof?'✓ تم إرفاق الإيصال':'ارفع إيصال التحويل')+'</span><span style="margin-right:auto;font-size:11.5px;color:#64748b">صورة أو PDF</span><input type="file" accept="image/*,application/pdf" onchange="_onSaaiProof(this)" style="display:none"></label>'
       +'<button type="button" id="ss-send" class="sd-send" onclick="_ssSend()">إرسال للاعتماد</button>'
       +'<div class="sd-s" style="text-align:center;margin-top:-4px">بعد اعتماد الإدارة ينحسب المشروع لك وتقدر تطلب تقييم العميل</div>':'')
     +'<button type="button" class="sd-x" onclick="_el(\'saaiModal\').remove()">إلغاء</button></div>';
@@ -2102,6 +2102,7 @@ function _ssSend(){
   var S=window._ss, amt=Math.round(parseFloat(S.amt)||0);
   if(S.rid===-1&&String(S.title||'').trim().length<3){ showToast('اكتب اسم المشروع','error'); return; }
   if(amt<=0){ showToast('أدخل المبلغ اللي اتفقتوا عليه','error'); return; }
+  if(!window._saaiProof){ showToast('ارفع صورة إيصال التحويل','error'); return; }
   var b=_el('ss-send'); if(b){b.disabled=true;b.textContent='جاري الإرسال...';}
   var body={contract_value:amt,proof:window._saaiProof||''}; if(S.rid>0)body.request_id=S.rid; else body.title=S.title;
   _api('/api/provider/saai/self',{method:'POST',body:JSON.stringify(body)}).then(function(d){
@@ -2147,6 +2148,7 @@ function submitSaai(){
   var S=window._sp||{}; var amt=parseFloat(S.amt)||0;
   if(amt<=0){ showToast('أدخل المبلغ المتفق عليه','error'); return; }
   if(S.diff&&S.contract>0&&amt!==S.contract&&!S.reason){ showToast('اختر سبب اختلاف المبلغ','error'); return; }
+  if(!window._saaiProof){ showToast('ارفع صورة إيصال التحويل','error'); return; }
   var b=_el('saai-send'); if(b){b.disabled=true;b.textContent='جاري الإرسال...';}
   _api('/api/provider/saai/'+window._saaiId+'/submit',{method:'POST',body:JSON.stringify({contract_value:amt,proof:window._saaiProof,confirmed:true,reason:(S.diff&&amt!==S.contract)?S.reason:''})})
     .then(function(d){ if(d&&d.ok){ showToast('تم الإرسال — بانتظار اعتماد الإدارة','success'); var m=_el('saaiModal'); if(m)m.remove(); loadSaai(); try{_pfWallet();}catch(e){} } else { showToast((d&&d.message)||'تعذّر الإرسال','error'); if(b){b.disabled=false;b.textContent='إرسال للاعتماد';} } })

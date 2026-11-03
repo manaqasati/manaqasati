@@ -310,7 +310,7 @@ function _saRender(){
   box.innerHTML=html;
 }
 function _saEvt(x){ return x.status==='submitted'?(x.submitted_at||x.created_at):((x.defer_state==='conflict'||x.defer_state==='await_admin')?(x.client_answer_at||x.defer_at):x.defer_at); }
-function _saTag(x){ if(x.status==='submitted')return ['🧾 رفع إيصال','b'];
+function _saTag(x){ if(x.status==='submitted')return x.proof_url?['🧾 رفع إيصال','b']:['⚠️ بدون إيصال','a'];
   if(x.defer_state==='conflict')return ['⚠️ المزوّد والعميل مختلفين','r'];
   if(x.defer_state==='await_admin')return ['تأجيل ثاني — العميل أكّد','a'];
   return [x.defer_kind==='cancel'?'يقول انلغى · العميل ما رد':'يقول تأجّل · العميل ما رد',x.defer_kind==='cancel'?'r':'a']; }
@@ -321,15 +321,15 @@ function _saDet(x,i,n){
   var ph=_waNorm(x.provider_phone), cph=_waNorm(x.client_phone);
   T.push(['g',x.assigned_at||x.created_at,'العميل قبل العرض'+(cv?' · '+fmtNum(cv)+' ر.س':'')]);
   if(x.status==='submitted'){
-    T.push(['b',x.submitted_at,'المزوّد رفع إيصال التحويل']);
-    story='🧾 '+_saWho(x)+' رفع إيصال سداد السعي <b>'+amt+'</b>'+(cv?' (3% من '+fmtNum(cv)+')':'')+'.';
+    T.push(['b',x.submitted_at,x.proof_url?'المزوّد رفع إيصال التحويل':'المزوّد أرسل السداد بدون إيصال']);
+    story='🧾 '+_saWho(x)+(x.proof_url?' رفع إيصال سداد السعي':' يقول إنه سدّد السعي')+' <b>'+amt+'</b>'+(cv?' (3% من '+fmtNum(cv)+')':'')+'.'+(x.proof_url?'':'<div class="sa-warn" style="border-radius:10px;margin-top:10px">⚠️ ما أرفق إيصال — شيّك على حسابك البنكي قبل الاعتماد، أو اضغط «رفض» ونطلب منه يرفع الإيصال.</div>');
     var proof=x.proof_url?(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(x.proof_url)?'<a class="sa-rc" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener"><img src="'+esc(_safeUrl(x.proof_url))+'" alt="إيصال"><span>افتح الإيصال ↗</span></a>':'<a class="sa-rc pdf" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener">📄 افتح الإيصال (PDF) ↗</a>'):'';
     var off=parseFloat(x.offer_price)||0, diff=(off&&cv&&(!x.price_unit||x.price_unit==='total'))?cv-off:0;
     story+=proof+(diff<0?'<div class="sa-warn" style="border-radius:10px;margin-top:10px">⚠️ نزّل مبلغ الاتفاق من '+fmtNum(off)+' إلى '+fmtNum(cv)+' — تأكد من العميل قبل الاعتماد لو شاك.</div>':'');
     var deal=x.source==='self'&&x.request_id&&!x.req_assigned?1:0;
-    q='الإيصال صحيح والمبلغ وصلك؟';
-    yes=['✓ اعتمد الإيصال'+(deal?' + الترسية':''),'يتسجّل مدفوع'+(deal?' والمشروع يترسى عليه':''),'approveSaai('+x.id+','+deal+')'];
-    no=['✗ رفض — الإيصال غلط','يرجع مستحق ونطلب منه يرفع إيصال صحيح','_saReject('+x.id+')'];
+    q=x.proof_url?'الإيصال صحيح والمبلغ وصلك؟':'المبلغ وصل حسابك؟';
+    yes=[(x.proof_url?'✓ اعتمد الإيصال':'✓ وصلني المبلغ — اعتمد')+(deal?' + الترسية':''),'يتسجّل مدفوع'+(deal?' والمشروع يترسى عليه':''),'approveSaai('+x.id+','+deal+')'];
+    no=x.proof_url?['✗ رفض — الإيصال غلط','يرجع مستحق ونطلب منه يرفع إيصال صحيح','_saReject('+x.id+')']:['✗ ما وصل — اطلب الإيصال','يرجع مستحق ونطلب منه يرفع الإيصال','_saReject('+x.id+',1)'];
   } else {
     var isC=x.defer_kind==='cancel', what=isC?'<b style="color:#b91c1c">انلغى</b>':'<b style="color:#b45309">تأجّل لـ '+_saD(x.defer_until)+'</b>';
     T.push(['a',x.defer_at,'المزوّد قال: '+(isC?'انلغى':'تأجّل لـ '+_saD(x.defer_until))]);
@@ -404,8 +404,8 @@ function _saSide(){
   var MN=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
   if(ch) ch.innerHTML='<div class="ad-ch"><h3>المحصّل آخر 6 أشهر</h3></div><div class="sa-bars">'+_SA.monthly.map(function(m,i){ var last=i===_SA.monthly.length-1; return '<div title="'+fmtNum(m.collected)+' ر.س"><b style="font-size:11px;color:var(--muted)">'+(m.collected?fmtNum(m.collected):'')+'</b><i style="height:'+Math.max(3,Math.round(m.collected/mx*90))+'px;'+(last?'background:#1d4ed8':'')+'"></i><span'+(last?' style="color:#1d4ed8;font-weight:900"':'')+'>'+MN[(+m.month.split('-')[1])-1]+'</span></div>'; }).join('')+'</div>';
 }
-function _saReject(id){
-  var reason=prompt('سبب رفض الإيصال (يوصل للمزوّد):','الإيصال غير واضح أو المبلغ غير مطابق');
+function _saReject(id,np){
+  var reason=prompt(np?'الرسالة اللي توصل للمزوّد:':'سبب رفض الإيصال (يوصل للمزوّد):',np?'ما وصلنا إيصال التحويل — ارفع صورة الإيصال من صفحة السعي':'الإيصال غير واضح أو المبلغ غير مطابق');
   if(reason===null)return;
   fetch(API+'/api/admin/saai/'+id+'/reject',Object.assign({method:'POST',body:JSON.stringify({reason:reason})},hdr())).then(function(r){return r.json();}).then(function(d){ if(d&&d.ok){toast('رُفض الإيصال وبلّغنا المزوّد','success');loadSaaiAdmin();} else toast((d&&d.message)||'تعذّر','error'); }).catch(function(){toast('تعذّر الاتصال','error');});
 }

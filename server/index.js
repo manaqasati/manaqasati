@@ -7490,6 +7490,7 @@ app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
       if (!_up || String(_up).startsWith('data:')) return res.status(400).json({ message: 'تعذّر رفع الإيصال — صورة أو PDF وأقل من 10 ميجا' });
       proofUrl = _up;
     }
+    if (!proofUrl) return res.status(400).json({ message: 'ارفع صورة إيصال التحويل' });
     const newFee = Math.round(newVal * 0.03);
     // سجل التعديل لو تغيّر المبلغ
     let log = row.edits_log || [];
@@ -7624,6 +7625,7 @@ app.post('/api/provider/saai/self', auth, rateLimiter(10, 600000), async (req, r
     const val = Math.round(Math.max(0, parseFloat(req.body.contract_value) || 0));
     if (!(val > 0)) return res.status(400).json({ message: 'أدخل المبلغ اللي اتفقتوا عليه' });
     const proof = String(req.body.proof || '');
+    if (!proof) return res.status(400).json({ message: 'ارفع صورة إيصال التحويل' });
     const rid = parseInt(req.body.request_id) || null;
     const title = _cleanTxt(req.body.title || '', 120);
     if (!rid && title.length < 3) return res.status(400).json({ message: 'اختر المشروع أو اكتب اسمه' });
