@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>قيّم المشروع — مناقصة</title>
+<meta name="theme-color" content="#17254d">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script>try{var _t=localStorage.getItem('theme');if(_t==='dark'||(!_t&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
+<style>
+:root{--bg:#f1f5fc;--card:#fff;--tx:#0f1d3a;--mu:#5b6b82;--bd:#e3eaf5;--p:#2563eb;--gold:#f59e0b;--soft:#eff6ff}
+[data-theme="dark"]{--bg:#0b1529;--card:#16233f;--tx:#e6edf8;--mu:#a9b6d3;--bd:#24365e;--soft:rgba(37,99,235,.14)}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:Tajawal,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+.top{background:#17254d;color:#fff;height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:3px solid #0ea5e9;position:sticky;top:0;z-index:5;padding-top:env(safe-area-inset-top,0)}
+.lg{font-weight:900;font-size:19px;color:#fff;text-decoration:none}.lg i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#38bdf8;margin-left:6px;vertical-align:middle}
+.bk{background:rgba(255,255,255,.12);border:0;color:#fff;border-radius:11px;padding:8px 12px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer}
+.wrap{max-width:520px;margin:0 auto;padding:16px 16px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:16px;margin-top:14px}
+.prov{display:flex;gap:11px;align-items:center}
+.av{width:48px;height:48px;border-radius:14px;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;flex:none;overflow:hidden}
+.av img{width:100%;height:100%;object-fit:cover}
+.pn{font-weight:900;font-size:16.5px}.ps{color:var(--mu);font-size:13px;font-weight:700;margin-top:2px}
+.gal{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;border-radius:16px;-webkit-overflow-scrolling:touch}
+.gal a{flex:none;width:100%;scroll-snap-align:center;display:block}
+.gal img{width:100%;height:240px;object-fit:cover;border-radius:16px;display:block;background:var(--soft)}
+.dots{display:flex;gap:5px;justify-content:center;margin-top:8px}.dots i{width:7px;height:7px;border-radius:50%;background:var(--bd)}.dots i.a{background:var(--p);width:18px;border-radius:4px}
+.wt{font-weight:900;font-size:17px;margin:10px 2px 2px}.wm{color:var(--mu);font-size:13px;font-weight:700;margin:0 2px}
+.q{font-weight:900;font-size:16.5px;margin-bottom:4px}
+.rw{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-top:1px solid var(--bd);gap:8px}
+.rw:first-of-type{border-top:0}.rl{font-weight:800;font-size:14.5px}
+.st{display:flex;direction:ltr;gap:2px}
+.st button{background:none;border:0;font-size:30px;line-height:1;color:var(--bd);cursor:pointer;padding:2px;font-family:inherit}
+.st button.on{color:var(--gold)}
+textarea{width:100%;border:1.5px solid var(--bd);border-radius:13px;padding:12px;font-family:inherit;font-size:15px;min-height:76px;resize:vertical;background:var(--card);color:var(--tx);margin-top:8px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;border:0;border-radius:14px;padding:14px;font-family:inherit;font-weight:900;font-size:16px;cursor:pointer;margin-top:12px;text-decoration:none}
+.bp{background:var(--p);color:#fff}.bp:disabled{opacity:.6}.bo{background:var(--card);color:var(--p);border:1.5px solid var(--bd)}
+.hint{color:var(--mu);font-size:12.5px;font-weight:700;text-align:center;margin-top:9px;line-height:1.7}
+.err{display:none;color:#b91c1c;font-weight:800;font-size:13.5px;margin-top:9px;text-align:center}
+.ok{text-align:center;padding:26px 12px}.ok .e{font-size:46px}.ok h2{margin:8px 0 6px;font-size:20px}.ok p{color:var(--mu);font-weight:700;line-height:1.8;margin:0}
+.note{background:var(--soft);border:1px solid #bfdbfe;color:#1e40af;border-radius:14px;padding:12px;font-size:13.5px;font-weight:800;line-height:1.8;margin-top:14px;text-align:center}
+[data-theme="dark"] .note{color:#bfdbfe;border-color:#2b4377}
+.sk{height:240px;border-radius:16px;background:linear-gradient(90deg,var(--soft),var(--bd),var(--soft));background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{to{background-position:-200% 0}}
+</style>
+</head>
+<body>
+<div class="top"><a class="lg" href="/"><i></i>مناقصة</a><button class="bk" id="bk" type="button" onclick="history.length>1?history.back():location.href='/'">‹ رجوع</button></div>
+<div class="wrap" id="app"><div class="card"><div class="sk"></div></div></div>
+<script>
+(function(){
+  'use strict';
+  var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? '' : 'https://manaqasati-production.up.railway.app';
+  var TOK = (location.pathname.split('/')[2] || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 40);
+  var KEY = 'mnq_wp_' + TOK;
+  var app = document.getElementById('app');
+  var D = null, R = { quality: 0, time: 0, deal: 0 };
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function safe(u){ u = String(u || ''); return /^(https?:)?\/\//i.test(u) || u.charAt(0) === '/' ? u : ''; }
+  function tok(){ try { return localStorage.getItem('token') || ''; } catch(e) { return ''; } }
+  function hdr(){ var h = { 'Content-Type': 'application/json' }; var t = tok(); if (t) h.Authorization = 'Bearer ' + t; return h; }
+  function get(){ try { return JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch(e) { return null; } }
+  function put(v){ try { if (v) sessionStorage.setItem(KEY, JSON.stringify(v)); else sessionStorage.removeItem(KEY); } catch(e) {} }
+
+  function head(){
+    var p = D.provider || {}, im = safe(p.profile_image);
+    return '<div class="prov"><div class="av">' + (im ? '<img src="' + esc(im) + '" alt="">' : esc(String(p.name || 'م').charAt(0))) + '</div>'
+      + '<div><div class="pn">' + esc(p.name) + '</div><div class="ps">' + (D.status === 'pending' ? 'يطلب تقييمك على مشروعك' : (p.city ? '📍 ' + esc(p.city) : '')) + '</div></div></div>';
+  }
+  function gallery(){
+    var im = (D.images || []).map(safe).filter(Boolean);
+    var h = '<div class="card" style="padding:10px"><div class="gal" id="gal">' + im.map(function(u){ return '<a href="' + esc(u) + '"><img src="' + esc(u) + '" alt="صورة من المشروع" loading="lazy"></a>'; }).join('') + '</div>';
+    if (im.length > 1) h += '<div class="dots" id="dots">' + im.map(function(_, i){ return '<i' + (i ? '' : ' class="a"') + '></i>'; }).join('') + '</div>';
+    h += '<div class="wt">' + esc(D.title) + '</div><div class="wm">' + [D.city ? '📍 ' + esc(D.city) : '', esc(D.category || '')].filter(Boolean).join(' · ') + '</div></div>';
+    return h;
+  }
+  function stars(k, label){
+    var h = '<div class="rw"><span class="rl">' + label + '</span><span class="st" data-k="' + k + '">';
+    for (var i = 1; i <= 5; i++) h += '<button type="button" data-v="' + i + '" aria-label="' + i + ' من 5"' + (R[k] >= i ? ' class="on"' : '') + '>★</button>';
+    return h + '</span></div>';
+  }
+  function proLink(){ return '/pro/' + (D.provider && D.provider.id); }
+  function done(title, sub, mine){
+    app.innerHTML = head() + '<div class="card ok"><div class="e">' + (mine ? '🌟' : '✅') + '</div><h2>' + title + '</h2><p>' + sub + '</p>'
+      + '<a class="btn bo" href="' + proLink() + '">شوف صفحة ' + esc(D.provider.name) + '</a></div>'
+      + '<div class="note">عندك مشروع ثاني؟ اطرحه في مناقصة واستقبل عروض من مزوّدين موثّقين<a class="btn bp" href="/new.html" style="margin-top:10px">اطرح مشروعك</a></div>';
+  }
+  function render(){
+    if (D.status !== 'pending') {
+      if (D.mine) return done('شكراً لك! تقييمك وصل', 'تقييمك صار في صفحة ' + esc(D.provider.name) + ' — يساعد غيرك يختار صح', true);
+      return done('هذا المشروع تقيّم ✓', 'صاحب المشروع أكّد الشغل وقيّمه', false);
+    }
+    var h = head() + gallery();
+    if (D.is_provider_self) {
+      h += '<div class="note">هذي الصفحة لصاحب المشروع' + (D.client_first ? ' («' + esc(D.client_first) + '»)' : '') + ' — أرسل له الرابط وهو يقيّمك<button class="btn bp" type="button" id="cp">📋 انسخ الرابط</button></div>';
+      app.innerHTML = h;
+      document.getElementById('cp').onclick = function(){ try { navigator.clipboard.writeText(location.origin + '/w/' + TOK); this.textContent = '✓ انتسخ'; } catch(e) {} };
+      return bindGal();
+    }
+    h += '<div class="card"><div class="q">' + (D.client_first ? 'هلا ' + esc(D.client_first) + ' 👋 ' : '') + 'كيف كان شغله؟</div>'
+      + stars('quality', 'الجودة') + stars('time', 'الالتزام بالوقت') + stars('deal', 'التعامل')
+      + '<textarea id="cm" maxlength="600" placeholder="كلمة عنه (اختياري)…"></textarea>'
+      + '<div class="err" id="er" role="alert"></div>'
+      + '<button class="btn bp" type="button" id="go">' + (tok() ? 'أرسل التقييم' : 'أكّد إنك صاحب المشروع وأرسل') + '</button>'
+      + '<div class="hint">' + (tok() ? '' : 'بدخول Google أو Apple أو جوالك — ضغطة وحدة، عشان نتأكد إن التقييم منك') + '</div></div>';
+    app.innerHTML = h;
+    var sv = get(); if (sv) { R = { quality: sv.quality || 0, time: sv.time || 0, deal: sv.deal || 0 }; document.getElementById('cm').value = sv.comment || ''; paint(); }
+    app.querySelectorAll('.st').forEach(function(g){
+      g.addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; R[g.getAttribute('data-k')] = parseInt(b.getAttribute('data-v')); paint(); });
+    });
+    document.getElementById('go').onclick = submit;
+    bindGal();
+    // رجع من صفحة الدخول ومعه تقييم محفوظ → نرسله مباشرة
+    if (sv && tok() && /after=1/.test(location.search) && sv.quality && sv.time && sv.deal) submit();
+  }
+  function paint(){ app.querySelectorAll('.st').forEach(function(g){ var v = R[g.getAttribute('data-k')]; g.querySelectorAll('button').forEach(function(b){ b.classList.toggle('on', parseInt(b.getAttribute('data-v')) <= v); }); }); }
+  function bindGal(){
+    var g = document.getElementById('gal'), d = document.getElementById('dots'); if (!g || !d) return;
+    g.addEventListener('scroll', function(){ var i = Math.round(Math.abs(g.scrollLeft) / (g.clientWidth + 8)); d.querySelectorAll('i').forEach(function(x, j){ x.className = j === i ? 'a' : ''; }); }, { passive: true });
+  }
+  function err(m){ var e = document.getElementById('er'); if (e) { e.textContent = m; e.style.display = 'block'; } }
+  function submit(){
+    var cm = (document.getElementById('cm') || {}).value || '';
+    if (!R.quality || !R.time || !R.deal) return err('اختر النجوم للثلاث');
+    var body = { quality: R.quality, time: R.time, deal: R.deal, comment: cm };
+    if (!tok()) { put(body); location.href = '/auth.html?redirect=work&role=client&w=' + encodeURIComponent(TOK); return; }
+    var b = document.getElementById('go'); b.disabled = true; b.textContent = 'جاري الإرسال…';
+    fetch(API + '/api/w/' + TOK + '/review', { method: 'POST', headers: hdr(), body: JSON.stringify(body) })
+      .then(function(r){ return r.json().then(function(d){ return { s: r.status, d: d }; }); })
+      .then(function(x){
+        if (x.s === 401) { put(body); try { localStorage.removeItem('token'); } catch(e) {} location.href = '/auth.html?redirect=work&role=client&w=' + encodeURIComponent(TOK); return; }
+        if (x.s >= 400) { b.disabled = false; b.textContent = 'أرسل التقييم'; put(null); return err((x.d && x.d.message) || 'تعذّر الإرسال'); }
+        put(null); D.status = 'reviewed'; D.mine = true; render(); try { history.replaceState(null, '', '/w/' + TOK); } catch(e) {}
+      })
+      .catch(function(){ b.disabled = false; b.textContent = 'أرسل التقييم'; err('تعذّر الاتصال — حاول مرة ثانية'); });
+  }
+  function load(){
+    if (!TOK) { app.innerHTML = '<div class="card ok"><div class="e">🔗</div><h2>الرابط غير صحيح</h2></div>'; return; }
+    fetch(API + '/api/w/' + TOK, { headers: hdr() }).then(function(r){ return r.json().then(function(d){ return { s: r.status, d: d }; }); })
+      .then(function(x){
+        if (x.s >= 400) { app.innerHTML = '<div class="card ok"><div class="e">🔗</div><h2>' + esc((x.d && x.d.message) || 'الرابط غير صحيح') + '</h2><a class="btn bo" href="/">الصفحة الرئيسية</a></div>'; return; }
+        D = x.d; render();
+      })
+      .catch(function(){ app.innerHTML = '<div class="card ok"><div class="e">📡</div><h2>تعذّر التحميل</h2><p>تأكد من النت وحاول مرة ثانية</p><button class="btn bp" type="button" onclick="location.reload()">حاول مرة ثانية</button></div>'; });
+  }
+  load();
+})();
+</script>
+</body>
+</html>

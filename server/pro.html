@@ -214,6 +214,7 @@ body{background:var(--bg)}
 .pp-wa{background:#16a34a;color:#fff}.pp-call{background:#1d4ed8;color:#fff}
 .pp-msg{border:1.5px solid var(--border);background:var(--white);color:var(--p);border-radius:12px;padding:10px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
 .pp-gal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:118px;gap:6px}
+.pp-vw{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}.pp-vwi{flex:none;width:150px}.pp-vwi .g{width:150px;height:120px;border-radius:14px;overflow:hidden;cursor:pointer;background:var(--bg)}.pp-vwi .g img{width:100%;height:100%;object-fit:cover;display:block}.pp-vwi .t{font-weight:800;font-size:13px;margin-top:6px;line-height:1.5}.pp-vwi .m{font-size:11.5px;margin-top:3px}.pp-vwi .vr{white-space:nowrap;display:inline-block;color:#15803d;background:#dcfce7;border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:900}
 .pp-gal .g{border-radius:14px;overflow:hidden;position:relative;cursor:pointer;background:var(--bg)}
 .pp-gal .g img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}
 .pp-gal .g:hover img{transform:scale(1.04)}
@@ -449,7 +450,8 @@ function render(p,rat){
   if(p.business_name&&p.name&&p.business_name!==p.name)hero+='<div class="pp-hbiz">'+esc(p.name)+'</div>';
   hero+='<h1 class="pp-hname">'+esc(nm)+'</h1>';
   if(sp.length)hero+='<div class="pp-hsp">'+esc(sp.slice(0,4).join(' · '))+'</div>';
-  var bd=(vrf?'<span class="pp-pill" style="background:rgba(255,255,255,.16);color:#fff">موثّق ✓</span>':'')+tierBadge(p.tier);
+  var _vw=(Array.isArray(p.verified_works)?p.verified_works:[]).filter(function(w){return w&&(w.images||[]).length;});
+  var bd=(vrf?'<span class="pp-pill" style="background:rgba(255,255,255,.16);color:#fff">موثّق ✓</span>':'')+(_vw.length?'<span class="pp-pill" style="background:#2563eb;color:#fff">✓ أعمال موثّقة</span>':'')+tierBadge(p.tier);
   if(bd)hero+='<div class="pp-hb">'+bd+'</div>';
   hero+='</div></div>';
   var m=last?Math.floor((Date.now()-new Date(last))/60000):99999;
@@ -485,6 +487,13 @@ function render(p,rat){
   R+='</div>';
   if(_safeUrl(p.company_profile_url))R+='<a class="pp-card o6 pp-cpf" href="'+esc(_safeUrl(p.company_profile_url))+'" target="_blank" rel="noopener"><span class="pp-cpi">📁</span><span style="flex:1;min-width:0"><b>بروفايل الشركة</b><small>'+esc(p.company_profile_name||'ملف PDF')+'</small></span><span class="pp-cpa">فتح ↗</span></a>';
 
+  // ── أعمال موثّقة (أكّدها أصحابها بتقييم) ──
+  if(_vw.length){
+    h+='<div class="pp-card o3"><div class="pp-h">أعمال موثّقة<span class="lk" style="cursor:default;color:var(--muted)">'+_vw.length+' '+(_vw.length===1?'مشروع':'مشاريع')+'</span></div><div class="pp-vw">';
+    _vw.forEach(function(w){ var im=_safeUrl((w.images||[])[0]); if(!im)return; var r=Math.round(parseFloat(w.rating)||0);
+      h+='<div class="pp-vwi"><div class="g" data-s="'+esc(im)+'"><img src="'+esc(im)+'" loading="lazy" alt="'+esc(w.title||'')+'"></div><div class="t">'+esc(w.title||'')+'</div><div class="m">'+(r?'<span style="color:#F0A500">'+'★★★★★'.slice(0,r)+'</span> ':'')+'<span class="vr">مشروع موثّق ✓</span></div></div>'; });
+    h+='</div></div>';
+  }
   // ── معرض الأعمال ──
   window._ppPorts=ports;
   if(ports.length){

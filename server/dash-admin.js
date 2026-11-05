@@ -3045,7 +3045,29 @@ async function deleteRequest(id){
   fetch(API+'/api/admin/requests/'+id,Object.assign({method:'DELETE'},hdr())).then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(){toast('تم الحذف','success');loadRequests();}).catch(function(){toast('تعذر الحذف','error');});
 }
 
+var _WPF={no_phone:'المقيّم ما عنده جوال بحسابه',phone_mismatch:'جوال المقيّم غير اللي كتبه المزوّد',provider_account:'المقيّم حسابه مزوّد',new_account:'حساب المقيّم جديد (أقل من ساعة)',same_ip:'نفس شبكة المزوّد'};
+function _wpAdmin(){
+  var t=document.getElementById('reviews-table'); if(!t)return;
+  var box=document.getElementById('wp-adm'); if(!box){ box=document.createElement('div'); box.id='wp-adm'; t.parentNode.insertBefore(box,t); }
+  fetch(API+'/api/admin/proofs',hdr()).then(function(r){return r.json();}).then(function(L){
+    if(!Array.isArray(L)||!L.length){ box.innerHTML=''; return; }
+    var fl=L.filter(function(x){return x.flags&&x.flags.length&&!x.hidden;}).length;
+    box.innerHTML='<div class="card" style="margin-bottom:14px;padding:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:15px">⭐ أعمال موثّقة (وثّق أعمالك)</b><span style="font-size:12px;color:var(--muted);font-weight:700">'+L.length+' مشروع'+(fl?' · <b style="color:#b45309">'+fl+' تحتاج نظرة</b>':'')+'</span></div>'
+      +L.slice(0,60).map(function(x){
+        var im=(x.images||[]).slice(0,3).map(function(u){u=_safeUrl(u);return u?'<a href="'+esc(u)+'"><img src="'+esc(u)+'" style="width:46px;height:46px;border-radius:9px;object-fit:cover" alt=""></a>':'';}).join('');
+        var st=x.hidden?'<span style="color:#b91c1c;font-weight:900">انحذف</span>':(x.status==='reviewed'?'<span style="color:#15803d;font-weight:900">✓ تقيّم '+(x.rating||'')+'/5</span>':'<span style="color:#92400e;font-weight:900">بانتظار التقييم</span>');
+        var f=(x.flags||[]).map(function(k){return '<span style="display:inline-block;background:#fef3c7;color:#92400e;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;margin:2px">⚠️ '+esc(_WPF[k]||k)+'</span>';}).join('');
+        return '<div style="display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--border);padding:10px 0"><div style="display:flex;gap:4px;flex:none">'+im+'</div><div style="flex:1;min-width:0;font-size:12.5px;line-height:1.7"><b>'+esc(x.title)+'</b> · '+esc(x.business_name||x.provider_name||'')+'<br>'+st+(x.reviewer_name?' · المقيّم: '+esc(x.reviewer_name):' · العميل: '+esc(x.client_name||''))+(x.comment?'<br><span style="color:var(--muted)">«'+esc(x.comment)+'»</span>':'')+(f?'<br>'+f:'')+'</div>'
+          +(x.hidden?'':'<button class="act-btn ab-danger" onclick="_wpRemove('+x.id+')">حذف</button>')+'</div>';
+      }).join('')+'</div>';
+  }).catch(function(){ box.innerHTML=''; });
+}
+async function _wpRemove(id){
+  if(!await askConfirm({title:'حذف المشروع الموثّق',message:'ينحذف المشروع وتقييمه من صفحة المزوّد.',confirmText:'نعم، احذف'}))return;
+  fetch(API+'/api/admin/proofs/'+id+'/hide',Object.assign({method:'POST',body:'{}'},hdr())).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(){toast('انحذف','success');_wpAdmin();loadReviews();}).catch(function(){toast('تعذّر','error');});
+}
 function loadReviews(){
+  _wpAdmin();
   fetch(API+'/api/admin/reviews',hdr()).then(function(r){return r.json();}).then(function(revs){
     if(!Array.isArray(revs)||!revs.length){document.getElementById('reviews-table').innerHTML=emptyState('لا يوجد تقييمات');return;}
     document.getElementById('reviews-table').innerHTML='<table><thead><tr><th>المُقيِّم</th><th>المُقيَّم</th><th>التقييم</th><th>التعليق</th><th></th></tr></thead><tbody>'+revs.map(function(rv){

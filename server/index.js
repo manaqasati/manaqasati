@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sub.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/sub.js','/proofs.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -757,6 +757,7 @@ function _sortByProximity(rows, reqCity, cityKey){
   rows.sort((a, b) => ((b.status === 'accepted') - (a.status === 'accepted'))
     || ((b.improved_at && b.status === 'pending' ? 1 : 0) - (a.improved_at && a.status === 'pending' ? 1 : 0))
     || ((a.low_rank ? 1 : 0) - (b.low_rank ? 1 : 0))
+    || (Math.min(b.works_verified || 0, 3) - Math.min(a.works_verified || 0, 3))   // «وثّق أعمالك»: الأعمال الموثّقة تقدّم العرض
     || (P(a) - P(b)) || ((a.prox === 2 && b.prox === 2 && a.prox_km != null && b.prox_km != null) ? a.prox_km - b.prox_km : 0)
     || (a._i - b._i));
   rows.forEach(x => { delete x._i; });
@@ -860,6 +861,8 @@ app.get('/project.html',           (req, res) => res.sendFile(__dirname + '/proj
 app.get('/chat',                   (req, res) => res.sendFile(__dirname + '/chat.html'));
 app.get('/chat.html',              (req, res) => res.sendFile(__dirname + '/chat.html'));
 app.get('/pro.html',               (req, res) => res.sendFile(__dirname + '/pro.html'));
+// «وثّق أعمالك»: صفحة صاحب المشروع (رابط خاص — ما تنأرشف)
+app.get('/w/:token', (req, res) => { const h = _readPage(__dirname + '/w.html'); if (!h) return res.status(404).end(); res.set('X-Robots-Tag', 'noindex, nofollow'); res.set('Cache-Control', 'no-store'); res.type('html').send(_injectUp(h)); });
 app.get('/card.html',              (req, res) => res.sendFile(__dirname + '/card.html'));
 app.get('/brief.html',             (req, res) => res.sendFile(__dirname + '/brief.html'));
 app.get('/b2b',                    (req, res) => res.sendFile(__dirname + '/b2b.html'));
@@ -1487,7 +1490,8 @@ app.get('/dalil/:cat/:city', async (req, res) => {
            COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count
          FROM users WHERE role='provider' AND is_active=TRUE
            AND $1=ANY(COALESCE(specialties,'{}')) AND city ILIKE $2
-         ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL THEN 0 ELSE 1 END,
+         ORDER BY LEAST((SELECT COUNT(*) FROM work_proofs wp WHERE wp.provider_id=users.id AND wp.status='reviewed' AND NOT wp.hidden),5) DESC,
+           CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL THEN 0 ELSE 1 END,
            COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) DESC LIMIT 30`,
         [cat, '%'+city+'%']);
       providers = r.rows;
@@ -3593,6 +3597,12 @@ async function setupDatabase() {
       // المزوّد يطلب التقييم / يوثّق مشروعاً تمّ (داخل أو خارج المنصة) — العميل يأكّد
       await _mig(`CREATE TABLE IF NOT EXISTS completion_claims (id SERIAL PRIMARY KEY, request_id INTEGER NOT NULL, bid_id INTEGER, provider_id INTEGER NOT NULL, client_id INTEGER NOT NULL, kind VARCHAR(10) NOT NULL, value INTEGER, done_when VARCHAR(10), status VARCHAR(12) NOT NULL DEFAULT 'pending', client_value INTEGER, reminded_at TIMESTAMP, responded_at TIMESTAMP, admin_done BOOLEAN DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(request_id, provider_id))`);
       await _mig(`CREATE INDEX IF NOT EXISTS idx_cclaims_client ON completion_claims(client_id, status)`);
+      // «وثّق أعمالك»: المزوّد يرفع صور مشروع سواه ويرسل رابط لصاحب المشروع يقيّمه (يأكّد بدخول حسابه)
+      await _mig(`CREATE TABLE IF NOT EXISTS work_proofs (id SERIAL PRIMARY KEY, provider_id INTEGER NOT NULL, token VARCHAR(40) UNIQUE NOT NULL, title VARCHAR(120) NOT NULL, category VARCHAR(80), city VARCHAR(60), images TEXT[] NOT NULL, client_name VARCHAR(60), client_ph9 VARCHAR(12), status VARCHAR(12) NOT NULL DEFAULT 'pending', review_id INTEGER, reviewer_id INTEGER, flags TEXT[], created_ip VARCHAR(64), review_ip VARCHAR(64), reminded_at TIMESTAMP, reviewed_at TIMESTAMP, hidden BOOLEAN NOT NULL DEFAULT FALSE, created_at TIMESTAMP DEFAULT NOW())`);
+      await _mig(`CREATE INDEX IF NOT EXISTS idx_wproofs_prov ON work_proofs(provider_id, status)`);
+      await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS uq_wproofs_prov_ph ON work_proofs(provider_id, client_ph9)`);
+      for (const c of ['work_id INTEGER','r_quality SMALLINT','r_time SMALLINT','r_deal SMALLINT'])
+        await _mig(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS ${c}`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS claim_nudged_at TIMESTAMP`);
       // طلب الاعتماد: تأكيد المزوّد + تعديل السعر/المدة قبل الإرسال + نزول ترتيب من يكثر «ما اتفقنا»
       await _mig(`ALTER TABLE bid_accept_asks ADD COLUMN IF NOT EXISTS prev_price INTEGER`);
@@ -5224,6 +5234,7 @@ app.get('/api/provider/:id/profile', async (req, res) => {
     const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
     if (!(await _viewer(req))) { r.rows[0].phone_locked = !!r.rows[0].phone; r.rows[0].phone = null; }   // رقم المزوّد للمسجّلين (يشجّع التسجيل)
+    try { r.rows[0].verified_works = (await pool.query("SELECT w.id, w.title, w.category, w.city, w.images, rv.rating FROM work_proofs w LEFT JOIN reviews rv ON rv.id=w.review_id WHERE w.provider_id=$1 AND w.status='reviewed' AND NOT w.hidden ORDER BY w.reviewed_at DESC LIMIT 12", [id])).rows; } catch(e) { r.rows[0].verified_works = []; }
     res.json(r.rows[0]);
   } catch(e) { console.error('/api/provider/:id/profile:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -5232,9 +5243,146 @@ app.get('/api/ratings/provider/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const agg = await pool.query(`SELECT COALESCE(AVG(rating),0)::float as average, COUNT(*)::int as count FROM reviews WHERE reviewed_id=$1`, [id]);
-    const rv = await pool.query(`SELECT r.id, r.rating, r.comment, r.images, r.provider_reply, r.reply_at, r.created_at, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews r JOIN users u ON u.id=r.reviewer_id LEFT JOIN requests rq ON rq.id=r.request_id WHERE r.reviewed_id=$1 ORDER BY r.created_at DESC LIMIT 20`, [id]);
+    const rv = await pool.query(`SELECT r.id, r.rating, r.comment, r.images, r.provider_reply, r.reply_at, r.created_at, u.name as reviewer_name, u.profile_image as reviewer_image, COALESCE(rq.title, (SELECT title FROM work_proofs WHERE id=r.work_id)) as request_title FROM reviews r JOIN users u ON u.id=r.reviewer_id LEFT JOIN requests rq ON rq.id=r.request_id WHERE r.reviewed_id=$1 ORDER BY r.created_at DESC LIMIT 20`, [id]);
     res.json({ average: parseFloat(agg.rows[0].average)||0, count: agg.rows[0].count||0, reviews: rv.rows });
   } catch(e) { console.error('/api/ratings/provider/:id:', e); res.json({ average:0, count:0, reviews:[] }); }
+});
+
+// ═══ «وثّق أعمالك» — مشاريع المزوّد اللي يأكّدها أصحابها بتقييم ═══
+const _WP_MONTH = 5, _WP_IMGS = 8;
+function _wpPh9(p){ const d = _asciiDigits(String(p || '')).replace(/\D/g, ''); const n = d.slice(-9); return /^5\d{8}$/.test(n) ? n : null; }
+function _wpWho(n){ const w = String(n || '').replace(/\s+/g, ' ').trim().split(' '); return /^(أبو|ابو|أم|ام|بو)$/.test(w[0] || '') && w[1] ? w[0] + ' ' + w[1] : (w[0] || ''); }
+function _wpIp(req){ return String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim().slice(0, 64); }
+function _wpText(name, title, url){ return 'هلا ' + (name || '') + ' 👋\nهذا رابط مشروع «' + title + '» اللي نفذناه لك — ممكن تقيّمني؟ ما ياخذ دقيقة:\n' + url; }
+async function _wpVerified(pid){ try { return (await pool.query("SELECT COUNT(*)::int n FROM work_proofs WHERE provider_id=$1 AND status='reviewed' AND NOT hidden", [pid])).rows[0].n; } catch(e) { return 0; } }
+app.get('/api/provider/proofs', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
+    const r = await pool.query(`SELECT w.id, w.token, w.title, w.category, w.city, w.images, w.client_name, w.status, w.hidden, w.created_at, w.reminded_at, w.reviewed_at, rv.rating, rv.comment
+      FROM work_proofs w LEFT JOIN reviews rv ON rv.id=w.review_id WHERE w.provider_id=$1 ORDER BY w.created_at DESC LIMIT 60`, [req.user.id]);
+    const m = (await pool.query("SELECT COUNT(*)::int n FROM work_proofs WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '30 days'", [req.user.id])).rows[0].n;
+    r.rows.forEach(x => { x.url = SITE_URL + '/w/' + x.token; x.wa_text = _wpText(x.client_name, x.title, x.url); });
+    res.json({ items: r.rows, verified: r.rows.filter(x => x.status === 'reviewed' && !x.hidden).length, month_left: Math.max(0, _WP_MONTH - m), month_max: _WP_MONTH });
+  } catch(e) { console.error('GET /api/provider/proofs:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.post('/api/provider/proofs', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
+    const b = req.body || {};
+    const title = String(b.title || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    const name = String(b.client_name || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    const cat = CATEGORIES.includes(String(b.category || '')) ? String(b.category) : null;
+    const city = String(b.city || '').trim().slice(0, 60) || null;
+    if (title.length < 4) return res.status(400).json({ message: 'اكتب وش سويت (مثلاً: واجهة فيلا حجر)' });
+    if (!name) return res.status(400).json({ message: 'اكتب اسم صاحب المشروع' });
+    const ph = _wpPh9(b.client_phone);
+    if (!ph) return res.status(400).json({ message: 'اكتب جوال صاحب المشروع صح (05xxxxxxxx)' });
+    const me = (await pool.query('SELECT phone FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
+    if (_wpPh9(me.phone) === ph) return res.status(400).json({ message: 'هذا رقمك — اكتب رقم صاحب المشروع' });
+    const imgs = (Array.isArray(b.images) ? b.images : []).filter(x => typeof x === 'string' && x).slice(0, _WP_IMGS);
+    if (!imgs.length) return res.status(400).json({ message: 'ارفع صورة وحدة على الأقل من المشروع' });
+    const m = (await pool.query("SELECT COUNT(*)::int n FROM work_proofs WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '30 days'", [req.user.id])).rows[0].n;
+    if (m >= _WP_MONTH) return res.status(429).json({ message: 'وصلت الحد (' + _WP_MONTH + ' مشاريع بالشهر) — تقدر تضيف بعدين' });
+    const dup = (await pool.query('SELECT id FROM work_proofs WHERE provider_id=$1 AND client_ph9=$2', [req.user.id, ph])).rows[0];
+    if (dup) return res.status(409).json({ message: 'أرسلت رابط لهالعميل قبل — كل عميل يقيّمك مرة وحدة' });
+    const up = [];
+    for (const im of imgs) {
+      let u = null;
+      try { u = im.startsWith('data:') ? await uploadToCloud(im, 'manaqasa/works') : _safeUrl(im); } catch(e) { u = null; }
+      if (!u || String(u).startsWith('data:')) return res.status(400).json({ message: 'تعذّر رفع الصور — حاول مرة ثانية' });
+      up.push(u);
+    }
+    const tok = crypto.randomBytes(12).toString('base64url');
+    const r = await pool.query('INSERT INTO work_proofs (provider_id, token, title, category, city, images, client_name, client_ph9, created_ip) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id',
+      [req.user.id, tok, title, cat, city, up, name, ph, _wpIp(req)]);
+    const url = SITE_URL + '/w/' + tok;
+    res.json({ ok: true, id: r.rows[0].id, url, wa_phone: '966' + ph, wa_text: _wpText(name, title, url) });
+  } catch(e) {
+    if (e && e.code === '23505') return res.status(409).json({ message: 'أرسلت رابط لهالعميل قبل — كل عميل يقيّمك مرة وحدة' });
+    console.error('POST /api/provider/proofs:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' });
+  }
+});
+app.delete('/api/provider/proofs/:id', auth, async (req, res) => {
+  try {
+    const r = await pool.query("DELETE FROM work_proofs WHERE id=$1 AND provider_id=$2 AND status='pending' RETURNING id", [parseInt(req.params.id) || 0, req.user.id]);
+    if (!r.rows.length) return res.status(400).json({ message: 'المشروع اللي تقيّم ما ينحذف — التقييم صار لصاحبه' });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.post('/api/provider/proofs/:id/remind', auth, async (req, res) => {
+  try {
+    const w = (await pool.query("SELECT * FROM work_proofs WHERE id=$1 AND provider_id=$2", [parseInt(req.params.id) || 0, req.user.id])).rows[0];
+    if (!w || w.status !== 'pending') return res.status(400).json({ message: 'هذا المشروع تقيّم' });
+    await pool.query('UPDATE work_proofs SET reminded_at=NOW() WHERE id=$1', [w.id]);
+    const url = SITE_URL + '/w/' + w.token;
+    res.json({ ok: true, url, wa_phone: '966' + w.client_ph9, wa_text: 'تذكير بسيط 🙏 ' + _wpText(w.client_name, w.title, url) });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+// صفحة صاحب المشروع
+app.get('/api/w/:token', async (req, res) => {
+  try {
+    const w = (await pool.query(`SELECT w.id, w.title, w.category, w.city, w.images, w.client_name, w.status, w.hidden, w.reviewer_id, w.provider_id,
+      u.name, u.business_name, u.profile_image, u.city AS provider_city,
+      COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0)::float AS rating, (SELECT COUNT(*)::int FROM reviews WHERE reviewed_id=u.id) AS rcount
+      FROM work_proofs w JOIN users u ON u.id=w.provider_id WHERE w.token=$1 AND u.is_active=TRUE`, [String(req.params.token || '').slice(0, 40)])).rows[0];
+    if (!w || w.hidden) return res.status(404).json({ message: 'الرابط غير صحيح أو انحذف' });
+    const v = await _viewer(req);
+    res.json({ title: w.title, category: w.category, city: w.city, images: w.images || [], client_first: _wpWho(w.client_name), status: w.status,
+      mine: !!(v && w.reviewer_id && v.id === w.reviewer_id), is_provider_self: !!(v && v.id === w.provider_id),
+      provider: { id: w.provider_id, name: w.business_name || w.name, profile_image: w.profile_image, city: w.provider_city, rating: w.rating, count: w.rcount } });
+  } catch(e) { console.error('GET /api/w:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.post('/api/w/:token/review', auth, async (req, res) => {
+  try {
+    const v = await _viewer(req); if (!v) return res.status(401).json({ message: 'سجّل دخولك أول' });
+    const w = (await pool.query('SELECT * FROM work_proofs WHERE token=$1', [String(req.params.token || '').slice(0, 40)])).rows[0];
+    if (!w || w.hidden) return res.status(404).json({ message: 'الرابط غير صحيح أو انحذف' });
+    if (w.status !== 'pending') return res.status(409).json({ message: 'هذا المشروع تقيّم قبل — شكراً لك' });
+    if (v.id === w.provider_id) return res.status(400).json({ message: 'ما تقدر تقيّم نفسك — أرسل الرابط لصاحب المشروع' });
+    const R = k => { const n = Math.round(Number(_asciiDigits(String(req.body[k] == null ? '' : req.body[k])))); return n >= 1 && n <= 5 ? n : null; };
+    const q = R('quality'), t = R('time'), d = R('deal');
+    if (!q || !t || !d) return res.status(400).json({ message: 'اختر النجوم للثلاث' });
+    const me = (await pool.query('SELECT id, role, phone, created_at FROM users WHERE id=$1', [v.id])).rows[0];
+    if (!me) return res.status(401).json({ message: 'سجّل دخولك أول' });
+    const prev = (await pool.query('SELECT 1 FROM work_proofs WHERE provider_id=$1 AND reviewer_id=$2 LIMIT 1', [w.provider_id, v.id])).rows[0];
+    if (prev) return res.status(409).json({ message: 'قيّمت هالمزوّد قبل — شكراً لك' });
+    const flags = [];
+    const mp = _wpPh9(me.phone);
+    if (!mp) flags.push('no_phone'); else if (mp !== w.client_ph9) flags.push('phone_mismatch');
+    if (me.role === 'provider') flags.push('provider_account');
+    if (me.created_at && Date.now() - new Date(me.created_at).getTime() < 3600e3) flags.push('new_account');
+    const ip = _wpIp(req); if (ip && w.created_ip && ip === w.created_ip) flags.push('same_ip');
+    const rating = Math.round((q + t + d) / 3);
+    const comment = String(req.body.comment || '').replace(/\s+/g, ' ').trim().slice(0, 600) || null;
+    const lk = await pool.query("UPDATE work_proofs SET status='reviewed', reviewer_id=$2, reviewed_at=NOW(), review_ip=$3, flags=$4 WHERE id=$1 AND status='pending' RETURNING id", [w.id, v.id, ip, flags.length ? flags : null]);
+    if (!lk.rows.length) return res.status(409).json({ message: 'هذا المشروع تقيّم قبل — شكراً لك' });
+    const rv = await pool.query("INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, images, type, work_id, r_quality, r_time, r_deal, created_at) VALUES (NULL,$1,$2,$3,$4,$5,'work',$6,$7,$8,$9,NOW()) RETURNING id",
+      [v.id, w.provider_id, rating, comment, (w.images || []).slice(0, 4), w.id, q, t, d]);
+    await pool.query('UPDATE work_proofs SET review_id=$2 WHERE id=$1', [w.id, rv.rows[0].id]);
+    const n = await _wpVerified(w.provider_id);
+    notify(w.provider_id, '⭐ ' + (_wpWho(w.client_name) || 'عميلك') + ' قيّمك ' + rating + '/5', 'مشروع «' + w.title + '» صار موثّق في صفحتك' + (n === 1 ? ' — وأخذت شارة «أعمال موثّقة ✓»' : n === 3 ? ' — عروضك صارت تطلع قبل غيرك' : ''), 'proof', w.id, { url: '/dashboard-provider.html#proof' }).catch(() => {});
+    res.json({ ok: true, rating });
+  } catch(e) { console.error('POST /api/w/review:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+// للأدمن: الأعمال الموثّقة + إشارات المراجعة
+app.get('/api/admin/proofs', auth, adminOnly, async (req, res) => {
+  try {
+    const r = await pool.query(`SELECT w.id, w.title, w.category, w.city, w.images, w.client_name, w.status, w.hidden, w.flags, w.created_at, w.reviewed_at, w.provider_id,
+      p.name AS provider_name, p.business_name, rv.rating, rv.comment, c.name AS reviewer_name, c.id AS reviewer_id
+      FROM work_proofs w JOIN users p ON p.id=w.provider_id LEFT JOIN reviews rv ON rv.id=w.review_id LEFT JOIN users c ON c.id=w.reviewer_id
+      ORDER BY (w.flags IS NOT NULL AND NOT w.hidden) DESC, w.created_at DESC LIMIT 200`);
+    res.json(r.rows);
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/proofs/:id/hide', auth, adminOnly, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id) || 0;
+    const w = (await pool.query("UPDATE work_proofs SET hidden=TRUE, status='removed' WHERE id=$1 RETURNING review_id, provider_id, title", [id])).rows[0];
+    if (!w) return res.status(404).json({ message: 'غير موجود' });
+    if (w.review_id) { await pool.query('DELETE FROM reviews WHERE id=$1', [w.review_id]); await pool.query('UPDATE work_proofs SET review_id=NULL WHERE id=$1', [id]); }
+    await logAdmin(req, 'remove_proof', 'work_proof', id, String(w.title || '').slice(0, 80));
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
 app.put('/api/provider/profile', auth, async (req, res) => {
@@ -5313,7 +5461,7 @@ app.get('/api/provider/projects', auth, async (req, res) => {
 
 app.get('/api/provider/reviews', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT rv.id, rv.rating, rv.comment, rv.images, rv.provider_reply, rv.reply_at, rv.created_at, rv.reviewer_id, rv.request_id, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id LEFT JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 100`, [req.user.id]);
+    const r = await pool.query(`SELECT rv.id, rv.rating, rv.comment, rv.images, rv.provider_reply, rv.reply_at, rv.created_at, rv.reviewer_id, rv.request_id, u.name as reviewer_name, u.profile_image as reviewer_image, COALESCE(rq.title, (SELECT title FROM work_proofs WHERE id=rv.work_id)) as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id LEFT JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 100`, [req.user.id]);
     res.json(r.rows);
   } catch(e) { console.error('/provider/reviews:', e); res.json([]); }
 });
@@ -6109,14 +6257,18 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
              THEN u.profile_image ELSE NULL END as provider_image,
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews,
+        (SELECT COUNT(*)::int FROM work_proofs wp WHERE wp.provider_id=u.id AND wp.status='reviewed' AND NOT wp.hidden) AS works_verified,
+        (SELECT json_agg(x) FROM (SELECT wp.images[1] AS img, wp.images AS imgs, wp.title, rv2.rating, rv2.comment, COALESCE(wp.client_name,'') AS who FROM work_proofs wp LEFT JOIN reviews rv2 ON rv2.id=wp.review_id
+           WHERE wp.provider_id=u.id AND wp.status='reviewed' AND NOT wp.hidden ORDER BY (wp.category IS NOT DISTINCT FROM (SELECT category FROM requests WHERE id=$1)) DESC, wp.reviewed_at DESC LIMIT 4) x) AS works_sample,
         (u.ask_penalty_until > NOW()) IS TRUE AS low_rank, b.hold_state, b.reject_reason, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note,
         (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL) AS chance_open,
         EXISTS(SELECT 1 FROM bid_reports br WHERE br.bid_id=b.id AND br.client_id=$3::int) as is_hidden
       FROM bids b JOIN users u ON b.provider_id=u.id
       WHERE b.request_id=$1 AND ($2::boolean OR COALESCE(b.hold_state,'') NOT IN ('held','rejected'))
-      ORDER BY (b.status='accepted') DESC, (b.improved_at IS NOT NULL AND b.status='pending') DESC, (u.ask_penalty_until > NOW()) IS TRUE ASC, CASE u.tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, b.created_at DESC
+      ORDER BY (b.status='accepted') DESC, (b.improved_at IS NOT NULL AND b.status='pending') DESC, (u.ask_penalty_until > NOW()) IS TRUE ASC, LEAST((SELECT COUNT(*) FROM work_proofs wp WHERE wp.provider_id=u.id AND wp.status='reviewed' AND NOT wp.hidden),3) DESC, CASE u.tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, b.created_at DESC
     `, [id, req.user.role === 'admin', req.user.id]);
     try { const rc = (await pool.query('SELECT city FROM requests WHERE id=$1', [id])).rows[0]; _sortByProximity(r.rows, rc && rc.city); } catch(e){}
+    r.rows.forEach(x => { if (Array.isArray(x.works_sample)) x.works_sample.forEach(w => { w.who = _wpWho(w.who); }); });
     res.json(r.rows);
   } catch(e) { console.error('GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -8016,7 +8168,7 @@ app.post('/api/messages', rateLimiter(60, 300000), auth, async (req, res) => {
 app.get('/api/reviews/user/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const r = await pool.query(`SELECT rv.*, u.name as reviewer_name, u.profile_image as reviewer_image, rq.title as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id LEFT JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 50`, [id]);
+    const r = await pool.query(`SELECT rv.*, u.name as reviewer_name, u.profile_image as reviewer_image, COALESCE(rq.title, (SELECT title FROM work_proofs WHERE id=rv.work_id)) as request_title FROM reviews rv JOIN users u ON rv.reviewer_id=u.id LEFT JOIN requests rq ON rv.request_id=rq.id WHERE rv.reviewed_id=$1 ORDER BY rv.created_at DESC LIMIT 50`, [id]);
     res.json(r.rows);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -8215,6 +8367,7 @@ app.get('/api/providers/:id', async (req, res) => {
     try { const sp = await _replySpeed(prov.id); if (sp) prov.reply_speed = sp.label; } catch(e){}
     try { prov.named_count = (await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE invited_provider_id=$1 AND status NOT IN ('pending_review','review','needs_edit','rejected','deleted')", [prov.id])).rows[0].n; } catch(e){}   // «طلبه العملاء بالاسم»
     if (prov && !(await _viewer(req))) { prov.phone_locked = !!prov.phone; prov.phone = null; }   // رقم المزوّد للمسجّلين
+    try { prov.verified_works = (await pool.query("SELECT w.id, w.title, w.category, w.city, w.images, rv.rating, COALESCE(w.client_name,'') AS who FROM work_proofs w LEFT JOIN reviews rv ON rv.id=w.review_id WHERE w.provider_id=$1 AND w.status='reviewed' AND NOT w.hidden ORDER BY w.reviewed_at DESC LIMIT 12", [prov.id])).rows; prov.verified_works.forEach(w => { w.who = _wpWho(w.who); }); } catch(e) { prov.verified_works = []; }
     res.json(prov);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -11921,11 +12074,11 @@ app.post('/api/admin/email-test', requirePermission('settings.manage'), async (r
 });
 
 app.get('/api/admin/reviews', requirePermission('reviews.view'), async (req, res) => {
-  try { const r=await pool.query(`SELECT rv.*, u1.name as reviewer_name, u2.name as reviewed_name, rq.title as request_title FROM reviews rv JOIN users u1 ON rv.reviewer_id=u1.id JOIN users u2 ON rv.reviewed_id=u2.id LEFT JOIN requests rq ON rv.request_id=rq.id ORDER BY rv.created_at DESC LIMIT 200`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  try { const r=await pool.query(`SELECT rv.*, u1.name as reviewer_name, u2.name as reviewed_name, COALESCE(rq.title, (SELECT title FROM work_proofs WHERE id=rv.work_id)) as request_title FROM reviews rv JOIN users u1 ON rv.reviewer_id=u1.id JOIN users u2 ON rv.reviewed_id=u2.id LEFT JOIN requests rq ON rv.request_id=rq.id ORDER BY rv.created_at DESC LIMIT 200`); res.json(r.rows); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 app.delete('/api/admin/reviews/:id', requirePermission('reviews.delete'), async (req, res) => {
-  try { const rid=parseInt(req.params.id); const r=await pool.query('DELETE FROM reviews WHERE id=$1',[rid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); await logAdmin(req,'delete_review','review',rid,'حذف تقييم'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+  try { const rid=parseInt(req.params.id); const r=await pool.query('DELETE FROM reviews WHERE id=$1',[rid]); if(r.rowCount===0) return res.status(404).json({ message:'غير موجود' }); try { await pool.query("UPDATE work_proofs SET status='removed', hidden=TRUE, review_id=NULL WHERE review_id=$1", [rid]); } catch(e){} await logAdmin(req,'delete_review','review',rid,'حذف تقييم'); res.json({ ok:true }); } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
 // عدّادات الشارات في لوحة الإدارة (خفيفة: أرقام فقط بدل تحميل القوائم كاملة كل 25 ثانية)

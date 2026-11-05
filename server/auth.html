@@ -877,7 +877,11 @@ function _authDone(d,url){
         var params=new URLSearchParams(location.search);
         var redir=params.get('redirect');
         var provId=params.get('provider_id');
-        if(redir==='msg' && provId){
+        if(redir==='work'){
+          // «وثّق أعمالك»: صاحب المشروع رجع لصفحة التقييم — يتأكد ويرسل تقييمه
+          var _wt=String(params.get('w')||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
+          location.href=_wt?'/w/'+_wt+'?after=1':(rl==='provider'?'dashboard-provider.html':'dashboard-client.html');
+        } else if(redir==='msg' && provId){
           try{ localStorage.setItem('pending_contact_provider', provId); }catch(e){}
           if(rl==='client')         location.href='dashboard-client.html';
           else if(rl==='provider')  location.href='dashboard-provider.html';

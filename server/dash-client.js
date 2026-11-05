@@ -1131,11 +1131,12 @@ function loadBids(id){
             +'<div class="bid-av">'+avHtml+'</div>'
             +'<div class="bid-id">'
               +'<div class="bid-name">'+esc(safeName)+vBadge+_tierBadge(b.provider_tier)+_pubBadge(b.provider_badge)+_onlineDot(b.provider_last_seen)+'</div>'
-              +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span></div>'
+              +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span>'+((parseInt(b.works_verified)||0)>0?'<span class="wp-vb">✓ أعمال موثّقة</span>':'')+'</div>'
               +(b.provider_city?'<div class="bid-city"'+(b.prox===0?' style="color:#15803d;font-weight:800"':(b.prox===1?' style="color:#0f766e;font-weight:800"':''))+'><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+(b.area_mode==='travel'&&b.prox===2?'يقدر ينتقل لمدينتك · من ':b.serves==='city'?'يخدم مدينتك · مقره ':(b.serves==='all'&&b.prox===2?'يخدم كل المدن · مقره ':(b.prox===0?'من مدينتك · ':(b.prox===1?'من منطقتك · ':''))))+esc(b.provider_city)+(b.prox===2&&b.serves!=='all'&&b.prox_km?' · تقريباً '+(Math.round(b.prox_km/50)*50||b.prox_km).toLocaleString('en-US')+' كم':'')+'</div>':'')
             +'</div>'
             +'<div class="bid-price"><div class="pn">'+fmtN(b.price)+'</div><div class="pu">ر.س'+(_unitLabel(b.price_unit)?' '+_unitLabel(b.price_unit):'')+(window._ndPre?_ndPre(b):'')+'</div>'+(b.days?'<div class="pd">خلال '+b.days+' يوم</div>':'')+'</div>'
           +'</div>'
+          +_wpStrip(b)
           +'<div class="bid-chips">'+chips+'</div>'
           +(window._ndBidRow&&!isRej&&!isAcc?_ndBidRow(b,id):'')
           +(typeof _rjImpHtml==='function'?_rjImpHtml(b):'')
@@ -2629,6 +2630,21 @@ function _compareBids(){
     +'</div>';
   d.onclick=function(e){ if(e.target===d)d.remove(); };
   document.body.appendChild(d);
+}
+// «وثّق أعمالك»: شغل مشابه سواه المزوّد وأكّده أصحابه (صور + كلمة من صاحب المشروع)
+function _wpStrip(b){
+  var L=Array.isArray(b.works_sample)?b.works_sample:[]; if(!(parseInt(b.works_verified)||0)||!L.length) return '';
+  if(!document.getElementById('wp-bcss')){ var st=document.createElement('style'); st.id='wp-bcss'; st.textContent='.wp-vb{display:inline-flex;align-items:center;background:linear-gradient(90deg,#1d4ed8,#2563eb);color:#fff;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:900;margin-inline-start:6px;white-space:nowrap;vertical-align:middle}'
+    +'.wp-sim{background:var(--bg,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:14px;padding:10px;margin:10px 0 4px}.wp-sim .tt{font-size:12px;font-weight:900;color:var(--text2,#334155);margin-bottom:7px}'
+    +'.wp-sim .rw{display:flex;gap:6px;overflow-x:auto}.wp-sim a{flex:none;display:block}.wp-sim img{width:64px;height:64px;border-radius:10px;object-fit:cover;display:block}'
+    +'.wp-sim .qt{font-size:12.5px;font-weight:700;color:var(--text2,#475569);line-height:1.7;margin-top:8px;background:rgba(251,191,36,.12);border-radius:10px;padding:7px 10px}'
+    +'.wp-sim .vr{white-space:nowrap;display:inline-block;color:#15803d;background:#dcfce7;border-radius:999px;padding:1px 8px;font-size:10.5px;font-weight:900}'; document.head.appendChild(st); }
+  var imgs=[]; L.forEach(function(w){ (w.imgs||[w.img]).forEach(function(u){ u=_safeUrl(u); if(u&&imgs.indexOf(u)<0) imgs.push(u); }); });
+  var q=L.filter(function(w){ return w.comment; })[0];
+  var shown=imgs.slice(0,4);
+  return '<div class="wp-sim"><div class="tt">🏗️ شغل مشابه سواه — أكّده أصحابه</div><div class="rw">'
+    +shown.map(function(u){ return '<a href="'+esc(u)+'"><img src="'+esc(u)+'" alt="من أعمال المزوّد" loading="lazy" onerror="this.parentNode.style.display=\'none\'"></a>'; }).join('')+'</div>'
+    +(q?'<div class="qt">«'+esc(String(q.comment).slice(0,140))+'»'+(q.who?' — '+esc(q.who):'')+' <span class="vr">مشروع موثّق ✓</span></div>':'')+'</div>';
 }
 function _negotiate(provId,reqId,provName,price,bidId){
   window._negBidId=bidId||0;

@@ -349,7 +349,7 @@ function _setAvatar(img){
   });
 })();
 
-var _pages={sub:'🤝 مقاول باطن',home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي'};
+var _pages={sub:'🤝 مقاول باطن',home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي',proof:'⭐ أعمالي الموثّقة'};
 
 var _prefetchTimer={};
 function prefetchPage(page){
@@ -389,6 +389,7 @@ function _gotoPageInner(page){
   else if(page==='profile')loadProfile();
   else if(page==='chat'){loadChat();}
   else if(page==='saai')loadSaai();
+  else if(page==='proof'){ if(window.WP)WP.load(); else setTimeout(function(){ if(window.WP)WP.load(); },500); }
   else if(page==='sub'){ if(window.SubC)SubC.load(); else setTimeout(function(){ if(window.SubC)SubC.load(); },400); }
   if(page!=='chat'){clearInterval(_provConvPolling);}
 }
@@ -399,7 +400,7 @@ window.addEventListener('popstate',function(){
   var _sm=h.match(/^sub\/(\d+)$/); if(_sm){ if(_curPage==='sub'&&window.SubC){ SubC.open(parseInt(_sm[1]),null,true); return; } window._subOpen=parseInt(_sm[1]); h='sub'; }
   if(/^sub\/(new|\d+\/edit)$/.test(h)){ h='sub'; }
   if(h==='sub'&&_curPage==='sub'&&window.SubC&&SubC.list){ SubC.list(); return; }
-  var known=['home','browse','works','notifs','profile','chat','saai','sub'];
+  var known=['home','browse','works','reviews','notifs','profile','chat','saai','sub','proof'];
   var target=known.indexOf(h)>=0?h:'home';
   window._pSkipHash=true; gotoPage(target); window._pSkipHash=false;
 });
@@ -534,6 +535,7 @@ function _renderHome(data){
   try{ if(window.innerWidth<=768){ var _sh=pg.querySelector(':scope > .pa-share'), _sc=document.getElementById('ph-sharecard'); if(_sh&&_sc){ var _gw=document.createElement('div'); _gw.className='pa-grow'; _gw.innerHTML='<b class="pa-gh">كبّر حضورك</b><div class="pa-gc"></div>'; _sc.parentNode.insertBefore(_gw,_sc); var _gc=_gw.querySelector('.pa-gc'); _gc.appendChild(_sc); _gc.appendChild(_sh); } } }catch(e){}
   _paExtras();
   try{ if(window.SubC)SubC.homeCard(); else setTimeout(function(){ if(window.SubC)SubC.homeCard(); },500); }catch(e){}
+  try{ if(window.WP)WP.homeCard(); else setTimeout(function(){ if(window.WP)WP.homeCard(); },600); }catch(e){}
 }
 // سطر فرصة مختصر (الرئيسية)
 function _paRow(r,match){
@@ -1420,7 +1422,8 @@ async function loadReviews(){
     });
   }else{html+=_empty('لا يوجد تقييمات بعد','أنجز مشاريع لتحصل على تقييمات');}
   html+='</div>';
-  pg.innerHTML=html;_lb.done();
+  pg.innerHTML=html;
+  try{ if(window.WP)WP.reviewsCard(); }catch(e){}_lb.done();
 }
 
 function _notifMeta(type){
