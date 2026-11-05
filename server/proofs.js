@@ -40,9 +40,28 @@
       + '.wp-row{display:flex;gap:8px}.wp-row>div{flex:1;min-width:0}'
       + '.wp-er{display:none;color:#b91c1c;font-weight:800;font-size:13px;margin-top:9px}'
       + '.wp-note{background:var(--p-light,#eff6ff);color:var(--p,#1e40af);border-radius:13px;padding:10px 12px;font-size:12.5px;font-weight:800;line-height:1.7;margin-bottom:12px}'
+      + '.wp-new{display:inline-block;background:#ef4444;color:#fff;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:900;vertical-align:middle;margin-inline-start:6px;animation:wpP 1.6s ease-in-out infinite}@keyframes wpP{50%{transform:scale(1.08)}}'
+      + '.wp-c{background:var(--white,#fff);border:2px solid #fbbf24;border-radius:20px;padding:14px;margin-bottom:12px}'
+      + '[data-theme="dark"] .wp-c{border-color:rgba(251,191,36,.55)}'
+      + '.wp-ct{font-weight:900;font-size:15.5px;color:var(--text);line-height:1.5}'
+      + '.wp-pv{border:2px dashed #93c5fd;border-radius:16px;padding:10px;margin-top:10px;background:var(--p-light,#f8fbff)}'
+      + '[data-theme="dark"] .wp-pv{border-color:#2b4377;background:rgba(37,99,235,.08)}'
+      + '.wp-pvh{display:flex;gap:9px;align-items:center}.wp-av{width:40px;height:40px;border-radius:12px;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;flex:none;overflow:hidden}.wp-av img{width:100%;height:100%;object-fit:cover}'
+      + '.wp-vb{display:inline-flex;align-items:center;background:linear-gradient(90deg,#1d4ed8,#2563eb);color:#fff;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:900;white-space:nowrap}'
+      + '.wp-pvi{display:flex;gap:5px;margin-top:8px}.wp-pvi img,.wp-pvi span{width:52px;height:52px;border-radius:9px;object-fit:cover;flex:none}.wp-pvi span{background:linear-gradient(135deg,#dbe5f5,#c7d2fe);display:flex;align-items:center;justify-content:center;font-size:18px}'
+      + '[data-theme="dark"] .wp-pvi span{background:linear-gradient(135deg,#1e2d52,#24365e)}'
+      + '.wp-steps{margin-top:8px}.wp-stp{display:flex;gap:10px;align-items:center;padding:7px 0}.wp-stp .n{width:28px;height:28px;border-radius:50%;background:#dbeafe;color:#1d4ed8;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none;font-size:13px}'
+      + '.wp-stp.d .n{background:#22c55e;color:#fff}.wp-stp .t{font-weight:800;font-size:13.5px;color:var(--text)}.wp-stp.d .t{color:var(--muted);text-decoration:line-through}'
       + '.wp-mini{display:flex;gap:10px;align-items:center}.wp-mini .ic{width:40px;height:40px;border-radius:12px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:19px;flex:none}';
     D.head.appendChild(st);
   }
+  // «جديد» مثل «مقاول باطن»: تختفي أول ما يفتح القسم
+  function isNew(){ try { if (Date.now() > new Date('2027-01-15').getTime()) return false; return !localStorage.getItem('mnq_proof_seen'); } catch(e) { return false; } }
+  function markNav(){ css(); var n = D.getElementById('ni-proof'); if (!n) return; var b = n.querySelector('.wp-new');
+    if (isNew()) { if (!b) n.insertAdjacentHTML('beforeend', '<span class="wp-new" style="margin-inline-start:auto">جديد</span>'); } else if (b) b.remove();
+    D.querySelectorAll('.wp-newc').forEach(function(x){ if (!isNew()) x.remove(); }); }
+  function seen(){ try { localStorage.setItem('mnq_proof_seen', '1'); } catch(e) {} markNav(); }
+  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', markNav); else setTimeout(markNav, 0);
   function fetchD(force){
     if (S.d && !force) return Promise.resolve(S.d);
     return api('/api/provider/proofs').then(function(d){ if (d && Array.isArray(d.items)) S.d = d; return S.d; });
@@ -52,18 +71,37 @@
   }
   function nextTxt(n){ for (var i = 0; i < LV.length; i++) if (n < LV[i][0]) return 'باقي ' + (LV[i][0] - n) + ' — ' + LV[i][1]; return 'وصلت لأعلى مستوى 🏆'; }
 
-  // ─── بطاقة الرئيسية ───
+  // ─── بطاقة الرئيسية: يشوف كيف بيطلع عرضه للعميل + 3 خطوات ───
   function homeCard(){
     css(); var pg = D.getElementById('page-home'); if (!pg) return;
     var k = pg.querySelector('.pa-kpis'); if (!k) return;
     var box = D.getElementById('wp-home'); if (!box) { box = D.createElement('div'); box.id = 'wp-home'; k.parentNode.insertBefore(box, k.nextSibling); }
     fetchD(true).then(function(d){
       if (!d) { box.innerHTML = ''; return; }
-      var n = d.verified || 0, wt = d.items.filter(function(x){ return x.status === 'pending'; }).length;
+      var n = d.verified || 0, it = d.items || [], me = d.me || {};
       if (n >= 5) { box.innerHTML = ''; return; }
-      box.innerHTML = '<div class="wp-hero"><div class="wp-k">⭐ ارفع فرص قبول عروضك</div><div class="wp-t">' + (n ? 'عندك ' + n + ' ' + (n === 1 ? 'مشروع موثّق' : 'مشاريع موثّقة') + ' — كمّل' : 'وثّق أعمالك وخلّ عملاءك يقيّمونك') + '</div>'
-        + '<div class="wp-s">' + (wt ? '⏳ ' + wt + ' بانتظار تقييم صاحبها · ' : '') + 'ارفع صور مشروع سويته وأرسل الرابط لصاحبه يقيّمك — التقييم يظهر في صفحتك وجنب كل عرض تقدّمه.</div>'
-        + levels(n) + '<button type="button" class="wp-b wp-y" onclick="WP.go(1)">＋ وثّق مشروع</button></div>';
+      var nw = isNew() ? '<span class="wp-new wp-newc">جديد</span>' : '';
+      var im = []; it.filter(function(x){ return x.status !== 'removed'; }).forEach(function(x){ (x.images || []).forEach(function(u){ u = safe(u); if (u && im.length < 3) im.push(u); }); });
+      var av = safe(me.profile_image);
+      var pv = '<div class="wp-pv"><div class="wp-pvh"><div class="wp-av">' + (av ? '<img src="' + esc(av) + '" alt="">' : esc(String(me.name || 'م').charAt(0))) + '</div>'
+        + '<div style="flex:1;min-width:0"><div class="wp-n" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(me.name || 'اسمك') + '</div>'
+        + '<div class="wp-m" style="margin-top:3px">' + (me.rcount ? '<span style="color:#f59e0b">★ ' + esc(me.rating) + '</span> · ' : '') + '<span class="wp-vb">✓ أعمال موثّقة</span></div></div></div>'
+        + '<div class="wp-pvi">' + im.map(function(u){ return '<img src="' + esc(u) + '" alt="" loading="lazy">'; }).join('') + (im.length < 3 ? new Array(3 - im.length + 1).join('<span>📷</span>') : '') + '</div></div>';
+      var h = '<div class="wp-c">';
+      if (!n) {
+        var s1 = it.length > 0;
+        h += '<div class="wp-ct">⭐ خلّ عرضك يبان كذا للعميل' + nw + '</div>' + pv
+          + '<div class="wp-steps"><div class="wp-stp' + (s1 ? ' d' : '') + '"><span class="n">' + (s1 ? '✓' : '1') + '</span><span class="t">ارفع صور مشروع سويته</span></div>'
+          + '<div class="wp-stp' + (s1 ? ' d' : '') + '"><span class="n">' + (s1 ? '✓' : '2') + '</span><span class="t">أرسل الرابط لصاحبه بالواتساب</span></div>'
+          + '<div class="wp-stp"><span class="n">3</span><span class="t">يقيّمك ← تاخذ الشارة وعروضك تطلع أول</span></div></div>'
+          + (s1 ? '<div class="wp-m" style="margin-top:4px">⏳ بانتظار تقييم صاحب المشروع — ذكّره من «أعمالي الموثّقة»</div><button type="button" class="wp-b wp-o" onclick="WP.go(0)">أعمالي الموثّقة</button>'
+                : '<button type="button" class="wp-b wp-y" onclick="WP.go(1)">＋ ابدأ بمشروع واحد</button>');
+      } else {
+        h += '<div class="wp-ct">✓ عرضك صار يبان كذا للعميل' + nw + '</div>' + pv
+          + '<div class="wp-m" style="margin-top:8px;font-size:13px">عندك ' + n + ' ' + (n === 1 ? 'مشروع موثّق' : 'مشاريع موثّقة') + ' · ' + esc(nextTxt(n)) + '</div>'
+          + '<div style="display:flex;gap:8px"><button type="button" class="wp-b wp-y" style="flex:2" onclick="WP.go(1)">＋ وثّق مشروع ثاني</button><button type="button" class="wp-b wp-o" style="flex:1" onclick="WP.go(0)">أعمالي</button></div>';
+      }
+      box.innerHTML = h + '</div>';
     }).catch(function(){ box.innerHTML = ''; });
   }
   // ─── بطاقة «تقييماتي» ───
@@ -95,7 +133,7 @@
     pg.innerHTML = h;
   }
   function load(){
-    css(); var pg = D.getElementById('page-proof'); if (!pg) return;
+    css(); seen(); var pg = D.getElementById('page-proof'); if (!pg) return;
     if (!S.d) pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
     fetchD(true).then(function(d){ if (!d) throw 0; if (S.form) form(); else page(); })
       .catch(function(){ pg.innerHTML = '<div class="wp-card" style="text-align:center"><div class="wp-n">تعذّر التحميل</div><button type="button" class="wp-b wp-p" onclick="WP.load()">حاول مرة ثانية</button></div>'; });

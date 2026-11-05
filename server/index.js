@@ -5262,7 +5262,8 @@ app.get('/api/provider/proofs', auth, async (req, res) => {
       FROM work_proofs w LEFT JOIN reviews rv ON rv.id=w.review_id WHERE w.provider_id=$1 ORDER BY w.created_at DESC LIMIT 60`, [req.user.id]);
     const m = (await pool.query("SELECT COUNT(*)::int n FROM work_proofs WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '30 days'", [req.user.id])).rows[0].n;
     r.rows.forEach(x => { x.url = SITE_URL + '/w/' + x.token; x.wa_text = _wpText(x.client_name, x.title, x.url); });
-    res.json({ items: r.rows, verified: r.rows.filter(x => x.status === 'reviewed' && !x.hidden).length, month_left: Math.max(0, _WP_MONTH - m), month_max: _WP_MONTH });
+    const me = (await pool.query(`SELECT name, business_name, profile_image, COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=users.id),0)::float AS rating, (SELECT COUNT(*)::int FROM reviews WHERE reviewed_id=users.id) AS rcount FROM users WHERE id=$1`, [req.user.id])).rows[0] || {};
+    res.json({ me: { name: me.business_name || me.name || '', profile_image: me.profile_image || null, rating: me.rating || 0, rcount: me.rcount || 0 }, items: r.rows, verified: r.rows.filter(x => x.status === 'reviewed' && !x.hidden).length, month_left: Math.max(0, _WP_MONTH - m), month_max: _WP_MONTH });
   } catch(e) { console.error('GET /api/provider/proofs:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.post('/api/provider/proofs', auth, async (req, res) => {
@@ -5364,6 +5365,23 @@ app.post('/api/w/:token/review', auth, async (req, res) => {
     res.json({ ok: true, rating });
   } catch(e) { console.error('POST /api/w/review:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
+// إعلان الميزة للمزوّدين — مرة وحدة بعد الرفع (إشعار بالتطبيق + إيميل حسب إعداداته)
+async function _wpAnnounce(){
+  try {
+    const own = await pool.query("INSERT INTO platform_settings (key, value, updated_at) VALUES ('wp_announce_done','1',NOW()) ON CONFLICT (key) DO NOTHING RETURNING key");
+    if (!own.rows.length) return;   // انرسل قبل (أو نسخة ثانية من السيرفر أخذته)
+    const u = await pool.query("SELECT id, email FROM users WHERE role='provider' AND is_active=TRUE AND COALESCE(email,'') NOT ILIKE '%@manaqasa.local'");
+    const title = '⭐ ميزة جديدة: وثّق أعمالك';
+    const body = 'أضفنا ميزة تحسّن صفحتك وتساعدك تفوز بالمشاريع: ارفع صور مشروع سويته وأرسل الرابط لصاحبه يقيّمك — تاخذ شارة «أعمال موثّقة ✓» وعروضك تطلع قبل غيرك.';
+    const url = '/dashboard-provider.html#proof';
+    await _inChunks(u.rows, 10, x => notify(x.id, title, body, 'proof', null, { url, kind: 'wp_announce' }));
+    const html = emailTpl(title, '<p>' + eEsc(body) + '</p><p style="color:#5b6b82">العميل لما يشوف شغل مشابه لمشروعه وأكّده صاحبه، يثق فيك أكثر ويختار عرضك.</p>', 'وثّق أول مشروع', SITE_URL + url);
+    let sent = 0;
+    for (const x of u.rows) { if (!x.email) continue; try { await sendEmail(x.email, title, html, { uid: x.id, kind: 'wp_announce', cat: 'news' }); sent++; } catch(e) {} await new Promise(r => setTimeout(r, 150)); }
+    try { await logAdmin({ user: { id: null, name: 'النظام' } }, 'wp_announce', 'system', 0, 'إعلان «وثّق أعمالك»: ' + u.rows.length + ' مزوّد · ' + sent + ' إيميل'); } catch(e) {}
+  } catch(e) { console.error('wp announce:', e.message); }
+}
+setTimeout(_wpAnnounce, parseInt(process.env.WP_ANNOUNCE_DELAY_MS) || 60 * 60 * 1000);
 // للأدمن: الأعمال الموثّقة + إشارات المراجعة
 app.get('/api/admin/proofs', auth, adminOnly, async (req, res) => {
   try {
