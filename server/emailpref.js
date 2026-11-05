@@ -46,8 +46,8 @@
   function close(){ if (ov && ov.parentNode) ov.remove(); ov = null; }
   function paint(){
     var bd = ov.querySelector('.ep-bd');
-    var P = [['daily', 'ملخّص واحد باليوم', 'إيميل واحد الساعة 8 الصبح فيه كل المشاريع الجديدة', true],
-             ['instant', 'أول بأول', 'إيميل مع كل مشروع جديد — تقدّم قبل غيرك'],
+    var P = [['instant', 'أول بأول', 'إيميل مع كل مشروع جديد — تقدّم قبل غيرك', true],
+             ['daily', 'ملخّص واحد باليوم', 'إيميل واحد الساعة 8 الصبح فيه كل المشاريع الجديدة'],
              ['off', 'لا ترسل', 'تشوفها بس في الإشعارات داخل التطبيق']];
     var h = '<div class="ep-sec">المشاريع الجديدة اللي تناسب تخصصك</div>';
     P.forEach(function(o){ h += '<button type="button" class="ep-opt' + (st.proj === o[0] ? ' on' : '') + '" data-p="' + o[0] + '" aria-pressed="' + (st.proj === o[0]) + '"><span class="ep-rd"></span><span><b>' + o[1] + (o[3] ? '<span class="ep-tg-b">الأنسب</span>' : '') + '</b><small>' + o[2] + '</small></span></button>'; });
@@ -80,7 +80,7 @@
       })
       .catch(function(){ btn.disabled = false; btn.textContent = 'حفظ'; err('تعذّر الاتصال — حاول مرة ثانية'); });
   }
-  function sumTxt(s){ return s.proj === 'off' ? 'إيميلات المشاريع موقّفة' : s.proj === 'instant' ? 'المشاريع: أول بأول' : 'المشاريع: ملخّص واحد باليوم'; }
+  function sumTxt(s){ return s.proj === 'off' ? 'إيميلات المشاريع موقّفة' : s.proj === 'daily' ? 'المشاريع: ملخّص واحد باليوم' : 'المشاريع: أول بأول'; }
   W.mnqEmailSummary = sumTxt;
   W.mnqEmailPrefs = function(){
     if (!tok()) { location.href = '/auth.html'; return; }
@@ -100,7 +100,7 @@
     });
     fetch(api() + '/api/me/email-prefs', { headers: { Authorization: 'Bearer ' + tok() }, cache: 'no-store' })
       .then(function(r){ if (!r.ok) throw 0; return r.json(); })
-      .then(function(d){ st = { proj: d.proj || 'daily', sub: d.sub !== false, tips: d.tips !== false, news: d.news !== false, specialties: d.specialties || [], cats: (d.cats || []).slice() }; if (ov) paint(); })
+      .then(function(d){ st = { proj: d.proj || 'instant', sub: d.sub !== false, tips: d.tips !== false, news: d.news !== false, specialties: d.specialties || [], cats: (d.cats || []).slice() }; if (ov) paint(); })
       .catch(function(){ if (ov) ov.querySelector('.ep-bd').innerHTML = '<div class="ep-s" style="padding:30px 0">ما قدرنا نجيب الإعداد — <button type="button" class="ep-lnk" onclick="mnqEmailPrefs()">حاول مرة ثانية</button></div>'; });
   };
   // رابط مباشر ‎#emails (من أسفل الإيميل)

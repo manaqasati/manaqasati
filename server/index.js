@@ -1785,7 +1785,7 @@ async function _emailPrefOf(uid, to){
 function _emailAllowed(u, meta){
   const c = meta.cat;
   if (c === 'proj') {
-    const m = u.email_proj || 'daily';
+    const m = u.email_proj || 'instant';
     if (m === 'off') return false;
     if (meta.instant && m !== 'instant') return false;
     if (meta.digest && m !== 'daily') return false;
@@ -1805,7 +1805,7 @@ function _epFooter(html, uid, cat, u){
   const base = SITE_URL + '/e/u/' + uid + '/' + cat + '/' + _euSig(uid, cat);
   const L = (h, t) => '<a href="' + h + '" style="color:#1d4ed8;text-decoration:underline">' + t + '</a>';
   const links = [];
-  if (cat === 'proj' && (u.email_proj || 'daily') === 'instant') links.push(L(base + '?a=daily', 'خلّها ملخّص يومي'));
+  if (cat === 'proj' && (u.email_proj || 'instant') === 'instant') links.push(L(base + '?a=daily', 'خلّها ملخّص يومي'));
   links.push(L(base + '?a=off', 'وقّف ' + _EP_TXT[cat]));
   links.push(L(SITE_URL + (u.role === 'provider' ? '/dashboard-provider.html#emails' : '/e/u/' + uid + '/' + cat + '/' + _euSig(uid, cat) + '?a=view'), 'كل الإعدادات'));
   const why = cat === 'proj' ? 'وصلك هذا لأنك مزوّد في مناقصة والمشروع يطابق تخصصك.' : cat === 'sub' ? 'وصلك هذا لأنك مزوّد في مناقصة.' : 'وصلك هذا لأن عندك حساب في مناقصة.';
@@ -1835,7 +1835,7 @@ app.post('/api/e/u/:uid/:cat/:sig', rateLimiter(30, 600000), async (req, res) =>
     const src = (req.body && req.body.a) ? 'link' : 'oneclick';
     if (a !== '__view' && !(await _epApply(k.uid, k.cat, a, src))) return res.status(400).json({ message: 'اختيار غير صالح' });
     const u = (await pool.query('SELECT email_proj, email_sub, email_tips, email_news FROM users WHERE id=$1', [k.uid])).rows[0] || {};
-    res.json({ ok: true, proj: u.email_proj || 'daily', sub: u.email_sub !== false, tips: u.email_tips !== false, news: u.email_news !== false });
+    res.json({ ok: true, proj: u.email_proj || 'instant', sub: u.email_sub !== false, tips: u.email_tips !== false, news: u.email_news !== false });
   } catch(e) { console.error('/api/e/u:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // زر «إلغاء الاشتراك» الرسمي (Gmail/Apple — RFC 8058): POST على نفس رابط الصفحة = وقف مباشر
@@ -1888,7 +1888,7 @@ app.get('/api/me/email-prefs', auth, async (req, res) => {
     if (!u) return res.status(404).json({ message: 'غير موجود' });
     const sp = Array.isArray(u.specialties) ? u.specialties.filter(Boolean) : [];
     const nc = Array.isArray(u.notify_categories) ? u.notify_categories.filter(x => sp.includes(x)) : [];
-    res.json({ proj: u.email_proj || 'daily', sub: u.email_sub !== false, tips: u.email_tips !== false, news: u.email_news !== false, specialties: sp, cats: nc.length ? nc : sp });
+    res.json({ proj: u.email_proj || 'instant', sub: u.email_sub !== false, tips: u.email_tips !== false, news: u.email_news !== false, specialties: sp, cats: nc.length ? nc : sp });
   } catch(e) { console.error('GET email-prefs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.put('/api/me/email-prefs', auth, async (req, res) => {
@@ -3167,7 +3167,7 @@ async function _matchDigest(){
   const B = `((date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') + interval '${_hr} hours') AT TIME ZONE 'Asia/Riyadh')`;
   const provs = await pool.query(
     `SELECT id, email, specialties, notify_categories, city, COALESCE(serves_all_cities,FALSE) AS allcities, service_cities, last_match_email_at
-       FROM users WHERE role='provider' AND is_active=TRUE AND COALESCE(email_proj,'daily')='daily'
+       FROM users WHERE role='provider' AND is_active=TRUE AND email_proj='daily'
         AND NOW() >= ${B} AND (last_match_email_at IS NULL OR last_match_email_at < ${B})
         AND email IS NOT NULL AND email NOT ILIKE '%@manaqasa.local'
       ORDER BY id LIMIT 400`);
@@ -3482,6 +3482,10 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_tips BOOLEAN DEFAULT TRUE`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_news BOOLEAN DEFAULT TRUE`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_pref_at TIMESTAMPTZ`);
+    // المشروع الجديد مهم → يوصل بالإيميل أول بأول (الافتراضي). اللي اختار «ملخّص» أو «وقّف» بنفسه يبقى على اختياره
+    await _mig(`ALTER TABLE users ALTER COLUMN email_proj SET DEFAULT 'instant'`);
+    try { const _o = await pool.query("INSERT INTO platform_settings (key, value, updated_at) VALUES ('mig_proj_instant','1',NOW()) ON CONFLICT (key) DO NOTHING RETURNING key");
+      if (_o.rows.length) await pool.query("UPDATE users SET email_proj='instant' WHERE email_proj='daily' AND email_pref_at IS NULL"); } catch(e) { console.error('mig proj instant:', e.message); }
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_pref_src TEXT`);
     // ترحيل التخصصات القديمة إلى الأسماء الموحّدة (يُشغّل مرة — بعدها لا يطابق شيئاً)
     try {
@@ -11007,7 +11011,7 @@ const _NT_PROV = ['new_project','new_project_rem','req_updated','pause','pause_c
 const _NT_COLS = `COUNT(*)::int AS sent,
   COUNT(t.email_id)::int AS em, COUNT(*) FILTER (WHERE e.status IN ('delivered','opened','clicked'))::int AS em_ok,
   COUNT(*) FILTER (WHERE e.status IN ('opened','clicked'))::int AS em_open, COUNT(*) FILTER (WHERE e.status IN ('bounced','failed','complained','suppressed'))::int AS em_bad,
-  COUNT(*) FILTER (WHERE t.push_n>0)::int AS ph, COUNT(*) FILTER (WHERE t.push_ok>0)::int AS ph_ok, COUNT(t.opened_at)::int AS opened,
+  COUNT(*) FILTER (WHERE t.email_id IS NULL AND EXISTS (SELECT 1 FROM users uu WHERE uu.id=t.user_id AND uu.email_proj='daily'))::int AS em_dg, COUNT(*) FILTER (WHERE t.email_id IS NULL AND EXISTS (SELECT 1 FROM users uu WHERE uu.id=t.user_id AND uu.email_proj='off'))::int AS em_offp, COUNT(*) FILTER (WHERE t.push_n>0)::int AS ph, COUNT(*) FILTER (WHERE t.push_ok>0)::int AS ph_ok, COUNT(t.opened_at)::int AS opened,
   COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM project_visits pv WHERE pv.request_id=t.ref_id AND pv.vkey='u'||t.user_id))::int AS visited,
   COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM bids b WHERE b.request_id=t.ref_id AND b.provider_id=t.user_id))::int AS bid`;
 app.get('/api/admin/requests/:id/reach', requirePermission('requests.view'), async (req, res) => {
@@ -11057,7 +11061,7 @@ app.get('/api/admin/notif-stats', requirePermission('requests.view'), async (req
     const [byKind, all, prov, hrs, since] = await Promise.all([
       pool.query(`SELECT t.kind, ${_NT_COLS} FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id WHERE ${W} GROUP BY t.kind ORDER BY COUNT(*) DESC`, [String(days)]),
       pool.query(`SELECT COUNT(*)::int AS sent, COUNT(t.email_id)::int AS em, COUNT(*) FILTER (WHERE e.status IN ('opened','clicked'))::int AS em_open, COUNT(*) FILTER (WHERE e.status IN ('bounced','failed','complained','suppressed'))::int AS em_bad,
-          COUNT(*) FILTER (WHERE t.push_n>0)::int AS ph, COUNT(*) FILTER (WHERE t.push_ok>0)::int AS ph_ok, COUNT(t.opened_at)::int AS opened FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id WHERE ${W}`, [String(days)]),
+          COUNT(*) FILTER (WHERE t.email_id IS NULL AND EXISTS (SELECT 1 FROM users uu WHERE uu.id=t.user_id AND uu.email_proj='daily'))::int AS em_dg, COUNT(*) FILTER (WHERE t.email_id IS NULL AND EXISTS (SELECT 1 FROM users uu WHERE uu.id=t.user_id AND uu.email_proj='off'))::int AS em_offp, COUNT(*) FILTER (WHERE t.push_n>0)::int AS ph, COUNT(*) FILTER (WHERE t.push_ok>0)::int AS ph_ok, COUNT(t.opened_at)::int AS opened FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id WHERE ${W}`, [String(days)]),
       pool.query(`SELECT ${_NT_COLS} FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id WHERE ${W} AND t.kind = ANY($2)`, [String(days), _NT_PROV]),
       pool.query(`SELECT EXTRACT(HOUR FROM (COALESCE(t.opened_at, e.updated_at) AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Riyadh'))::int AS h, COUNT(*)::int AS n FROM ntrack t LEFT JOIN email_log e ON e.id=t.email_id
           WHERE ${W} AND (t.opened_at IS NOT NULL OR e.status IN ('opened','clicked')) GROUP BY 1`, [String(days)]),

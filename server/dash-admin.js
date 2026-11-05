@@ -7437,7 +7437,7 @@ function _rqReachPaint(id){
     +_ntBar('🔔 ضغط الإشعار/الرابط',m.opened,T,'rgb(129,140,248)','من التطبيق، أو الجرس في الموقع، أو زر الإيميل')
     +_ntBar('🔎 دخل صفحة المشروع',m.visited,T,'rgb(251,191,36)')
     +_ntBar('💬 قدّم عرض',m.bid,T,'rgb(34,197,94)');
-  var notes=[]; if(m.em_bad)notes.push('⚠️ '+fmtNum(m.em_bad)+' إيميل ما وصل'); if(T-m.ph>0)notes.push('📵 '+fmtNum(T-m.ph)+' ما عندهم التطبيق ولا إشعارات المتصفح'); if(m.em<T)notes.push(fmtNum(T-m.em)+' بدون إيميل');
+  var notes=[]; if(m.em_bad)notes.push('⚠️ '+fmtNum(m.em_bad)+' إيميل ما وصل'); if(T-m.ph>0)notes.push('📵 '+fmtNum(T-m.ph)+' ما عندهم التطبيق ولا إشعارات المتصفح'); if(m.em_dg)notes.push('🕗 '+fmtNum(m.em_dg)+' اختاروا الملخّص — يوصلهم بإيميل 8 الصبح'); if(m.em_offp)notes.push(fmtNum(m.em_offp)+' موقّفين إيميلات المشاريع'); var _ne=T-m.em-(m.em_dg||0)-(m.em_offp||0); if(_ne>0)notes.push(fmtNum(_ne)+' ما عندهم إيميل');
   if(notes.length)h+='<div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:6px;line-height:1.8">'+notes.join(' · ')+'</div>';
   (d.kinds||[]).filter(function(k){return k.kind!=='new_project';}).forEach(function(k){ h+='<div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:4px">'+esc(k.label)+': انرسل '+k.sent+' · ضغطوه '+k.opened+(k.kind==='new_project_rem'?' · قدّموا بعدها '+k.bid:'')+'</div>'; });
   var P=d.providers||[], f=window._rqReachF[id]||'all';
