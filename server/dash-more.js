@@ -75,6 +75,7 @@
       + tile('c6', 'eye', 'صفحتي العامة', 'شاركها واكسب عملاء', 0, 'pub')
       + tile('c7', 'contract', 'عقود المقاولات', '36 عقد جاهز مجاناً', 0, 'url:/contracts?src=more')
       + tile('c8', 'user', 'ملفي والإعدادات', 'تخصصك ومدينتك وبياناتك', 0, 'pg:profile')
+      + ((W.DLG && W.DLG.isMe()) ? '' : tile('c2', 'team', 'المفوّض', 'خلّ موظفك يشتغل معك', 0, 'pg:dlg'))
       + tile('c6', 'help', 'الدعم الفني', 'واتساب مباشر', 0, 'wa');
   }
   function tilesCli(){
@@ -124,6 +125,7 @@
   }
   function render(){
     box.querySelector('.mm-sh').innerHTML = '<div class="mm-grip"></div>' + head() + '<div class="mm-g">' + (PROV ? tilesProv() : tilesCli()) + '</div>' + foot();
+    if (W.DLG && W.DLG.isMe()) box.querySelector('.mm-sh').innerHTML = W.DLG.filter(box.querySelector('.mm-sh').innerHTML);
   }
   function setOn(on){ var b = D.getElementById('bn-profile'); if (b) b.classList.toggle('mm-on', !!on); }
   function open(){

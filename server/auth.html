@@ -873,6 +873,8 @@ function _authDone(d,url){
       setAl(_curAl(),'تم بنجاح! جاري التحويل...','ok');
       setTimeout(function(){
         var rl=d.user.role;
+        // المفوّض: دايماً لوحة المزوّد (يشتغل باسم المؤسسة)
+        if(d.user&&d.user.delegate){ try{localStorage.setItem('activeMode','provider');}catch(e){} location.href='dashboard-provider.html'; return; }
         // تحقق من redirect بعد تسجيل الدخول
         var params=new URLSearchParams(location.search);
         var redir=params.get('redirect');

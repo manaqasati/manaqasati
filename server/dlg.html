@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>تفعيل حساب المفوّض — مناقصة</title>
+<meta name="theme-color" content="#17254d">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" sizes="180x180" href="/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet">
+<script>try{var _t=localStorage.getItem('theme');if(_t==='dark'||(!_t&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
+<style>
+:root{--bg:#f1f5fc;--card:#fff;--tx:#0f1d3a;--mu:#5b6b82;--bd:#e3eaf5;--p:#1e3a8a;--soft:#eff6ff}
+[data-theme="dark"]{--bg:#0b1529;--card:#16233f;--tx:#e6edf8;--mu:#a9b6d3;--bd:#24365e;--soft:rgba(37,99,235,.14);--p:#3b82f6}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:Tajawal,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+.top{background:#17254d;color:#fff;height:58px;display:flex;align-items:center;padding:0 16px;border-bottom:3px solid #0ea5e9}
+.lg{font-weight:900;font-size:19px;color:#fff;text-decoration:none}.lg i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#38bdf8;margin-left:6px;vertical-align:middle}
+.wrap{max-width:480px;margin:0 auto;padding:16px 16px 40px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:18px;margin-top:14px}
+h1{font-size:20px;font-weight:900;margin:0 0 6px;line-height:1.5}
+.s{color:var(--mu);font-size:14px;font-weight:700;line-height:1.8;margin:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.chips span{background:var(--soft);color:var(--p);border-radius:99px;padding:4px 11px;font-size:12.5px;font-weight:800}
+label{display:block;font-weight:800;font-size:14px;margin:14px 0 6px}
+input{width:100%;border:1.5px solid var(--bd);border-radius:13px;padding:13px;font-family:inherit;font-size:15.5px;background:var(--card);color:var(--tx)}
+input:focus{outline:none;border-color:var(--p)}
+.btn{display:flex;align-items:center;justify-content:center;width:100%;border:0;border-radius:14px;padding:14px;font-family:inherit;font-weight:900;font-size:16px;cursor:pointer;margin-top:16px;background:var(--p);color:#fff;text-decoration:none}
+.btn:disabled{opacity:.6}
+.bo{background:var(--card);color:var(--tx);border:1.5px solid var(--bd)}
+.al{border-radius:12px;padding:11px 13px;font-size:14px;font-weight:800;margin-top:12px;display:none}.al.er{display:block;background:#fef2f2;color:#b91c1c}
+.ok{text-align:center}.ok .ic{font-size:44px}
+.apps{display:flex;gap:8px}.apps .btn{margin-top:10px;font-size:14.5px}
+.ld{text-align:center;color:var(--mu);font-weight:800;padding:30px 0}
+</style>
+</head>
+<body>
+<div class="top"><a class="lg" href="/"><i></i>مناقصة</a></div>
+<div class="wrap" id="app"><div class="ld">جاري التحميل...</div></div>
+<script>
+(function(){
+  var API = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? '' : 'https://manaqasati-production.up.railway.app';
+  var TOK = (location.pathname.split('/')[2] || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+  var app = document.getElementById('app'), info = null;
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function bad(m){ app.innerHTML = '<div class="card ok"><div class="ic">⏳</div><h1>' + esc(m) + '</h1><a class="btn bo" href="/auth.html">تسجيل الدخول</a></div>'; }
+  function form(){
+    app.innerHTML = '<div class="card"><h1>👋 أهلاً ' + esc(info.name) + '</h1><p class="s"><b>' + esc(info.owner_name) + '</b> أضافك مفوّضاً على حسابه في مناقصة. حدّد كلمة سرّك وتدخل على طول.</p>'
+      + '<div class="chips">' + (info.perms || []).map(function(p){ return '<span>' + esc(p) + '</span>'; }).join('') + '</div>'
+      + '<label>إيميلك</label><input value="' + esc(info.email) + '" dir="ltr" disabled>'
+      + '<label for="p1">كلمة السر (8 حروف أو أكثر)</label><input id="p1" type="password" autocomplete="new-password" dir="ltr">'
+      + '<label for="p2">أعد كتابتها</label><input id="p2" type="password" autocomplete="new-password" dir="ltr">'
+      + '<div class="al" id="al"></div><button class="btn" id="go">تفعيل والدخول</button></div>';
+    document.getElementById('go').onclick = submit;
+  }
+  function err(m){ var a = document.getElementById('al'); a.className = 'al er'; a.textContent = m; }
+  function submit(){
+    var p1 = document.getElementById('p1').value, p2 = document.getElementById('p2').value, b = document.getElementById('go');
+    if (p1.length < 8) return err('كلمة السر لازم 8 حروف أو أكثر');
+    if (p1 !== p2) return err('كلمتين السر مو متطابقة');
+    b.disabled = true; b.textContent = 'جاري التفعيل...';
+    fetch(API + '/api/dlg/' + TOK, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: p1 }) })
+      .then(function(r){ return r.json().then(function(d){ return { s: r.status, d: d }; }); })
+      .then(function(x){
+        if (x.s !== 200 || !x.d || !x.d.token) { b.disabled = false; b.textContent = 'تفعيل والدخول'; return err((x.d && x.d.message) || 'تعذّر التفعيل — حاول مرة ثانية'); }
+        try { localStorage.setItem('token', x.d.token); localStorage.setItem('user', JSON.stringify(x.d.user)); localStorage.setItem('activeMode', 'provider'); } catch(e) {}
+        try { if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'AUTH_SAVE', token: x.d.token, user: JSON.stringify(x.d.user) })); } catch(e) {}
+        done();
+      }).catch(function(){ b.disabled = false; b.textContent = 'تفعيل والدخول'; err('تعذّر الاتصال — حاول مرة ثانية'); });
+  }
+  function done(){
+    var inApp = !!window.ReactNativeWebView;
+    app.innerHTML = '<div class="card ok"><div class="ic">✅</div><h1>تم تفعيل حسابك</h1><p class="s">من الحين تدخل بإيميلك وكلمة سرّك. حمّل التطبيق عشان توصلك الإشعارات أول بأول.</p>'
+      + (inApp ? '' : '<div class="apps"><a class="btn bo" href="https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611">آيفون</a><a class="btn bo" href="https://play.google.com/store/apps/details?id=com.manaqasa.app">أندرويد</a></div>')
+      + '<a class="btn" id="dash" href="/dashboard-provider.html">ادخل لوحة المؤسسة</a></div>';
+  }
+  if (!TOK) return bad('الرابط غير صحيح');
+  fetch(API + '/api/dlg/' + TOK).then(function(r){ return r.json().then(function(d){ return { s: r.status, d: d }; }); })
+    .then(function(x){ if (x.s !== 200) return bad((x.d && x.d.message) || 'الرابط منتهي'); info = x.d; form(); })
+    .catch(function(){ bad('تعذّر الاتصال — حدّث الصفحة'); });
+})();
+</script>
+</body>
+</html>

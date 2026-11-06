@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sub.js','/proofs.js','/wptop.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/sub.js','/proofs.js','/wptop.js','/dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -881,6 +881,7 @@ app.get('/chat',                   (req, res) => res.sendFile(__dirname + '/chat
 app.get('/chat.html',              (req, res) => res.sendFile(__dirname + '/chat.html'));
 app.get('/pro.html',               (req, res) => res.sendFile(__dirname + '/pro.html'));
 // «وثّق أعمالك»: صفحة صاحب المشروع (رابط خاص — ما تنأرشف)
+app.get('/dlg/:token', (req, res) => { const h = _readPage(__dirname + '/dlg.html'); if (!h) return res.status(404).end(); res.set('X-Robots-Tag', 'noindex, nofollow'); res.set('Cache-Control', 'no-store'); res.set('Referrer-Policy', 'no-referrer'); res.type('html').send(h); });
 app.get('/w/:token', (req, res) => { const h = _readPage(__dirname + '/w.html'); if (!h) return res.status(404).end(); res.set('X-Robots-Tag', 'noindex, nofollow'); res.set('Cache-Control', 'no-store'); res.type('html').send(_injectUp(h)); });
 app.get('/card.html',              (req, res) => res.sendFile(__dirname + '/card.html'));
 app.get('/brief.html',             (req, res) => res.sendFile(__dirname + '/brief.html'));
@@ -2416,6 +2417,7 @@ async function notify(userId, title, body, type, refId, opts) {
       return '/';
     })();
     sendPush(userId, title, body, _withN(url, tid), type, refId).then(r => { if (tid && r) pool.query('UPDATE ntrack SET push_n=$1, push_ok=$2 WHERE id=$3', [r.n, r.ok, tid]).catch(()=>{}); }).catch(() => {});
+    if (_own !== true) _dlgMail(userId, title, body, type, url);
     wsBroadcast(userId, { type: 'notification', notif: { title, body, ntype: type, ref_id: refId, url, created_at: new Date().toISOString() } });
   } catch(e) { console.error('Notification error:', e); }
   return tid;
@@ -3373,9 +3375,56 @@ function auth(req, res, next) {
     if ((payload.tv || 0) !== (st.tv || 0)) return res.status(401).json({ message: 'انتهت الجلسة — سجّل دخولك من جديد', code: 'session_revoked' });
     // الدور من قاعدة البيانات (مو من التوكن): مشرف انشال من الإدارة يفقد صلاحياته فوراً
     if (st.role) req.user.role = st.role;
-    next();
+    if (!payload.dlg) return next();
+    // جلسة مفوّض: لازم يكون للحين فعّال على نفس الحساب، وصلاحياته تنفحص على كل طلب
+    return _dlgStateOf(payload.dlg).then(d => {
+      if (!d || d.owner !== payload.id || d.status !== 'active' || d.tv !== (payload.dtv || 0)) return res.status(401).json({ message: 'انتهت صلاحية دخولك كمفوّض — تواصل مع صاحب الحساب', code: 'session_revoked' });
+      req.user.dlg = { id: d.id, name: d.name, perms: d.perms };
+      const g = _dlgGuard(req);
+      if (g) return res.status(403).json({ message: g, code: 'dlg_denied' });
+      next();
+    });
   }).catch(() => { if (payload.role === 'admin') return res.status(503).json({ message: 'تعذّر التحقق من الحساب — حاول بعد لحظة' }); next(); });
 }
+// ═══ المفوّض ═══
+const DLG_PERMS = { bids: 'العروض', chat: 'المحادثات', awarded: 'المشاريع المرسّاة', profile: 'الملف الشخصي', proofs: 'وثّق أعمالك', sub: 'مقاول باطن' };
+const _dlgState = new Map();
+async function _dlgStateOf(id){
+  const hit = _dlgState.get(id); if (hit && Date.now() < hit.exp) return hit.d;
+  try {
+    const r = (await pool.query('SELECT id, owner_id, name, perms, status, tv FROM provider_delegates WHERE id=$1', [id])).rows[0];
+    const d = r ? { id: r.id, owner: r.owner_id, name: r.name, perms: (r.perms || []).filter(p => DLG_PERMS[p]), status: r.status, tv: r.tv || 0 } : null;
+    _dlgState.set(id, { d, exp: Date.now() + 30000 }); return d;
+  } catch(e) { return null; }
+}
+function _dlgDrop(id){ _dlgState.delete(id); }
+// وش يقدر يسوي المفوّض: الحساس لصاحب الحساب بس، والباقي حسب الصلاحيات، وأي شي ما نعرفه يُرفض
+const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai)/;
+const _DLG_GET_DENY = { chat: /^\/api\/(messages|provider\/conversations)/ };
+const _DLG_FREE = /^\/api\/(push|push-token|notifications|me\/ping|me\/provider-hint|live\/ping|hit|lk\/event|csp-report|demo\/ev|tour|pro\/\d+\/view|requests\/\d+\/(view|revisit|watch-open)$|saved-requests\/|drafts\/save|upload\/attachment|support\/|reports$|blocks\/|auth\/refresh$)/;
+const _DLG_GROUPS = [
+  ['bids', /^\/api\/(requests\/\d+\/(bids|questions)$|bids\/\d+$|accept-asks\/\d+\/respond$|provider\/bump$)/],
+  ['chat', /^\/api\/(messages(\/\d+)?$|direct-message$)/],
+  ['awarded', /^\/api\/(provider\/claims$|requests\/\d+\/(done|complete|not-done)$|reviews(\/\d+\/reply)?$)/],
+  ['profile', /^\/api\/(provider\/profile(\/portfolio(\/\d+)?)?$|provider\/service-city$|profile$)/],
+  ['proofs', /^\/api\/provider\/proofs(\/|$)/],
+  ['sub', /^\/api\/(sub|partners)(\/|$)/],
+];
+const _DLG_NO = 'هذي العملية لصاحب الحساب فقط';
+function _dlgGuard(req){
+  const d = req.user && req.user.dlg; if (!d) return null;
+  const p = String(req.originalUrl || req.url || '').split('?')[0].toLowerCase().replace(/\/{2,}/g, '/').replace(/(.)\/$/, '$1'), m = req.method, has = k => d.perms.includes(k);
+  if (_DLG_NEVER.test(p)) return _DLG_NO;
+  if (m === 'GET' || m === 'HEAD') { for (const k in _DLG_GET_DENY) if (!has(k) && _DLG_GET_DENY[k].test(p)) return 'ما عندك صلاحية ' + DLG_PERMS[k]; return null; }
+  if (_DLG_FREE.test(p)) return null;
+  for (const [k, re] of _DLG_GROUPS) if (re.test(p)) {
+    if (!has(k)) return 'ما عندك صلاحية «' + DLG_PERMS[k] + '» — تواصل مع صاحب الحساب';
+    if (k === 'profile' && req.body && ['phone', 'email', 'password', 'new_password'].some(f => req.body[f] !== undefined)) return 'تغيير الجوال والإيميل لصاحب الحساب فقط';
+    return null;
+  }
+  return _DLG_NO;
+}
+function _dlgSign(owner, d){ return jwt.sign({ id: owner.id, role: owner.role, tv: parseInt(owner.token_ver) || 0, dlg: d.id, dtv: d.tv || 0 }, JWT_SECRET, { expiresIn: '30d' }); }
 // مصادقة اختيارية: تقرأ المستخدم إن وُجد التوكن، بدون رفض المشروع
 // المشاهد الحالي (للصفحات العامة): توكن دخول حقيقي فقط + الحساب شغّال + الجلسة ما انلغت + الدور من قاعدة البيانات
 async function _viewer(req){
@@ -3386,13 +3435,16 @@ async function _viewer(req){
   const st = await _userStateOf(p.id);
   if (!st.ok || (!st.err && (p.tv || 0) !== (st.tv || 0))) return null;
   if (st.role) p.role = st.role;
+  if (p.dlg) { const d = await _dlgStateOf(p.dlg); if (!d || d.owner !== p.id || d.status !== 'active' || d.tv !== (p.dtv || 0)) return null; }
   return p;
 }
 function optionalAuth(req, res, next) {
   const token = req.headers.authorization && req.headers.authorization.split(' ')[1];
   if (token) { try { const _p = jwt.verify(token, JWT_SECRET); if (_p && !_p.purpose && _p.id) req.user = _p; } catch(e) {} }
   if (!req.user) return next();
-  _userStateOf(req.user.id).then(st => { if (!st.ok || (!st.err && (req.user.tv || 0) !== (st.tv || 0))) req.user = undefined; else if (st.role) req.user.role = st.role; next(); }).catch(() => next());
+  _userStateOf(req.user.id).then(async st => { if (!st.ok || (!st.err && (req.user.tv || 0) !== (st.tv || 0))) req.user = undefined; else if (st.role) req.user.role = st.role;
+    if (req.user && req.user.dlg) { const d = await _dlgStateOf(req.user.dlg); if (!d || d.owner !== req.user.id || d.status !== 'active' || d.tv !== (req.user.dtv || 0)) req.user = undefined; else req.user.dlg = { id: d.id, name: d.name, perms: d.perms }; }
+    next(); }).catch(() => next());
 }
 function adminOnly(req, res, next) { if (req.user.role !== 'admin') return res.status(403).json({ message: 'للمدير فقط' }); next(); }
 async function clientOnly(req, res, next) {
@@ -3637,6 +3689,10 @@ async function setupDatabase() {
       await _mig(`CREATE OR REPLACE FUNCTION wp_level(pid INTEGER) RETURNS INTEGER LANGUAGE sql STABLE AS $f$
         SELECT CASE WHEN hi >= 20 THEN 20 WHEN hi >= 10 THEN 10 WHEN n >= 5 THEN 5 WHEN n >= 1 THEN 1 ELSE 0 END FROM wp_stats(pid) $f$`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS wp_late_at TIMESTAMP`);
+      // المفوّض: شخص واحد يشتغل على حساب المزوّد بإيميله وكلمة سرّه هو (صلاحيات يحددها صاحب الحساب)
+      await _mig(`CREATE TABLE IF NOT EXISTS provider_delegates (id SERIAL PRIMARY KEY, owner_id INTEGER UNIQUE NOT NULL, name VARCHAR(60), email VARCHAR(160) NOT NULL, perms TEXT[] NOT NULL DEFAULT '{}', pass_hash TEXT, status VARCHAR(12) NOT NULL DEFAULT 'invited', invite_hash VARCHAR(80), invite_exp TIMESTAMP, tv INTEGER NOT NULL DEFAULT 0, last_login TIMESTAMP, fail_n INTEGER NOT NULL DEFAULT 0, fail_at TIMESTAMP, locked_until TIMESTAMP, created_at TIMESTAMP DEFAULT NOW())`);
+      await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS provider_delegates_email ON provider_delegates (LOWER(email))`);
+      await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS dlg_name VARCHAR(60)`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS claim_nudged_at TIMESTAMP`);
       // طلب الاعتماد: تأكيد المزوّد + تعديل السعر/المدة قبل الإرسال + نزول ترتيب من يكثر «ما اتفقنا»
       await _mig(`ALTER TABLE bid_accept_asks ADD COLUMN IF NOT EXISTS prev_price INTEGER`);
@@ -3978,7 +4034,9 @@ app.post('/api/auth/logout-all', rateLimiter(10, 600000), auth, async (req, res)
 // تجديد الجلسة: اللوحات تطلب توكن جديد لو القديم عمره أكثر من يومين — عشان ما ينطرد المستخدم النشِط كل 30 يوم
 app.post('/api/auth/refresh', auth, async (req, res) => {
   try { const u = (await pool.query('SELECT id, role, COALESCE(token_ver,0) AS token_ver FROM users WHERE id=$1 AND is_active IS NOT FALSE', [req.user.id])).rows[0];
-    if (!u) return res.status(403).json({ message: 'الحساب غير متاح' }); res.json({ ok: true, token: _sessSign(u) }); }
+    if (!u) return res.status(403).json({ message: 'الحساب غير متاح' });
+    if (req.user.dlg) { const d = await _dlgStateOf(req.user.dlg.id); return res.json({ ok: true, token: _dlgSign(u, d) }); }
+    res.json({ ok: true, token: _sessSign(u) }); }
   catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
@@ -3998,7 +4056,11 @@ app.post('/api/auth/login', rateLimiter(10, 300000), async (req, res) => {
         if (hit) result = { rows: [hit] };
         else { for (const u of result.rows.slice(1)) _loginFail(u).catch(()=>{}); }   // ولا وحدة صحيحة: نحسب المحاولة على كل الحسابات بنفس الرقم
       }
-    } else result = await pool.query('SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY (email=$1) DESC LIMIT 1', [String(email).trim()]);
+    } else {
+      const _dl = await _dlgLogin(String(email).trim(), String(password));
+      if (_dl) return _dl.err ? res.status(_dl.code || 400).json({ message: _dl.err }) : res.json(_dl);
+      result = await pool.query('SELECT * FROM users WHERE LOWER(email)=LOWER($1) ORDER BY (email=$1) DESC LIMIT 1', [String(email).trim()]);
+    }
     if (!result.rows.length) return res.status(400).json({ message: 'البيانات غير صحيحة' });
     const user = result.rows[0];
     // قفل مؤقت للحساب نفسه بعد 10 محاولات غلط خلال 15 دقيقة (مهما تغيّر الجهاز)
@@ -4108,6 +4170,24 @@ async function _verifyGoogleToken(idToken){
     if (!t.sub || !t.email) return null;
     return { sub: String(t.sub), email: String(t.email).trim().toLowerCase(), name: _cleanTxt(t.name || '', 80), picture: t.picture || null };
   } catch(e) { console.error('google verify:', e.message); return null; }
+}
+// دخول المفوّض بإيميله: يرجع null لو الإيميل مو لمفوّض (أو كلمة السر لحساب عادي بنفس الإيميل)
+async function _dlgLogin(email, password){
+  const d = (await pool.query("SELECT * FROM provider_delegates WHERE LOWER(email)=LOWER($1) AND status='active' AND pass_hash IS NOT NULL", [email])).rows[0];
+  if (!d) return null;
+  if (d.locked_until && new Date(d.locked_until) > new Date()) return { err: 'الدخول مقفل مؤقتاً بسبب محاولات كثيرة — جرّب بعد 15 دقيقة', code: 429 };
+  if (!(await bcrypt.compare(password, d.pass_hash))) {
+    const hasUser = (await pool.query('SELECT 1 FROM users WHERE LOWER(email)=LOWER($1) LIMIT 1', [email])).rows.length;
+    await pool.query(`UPDATE provider_delegates SET fail_n = CASE WHEN fail_at > NOW() - INTERVAL '15 minutes' THEN fail_n + 1 ELSE 1 END, fail_at = NOW(),
+      locked_until = CASE WHEN fail_at > NOW() - INTERVAL '15 minutes' AND fail_n + 1 >= 10 THEN NOW() + INTERVAL '15 minutes' ELSE locked_until END WHERE id=$1`, [d.id]).catch(() => {});
+    return hasUser ? null : { err: 'البيانات غير صحيحة' };
+  }
+  const o = (await pool.query('SELECT * FROM users WHERE id=$1', [d.owner_id])).rows[0];
+  if (!o || o.is_active === false) return { err: 'حساب المؤسسة موقوف', code: 403 };
+  await pool.query('UPDATE provider_delegates SET last_login=NOW(), fail_n=0, locked_until=NULL WHERE id=$1', [d.id]).catch(() => {});
+  const p = _loginPayload(o); p.token = _dlgSign(o, d);
+  p.user.delegate = { name: d.name, perms: (d.perms || []).filter(k => DLG_PERMS[k]) };
+  return p;
 }
 function _loginPayload(user){
   const token = _sessSign(user);
@@ -5297,6 +5377,106 @@ const _WP_UPB = { 1: 'الشارة صارت تظهر على كل عرض تقدّ
 function _wpLevelUp(pid, lv0, lv1){ if (!(lv1 > lv0) || !_WP_UP[lv1]) return; notify(pid, _WP_UP[lv1], _WP_UPB[lv1], 'proof', null, { url: '/dashboard-provider.html#proof', kind: 'wp_level' }).catch(() => {}); }
 async function _wpLevel(pid){ try { return (await pool.query('SELECT wp_level($1) AS l', [pid])).rows[0].l || 0; } catch(e) { return 0; } }
 async function _wpVerified(pid){ try { return (await pool.query("SELECT COUNT(*)::int n FROM work_proofs WHERE provider_id=$1 AND status='reviewed' AND NOT hidden", [pid])).rows[0].n; } catch(e) { return 0; } }
+// ═══ المفوّض: صاحب الحساب يضيف مفوّض واحد (إيميل + صلاحيات) ═══
+function _dlgPermsIn(a){ return Array.isArray(a) ? [...new Set(a.map(String).filter(k => DLG_PERMS[k]))] : []; }
+function _dlgOut(d){ return d ? { id: d.id, name: d.name, email: d.email, perms: _dlgPermsIn(d.perms), status: d.status, last_login: d.last_login, invite_exp: d.invite_exp, created_at: d.created_at } : null; }
+async function _dlgInvite(d, owner){
+  const tok = crypto.randomBytes(24).toString('base64url');
+  await pool.query("UPDATE provider_delegates SET invite_hash=$1, invite_exp=NOW() + INTERVAL '72 hours' WHERE id=$2", [crypto.createHash('sha256').update(tok).digest('hex'), d.id]);
+  const on = owner.business_name || owner.name || 'مزوّد';
+  const t = 'تمت إضافتك مفوّضاً على حساب ' + on + ' في منصة مناقصة';
+  const perms = _dlgPermsIn(d.perms).map(k => DLG_PERMS[k]).join('، ') || '—';
+  sendEmail(d.email, t, emailTpl(t, `<p>مرحباً ${eEsc(d.name || '')}،</p><p><strong>${eEsc(on)}</strong> أضافك مفوّضاً على حسابه في مناقصة — تقدر تشتغل باسم المؤسسة بإيميلك وكلمة سرّك أنت.</p><p>صلاحياتك: ${eEsc(perms)}</p><p>اضغط الزر وحدد كلمة سرّك (الرابط صالح 3 أيام). بعدها حمّل التطبيق وادخل بإيميلك عشان توصلك الإشعارات:</p><p><a href="${APP_STORE_URL}">آيفون</a> · <a href="${PLAY_STORE_URL}">أندرويد</a></p>`, 'تفعيل حسابي كمفوّض', SITE_URL + '/dlg/' + tok)).catch(() => {});
+  return tok;
+}
+app.get('/api/provider/delegate', auth, providerOnly, async (req, res) => {
+  try { const d = (await pool.query('SELECT * FROM provider_delegates WHERE owner_id=$1', [req.user.id])).rows[0]; res.json({ delegate: _dlgOut(d), perms: DLG_PERMS, max: 1 }); }
+  catch(e) { console.error('dlg get:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/provider/delegate', rateLimiter(10, 3600000), auth, providerOnly, async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim().slice(0, 60), email = String(req.body.email || '').trim().toLowerCase(), perms = _dlgPermsIn(req.body.perms);
+    if (name.length < 2) return res.status(400).json({ message: 'اكتب اسم المفوّض' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 160) return res.status(400).json({ message: 'الإيميل غير صحيح' });
+    if (!perms.length) return res.status(400).json({ message: 'اختر صلاحية وحدة على الأقل' });
+    const owner = (await pool.query('SELECT id, name, business_name, email FROM users WHERE id=$1', [req.user.id])).rows[0];
+    if (owner && String(owner.email || '').toLowerCase() === email) return res.status(400).json({ message: 'هذا إيميلك أنت — اكتب إيميل المفوّض' });
+    if ((await pool.query('SELECT 1 FROM provider_delegates WHERE owner_id=$1', [req.user.id])).rows.length) return res.status(409).json({ message: 'عندك مفوّض — تقدر تضيف مفوّض واحد بس' });
+    if ((await pool.query('SELECT 1 FROM provider_delegates WHERE LOWER(email)=$1', [email])).rows.length) return res.status(409).json({ message: 'هذا الإيميل مفوّض على حساب ثاني' });
+    const d = (await pool.query('INSERT INTO provider_delegates (owner_id, name, email, perms) VALUES ($1,$2,$3,$4) RETURNING *', [req.user.id, name, email, perms])).rows[0];
+    await _dlgInvite(d, owner);
+    res.json({ ok: true, delegate: _dlgOut((await pool.query('SELECT * FROM provider_delegates WHERE id=$1', [d.id])).rows[0]) });
+  } catch(e) { if (e.code === '23505') return res.status(409).json({ message: 'هذا الإيميل مفوّض على حساب ثاني' }); console.error('dlg add:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.put('/api/provider/delegate', auth, providerOnly, async (req, res) => {
+  try {
+    const perms = _dlgPermsIn(req.body.perms), name = req.body.name != null ? String(req.body.name).trim().slice(0, 60) : null;
+    if (!perms.length) return res.status(400).json({ message: 'اختر صلاحية وحدة على الأقل' });
+    const d = (await pool.query('UPDATE provider_delegates SET perms=$1, name=COALESCE(NULLIF($2,\'\'), name) WHERE owner_id=$3 RETURNING *', [perms, name, req.user.id])).rows[0];
+    if (!d) return res.status(404).json({ message: 'ما عندك مفوّض' });
+    _dlgDrop(d.id); res.json({ ok: true, delegate: _dlgOut(d) });
+  } catch(e) { console.error('dlg put:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// إعادة إرسال رابط التفعيل (ولو نسي كلمة سرّه: الرابط يحدد كلمة سر جديدة)
+app.post('/api/provider/delegate/resend', rateLimiter(5, 3600000), auth, providerOnly, async (req, res) => {
+  try {
+    const d = (await pool.query('SELECT * FROM provider_delegates WHERE owner_id=$1', [req.user.id])).rows[0];
+    if (!d) return res.status(404).json({ message: 'ما عندك مفوّض' });
+    const owner = (await pool.query('SELECT id, name, business_name FROM users WHERE id=$1', [req.user.id])).rows[0];
+    await _dlgInvite(d, owner); res.json({ ok: true });
+  } catch(e) { console.error('dlg resend:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.delete('/api/provider/delegate', auth, providerOnly, async (req, res) => {
+  try { const d = (await pool.query('DELETE FROM provider_delegates WHERE owner_id=$1 RETURNING id', [req.user.id])).rows[0]; if (d) _dlgDrop(d.id); res.json({ ok: true }); }
+  catch(e) { console.error('dlg del:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// صفحة الدعوة: المفوّض يحدد كلمة سرّه ويدخل
+async function _dlgByTok(tok){
+  tok = String(tok || ''); if (!/^[A-Za-z0-9_-]{20,64}$/.test(tok)) return null;
+  return (await pool.query('SELECT d.*, COALESCE(NULLIF(u.business_name,\'\'), u.name) AS owner_name FROM provider_delegates d JOIN users u ON u.id=d.owner_id WHERE d.invite_hash=$1 AND d.invite_exp > NOW()', [crypto.createHash('sha256').update(tok).digest('hex')])).rows[0] || null;
+}
+app.get('/api/dlg/:token', rateLimiter(30, 600000), async (req, res) => {
+  try { const d = await _dlgByTok(req.params.token); if (!d) return res.status(404).json({ message: 'الرابط منتهي أو غير صحيح — اطلب من صاحب الحساب يرسله لك من جديد' });
+    res.json({ name: d.name, email: d.email, owner_name: d.owner_name, perms: _dlgPermsIn(d.perms).map(k => DLG_PERMS[k]), active: d.status === 'active' }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/dlg/:token', rateLimiter(10, 600000), async (req, res) => {
+  try {
+    const pw = String(req.body.password || '');
+    if (pw.length < 8) return res.status(400).json({ message: 'كلمة السر لازم 8 حروف أو أكثر' });
+    const d = await _dlgByTok(req.params.token);
+    if (!d) return res.status(404).json({ message: 'الرابط منتهي أو غير صحيح — اطلب من صاحب الحساب يرسله لك من جديد' });
+    const hash = await bcrypt.hash(pw, 10);
+    // كلمة سر جديدة = تسكير أي دخول قديم للمفوّض
+    const u = (await pool.query("UPDATE provider_delegates SET pass_hash=$1, status='active', invite_hash=NULL, invite_exp=NULL, tv=tv+1, fail_n=0, locked_until=NULL WHERE id=$2 AND invite_hash IS NOT NULL RETURNING *", [hash, d.id])).rows[0];
+    if (!u) return res.status(409).json({ message: 'الرابط استُخدم — ادخل بإيميلك وكلمة سرّك' });
+    _dlgDrop(u.id);
+    const out = await _dlgLogin(u.email, pw);
+    if (!out || out.err) return res.status(400).json({ message: (out && out.err) || 'حدث خطأ' });
+    res.json(out);
+  } catch(e) { console.error('dlg accept:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// اللوحة تعرف هل الداخل مفوّض وصلاحياته
+app.get('/api/me/dlg', auth, async (req, res) => {
+  if (!req.user.dlg) return res.json({ dlg: null });
+  try { const o = (await pool.query("SELECT COALESCE(NULLIF(business_name,''), name) AS n FROM users WHERE id=$1", [req.user.id])).rows[0];
+    res.json({ dlg: { name: req.user.dlg.name, perms: req.user.dlg.perms, owner_name: o ? o.n : '' }, labels: DLG_PERMS }); }
+  catch(e) { res.json({ dlg: { name: req.user.dlg.name, perms: req.user.dlg.perms, owner_name: '' }, labels: DLG_PERMS }); }
+});
+// الإشعارات المهمة توصل المفوّض على إيميله كمان (حسب صلاحياته) — حد 40 إيميل باليوم
+const _DLG_MAILT = { request: 'bids', new_request: 'bids', bid_accepted: 'bids', accept_ask: 'bids', negotiate: 'bids', question_answered: 'bids', message: 'chat', claim: 'awarded', completed: 'awarded', sub: 'sub' };
+const _dlgMailN = new Map();
+async function _dlgMail(userId, title, body, type, url){
+  try {
+    const k = _DLG_MAILT[type]; if (!k) return;
+    const d = (await pool.query("SELECT id, email, name, perms FROM provider_delegates WHERE owner_id=$1 AND status='active'", [userId])).rows[0];
+    if (!d || !(d.perms || []).includes(k)) return;
+    const day = new Date().toISOString().slice(0, 10), ck = d.id + ':' + day, n = _dlgMailN.get(ck) || 0;
+    if (n >= 40) return; _dlgMailN.set(ck, n + 1); if (_dlgMailN.size > 5000) _dlgMailN.clear();
+    const t = String(title || 'إشعار جديد').slice(0, 120);
+    sendEmail(d.email, t, emailTpl(t, `<p>${eEsc(String(body || ''))}</p><p style="color:#64748b;font-size:13px">وصلك لأنك مفوّض على حساب المؤسسة في مناقصة.</p>`, 'فتح', SITE_URL + (url && String(url).startsWith('/') ? url : '/dashboard-provider.html'))).catch(() => {});
+  } catch(e) {}
+}
 // الصفحة الرئيسية: «مزوّدين موثّقين» — الماسي فقط (20 مشروع موثّق بتقييم 4★ فأعلى)
 let _wpTopCache = null;
 app.get('/api/providers/verified-top', async (req, res) => {
@@ -5507,7 +5687,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.attachment_url, b.show_profile, b.work_images, b.need_items, b.need_other, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.status AS req_status, (r.assigned_provider_id IS NULL) AS unassigned, cc.status AS claim_status, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.dlg_name, b.attachment_url, b.show_profile, b.work_images, b.need_items, b.need_other, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.status AS req_status, (r.assigned_provider_id IS NULL) AS unassigned, cc.status AS claim_status, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
       CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
       ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted') as contact_unlocked
       , (${_REAL_BID_SQL}) AS real_bid, (${_ASKABLE_REQ_SQL}) AS askable_req, ak.id AS ask_id, ak.status AS ask_status, ak.sends AS ask_sends, ak.last_sent_at AS ask_last_at
@@ -6530,6 +6710,7 @@ app.post('/api/requests/:id/bids', auth, providerOnly, async (req, res) => {
       const ins = await pool.query(`INSERT INTO bids (request_id, provider_id, price, days, note, status, price_visibility, price_unit, attachment_url, attachment_hash, created_at) VALUES ($1,$2,$3,$4,$5,'pending',$6,$7,$8,$9,NOW()) RETURNING *`, [requestId, req.user.id, price, days, note||null, priceVis, priceUnit, attUrl, attHash]);
       row = ins.rows[0];
     }
+    try { await pool.query('UPDATE bids SET dlg_name=$1 WHERE id=$2', [req.user.dlg ? req.user.dlg.name : null, row.id]); row.dlg_name = req.user.dlg ? req.user.dlg.name : null; } catch(e) {}
     if (req.body.materials !== undefined) { try { await pool.query('UPDATE bids SET materials=$1 WHERE id=$2', [_matVal(req.body.materials), row.id]); row.materials=_matVal(req.body.materials); } catch(e){} }
     await _bidExtras(row.id, req.user.id, req.body);
     try { const _iv = (await pool.query(`SELECT 1 FROM project_visits WHERE request_id=$1 AND vkey=$2 AND inv`, [requestId, 'u' + req.user.id])).rows.length > 0;

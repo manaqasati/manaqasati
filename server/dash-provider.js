@@ -349,7 +349,7 @@ function _setAvatar(img){
   });
 })();
 
-var _pages={sub:'🤝 مقاول باطن',home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي',proof:'⭐ أعمالي الموثّقة'};
+var _pages={sub:'🤝 مقاول باطن',home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي',proof:'⭐ أعمالي الموثّقة',dlg:'👥 المفوّض'};
 
 var _prefetchTimer={};
 function prefetchPage(page){
@@ -390,6 +390,7 @@ function _gotoPageInner(page){
   else if(page==='chat'){loadChat();}
   else if(page==='saai')loadSaai();
   else if(page==='proof'){ if(window.WP)WP.load(); else setTimeout(function(){ if(window.WP)WP.load(); },500); }
+  else if(page==='dlg'){ if(window.DLG)DLG.load(); else setTimeout(function(){ if(window.DLG)DLG.load(); },500); }
   else if(page==='sub'){ if(window.SubC)SubC.load(); else setTimeout(function(){ if(window.SubC)SubC.load(); },400); }
   if(page!=='chat'){clearInterval(_provConvPolling);}
 }
@@ -400,7 +401,7 @@ window.addEventListener('popstate',function(){
   var _sm=h.match(/^sub\/(\d+)$/); if(_sm){ if(_curPage==='sub'&&window.SubC){ SubC.open(parseInt(_sm[1]),null,true); return; } window._subOpen=parseInt(_sm[1]); h='sub'; }
   if(/^sub\/(new|\d+\/edit)$/.test(h)){ h='sub'; }
   if(h==='sub'&&_curPage==='sub'&&window.SubC&&SubC.list){ SubC.list(); return; }
-  var known=['home','browse','works','reviews','notifs','profile','chat','saai','sub','proof'];
+  var known=['home','browse','works','reviews','notifs','profile','chat','saai','sub','proof','dlg'];
   var target=known.indexOf(h)>=0?h:'home';
   window._pSkipHash=true; gotoPage(target); window._pSkipHash=false;
 });
@@ -1328,7 +1329,7 @@ function _renderBids(list){
     }
     var h='<div class="wk-cd">';
     h+='<div class="wk-top"><div class="wk-tt"><b onclick="_viewProj('+b.request_id+')">'+_esc(b.request_title||'مشروع #'+b.request_id)+'</b><div class="rp-mt">'+[b.category?_esc(b.category):'',b.city?_esc(b.city):'','قدّمت '+timeAgoP(b.created_at)].filter(Boolean).join(' · ')+'</div></div>'
-      +'<div class="wk-pr"><b>'+fmtN(b.price)+'</b><small>ر.س'+(b.days?' · '+b.days+' يوم':'')+'</small></div></div>';
+      +'<div class="wk-pr"><b>'+fmtN(b.price)+'</b><small>ر.س'+(b.days?' · '+b.days+' يوم':'')+'</small>'+(b.dlg_name&&!(window.DLG&&DLG.isMe())?'<small style="display:block;color:#2563eb;font-weight:800">قدّمه: '+esc(b.dlg_name)+'</small>':'')+'</div></div>';
     h+='<span class="rp-pill" style="align-self:flex-start;background:'+pill[0]+';color:'+pill[1]+'">'+stLbl+'</span>';
     h+=steps;
     if(typeof _rjProvHtml==='function')h+=_rjProvHtml(b);
