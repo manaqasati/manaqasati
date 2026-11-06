@@ -1640,6 +1640,12 @@ function starRating(avg,count,size){
   s+='<span style="font-size:'+Math.max(11,size-2)+'px;color:#64748b;margin-right:3px">('+count+')</span>';
   return s;
 }
+function provLvPill(l){
+  l=parseInt(l)||0; var k=l>=20?20:l>=10?10:l>=5?5:l>=1?1:0; if(!k) return '';
+  var M={1:['أعمال موثّقة','linear-gradient(180deg,#3b8bf0,#1659c7)','#fff','<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>'],5:['موثّق فضّي','linear-gradient(180deg,#eef1f5,#b9c1cc 55%,#dfe4ea)','#2b3440',''],10:['موثّق ذهبي','linear-gradient(180deg,#fbe7a5,#e0a82e 55%,#f3cf6b)','#5a3a00',''],20:['موثّق ماسي','linear-gradient(180deg,#8c7cf7,#4b2fd0 55%,#7a62f2)','#fff','<path d="M6 3.5h12l3.5 5.5L12 21 2.5 9z" fill="currentColor"/>']}[k];
+  var ic=M[3]||'<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor"/>';
+  return '<span class="pv-tier" style="display:inline-flex;align-items:center;gap:5px;height:22px;border-radius:999px;padding:0 9px 0 4px;font-size:11px;font-weight:800;border:0;background:'+M[1]+';color:'+M[2]+';box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 2px rgba(0,0,0,.18)"><span style="width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.3);display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true">'+ic+'</svg></span>'+M[0]+'</span>';
+}
 function provTierPill(t){
   if(!t||t==='new')return '';
   var M={active:['مزود نشط','#9a6a2e','#f6ead9','#e6cfae'],distinguished:['مزود مميّز','#5b6b7d','#eceff3','#cfd6df'],expert:['خبير معتمد','#97710d','#fdf1cf','#ecd58a']};
@@ -1657,7 +1663,7 @@ function provCard(p){
   return '<div class="pv" data-slug="'+pvSlug+'" onclick="goProv(this)">'
     +'<div class="pv-av">'+avHtml+'</div>'
     +'<div class="pv-name">'+_esc(p.business_name||p.name||'—')+vseal+'</div>'
-    +provTierPill(p.tier)
+    +provLvPill(p.wp_level)
     +(p.city?'<div class="pv-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:-1px"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> '+_esc(p.city)+'</div>':'')
     +(specs?'<div class="pv-specs">'+specs+'</div>':'')
     +'<div class="pv-stars">'+starRating(avg,p.review_count||p.reviews_count||0,12)+'</div>'

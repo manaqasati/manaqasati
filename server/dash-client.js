@@ -1131,7 +1131,7 @@ function loadBids(id){
           +'<div class="bid-top">'
             +'<div class="bid-av">'+avHtml+'</div>'
             +'<div class="bid-id">'
-              +'<div class="bid-name">'+esc(safeName)+vBadge+_tierBadge(b.provider_tier)+_pubBadge(b.provider_badge)+_onlineDot(b.provider_last_seen)+'</div>'
+              +'<div class="bid-name">'+esc(safeName)+vBadge+_onlineDot(b.provider_last_seen)+'</div>'
               +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span>'+_wpBadge(b.wp_level!=null?b.wp_level:((parseInt(b.works_verified)||0)>0?1:0))+'</div>'
               +(b.provider_city?'<div class="bid-city"'+(b.prox===0?' style="color:#15803d;font-weight:800"':(b.prox===1?' style="color:#0f766e;font-weight:800"':''))+'><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+(b.area_mode==='travel'&&b.prox===2?'يقدر ينتقل لمدينتك · من ':b.serves==='city'?'يخدم مدينتك · مقره ':(b.serves==='all'&&b.prox===2?'يخدم كل المدن · مقره ':(b.prox===0?'من مدينتك · ':(b.prox===1?'من منطقتك · ':''))))+esc(b.provider_city)+(b.prox===2&&b.serves!=='all'&&b.prox_km?' · تقريباً '+(Math.round(b.prox_km/50)*50||b.prox_km).toLocaleString('en-US')+' كم':'')+'</div>':'')
             +'</div>'
@@ -2647,8 +2647,8 @@ function _wpCss(){ if(document.getElementById('wp-lcss')) return; var st=documen
   document.head.appendChild(st); }
 function _wpBadge(l){ l=parseInt(l)||0; var k=l>=20?20:l>=10?10:l>=5?5:l>=1?1:0; if(!k) return ''; _wpCss(); var m=_WPL[k];
   return '<span class="wp-lb" style="background:'+m[1]+';color:'+m[2]+'" title="'+m[0]+'"><i><svg viewBox="0 0 24 24" aria-hidden="true">'+m[3]+'</svg></i>'+m[0]+'</span>'; }
-function _wpPickTag(b){ _wpCss(); var n=parseInt(b.works_verified)||0;
-  return '<div class="wp-pk"><b><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M7 3h10v2h3v2a4 4 0 01-4 4h-.3A5 5 0 0113 13.9V17h3v3H8v-3h3v-3.1A5 5 0 018.3 11H8a4 4 0 01-4-4V5h3zm0 4H6a2 2 0 001 1.7zm10 0v1.7A2 2 0 0018 7z"/></svg>مرشّح لك</b>'+(n?'<span>'+n+' مشروع أكّدها أصحابها</span>':'')+'</div>'; }
+function _wpPickTag(b){ _wpCss(); var n=parseInt(b.wp_n)||parseInt(b.works_verified)||0;
+  return '<div class="wp-pk"><b><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M7 3h10v2h3v2a4 4 0 01-4 4h-.3A5 5 0 0113 13.9V17h3v3H8v-3h3v-3.1A5 5 0 018.3 11H8a4 4 0 01-4-4V5h3zm0 4H6a2 2 0 001 1.7zm10 0v1.7A2 2 0 0018 7z"/></svg>مرشّح لك</b>'+(n?'<span>'+n+' مشروع موثّق بتقييم أصحابها</span>':'')+'</div>'; }
 // «وثّق أعمالك»: شغل مشابه سواه المزوّد وأكّده أصحابه (صور + كلمة من صاحب المشروع)
 function _wpStrip(b){
   var L=Array.isArray(b.works_sample)?b.works_sample:[]; if(!(parseInt(b.works_verified)||0)||!L.length) return '';

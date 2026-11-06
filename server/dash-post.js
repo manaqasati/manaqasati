@@ -805,13 +805,14 @@ function loadBids(id){
             +'</div>';
         }
 
-        return '<div'+(b.is_hidden?' style="opacity:.6;border-style:dashed"':'')+' class="bid-item'+(isAcc?' accepted':'')+(isRej?' rejected':'')+(isBest?' best':'')+'">'
+        return '<div'+(b.is_hidden?' style="opacity:.6;border-style:dashed"':'')+' class="bid-item'+(b.wp_pick&&!isRej?' wp-pkc':'')+(isAcc?' accepted':'')+(isRej?' rejected':'')+(isBest?' best':'')+'">'
           +(isBest?'<span class="bid-best">الأفضل لك</span>':'')
+          +(b.wp_pick&&!isRej?_wpPickTag(b):'')
           +'<div class="bid-top">'
             +'<div class="bid-av">'+avHtml+'</div>'
             +'<div class="bid-id">'
-              +'<div class="bid-name">'+esc(safeName)+vBadge+_tierBadge(b.provider_tier)+_pubBadge(b.provider_badge)+_onlineDot(b.provider_last_seen)+'</div>'
-              +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span></div>'
+              +'<div class="bid-name">'+esc(safeName)+vBadge+_onlineDot(b.provider_last_seen)+'</div>'
+              +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span>'+_wpBadge(b.wp_level!=null?b.wp_level:((parseInt(b.works_verified)||0)>0?1:0))+'</div>'
               +(b.provider_city?'<div class="bid-city"><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+esc(b.provider_city)+'</div>':'')
             +'</div>'
             +'<div class="bid-price"><div class="pn">'+fmtN(b.price)+'</div><div class="pu">ر.س</div>'+(b.days?'<div class="pd">خلال '+b.days+' يوم</div>':'')+'</div>'
@@ -2304,3 +2305,20 @@ function _planUp(){ var p=document.getElementById('n-plans'); if(!p) return; var
     PlanGate.pledgeBind('plA',function(on){ var b=document.getElementById('agreeBtn'); if(b) b.disabled=!on; }); }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',swap); else swap();
 })();
+// «وثّق أعمالك»: شارة المستوى (معدني) — شارة وحدة بس: أعلى مستوى وصله
+var _WPL={1:['أعمال موثّقة','linear-gradient(180deg,#3b8bf0,#1659c7)','#fff','<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>'],
+  5:['موثّق فضّي','linear-gradient(180deg,#eef1f5,#b9c1cc 55%,#dfe4ea)','#2b3440','<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor"/>'],
+  10:['موثّق ذهبي','linear-gradient(180deg,#fbe7a5,#e0a82e 55%,#f3cf6b)','#5a3a00','<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor"/>'],
+  20:['موثّق ماسي','linear-gradient(180deg,#8c7cf7,#4b2fd0 55%,#7a62f2)','#fff','<path d="M6 3.5h12l3.5 5.5L12 21 2.5 9z" fill="currentColor"/>']};
+function _wpCss(){ if(document.getElementById('wp-lcss')) return; var st=document.createElement('style'); st.id='wp-lcss';
+  st.textContent='.wp-lb{display:inline-flex;align-items:center;gap:5px;height:22px;border-radius:999px;padding:0 9px 0 4px;font-size:11px;font-weight:800;white-space:nowrap;vertical-align:middle;margin-inline-start:6px;position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 2px rgba(0,0,0,.18)}'
+   +'.wp-lb i{width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;flex:none}.wp-lb svg{width:10px;height:10px}'
+   +'.wp-lb:after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.18) 45%,transparent 60%);pointer-events:none}'
+   +'.bid-item.wp-pkc{border:1.5px solid #0b1220!important}.wp-pk{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-2px 0 10px;font-size:12px;font-weight:800;color:var(--text2,#334155)}'
+   +'.wp-pk b{display:inline-flex;align-items:center;gap:5px;background:#0b1220;color:#fff;border-radius:7px;padding:3px 10px;font-size:11.5px}.wp-pk span{color:var(--muted,#64748b);font-weight:700;font-size:11.5px}'
+   +'[data-theme=dark] .bid-item.wp-pkc{border-color:#cbd5e1!important}[data-theme=dark] .wp-pk b{background:#f8fafc;color:#0b1220}';
+  document.head.appendChild(st); }
+function _wpBadge(l){ l=parseInt(l)||0; var k=l>=20?20:l>=10?10:l>=5?5:l>=1?1:0; if(!k) return ''; _wpCss(); var m=_WPL[k];
+  return '<span class="wp-lb" style="background:'+m[1]+';color:'+m[2]+'" title="'+m[0]+'"><i><svg viewBox="0 0 24 24" aria-hidden="true">'+m[3]+'</svg></i>'+m[0]+'</span>'; }
+function _wpPickTag(b){ _wpCss(); var n=parseInt(b.wp_n)||parseInt(b.works_verified)||0;
+  return '<div class="wp-pk"><b><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true"><path d="M7 3h10v2h3v2a4 4 0 01-4 4h-.3A5 5 0 0113 13.9V17h3v3H8v-3h3v-3.1A5 5 0 018.3 11H8a4 4 0 01-4-4V5h3zm0 4H6a2 2 0 001 1.7zm10 0v1.7A2 2 0 0018 7z"/></svg>مرشّح لك</b>'+(n?'<span>'+n+' مشروع موثّق بتقييم أصحابها</span>':'')+'</div>'; }

@@ -519,13 +519,14 @@ function _renderHome(data){
   var _ci=0;for(var _ti=0;_ti<_tiers.length;_ti++){if(done>=_tiers[_ti].m)_ci=_ti;}
   var _next=_tiers[_ci+1]||null;
   var _lvPct=_next?Math.max(6,Math.round((done-_tiers[_ci].m)/(_next.m-_tiers[_ci].m)*100)):100;
-  html+='<div class="pa-prof"><div class="pa-ph"><div class="ph-av pa-av">'+avHtml+'</div><div style="flex:1;min-width:0"><b>'+_esc(profile.business_name||_me.name||'')+'</b><small><span style="color:#F0A500">★</span> '+(rat==='—'?'لا يوجد تقييم بعد':rat)+' '+_tierBadge(profile.tier)+_pubBadge(profile.badge)+'</small></div></div>'
+  html+='<div class="pa-prof"><div class="pa-ph"><div class="ph-av pa-av">'+avHtml+'</div><div style="flex:1;min-width:0"><b>'+_esc(profile.business_name||_me.name||'')+'</b><small><span style="color:#F0A500">★</span> '+(rat==='—'?'لا يوجد تقييم بعد':rat)+' <span class="wp-mylb"></span></small></div></div>'
     +(_pcPct<100?'<div class="pa-st"><span>قوة ملفك</span><b>'+_pcPct+'%</b></div><div class="pa-bar"><i style="width:'+_pcPct+'%"></i></div><div class="pa-miss">'+_pcItems.map(function(x){return '<span class="'+(x.d?'ok':'')+'">'+(x.d?'✓':'○')+' '+x.l+'</span>';}).join('')+'</div><button type="button" class="pa-btn" onclick="gotoPage(&quot;profile&quot;)">أكمل ملفك</button>':'<div class="pa-st"><span>ملفك مكتمل ✓</span></div>')
-    +'<div class="pa-lv"><div class="pa-st"><span>مستواك: <b>'+_tiers[_ci].n+'</b></span><small>'+(_next?'باقي '+((_next.m-done)===1?'صفقة واحدة':(_next.m-done)===2?'صفقتان':(_next.m-done)+' صفقات')+' لـ«'+_next.n+'»':'أعلى مستوى 🏆')+'</small></div><div class="pa-bar lv"><i style="width:'+_lvPct+'%"></i></div></div>'
+    +'<div class="pa-lv" id="wp-mylv"></div>'
   +'</div>';
   html+='<div id="ph-sharecard"></div>';
 
   pg.innerHTML=html;_lb.done();_loadNotifCount();_loadChatBadge();
+  try{if(window.WP&&WP.fillLevel)WP.fillLevel();}catch(e){}
   _renderInvites();
   _renderProvNudges(_myBids,pool,matchedBySpec);
   _renderProvAnswerNudge();
@@ -1509,7 +1510,7 @@ async function loadProfile(){
     +'<button class="pf-cam" aria-label="تغيير الصورة" onclick="document.getElementById(&quot;av-inp&quot;).click()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></button>'
     +'<input type="file" id="av-inp" accept="image/*" style="display:none" onchange="_uploadAvatar(this)"></div>'
     +'<div style="flex:1;min-width:0"><div class="pf-name">'+_esc(p.business_name||p.name||'المزود')+'</div>'
-    +'<div class="pf-badges">'+_tierBadge(p.tier)+_pubBadge(p.badge)+'</div>'
+    +'<div class="pf-badges"><span class="wp-mylb"></span></div>'
     +'<div class="pf-sub">'+[p.city?_esc(p.city):'',(p.specialties||[]).slice(0,2).map(_esc).join('، ')].filter(Boolean).join(' · ')+'</div></div></div>'
     +'<div class="pf-stats"><div><b>'+totalBids+'</b><span>عروض</span></div><div><b class="g">'+completed+'</b><span>مكتملة</span></div><div><b>'+avgR+(avgR!=='—'?' <i>★</i>':'')+'</b><span>'+(Array.isArray(reviews)&&reviews.length?reviews.length+' تقييم':'التقييم')+'</span></div></div>'
     +(_pcp<100?'<div class="pf-pc"><div class="pf-pc-h"><span>اكتمال ملفك</span><b>'+_pcp+'%</b></div><div class="pf-pc-bar"><i style="width:'+_pcp+'%"></i></div>'
@@ -1517,6 +1518,7 @@ async function loadProfile(){
       +'<div class="pf-pc-note">الملف المكتمل يزيد ثقة العملاء وفرص قبول عروضك</div></div>'
       :'<div class="pf-pc done">✓ ملفك مكتمل — العملاء يشوفونك بأفضل صورة</div>');
   pg.appendChild(hdr);
+  try{if(window.WP&&WP.fillLevel)WP.fillLevel();}catch(e){}
 
   // بطاقة «صفحتك العامة» انشالت — يكفي الزر الذهبي «صفحتي» فوق (العنصر يبقى مخفي كنقطة ربط لترتيب المحفظة)
   var previewCard=document.createElement('div');previewCard.className='pf-pub';previewCard.style.display='none';

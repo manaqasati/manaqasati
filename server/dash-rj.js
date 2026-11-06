@@ -160,6 +160,7 @@ var CCSS='.cl-gold{border:0;background:linear-gradient(135deg,#f59e0b,#d97706);c
 function _ccss(){ _css(); if(document.getElementById('cl-css'))return; var s=document.createElement('style'); s.id='cl-css'; s.textContent=CCSS; document.head.appendChild(s); }
 var TIERS=[[3,'نشط'],[10,'مميّز'],[25,'خبير معتمد']];
 window._clmTierHtml=function(done){
+  return ''; // صار السلّم الموحّد «وثّق أعمالك»
   _ccss(); done=parseInt(done)||0; var nx=null,prev=0; for(var i=0;i<TIERS.length;i++){ if(done<TIERS[i][0]){nx=TIERS[i];break;} prev=TIERS[i][0]; }
   if(!nx)return '';
   var left=nx[0]-done, pc=Math.round((done-prev)/(nx[0]-prev)*100);

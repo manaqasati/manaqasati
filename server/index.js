@@ -3329,7 +3329,7 @@ async function recomputeProviderTier(providerId){
     if(newTier === oldTier) return;
     await pool.query("UPDATE users SET tier=$1 WHERE id=$2 AND role='provider'", [newTier, providerId]);
     // إشعار ترقية فقط عند ارتقاء فعلي لأعلى
-    if((TIER_RANK[newTier]||0) > (TIER_RANK[oldTier]||0)){
+    if(false && (TIER_RANK[newTier]||0) > (TIER_RANK[oldTier]||0)){   // «نشط/مميّز/خبير» صار داخلي — المزوّد يشوف سلّم «وثّق أعمالك» بس
       try{ await notify(providerId, 'مبروك! ارتقيت لمستوى جديد', 'وصلت إلى مستوى «'+(TIER_LABELS[newTier]||newTier)+'» — يظهر الآن للعملاء على عروضك ويرفع ترتيبك.', 'tier_up', null); }catch(e){}
     }
   }catch(e){ console.error('recomputeProviderTier:', e.message); }
@@ -3627,10 +3627,15 @@ async function setupDatabase() {
       for (const c of ['work_id INTEGER','r_quality SMALLINT','r_time SMALLINT','r_deal SMALLINT'])
         await _mig(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS ${c}`);
       // مستويات «وثّق أعمالك»: 1 أعمال موثّقة · 5 فضّي · 10 ذهبي · 20 ماسي (10 و20 يحسب فقط تقييمات 4★ فأعلى)
+      // سلّم واحد: الأعمال الموثّقة + المشاريع اللي خلصت داخل المنصة وقيّمها العميل (بدل «نشط/مميّز/خبير»)
+      await _mig(`CREATE OR REPLACE FUNCTION wp_stats(pid INTEGER, OUT n INTEGER, OUT hi INTEGER) LANGUAGE sql STABLE AS $f$
+        SELECT (a.n + b.n)::int, (a.hi + b.hi)::int FROM
+          (SELECT COUNT(*) AS n, COUNT(*) FILTER (WHERE rv.rating >= 4) AS hi FROM work_proofs w LEFT JOIN reviews rv ON rv.id = w.review_id
+             WHERE w.provider_id = pid AND w.status = 'reviewed' AND NOT w.hidden) a,
+          (SELECT COUNT(DISTINCT r.id) AS n, COUNT(DISTINCT r.id) FILTER (WHERE rv.rating >= 4) AS hi FROM reviews rv JOIN requests r ON r.id = rv.request_id
+             WHERE rv.reviewed_id = pid AND rv.reviewer_id = r.client_id AND r.assigned_provider_id = pid AND r.status = 'completed') b $f$`);
       await _mig(`CREATE OR REPLACE FUNCTION wp_level(pid INTEGER) RETURNS INTEGER LANGUAGE sql STABLE AS $f$
-        SELECT CASE WHEN hi >= 20 THEN 20 WHEN hi >= 10 THEN 10 WHEN n >= 5 THEN 5 WHEN n >= 1 THEN 1 ELSE 0 END
-          FROM (SELECT COUNT(*) AS n, COUNT(*) FILTER (WHERE rv.rating >= 4) AS hi FROM work_proofs w LEFT JOIN reviews rv ON rv.id = w.review_id
-                 WHERE w.provider_id = pid AND w.status = 'reviewed' AND NOT w.hidden) z $f$`);
+        SELECT CASE WHEN hi >= 20 THEN 20 WHEN hi >= 10 THEN 10 WHEN n >= 5 THEN 5 WHEN n >= 1 THEN 1 ELSE 0 END FROM wp_stats(pid) $f$`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS wp_late_at TIMESTAMP`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS claim_nudged_at TIMESTAMP`);
       // طلب الاعتماد: تأكيد المزوّد + تعديل السعر/المدة قبل الإرسال + نزول ترتيب من يكثر «ما اتفقنا»
@@ -5285,6 +5290,11 @@ function _wpWho(n){ const w = String(n || '').replace(/\s+/g, ' ').trim().split(
 function _wpIp(req){ return String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim().slice(0, 64); }
 function _wpText(name, title, url){ return 'هلا ' + (name || '') + ' 👋\nهذا رابط مشروع «' + title + '» اللي نفذناه لك — ممكن تقيّمني؟ ما ياخذ دقيقة:\n' + url; }
 const _WP_LV = { 1: 'أعمال موثّقة', 5: 'موثّق فضّي', 10: 'موثّق ذهبي', 20: 'موثّق ماسي' };
+async function _wpStats(pid){ try { const s = (await pool.query('SELECT * FROM wp_stats($1)', [pid])).rows[0]; return { count_all: s.n || 0, count_hi: s.hi || 0 }; } catch(e) { return { count_all: 0, count_hi: 0 }; } }
+// ترقية بالسلّم بعد تقييم (موثّق أو من مشروع داخل المنصة)
+const _WP_UP = { 1: '🏅 أخذت شارة «أعمال موثّقة ✓»', 5: '🥈 ترقّيت لـ«موثّق فضّي»', 10: '🥇 ترقّيت لـ«موثّق ذهبي»', 20: '💎 ترقّيت لـ«موثّق ماسي»' };
+const _WP_UPB = { 1: 'الشارة صارت تظهر على كل عرض تقدّمه', 5: 'عروضك صارت تطلع قبل المستويات الأقل', 10: 'عرضك يطلع للعميل «مرشّح لك» والمشاريع الجديدة توصلك قبل غيرك', 20: 'صرت تظهر في الصفحة الرئيسية «مزوّدين موثّقين»' };
+function _wpLevelUp(pid, lv0, lv1){ if (!(lv1 > lv0) || !_WP_UP[lv1]) return; notify(pid, _WP_UP[lv1], _WP_UPB[lv1], 'proof', null, { url: '/dashboard-provider.html#proof', kind: 'wp_level' }).catch(() => {}); }
 async function _wpLevel(pid){ try { return (await pool.query('SELECT wp_level($1) AS l', [pid])).rows[0].l || 0; } catch(e) { return 0; } }
 async function _wpVerified(pid){ try { return (await pool.query("SELECT COUNT(*)::int n FROM work_proofs WHERE provider_id=$1 AND status='reviewed' AND NOT hidden", [pid])).rows[0].n; } catch(e) { return 0; } }
 // الصفحة الرئيسية: «مزوّدين موثّقين» — الماسي فقط (20 مشروع موثّق بتقييم 4★ فأعلى)
@@ -5294,7 +5304,7 @@ app.get('/api/providers/verified-top', async (req, res) => {
     if (_wpTopCache && Date.now() < _wpTopCache.exp) return res.json(_wpTopCache.d);
     const r = await pool.query(`SELECT u.id, COALESCE(NULLIF(u.business_name,''), u.name) AS name, u.city, u.profile_image,
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0)::float AS rating,
-        (SELECT COUNT(*)::int FROM work_proofs w WHERE w.provider_id=u.id AND w.status='reviewed' AND NOT w.hidden) AS works,
+        (SELECT n FROM wp_stats(u.id)) AS works,
         (SELECT w.images[1] FROM work_proofs w WHERE w.provider_id=u.id AND w.status='reviewed' AND NOT w.hidden ORDER BY w.reviewed_at DESC LIMIT 1) AS img
       FROM users u WHERE u.role='provider' AND u.is_active=TRUE AND wp_level(u.id) >= 20 ORDER BY works DESC, rating DESC LIMIT 8`);
     const d = r.rows.map(x => ({ id: x.id, name: x.name, city: x.city, rating: x.rating, works: x.works,
@@ -5311,7 +5321,7 @@ app.get('/api/provider/proofs', auth, async (req, res) => {
     const m = (await pool.query("SELECT COUNT(*)::int n FROM work_proofs WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '30 days'", [req.user.id])).rows[0].n;
     r.rows.forEach(x => { x.url = SITE_URL + '/w/' + x.token; x.wa_text = _wpText(x.client_name, x.title, x.url); });
     const me = (await pool.query(`SELECT name, business_name, profile_image, COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=users.id),0)::float AS rating, (SELECT COUNT(*)::int FROM reviews WHERE reviewed_id=users.id) AS rcount FROM users WHERE id=$1`, [req.user.id])).rows[0] || {};
-    res.json({ me: { name: me.business_name || me.name || '', profile_image: me.profile_image || null, rating: me.rating || 0, rcount: me.rcount || 0 }, items: r.rows, verified: r.rows.filter(x => x.status === 'reviewed' && !x.hidden).length, verified_hi: r.rows.filter(x => x.status === 'reviewed' && !x.hidden && (x.rating || 0) >= 4).length, level: await _wpLevel(req.user.id), month_left: Math.max(0, _WP_MONTH - m), month_max: _WP_MONTH });
+    res.json({ me: { name: me.business_name || me.name || '', profile_image: me.profile_image || null, rating: me.rating || 0, rcount: me.rcount || 0 }, items: r.rows, verified: r.rows.filter(x => x.status === 'reviewed' && !x.hidden).length, ...(await _wpStats(req.user.id)), level: await _wpLevel(req.user.id), month_left: Math.max(0, _WP_MONTH - m), month_max: _WP_MONTH });
   } catch(e) { console.error('GET /api/provider/proofs:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.post('/api/provider/proofs', auth, async (req, res) => {
@@ -6326,7 +6336,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews,
         (SELECT COUNT(*)::int FROM work_proofs wp WHERE wp.provider_id=u.id AND wp.status='reviewed' AND NOT wp.hidden) AS works_verified,
-        wp_level(u.id) AS wp_level,
+        wp_level(u.id) AS wp_level, (SELECT n FROM wp_stats(u.id)) AS wp_n,
         (SELECT json_agg(x) FROM (SELECT wp.images[1] AS img, wp.images AS imgs, wp.title, rv2.rating, rv2.comment, COALESCE(wp.client_name,'') AS who FROM work_proofs wp LEFT JOIN reviews rv2 ON rv2.id=wp.review_id
            WHERE wp.provider_id=u.id AND wp.status='reviewed' AND NOT wp.hidden ORDER BY (wp.category IS NOT DISTINCT FROM (SELECT category FROM requests WHERE id=$1)) DESC, wp.reviewed_at DESC LIMIT 4) x) AS works_sample,
         (u.ask_penalty_until > NOW()) IS TRUE AS low_rank, b.hold_state, b.reject_reason, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note,
@@ -8273,6 +8283,7 @@ app.post('/api/reviews', auth, async (req, res) => {
       if (!counterparty || parseInt(reviewed_id) !== parseInt(counterparty)) return res.status(400).json({ message: 'الطرف المُقيَّم غير صحيح' });
     }
     const existing = await pool.query('SELECT id FROM reviews WHERE request_id=$1 AND reviewer_id=$2', [request_id, req.user.id]);
+    const _byClient = reqRow.rows[0].client_id === req.user.id, _lv0 = _byClient ? await _wpLevel(reviewed_id) : 0;
     let row;
     if (existing.rows.length) {
       const upd = await pool.query(`UPDATE reviews SET rating=$1, comment=$2, images=$3, created_at=NOW() WHERE request_id=$4 AND reviewer_id=$5 RETURNING *`, [rating, comment||null, (Array.isArray(images)&&images.length)?images:null, request_id, req.user.id]);
@@ -8281,6 +8292,7 @@ app.post('/api/reviews', auth, async (req, res) => {
       const ins = await pool.query(`INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, images, created_at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) RETURNING *`, [request_id, req.user.id, reviewed_id, rating, comment||null, (Array.isArray(images)&&images.length)?images:null]);
       row = ins.rows[0];
     }
+    if (_byClient) _wpLevelUp(parseInt(reviewed_id), _lv0, await _wpLevel(reviewed_id));
     const reviewerInfo = await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id]);
     const reviewedInfo = await pool.query('SELECT name, email FROM users WHERE id=$1', [reviewed_id]);
     const stars = '⭐'.repeat(rating);
@@ -8417,7 +8429,7 @@ app.get('/api/providers', async (req, res) => {
     if (city)     { params.push(`%${city}%`); base += ` AND city ILIKE $${params.length}`; }
     const countR = await pool.query(`SELECT COUNT(*)::int c ${base}`, params);
     const total = countR.rows[0] ? countR.rows[0].c : 0;
-    const q = `SELECT id, name, city, specialties, badge, tier, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects ${base} ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, CASE tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 200`;
+    const q = `SELECT id, name, city, specialties, badge, tier, wp_level(id) AS wp_level, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects ${base} ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, CASE tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 200`;
     const r = await pool.query(q, params);
     if (req.user && req.user.role === 'admin') res.set('X-Total-Count', String(total));   // العدد للإدارة فقط
     res.json(r.rows.map(p => ({ ...p, avg_rating: parseFloat(p.avg_rating)||0, review_count: parseInt(p.review_count)||0, completed_projects: parseInt(p.completed_projects)||0, is_verified: !!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0) })));
@@ -9903,7 +9915,7 @@ app.put('/api/admin/users/:id/tier', requirePermission('users.badge'), async (re
     const r = await pool.query(`UPDATE users SET tier=$1, tier_locked=$2 WHERE id=$3 AND role='provider' RETURNING id,name,tier,tier_locked`, [tier, willLock, uid]);
     await logAdmin(req, 'set_tier', 'user', uid, 'ضبط المستوى إلى '+(TIER_LABELS[tier]||tier)+(willLock?' (مثبّت)':''));
     if ((TIER_RANK[tier]||0) > (TIER_RANK[oldTier]||0)) {
-      try { await notify(uid, 'تم ترقيتك لمستوى جديد', 'تمت ترقيتك إلى مستوى «'+(TIER_LABELS[tier]||tier)+'» — يظهر الآن للعملاء على عروضك.', 'tier_up', null); } catch(e){}
+      if (false) try { await notify(uid, 'تم ترقيتك لمستوى جديد', 'تمت ترقيتك إلى مستوى «'+(TIER_LABELS[tier]||tier)+'» — يظهر الآن للعملاء على عروضك.', 'tier_up', null); } catch(e){}
     }
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }

@@ -85,13 +85,14 @@
     D.querySelectorAll('.wp-newc').forEach(function(x){ if (!isNew()) x.remove(); }); }
   function seen(){ try { localStorage.setItem('mnq_proof_seen', '1'); } catch(e) {} markNav(); }
   if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', markNav); else setTimeout(markNav, 0);
+  setTimeout(function(){ try { fillLevel(); } catch(e) {} }, 0);
   function fetchD(force){
     if (S.d && !force) return Promise.resolve(S.d);
     return api('/api/provider/proofs').then(function(d){ if (d && Array.isArray(d.items)) S.d = d; return S.d; });
   }
   // بطاقة المستوى (معدني): المستوى الحالي + التقدّم + وش يفتح لك المستوى الجاي
   function tierCard(d){
-    var n = d.verified || 0, hi = d.verified_hi || 0, lv = parseInt(d.level) || 0, nx = null;
+    var n = d.count_all != null ? d.count_all : (d.verified || 0), hi = d.count_hi != null ? d.count_hi : (d.verified_hi || 0), lv = parseInt(d.level) || 0, nx = null;
     for (var i = 0; i < LV.length; i++) if (LV[i][0] > lv) { nx = LV[i]; break; }
     var h = '<div class="wp-tier"><div class="wp-tr"><div><div class="wp-tl">' + (lv ? 'مستواك الحالي' : '⭐ وثّق أعمالك') + '</div><div class="wp-tn">' + (lv ? esc(lvName(lv)) : 'ابدأ بأول مشروع موثّق') + '</div></div>' + (lv ? medal(lv, 50) : '') + '</div>';
     if (nx) {
@@ -99,6 +100,7 @@
       h += '<div class="wp-pg"><i style="width:' + pct + '%"></i></div><div class="wp-pgt"><span>' + have + ' من ' + nx[0] + (nx[3] ? ' (4★ فأعلى)' : '') + '</span><span>التالي: ' + esc(nx[1]) + '</span></div>'
         + '<div class="wp-nx"><b>باقي ' + left + ' ' + (left === 1 ? 'مشروع' : left <= 10 ? 'مشاريع' : 'مشروع') + ' وتصير «' + esc(nx[1]) + '»' + (nx[3] ? ' — بتقييم 4★ فأعلى' : '') + '</b>' + nx[2].map(function(p){ return '<div>✓ ' + esc(p) + '</div>'; }).join('') + '</div>';
     } else h += '<div class="wp-nx"><b>وصلت لأعلى مستوى 🏆</b><div>عرضك يطلع «مرشّح لك» وتظهر في الصفحة الرئيسية</div></div>';
+    h += '<div class="wp-s" style="margin-top:10px;font-size:12px">ينحسب لك: المشاريع اللي توثّقها هنا + المشاريع اللي تخلّصها في المنصة ويقيّمك عليها العميل</div>';
     h += '<div class="wp-steps">' + LV.map(function(l){ return '<span>' + medal(l[0], 30, lv < l[0]) + l[0] + '</span>'; }).join('') + '</div>';
     return h + '</div>';
   }
@@ -116,6 +118,18 @@
       + '<div style="flex:1;min-width:0"><div class="wp-n" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(me.name || 'اسمك') + '</div>'
       + '<div class="wp-m" style="margin-top:3px">' + (me.rcount ? '<span style="color:#f59e0b">★ ' + esc(me.rating) + '</span> · ' : '') + '' + (badge(parseInt(d.level) || 0) || badge(1)) + '</div></div></div>'
       + '<div class="wp-pvi">' + im.map(function(u){ return '<img src="' + esc(u) + '" alt="" loading="lazy">'; }).join('') + (im.length < 3 ? new Array(3 - im.length + 1).join('<span>📷</span>') : '') + '</div></div>';
+  }
+  // ─── لوحة المزوّد: شارة المستوى + سطر التقدّم (بدل «نشط/مميّز/خبير» القديمة) ───
+  function fillLevel(){
+    css(); var bs = D.querySelectorAll('.wp-mylb'), bx = D.getElementById('wp-mylv'); if (!bs.length && !bx) return;
+    fetchD().then(function(d){ if (!d) return; var lv = parseInt(d.level) || 0, n = d.count_all || 0, hi = d.count_hi || 0, nx = null;
+      for (var i = 0; i < LV.length; i++) if (LV[i][0] > lv) { nx = LV[i]; break; }
+      D.querySelectorAll('.wp-mylb').forEach(function(e){ e.innerHTML = badge(lv); });
+      bx = D.getElementById('wp-mylv'); if (!bx) return;
+      var have = nx ? (nx[3] ? hi : n) : 0, pct = nx ? Math.max(4, Math.min(100, Math.round(have / nx[0] * 100))) : 100, left = nx ? Math.max(1, nx[0] - have) : 0;
+      bx.innerHTML = '<div class="pa-st"><span>مستواك: <b>' + (lv ? esc(lvName(lv)) : 'ما بدأت للحين') + '</b></span><small>' + (nx ? 'باقي ' + left + ' لـ«' + esc(nx[1]) + '»' : 'أعلى مستوى 🏆') + '</small></div><div class="pa-bar lv"><i style="width:' + pct + '%"></i></div>'
+        + '<button type="button" class="pa-btn" style="margin-top:8px" onclick="WP.go(1)">⭐ ارفع مستواك — وثّق مشروع</button>';
+    }).catch(function(){});
   }
   // ─── الرئيسية: شريط صغير بسطر واحد — مؤقت (يختفي لو فتح القسم أو ضغط ✕ أو بعد 3 زيارات) ───
   var BN_MAX = 3;
@@ -259,7 +273,7 @@
   }
   function find(id){ return ((S.d && S.d.items) || []).filter(function(x){ return x.id === id; })[0]; }
   W.WP = {
-    homeCard: homeCard, reviewsCard: reviewsCard, isNew: isNew,
+    homeCard: homeCard, reviewsCard: reviewsCard, isNew: isNew, fillLevel: fillLevel,
     hideBanner: function(){ bnSet('mnq_wp_bn_x', '1'); var b = D.getElementById('wp-home'); if (b) b.innerHTML = ''; }, load: load, go: go, form: function(){ S.form = S.form || { imgs: [] }; form(); },
     rmImg: function(i){ keep(); S.form.imgs.splice(i, 1); paintUps(); },
     remind: function(id){
