@@ -4,7 +4,18 @@
 (function(){
   'use strict';
   var W = window, D = document;
-  var LV = [[1, 'شارة «أعمال موثّقة ✓»'], [3, 'عروضك تطلع قبل غيرك'], [5, 'تتصدّر دليل مدينتك']];
+  // سلّم المستويات: [عدد المشاريع، الاسم، المزايا، يحسب 4★ فأعلى فقط]
+  var LV = [[1, 'أعمال موثّقة', ['الشارة على كل عرض تقدّمه', 'صور أعمالك تطلع تحت عرضك'], 0],
+            [5, 'موثّق فضّي', ['عرضك يطلع قبل المستويات الأقل', 'تتصدّر دليل مدينتك'], 0],
+            [10, 'موثّق ذهبي', ['عرضك يطلع للعميل «مرشّح لك»', 'المشاريع الجديدة توصلك قبل غيرك بـ15 دقيقة'], 1],
+            [20, 'موثّق ماسي', ['تظهر في الصفحة الرئيسية «مزوّدين موثّقين»', 'أول من تدعوه الإدارة للمشاريع'], 1]];
+  var MG = { 1: ['linear-gradient(180deg,#3b8bf0,#1659c7)', '#fff'], 5: ['linear-gradient(180deg,#eef1f5,#b9c1cc 55%,#dfe4ea)', '#2b3440'], 10: ['linear-gradient(180deg,#fbe7a5,#e0a82e 55%,#f3cf6b)', '#5a3a00'], 20: ['linear-gradient(180deg,#8c7cf7,#4b2fd0 55%,#7a62f2)', '#fff'] };
+  var TG = { 0: 'linear-gradient(135deg,#17254d,#1e40af)', 1: 'linear-gradient(135deg,#2d7ff0,#0d47b0)', 5: 'linear-gradient(135deg,#9aa5b4,#4f5b6b)', 10: 'linear-gradient(135deg,#d9a53c,#8a5a0c)', 20: 'linear-gradient(135deg,#7b62f5,#2e1aa0)' };
+  var IC = { 1: '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>', 5: '<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor"/>', 20: '<path d="M6 3.5h12l3.5 5.5L12 21 2.5 9z" fill="currentColor"/>' };
+  IC[10] = IC[5];
+  function lvName(l){ for (var i = 0; i < LV.length; i++) if (LV[i][0] === l) return LV[i][1]; return ''; }
+  function medal(l, sz, dim){ var m = MG[l]; return '<span class="wp-md" style="width:' + sz + 'px;height:' + sz + 'px;background:' + m[0] + ';color:' + m[1] + (dim ? ';opacity:.38;filter:grayscale(.4)' : '') + '"><svg viewBox="0 0 24 24" style="width:' + Math.round(sz * .44) + 'px;height:' + Math.round(sz * .44) + 'px" aria-hidden="true">' + IC[l] + '</svg></span>'; }
+  function badge(l){ if (!l) return ''; var m = MG[l]; return '<span class="wp-lb" style="background:' + m[0] + ';color:' + m[1] + '"><i><svg viewBox="0 0 24 24" aria-hidden="true">' + IC[l] + '</svg></i>' + esc(lvName(l)) + '</span>'; }
   var MAXI = 8;
   var S = { d: null, cats: null, form: null };
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
@@ -44,6 +55,14 @@
       + '.wp-pv{border:2px dashed #93c5fd;border-radius:16px;padding:10px;margin-top:10px;background:var(--p-light,#f8fbff)}'
       + '[data-theme="dark"] .wp-pv{border-color:#2b4377;background:rgba(37,99,235,.08)}'
       + '.wp-pvh{display:flex;gap:9px;align-items:center}.wp-av{width:40px;height:40px;border-radius:12px;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;flex:none;overflow:hidden}.wp-av img{width:100%;height:100%;object-fit:cover}'
+      + '.wp-md{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:none;box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 4px 12px rgba(0,0,0,.18)}'
+      + '.wp-lb{display:inline-flex;align-items:center;gap:5px;height:22px;border-radius:999px;padding:0 9px 0 4px;font-size:11px;font-weight:800;white-space:nowrap;position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 2px rgba(0,0,0,.18)}.wp-lb i{width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center}.wp-lb svg{width:10px;height:10px}'
+      + '.wp-tier{position:relative;z-index:1}.wp-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.16) 48%,transparent 62%);pointer-events:none}.wp-hero>*{position:relative;z-index:1}'
+      + '.wp-tr{display:flex;align-items:center;justify-content:space-between;gap:10px}.wp-tl{font-size:12.5px;font-weight:700;opacity:.85}.wp-tn{font-size:21px;font-weight:900;line-height:1.35}'
+      + '.wp-pg{height:7px;background:rgba(255,255,255,.25);border-radius:9px;overflow:hidden;margin:14px 0 7px}.wp-pg i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,#f3cf6b,#e0a82e)}'
+      + '.wp-pgt{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;font-weight:800}.wp-pgt span:last-child{opacity:.85}'
+      + '.wp-nx{background:rgba(255,255,255,.13);border-radius:14px;padding:11px 12px;margin-top:12px}.wp-nx b{display:block;font-size:14px;font-weight:900;margin-bottom:5px;line-height:1.6}.wp-nx div{font-size:12.5px;font-weight:700;line-height:1.9;opacity:.95}'
+      + '.wp-steps{display:flex;justify-content:space-between;margin-top:12px}.wp-steps>span{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;font-weight:800;opacity:.92}'
       + '.wp-vb{display:inline-flex;align-items:center;background:linear-gradient(90deg,#1d4ed8,#2563eb);color:#fff;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:900;white-space:nowrap}'
       + '.wp-pvi{display:flex;gap:5px;margin-top:8px}.wp-pvi img,.wp-pvi span{width:52px;height:52px;border-radius:9px;object-fit:cover;flex:none}.wp-pvi span{background:linear-gradient(135deg,#dbe5f5,#c7d2fe);display:flex;align-items:center;justify-content:center;font-size:18px}'
       + '[data-theme="dark"] .wp-pvi span{background:linear-gradient(135deg,#1e2d52,#24365e)}'
@@ -70,6 +89,19 @@
     if (S.d && !force) return Promise.resolve(S.d);
     return api('/api/provider/proofs').then(function(d){ if (d && Array.isArray(d.items)) S.d = d; return S.d; });
   }
+  // بطاقة المستوى (معدني): المستوى الحالي + التقدّم + وش يفتح لك المستوى الجاي
+  function tierCard(d){
+    var n = d.verified || 0, hi = d.verified_hi || 0, lv = parseInt(d.level) || 0, nx = null;
+    for (var i = 0; i < LV.length; i++) if (LV[i][0] > lv) { nx = LV[i]; break; }
+    var h = '<div class="wp-tier"><div class="wp-tr"><div><div class="wp-tl">' + (lv ? 'مستواك الحالي' : '⭐ وثّق أعمالك') + '</div><div class="wp-tn">' + (lv ? esc(lvName(lv)) : 'ابدأ بأول مشروع موثّق') + '</div></div>' + (lv ? medal(lv, 50) : '') + '</div>';
+    if (nx) {
+      var have = nx[3] ? hi : n, left = Math.max(1, nx[0] - have), pct = Math.min(100, Math.round(have / nx[0] * 100));
+      h += '<div class="wp-pg"><i style="width:' + pct + '%"></i></div><div class="wp-pgt"><span>' + have + ' من ' + nx[0] + (nx[3] ? ' (4★ فأعلى)' : '') + '</span><span>التالي: ' + esc(nx[1]) + '</span></div>'
+        + '<div class="wp-nx"><b>باقي ' + left + ' ' + (left === 1 ? 'مشروع' : left <= 10 ? 'مشاريع' : 'مشروع') + ' وتصير «' + esc(nx[1]) + '»' + (nx[3] ? ' — بتقييم 4★ فأعلى' : '') + '</b>' + nx[2].map(function(p){ return '<div>✓ ' + esc(p) + '</div>'; }).join('') + '</div>';
+    } else h += '<div class="wp-nx"><b>وصلت لأعلى مستوى 🏆</b><div>عرضك يطلع «مرشّح لك» وتظهر في الصفحة الرئيسية</div></div>';
+    h += '<div class="wp-steps">' + LV.map(function(l){ return '<span>' + medal(l[0], 30, lv < l[0]) + l[0] + '</span>'; }).join('') + '</div>';
+    return h + '</div>';
+  }
   function levels(n){
     return '<div class="wp-lv">' + LV.map(function(l){ var c = n >= l[0] ? 'dn' : (n < l[0] && (LV.filter(function(z){ return n >= z[0]; }).length === LV.indexOf(l)) ? 'on' : ''); return '<div class="' + c + '"><b>' + (n >= l[0] ? '✓' : l[0]) + '</b>' + l[1] + '</div>'; }).join('') + '</div>';
   }
@@ -82,7 +114,7 @@
     var av = safe(me.profile_image);
     return '<div class="wp-pv"><div class="wp-pvh"><div class="wp-av">' + (av ? '<img src="' + esc(av) + '" alt="">' : esc(String(me.name || 'م').charAt(0))) + '</div>'
       + '<div style="flex:1;min-width:0"><div class="wp-n" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(me.name || 'اسمك') + '</div>'
-      + '<div class="wp-m" style="margin-top:3px">' + (me.rcount ? '<span style="color:#f59e0b">★ ' + esc(me.rating) + '</span> · ' : '') + '<span class="wp-vb">✓ أعمال موثّقة</span></div></div></div>'
+      + '<div class="wp-m" style="margin-top:3px">' + (me.rcount ? '<span style="color:#f59e0b">★ ' + esc(me.rating) + '</span> · ' : '') + '' + (badge(parseInt(d.level) || 0) || badge(1)) + '</div></div></div>'
       + '<div class="wp-pvi">' + im.map(function(u){ return '<img src="' + esc(u) + '" alt="" loading="lazy">'; }).join('') + (im.length < 3 ? new Array(3 - im.length + 1).join('<span>📷</span>') : '') + '</div></div>';
   }
   // ─── الرئيسية: شريط صغير بسطر واحد — مؤقت (يختفي لو فتح القسم أو ضغط ✕ أو بعد 3 زيارات) ───
@@ -126,8 +158,8 @@
   function page(){
     var pg = D.getElementById('page-proof'); if (!pg) return;
     var d = S.d || { items: [], verified: 0, month_left: 5 }, n = d.verified || 0;
-    var h = '<div class="wp-grid"><div class="wp-hero"><div class="wp-k">⭐ وثّق أعمالك</div><div class="wp-t">' + (n ? 'عندك ' + n + ' ' + (n === 1 ? 'مشروع موثّق' : 'مشاريع موثّقة') : 'مشاريعك اللي سويتها — يأكّدها أصحابها بتقييم') + '</div>'
-      + '<div class="wp-s">العميل لما يشوف شغل مشابه لمشروعه وأكّده صاحبه، يثق فيك أكثر ويختار عرضك. ' + esc(nextTxt(n)) + '</div>' + levels(n)
+    var h = '<div class="wp-grid"><div class="wp-hero" style="background:' + (TG[parseInt(d.level) || 0] || TG[0]) + '">' + tierCard(d)
+      + (n ? '' : '<div class="wp-s" style="margin-top:10px">ارفع صور مشروع سويته، صاحبه يأكّده بتقييم — العميل لما يشوف شغل مشابه يثق فيك أكثر ويختار عرضك.</div>')
       + '<div class="wp-pvl">كذا يشوف العميل عرضك:</div>' + pvHtml(d)
       + (d.month_left > 0 ? '<button type="button" class="wp-b wp-y" onclick="WP.form()">＋ وثّق مشروع</button>' : '<div class="wp-s" style="margin-top:10px">وصلت حد هالشهر (' + d.month_max + ' مشاريع) — تقدر تضيف بعدين</div>') + '</div>';
     h += '<div><div class="wp-card"><div class="wp-h">أعمالي الموثّقة' + (d.items.length ? '<span class="wp-pl wp-ok">' + n + ' موثّق</span>' : '') + '</div>';

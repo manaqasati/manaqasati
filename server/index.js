@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sub.js','/proofs.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/sub.js','/proofs.js','/wptop.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -662,7 +662,8 @@ const _CITY_REGIONS = {
 const _C2RG = {};
 for (const _rg in _CITY_REGIONS) { for (const _c of _CITY_REGIONS[_rg]) _C2RG[_c] = _rg; }
 function cityRegion(c){ return c ? (_C2RG[String(c).trim()] || null) : null; }
-async function notifyMatchingProviders(request, _force){
+const _WP_EARLY_MIN = 15;
+async function notifyMatchingProviders(request, _force, _phase){
   try{
     if(!request || !request.id) return;
     // مشروع موجّه لمزوّد محدد: عند النشر يوصله هو وحده، والباقين بعد انتهاء المهلة
@@ -689,14 +690,21 @@ async function notifyMatchingProviders(request, _force){
       if (_q2 && _q2.notify_scope && (_q2.notify_scope !== 'city' || _q2.notify_base)) _aud = _audOf({ city }, _q2.notify_scope, _q2.notify_cities, _q2.notify_base); } catch(_e){}
     // مزوّد يطابق أحد تخصصات المشروع (الرئيسي أو الإضافية) ونفس المدينة إن توفّرت
     const r = _aud ? { rows: await matchingProviders(cats, null, _aud.allCities, _aud.cities, _aud.base) } : await pool.query(
-      `SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm FROM users
+      `SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm, wp_level(id) AS wp_level FROM users
         WHERE role='provider' AND is_active=TRUE
           AND (cardinality($1::text[])=0 OR COALESCE(notify_categories, specialties, ARRAY[]::text[]) && $1::text[] OR COALESCE(specialties, ARRAY[]::text[]) && $1::text[])
           AND (COALESCE(serves_all_cities,FALSE) OR $2::text IS NULL OR (city IS NULL AND (service_cities IS NULL OR cardinality(service_cities)=0)) OR city = $2 OR $2 = ANY(COALESCE(service_cities,ARRAY[]::text[])))`,
       [cats, city]);
     let sent=0;
     const link = SITE_URL + '/project/x-' + request.id + '?id=' + request.id;
-    for(const p of r.rows){
+    // الذهبي والماسي يوصلهم المشروع قبل غيرهم بـ15 دقيقة — الباقين يرسلهم المؤقّت (_wpLateRun)
+    let rows = r.rows;
+    const _gold = p => (parseInt(p.wp_level) || 0) >= 10;
+    if (_phase === 'late') rows = rows.filter(p => !_gold(p));
+    else if (rows.some(_gold) && rows.some(p => !_gold(p))) {
+      try { await pool.query(`UPDATE requests SET wp_late_at = NOW() + ($2 || ' minutes')::interval WHERE id=$1`, [request.id, String(_WP_EARLY_MIN)]); rows = rows.filter(_gold); } catch(e) { console.error('wp early:', e.message); }
+    }
+    for(const p of rows){
       try{
         const _tid = await notify(p.id, '🆕 مشروع جديد يناسبك', `"${request.title}"${city?(' · '+city):''} — بادر بتقديم عرضك`, 'request', request.id, { kind: 'new_project', url: '/project/x-' + request.id + '?id=' + request.id });
         if(p.email){ const eBody=`<p>مرحباً${p.nm?' '+eEsc(p.nm):''}،</p><p>نُشر مشروع جديد يناسب تخصصك على منصة مناقصة:</p><p><strong>${eEsc(request.title)}</strong>${city?' · '+eEsc(city):''}</p><p>ادخل وقدّم عرضك قبل غيرك.</p>`; sendEmail(p.email, '🆕 مشروع جديد يناسبك', emailTpl('🆕 مشروع جديد يناسبك', eBody, 'تقديم عرض', _withN(link, _tid, 'e')), { uid: p.id, kind: 'new_project', tid: _tid, cat: 'proj', instant: true, cats }).catch(()=>{}); }
@@ -706,6 +714,14 @@ async function notifyMatchingProviders(request, _force){
     if(sent) console.log(`[match] أُشعر ${sent} مزوّد بمشروع ${request.id}`);
   }catch(e){ console.error('notifyMatchingProviders:', e.message); }
 }
+// بعد الـ15 دقيقة: يوصل المشروع لباقي المزوّدين (يتحمّل إعادة تشغيل السيرفر لأن الموعد محفوظ بالقاعدة)
+async function _wpLateRun(){
+  try {
+    const q = await pool.query(`UPDATE requests SET wp_late_at=NULL WHERE id IN (SELECT id FROM requests WHERE wp_late_at IS NOT NULL AND wp_late_at <= NOW() LIMIT 20) RETURNING id, title, category, city, status`);
+    for (const rq of q.rows) { if (rq.status === 'open') await notifyMatchingProviders(rq, true, 'late'); }
+  } catch(e) { console.error('wp late:', e.message); }
+}
+setInterval(() => _jobLock('wplate', _wpLateRun), 60 * 1000);
 const _REGIONS = {
   'الرياض':['الرياض','الخرج','الدوادمي','المجمعة','الزلفي','شقراء','القويعية','وادي الدواسر','الأفلاج','حوطة بني تميم','عفيف','الغاط','ثادق','حريملاء','ضرماء','المزاحمية','رماح','الدرعية','الدلم','الحريق','السليل','مرات','ضرما'],
   'القصيم':['بريدة','عنيزة','الرس','المذنب','البكيرية','البدائع','رياض الخبراء','عيون الجواء','الأسياح','النبهانية','الشماسية','ضرية','عقلة الصقور','الخبراء'],
@@ -751,13 +767,16 @@ function _proximity(reqCity, provCity, serviceCities, servesAll){
   if (ra && ra === rb) return { prox: 1, prox_km: km, serves: null };
   return { prox: (ra && rb) || km != null ? 2 : null, prox_km: km, serves: servesAll ? 'all' : null };
 }
+function _wpRank(x){ const l = parseInt(x.wp_level) || 0; return l >= 5 ? l : 0; }
+// «مرشّح لك»: أول عرض لمزوّد ذهبي أو ماسي (واحد بس لكل مشروع)
+function _wpPick(rows){ const r = rows.find(x => (parseInt(x.wp_level) || 0) >= 10 && !x.low_rank && x.status !== 'rejected' && !x.is_hidden); if (r) r.wp_pick = true; return rows; }
 function _sortByProximity(rows, reqCity, cityKey){
   rows.forEach((x, i) => { Object.assign(x, _proximity(reqCity, x[cityKey || 'provider_city'], x._sc, x._sa)); delete x._sc; delete x._sa; x._i = i; });
   const P = x => x.prox == null ? 3 : x.prox;
   rows.sort((a, b) => ((b.status === 'accepted') - (a.status === 'accepted'))
     || ((b.improved_at && b.status === 'pending' ? 1 : 0) - (a.improved_at && a.status === 'pending' ? 1 : 0))
     || ((a.low_rank ? 1 : 0) - (b.low_rank ? 1 : 0))
-    || (Math.min(b.works_verified || 0, 3) - Math.min(a.works_verified || 0, 3))   // «وثّق أعمالك»: الأعمال الموثّقة تقدّم العرض
+    || (_wpRank(b) - _wpRank(a))   // «وثّق أعمالك»: من الفضّي وفوق عرضه يتقدّم على المستويات الأقل
     || (P(a) - P(b)) || ((a.prox === 2 && b.prox === 2 && a.prox_km != null && b.prox_km != null) ? a.prox_km - b.prox_km : 0)
     || (a._i - b._i));
   rows.forEach(x => { delete x._i; });
@@ -782,10 +801,10 @@ async function matchingProviders(cats, city, allCities, cities, baseOnly){
     params=[catArr, city];
   }
   const r = await pool.query(
-    `SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm FROM users
+    `SELECT * FROM (SELECT DISTINCT id, email, COALESCE(business_name,name) AS nm, wp_level(id) AS wp_level FROM users
       WHERE role='provider' AND is_active=TRUE
         AND ${catCond}
-        AND ${cityCond}`, params);
+        AND ${cityCond}) z ORDER BY wp_level DESC, id`, params);
   return r.rows;
 }
 setInterval(() => _jobLock('autopublish', async () => {
@@ -1490,7 +1509,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
            COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count
          FROM users WHERE role='provider' AND is_active=TRUE
            AND $1=ANY(COALESCE(specialties,'{}')) AND city ILIKE $2
-         ORDER BY LEAST((SELECT COUNT(*) FROM work_proofs wp WHERE wp.provider_id=users.id AND wp.status='reviewed' AND NOT wp.hidden),5) DESC,
+         ORDER BY (CASE WHEN wp_level(users.id) >= 5 THEN wp_level(users.id) ELSE 0 END) DESC,
            CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL THEN 0 ELSE 1 END,
            COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) DESC LIMIT 30`,
         [cat, '%'+city+'%']);
@@ -3607,6 +3626,12 @@ async function setupDatabase() {
       await _mig(`CREATE UNIQUE INDEX IF NOT EXISTS uq_wproofs_prov_ph ON work_proofs(provider_id, client_ph9)`);
       for (const c of ['work_id INTEGER','r_quality SMALLINT','r_time SMALLINT','r_deal SMALLINT'])
         await _mig(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS ${c}`);
+      // مستويات «وثّق أعمالك»: 1 أعمال موثّقة · 5 فضّي · 10 ذهبي · 20 ماسي (10 و20 يحسب فقط تقييمات 4★ فأعلى)
+      await _mig(`CREATE OR REPLACE FUNCTION wp_level(pid INTEGER) RETURNS INTEGER LANGUAGE sql STABLE AS $f$
+        SELECT CASE WHEN hi >= 20 THEN 20 WHEN hi >= 10 THEN 10 WHEN n >= 5 THEN 5 WHEN n >= 1 THEN 1 ELSE 0 END
+          FROM (SELECT COUNT(*) AS n, COUNT(*) FILTER (WHERE rv.rating >= 4) AS hi FROM work_proofs w LEFT JOIN reviews rv ON rv.id = w.review_id
+                 WHERE w.provider_id = pid AND w.status = 'reviewed' AND NOT w.hidden) z $f$`);
+      await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS wp_late_at TIMESTAMP`);
       await _mig(`ALTER TABLE requests ADD COLUMN IF NOT EXISTS claim_nudged_at TIMESTAMP`);
       // طلب الاعتماد: تأكيد المزوّد + تعديل السعر/المدة قبل الإرسال + نزول ترتيب من يكثر «ما اتفقنا»
       await _mig(`ALTER TABLE bid_accept_asks ADD COLUMN IF NOT EXISTS prev_price INTEGER`);
@@ -5238,6 +5263,7 @@ app.get('/api/provider/:id/profile', async (req, res) => {
     const r = await pool.query(`SELECT id,name,phone,city,bio,badge,specialties,experience_years,portfolio_images,profile_image,business_name,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1 AND role='provider'`, [id]);
     if (!r.rows.length) return res.status(404).json({ message: 'المزود غير موجود' });
     if (!(await _viewer(req))) { r.rows[0].phone_locked = !!r.rows[0].phone; r.rows[0].phone = null; }   // رقم المزوّد للمسجّلين (يشجّع التسجيل)
+    try { r.rows[0].wp_level = await _wpLevel(id); } catch(e) {}
     try { r.rows[0].verified_works = (await pool.query("SELECT w.id, w.title, w.category, w.city, w.images, rv.rating FROM work_proofs w LEFT JOIN reviews rv ON rv.id=w.review_id WHERE w.provider_id=$1 AND w.status='reviewed' AND NOT w.hidden ORDER BY w.reviewed_at DESC LIMIT 12", [id])).rows; } catch(e) { r.rows[0].verified_works = []; }
     res.json(r.rows[0]);
   } catch(e) { console.error('/api/provider/:id/profile:', e); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -5253,12 +5279,30 @@ app.get('/api/ratings/provider/:id', async (req, res) => {
 });
 
 // ═══ «وثّق أعمالك» — مشاريع المزوّد اللي يأكّدها أصحابها بتقييم ═══
-const _WP_MONTH = 5, _WP_IMGS = 8;
+const _WP_MONTH = 10, _WP_IMGS = 8;
 function _wpPh9(p){ const d = _asciiDigits(String(p || '')).replace(/\D/g, ''); const n = d.slice(-9); return /^5\d{8}$/.test(n) ? n : null; }
 function _wpWho(n){ const w = String(n || '').replace(/\s+/g, ' ').trim().split(' '); return /^(أبو|ابو|أم|ام|بو)$/.test(w[0] || '') && w[1] ? w[0] + ' ' + w[1] : (w[0] || ''); }
 function _wpIp(req){ return String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim().slice(0, 64); }
 function _wpText(name, title, url){ return 'هلا ' + (name || '') + ' 👋\nهذا رابط مشروع «' + title + '» اللي نفذناه لك — ممكن تقيّمني؟ ما ياخذ دقيقة:\n' + url; }
+const _WP_LV = { 1: 'أعمال موثّقة', 5: 'موثّق فضّي', 10: 'موثّق ذهبي', 20: 'موثّق ماسي' };
+async function _wpLevel(pid){ try { return (await pool.query('SELECT wp_level($1) AS l', [pid])).rows[0].l || 0; } catch(e) { return 0; } }
 async function _wpVerified(pid){ try { return (await pool.query("SELECT COUNT(*)::int n FROM work_proofs WHERE provider_id=$1 AND status='reviewed' AND NOT hidden", [pid])).rows[0].n; } catch(e) { return 0; } }
+// الصفحة الرئيسية: «مزوّدين موثّقين» — الماسي فقط (20 مشروع موثّق بتقييم 4★ فأعلى)
+let _wpTopCache = null;
+app.get('/api/providers/verified-top', async (req, res) => {
+  try {
+    if (_wpTopCache && Date.now() < _wpTopCache.exp) return res.json(_wpTopCache.d);
+    const r = await pool.query(`SELECT u.id, COALESCE(NULLIF(u.business_name,''), u.name) AS name, u.city, u.profile_image,
+        COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0)::float AS rating,
+        (SELECT COUNT(*)::int FROM work_proofs w WHERE w.provider_id=u.id AND w.status='reviewed' AND NOT w.hidden) AS works,
+        (SELECT w.images[1] FROM work_proofs w WHERE w.provider_id=u.id AND w.status='reviewed' AND NOT w.hidden ORDER BY w.reviewed_at DESC LIMIT 1) AS img
+      FROM users u WHERE u.role='provider' AND u.is_active=TRUE AND wp_level(u.id) >= 20 ORDER BY works DESC, rating DESC LIMIT 8`);
+    const d = r.rows.map(x => ({ id: x.id, name: x.name, city: x.city, rating: x.rating, works: x.works,
+      img: x.img && /^https:\/\//.test(x.img) ? x.img : null, av: x.profile_image && /^https:\/\//.test(x.profile_image) ? x.profile_image : null }));
+    _wpTopCache = { d, exp: Date.now() + 10 * 60 * 1000 };
+    res.json(d);
+  } catch(e) { console.error('verified-top:', e.message); res.json([]); }
+});
 app.get('/api/provider/proofs', auth, async (req, res) => {
   try {
     if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
@@ -5267,7 +5311,7 @@ app.get('/api/provider/proofs', auth, async (req, res) => {
     const m = (await pool.query("SELECT COUNT(*)::int n FROM work_proofs WHERE provider_id=$1 AND created_at > NOW() - INTERVAL '30 days'", [req.user.id])).rows[0].n;
     r.rows.forEach(x => { x.url = SITE_URL + '/w/' + x.token; x.wa_text = _wpText(x.client_name, x.title, x.url); });
     const me = (await pool.query(`SELECT name, business_name, profile_image, COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=users.id),0)::float AS rating, (SELECT COUNT(*)::int FROM reviews WHERE reviewed_id=users.id) AS rcount FROM users WHERE id=$1`, [req.user.id])).rows[0] || {};
-    res.json({ me: { name: me.business_name || me.name || '', profile_image: me.profile_image || null, rating: me.rating || 0, rcount: me.rcount || 0 }, items: r.rows, verified: r.rows.filter(x => x.status === 'reviewed' && !x.hidden).length, month_left: Math.max(0, _WP_MONTH - m), month_max: _WP_MONTH });
+    res.json({ me: { name: me.business_name || me.name || '', profile_image: me.profile_image || null, rating: me.rating || 0, rcount: me.rcount || 0 }, items: r.rows, verified: r.rows.filter(x => x.status === 'reviewed' && !x.hidden).length, verified_hi: r.rows.filter(x => x.status === 'reviewed' && !x.hidden && (x.rating || 0) >= 4).length, level: await _wpLevel(req.user.id), month_left: Math.max(0, _WP_MONTH - m), month_max: _WP_MONTH });
   } catch(e) { console.error('GET /api/provider/proofs:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.post('/api/provider/proofs', auth, async (req, res) => {
@@ -5359,13 +5403,15 @@ app.post('/api/w/:token/review', auth, async (req, res) => {
     const ip = _wpIp(req); if (ip && w.created_ip && ip === w.created_ip) flags.push('same_ip');
     const rating = Math.round((q + t + d) / 3);
     const comment = String(req.body.comment || '').replace(/\s+/g, ' ').trim().slice(0, 600) || null;
+    const lv0 = await _wpLevel(w.provider_id);
     const lk = await pool.query("UPDATE work_proofs SET status='reviewed', reviewer_id=$2, reviewed_at=NOW(), review_ip=$3, flags=$4 WHERE id=$1 AND status='pending' RETURNING id", [w.id, v.id, ip, flags.length ? flags : null]);
     if (!lk.rows.length) return res.status(409).json({ message: 'هذا المشروع تقيّم قبل — شكراً لك' });
     const rv = await pool.query("INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, images, type, work_id, r_quality, r_time, r_deal, created_at) VALUES (NULL,$1,$2,$3,$4,$5,'work',$6,$7,$8,$9,NOW()) RETURNING id",
       [v.id, w.provider_id, rating, comment, (w.images || []).slice(0, 4), w.id, q, t, d]);
     await pool.query('UPDATE work_proofs SET review_id=$2 WHERE id=$1', [w.id, rv.rows[0].id]);
-    const n = await _wpVerified(w.provider_id);
-    notify(w.provider_id, '⭐ ' + (_wpWho(w.client_name) || 'عميلك') + ' قيّمك ' + rating + '/5', 'مشروع «' + w.title + '» صار موثّق في صفحتك' + (n === 1 ? ' — وأخذت شارة «أعمال موثّقة ✓»' : n === 3 ? ' — عروضك صارت تطلع قبل غيرك' : ''), 'proof', w.id, { url: '/dashboard-provider.html#proof' }).catch(() => {});
+    const lv1 = await _wpLevel(w.provider_id);
+    const up = lv1 > lv0 ? { 1: ' — وأخذت شارة «أعمال موثّقة ✓» تظهر على عروضك', 5: ' — ترقّيت لـ«موثّق فضّي» وعروضك صارت تطلع قبل المستويات الأقل', 10: ' — ترقّيت لـ«موثّق ذهبي»: عرضك يطلع «مرشّح لك» والمشاريع توصلك قبل غيرك', 20: ' — ترقّيت لـ«موثّق ماسي»: تظهر في الصفحة الرئيسية' }[lv1] || '' : '';
+    notify(w.provider_id, (up ? '🏅 ' : '⭐ ') + (_wpWho(w.client_name) || 'عميلك') + ' قيّمك ' + rating + '/5', 'مشروع «' + w.title + '» صار موثّق في صفحتك' + up, 'proof', w.id, { url: '/dashboard-provider.html#proof' }).catch(() => {});
     res.json({ ok: true, rating });
   } catch(e) { console.error('POST /api/w/review:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
@@ -5376,7 +5422,7 @@ async function _wpAnnounce(){
     if (!own.rows.length) return;   // انرسل قبل (أو نسخة ثانية من السيرفر أخذته)
     const u = await pool.query("SELECT id, email FROM users WHERE role='provider' AND is_active=TRUE AND COALESCE(email,'') NOT ILIKE '%@manaqasa.local'");
     const title = '⭐ ميزة جديدة: وثّق أعمالك';
-    const body = 'أضفنا ميزة تحسّن صفحتك وتساعدك تفوز بالمشاريع: ارفع صور مشروع سويته وأرسل الرابط لصاحبه يقيّمك — تاخذ شارة «أعمال موثّقة ✓» وعروضك تطلع قبل غيرك.';
+    const body = 'أضفنا ميزة تحسّن صفحتك وتساعدك تفوز بالمشاريع: ارفع صور مشروع سويته وأرسل الرابط لصاحبه يقيّمك — تاخذ شارة «أعمال موثّقة ✓» على عروضك، وكل ما زادت مشاريعك الموثّقة ترتفع شارتك (فضّي ← ذهبي ← ماسي) وعروضك تطلع قبل غيرك.';
     const url = '/dashboard-provider.html#proof';
     await _inChunks(u.rows, 10, x => notify(x.id, title, body, 'proof', null, { url, kind: 'wp_announce' }));
     const html = emailTpl(title, '<p>' + eEsc(body) + '</p><p style="color:#5b6b82">العميل لما يشوف شغل مشابه لمشروعه وأكّده صاحبه، يثق فيك أكثر ويختار عرضك.</p>', 'وثّق أول مشروع', SITE_URL + url);
@@ -6280,6 +6326,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) as provider_rating,
         COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=u.id),0) as provider_reviews,
         (SELECT COUNT(*)::int FROM work_proofs wp WHERE wp.provider_id=u.id AND wp.status='reviewed' AND NOT wp.hidden) AS works_verified,
+        wp_level(u.id) AS wp_level,
         (SELECT json_agg(x) FROM (SELECT wp.images[1] AS img, wp.images AS imgs, wp.title, rv2.rating, rv2.comment, COALESCE(wp.client_name,'') AS who FROM work_proofs wp LEFT JOIN reviews rv2 ON rv2.id=wp.review_id
            WHERE wp.provider_id=u.id AND wp.status='reviewed' AND NOT wp.hidden ORDER BY (wp.category IS NOT DISTINCT FROM (SELECT category FROM requests WHERE id=$1)) DESC, wp.reviewed_at DESC LIMIT 4) x) AS works_sample,
         (u.ask_penalty_until > NOW()) IS TRUE AS low_rank, b.hold_state, b.reject_reason, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note,
@@ -6287,9 +6334,10 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
         EXISTS(SELECT 1 FROM bid_reports br WHERE br.bid_id=b.id AND br.client_id=$3::int) as is_hidden
       FROM bids b JOIN users u ON b.provider_id=u.id
       WHERE b.request_id=$1 AND ($2::boolean OR COALESCE(b.hold_state,'') NOT IN ('held','rejected'))
-      ORDER BY (b.status='accepted') DESC, (b.improved_at IS NOT NULL AND b.status='pending') DESC, (u.ask_penalty_until > NOW()) IS TRUE ASC, LEAST((SELECT COUNT(*) FROM work_proofs wp WHERE wp.provider_id=u.id AND wp.status='reviewed' AND NOT wp.hidden),3) DESC, CASE u.tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, b.created_at DESC
+      ORDER BY (b.status='accepted') DESC, (b.improved_at IS NOT NULL AND b.status='pending') DESC, (u.ask_penalty_until > NOW()) IS TRUE ASC, (CASE WHEN wp_level(u.id) >= 5 THEN wp_level(u.id) ELSE 0 END) DESC, CASE u.tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, b.created_at DESC
     `, [id, req.user.role === 'admin', req.user.id]);
     try { const rc = (await pool.query('SELECT city FROM requests WHERE id=$1', [id])).rows[0]; _sortByProximity(r.rows, rc && rc.city); } catch(e){}
+    _wpPick(r.rows);
     r.rows.forEach(x => { if (Array.isArray(x.works_sample)) x.works_sample.forEach(w => { w.who = _wpWho(w.who); }); });
     res.json(r.rows);
   } catch(e) { console.error('GET /api/requests/:id/bids:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -8389,6 +8437,7 @@ app.get('/api/providers/:id', async (req, res) => {
     try { const sp = await _replySpeed(prov.id); if (sp) prov.reply_speed = sp.label; } catch(e){}
     try { prov.named_count = (await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE invited_provider_id=$1 AND status NOT IN ('pending_review','review','needs_edit','rejected','deleted')", [prov.id])).rows[0].n; } catch(e){}   // «طلبه العملاء بالاسم»
     if (prov && !(await _viewer(req))) { prov.phone_locked = !!prov.phone; prov.phone = null; }   // رقم المزوّد للمسجّلين
+    try { prov.wp_level = await _wpLevel(prov.id); } catch(e) {}
     try { prov.verified_works = (await pool.query("SELECT w.id, w.title, w.category, w.city, w.images, rv.rating, COALESCE(w.client_name,'') AS who FROM work_proofs w LEFT JOIN reviews rv ON rv.id=w.review_id WHERE w.provider_id=$1 AND w.status='reviewed' AND NOT w.hidden ORDER BY w.reviewed_at DESC LIMIT 12", [prov.id])).rows; prov.verified_works.forEach(w => { w.who = _wpWho(w.who); }); } catch(e) { prov.verified_works = []; }
     res.json(prov);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
