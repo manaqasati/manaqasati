@@ -25,15 +25,15 @@
       +'.pg-li{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border,#eef2f8)}'
       +'.pg-li:last-of-type{border-bottom:0}.pg-li span{font-size:18px;line-height:1.4}'
       +'.pg-li b{display:block;font-size:14.5px}.pg-li small{display:block;color:var(--muted,#64748b);font-weight:600;font-size:12.5px;line-height:1.7;margin-top:2px}'
-      +'.pg-pl{display:flex;gap:10px;align-items:flex-start;background:#fff7ed;border:2px solid #f97316;border-radius:14px;padding:13px;box-shadow:0 0 0 4px rgba(249,115,22,.12);cursor:pointer;text-align:start;margin:4px 0}'
+      +'.pg-pl{display:flex;gap:12px;align-items:flex-start;background:#fff;border:1px solid #e3eaf5;border-radius:14px;padding:13px 14px;cursor:pointer;text-align:start;margin:4px 0;transition:background .15s,border-color .15s}.pg-pl.on{background:#fffbeb;border-color:#fcd34d}'
       +'.pg-pl input{position:absolute;opacity:0;width:1px;height:1px}'
-      +'.pg-cb{width:22px;height:22px;border-radius:6px;border:2px solid #fb923c;background:#fff;flex-shrink:0;margin-top:2px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:900}'
-      +'.pg-pl.on .pg-cb{background:#ea580c;border-color:#ea580c}'
+      +'.pg-cb{width:22px;height:22px;border-radius:7px;border:1.5px solid #fbbf24;background:#fff;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900}'
+      +'.pg-pl.on .pg-cb{background:#d97706;border-color:#d97706}.pg-pl.bad{border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,.18)}'
       +'.pg-pl.bad{animation:pgShake .4s}@keyframes pgShake{20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}'
-      +'.pg-pl b{display:block;font-size:14.5px;color:#9a3412}'
-      +'.pg-pl .pg-t{font-weight:700;line-height:1.85;margin-top:4px;color:#7c2d12;font-size:13px}'
-      +'.pg-pl a{color:#c2410c;font-weight:900;text-decoration:underline}'
-      +'.pg-pl .pg-ay{display:block;margin-top:8px;font-family:"Amiri","Traditional Arabic",serif;font-size:15.5px;font-weight:700;color:#9a3412;line-height:1.9}.pg-pl .pg-tm{display:block;margin-top:4px;font-size:11.5px}[data-theme="dark"] .pg-pl .pg-ay{color:#fdba74}'
+      +'.pg-pl b{display:block;font-size:14.5px;font-weight:800;color:#78350f;line-height:1.6}'
+      +'.pg-pl .pg-t{font-weight:700;line-height:1.8;margin-top:2px;color:#92400e;font-size:12.5px}'
+      +'.pg-pl a{color:#b45309;font-weight:800;text-decoration:underline}'
+      +'.pg-pl .pg-ay{display:block;margin-top:4px;font-family:"Amiri","Traditional Arabic",serif;font-size:14px;font-weight:700;color:#a16207;line-height:1.8}.pg-pl .pg-tm{display:block;margin-top:2px;font-size:11.5px}[data-theme="dark"] .pg-pl .pg-ay{color:#fcd34d}'
       +'.pg-bar{display:block;flex:1;min-width:60px;height:7px;border-radius:7px;background:#e5ecf7;overflow:hidden;position:relative}.pg-bar i{position:absolute;top:0;bottom:0;right:0;background:#1d4ed8;border-radius:7px;transition:width .2s}'
       +'.pg-pct{font-size:11.5px;font-weight:900;color:#1d4ed8;min-width:34px;text-align:left;direction:ltr}'
       +'.pg-up{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10070;display:flex;align-items:center;justify-content:center;padding:20px}'
@@ -41,7 +41,7 @@
       +'.pg-up b{display:block;font-size:16px;margin:6px 0 12px}.pg-up .r{display:flex;align-items:center;gap:10px}'
       +'[data-theme="dark"] .pg-bar{background:#0f172a}[data-theme="dark"] .pg-pct{color:#93c5fd}'
       +'[data-theme="dark"] .pg-note{background:#2a2210;border-color:#78350f;color:#fcd34d}'
-      +'[data-theme="dark"] .pg-pl{background:#2a1a0e;border-color:#c2410c}[data-theme="dark"] .pg-pl b,[data-theme="dark"] .pg-pl .pg-t{color:#fdba74}[data-theme="dark"] .pg-pl a{color:#fb923c}[data-theme="dark"] .pg-cb{background:transparent}';
+      +'[data-theme="dark"] .pg-pl{background:#16233f;border-color:#24365e}[data-theme="dark"] .pg-pl.on{background:#2a2210;border-color:#a16207}[data-theme="dark"] .pg-pl b,[data-theme="dark"] .pg-pl .pg-t{color:#fcd34d}[data-theme="dark"] .pg-pl a{color:#fbbf24}[data-theme="dark"] .pg-cb{background:transparent}';
     document.head.appendChild(st);
   }
   function sheet(html){
@@ -68,7 +68,7 @@
   }
   // صندوق التعهّد (checkbox)
   function pledgeHTML(id){
-    return '<label class="pg-pl" id="'+id+'"><input type="checkbox" id="'+id+'-c"><span class="pg-cb" aria-hidden="true"></span><span><b>مشروعي حقيقي وأنوي تنفيذه</b><span class="pg-t" style="display:block">المزوّدون يتعبون في تجهيز عروضهم لك — أمانة في ذمّتك: لا تنشر لمجرد معرفة الأسعار، ولا تستخدم عروضهم للمساومة مع غيرهم خارج المنصة.</span><span class="pg-ay">﴿إِنَّ اللَّهَ يَأْمُرُكُمْ أَن تُؤَدُّوا الْأَمَانَاتِ إِلَىٰ أَهْلِهَا﴾</span><span class="pg-tm"><a href="/terms.html" data-pg-terms>الشروط والأحكام</a></span></span></label>';
+    return '<label class="pg-pl" id="'+id+'"><input type="checkbox" id="'+id+'-c"><span class="pg-cb" aria-hidden="true"></span><span><b>أتعهّد أن مشروعي حقيقي وأنوي تنفيذه</b><span class="pg-t" style="display:block">العروض أمانة — المزوّدون يتعبون في تجهيزها لك.</span><span class="pg-ay">﴿إِنَّ اللَّهَ يَأْمُرُكُمْ أَن تُؤَدُّوا الْأَمَانَاتِ إِلَىٰ أَهْلِهَا﴾</span><span class="pg-tm"><a href="/terms.html" data-pg-terms>الشروط والأحكام</a></span></span></label>';
   }
   function pledgeBind(id,onChange){
     css();
