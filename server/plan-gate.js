@@ -33,6 +33,7 @@
       +'.pg-pl b{display:block;font-size:14.5px;color:#9a3412}'
       +'.pg-pl .pg-t{font-weight:700;line-height:1.85;margin-top:4px;color:#7c2d12;font-size:13px}'
       +'.pg-pl a{color:#c2410c;font-weight:900;text-decoration:underline}'
+      +'.pg-pl .pg-ay{display:block;margin-top:8px;font-family:"Amiri","Traditional Arabic",serif;font-size:15.5px;font-weight:700;color:#9a3412;line-height:1.9}.pg-pl .pg-tm{display:block;margin-top:4px;font-size:11.5px}[data-theme="dark"] .pg-pl .pg-ay{color:#fdba74}'
       +'.pg-bar{display:block;flex:1;min-width:60px;height:7px;border-radius:7px;background:#e5ecf7;overflow:hidden;position:relative}.pg-bar i{position:absolute;top:0;bottom:0;right:0;background:#1d4ed8;border-radius:7px;transition:width .2s}'
       +'.pg-pct{font-size:11.5px;font-weight:900;color:#1d4ed8;min-width:34px;text-align:left;direction:ltr}'
       +'.pg-up{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10070;display:flex;align-items:center;justify-content:center;padding:20px}'
@@ -67,7 +68,7 @@
   }
   // صندوق التعهّد (checkbox)
   function pledgeHTML(id){
-    return '<label class="pg-pl" id="'+id+'"><input type="checkbox" id="'+id+'-c"><span class="pg-cb" aria-hidden="true"></span><span><b>مشروعي حقيقي وأنوي تنفيذه</b><span class="pg-t" style="display:block">المزوّدون يبذلون وقتهم وجهدهم لإعداد عروض الأسعار لمشروعك، لذا نرجو منك الجدية والالتزام بـ<a href="/terms.html" data-pg-terms>الشروط والأحكام</a>.</span></span></label>';
+    return '<label class="pg-pl" id="'+id+'"><input type="checkbox" id="'+id+'-c"><span class="pg-cb" aria-hidden="true"></span><span><b>مشروعي حقيقي وأنوي تنفيذه</b><span class="pg-t" style="display:block">المزوّدون يتعبون في تجهيز عروضهم لك — أمانة في ذمّتك: لا تنشر لمجرد معرفة الأسعار، ولا تستخدم عروضهم للمساومة مع غيرهم خارج المنصة.</span><span class="pg-ay">﴿إِنَّ اللَّهَ يَأْمُرُكُمْ أَن تُؤَدُّوا الْأَمَانَاتِ إِلَىٰ أَهْلِهَا﴾</span><span class="pg-tm"><a href="/terms.html" data-pg-terms>الشروط والأحكام</a></span></span></label>';
   }
   function pledgeBind(id,onChange){
     css();
