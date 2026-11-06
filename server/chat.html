@@ -603,6 +603,8 @@ function renderMsgs(scroll){
     var data=encodeURIComponent(JSON.stringify({id:m.id,txt:String(m.content||(m.attachment_url?'مرفق':'')).slice(0,70),who:(m.sender_name||(isMe?'أنت':curName)),del:canDel}));
     h+='<div class="bub '+cls+'" data-m="'+data+'" oncontextmenu="return msgMenu(event,this)">';
     if(!isMe&&m.sender_name)h+='<div class="bub-who">'+esc(m.sender_name)+'</div>';
+    // رسالة كتبها المفوّض (يشوفها صاحب الحساب والمفوّض بس — العميل ما يوصله الاسم)
+    if(isMe&&m.dlg_name)h+='<div class="bub-who" style="opacity:.85">'+esc(m.dlg_name)+' (مفوّض)</div>';
     if(m.reply_to&&m.reply_content){
       h+='<div class="bub-q"><div class="bub-q-who">'+esc(m.reply_sender||'رسالة')+'</div><div class="bub-q-tx">'+esc(String(m.reply_content).slice(0,60))+'</div></div>';
     }

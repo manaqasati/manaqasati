@@ -66,6 +66,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <button class="ni" id="ni-reviews" onclick="gotoPage('reviews')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>تقييماتي</button>
     <button class="ni" id="ni-proof" onclick="gotoPage('proof')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z"/><path d="M9 12l2 2 4-4"/></svg></div>أعمالي الموثّقة</button>
     <button class="ni" id="ni-dlg" onclick="gotoPage('dlg')" style="display:none"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 4.5a3.5 3.5 0 010 7M18 14a5.5 5.5 0 013.5 6"/></svg></div>المفوّض</button>
+    <button class="ni" id="ni-dlgme" onclick="gotoPage('dlgme')" style="display:none"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></svg></div>حسابي كمفوّض</button>
     <button class="ni" id="ni-profile" onclick="gotoPage('profile')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>ملفي الشخصي</button>
     <button class="ni" id="ni-sub" onclick="gotoPage('sub')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><circle cx="17" cy="9" r="2.8"/><path d="M16.5 14.6c3 .2 5 2 5 5"/></svg></div>مقاول باطن</button>
     <button class="ni" id="ni-saai" onclick="gotoPage('saai')"><div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1v22"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div>محفظة السعي</button>
@@ -124,6 +125,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="page" id="page-sub"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-proof"><div class="loading">جاري التحميل...</div></div>
     <div class="page" id="page-dlg"><div class="loading">جاري التحميل...</div></div>
+    <div class="page" id="page-dlgme"><div class="loading">جاري التحميل...</div></div>
   </div>
 </div>
 
@@ -180,7 +182,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 </div>
 
 <div id="lbar-wrap"><div id="lbar"></div></div>
-<script src="/dash-provider.js"></script><script src="/dlg.js?v=1" defer></script><script src="/askpw.js?v=1" defer></script><script src="/emailpref.js?v=2" defer></script><script src="/catpick.js?v=4" defer></script><script src="/proofs.js?v=5" defer></script><script src="/sub.js?v=24" defer></script><script src="/dash-rj.js" defer></script>
+<script src="/dash-provider.js"></script><script src="/dlg.js?v=3" defer></script><script src="/askpw.js?v=1" defer></script><script src="/emailpref.js?v=2" defer></script><script src="/catpick.js?v=4" defer></script><script src="/proofs.js?v=5" defer></script><script src="/sub.js?v=24" defer></script><script src="/dash-rj.js" defer></script>
 <div class="cf-overlay" id="confirmOverlay">
   <div class="cf-box">
     <div class="cf-ic" id="cf-ic" style="background:#FEE2E2"><svg width="28" height="28" fill="none" stroke="#DC2626" stroke-width="2" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>

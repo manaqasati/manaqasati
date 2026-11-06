@@ -79,6 +79,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       <button type="button" class="ng-h" aria-expanded="false" onclick="_navTog('cust')"><span class="ng-chev">&#9666;</span><span class="ng-t">العملاء</span><span class="ng-n" style="display:none"></span></button>
       <div class="ng-b">
         <button class="ni" onclick="showPage('users',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg><span class="ni-tx">المستخدمون</span></button>
+        <button class="ni" onclick="showPage('dlgs',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 4.5a3.5 3.5 0 010 7M18 14a5.5 5.5 0 013.5 6"/></svg><span class="ni-tx">المفوّضين</span></button>
         <button class="ni" data-grp="follow" onclick="showGroup('follow',this)"><svg fill="none" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><span class="ni-tx">المتابعة<small>ردود · ما فتحوا · تذكير</small></span><span class="ni-badge grp-badge" id="grp-follow-badge" style="display:none"></span></button>
       </div>
     </div>
@@ -304,6 +305,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="page" id="page-invites"><div id="dash-invites"></div></div>
     <div class="page" id="page-named"><div id="dash-named"></div></div>
     <div class="page" id="page-subc"><div id="dash-subc"></div></div>
+    <div class="page" id="page-dlgs"><div id="dash-dlgs"></div></div>
     <div class="page" id="page-vstats"><div class="ad-card sg-page" id="dash-vstats"></div></div>
     <div class="page" id="page-ctstats"><div class="per-mini" id="per-ct"></div><div class="ad-card" id="dash-contracts"></div></div>
     <div class="page" id="page-analytics">
@@ -680,7 +682,7 @@ function _showProxyDone(link,wa){document.getElementById('pd-link').value=link;_
 function _clientLoginLink(id){fetch(API+'/api/admin/requests/'+id+'/magic-link',hdr()).then(function(r){return r.json();}).then(function(d){if(!d||!d.ok||!d.magic_link){toast((d&&d.message)||'تعذّر توليد الرابط','error');return;}var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم'+(d.client_name?' '+d.client_name:'')+'، للدخول لحسابك في منصة مناقصة ومتابعة مشروعك «'+d.title+'» والعروض، افتح الرابط التالي وسجّل دخولك:\n'+d.magic_link);_showProxyDone(d.magic_link,wa);}).catch(function(){toast('تعذّر الاتصال','error');});}
 </script>
 
-<script src="/dash-admin.js"></script>
+<script src="/dash-admin.js"></script><script src="/adm-dlg.js?v=2"></script>
 
 <div class="cf-overlay" id="confirmOverlay">
   <div class="cf-box">

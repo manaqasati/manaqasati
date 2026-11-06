@@ -120,6 +120,7 @@ function showPage(pg,el){
   meta.outcomes=['نتائج المشاريع','وين راح كل مشروع — الترسية والإغلاق والسعي، ووش يحتاج قرارك'];
   meta.nstats=['الإشعارات والإيميلات','مين وصله الإيميل وإشعار التطبيق — ومين فتح وتفاعل'];
   meta.subc=['🤝 مقاول باطن','طلبات المزوّدين من بعض — مين طلب، كم عرض، ومين اعتُمد'];
+  meta.dlgs=['👥 المفوّضين','موظفين المزوّدين اللي يشتغلون باسم مؤسساتهم — حالتهم ونشاطهم'];
   meta.support=['💬 المحادثات','محادثات العملاء والمزوّدين مع فريق مناقصة — ردّ عليهم وتابع ملفاتهم'];
   meta.subrev=['🛡️ مراجعة «مقاول باطن»','طلبات المزوّدين قبل نشرها — وتساعد الجاد يوضّح طلبه'];
   meta.named=['⭐ المحجوزة بالاسم','مشاريع طلب فيها العميل مزوّد بالاسم — تفاعل المزوّد المطلوب والمزوّدين الثانيين'];
@@ -139,6 +140,7 @@ function showPage(pg,el){
   if(pg==='invites')setTimeout(_loadInv,0);
   if(pg==='named')setTimeout(_loadNamed,0);
   if(pg==='subc')setTimeout(_loadSubc,0);
+  if(pg==='dlgs'){ var _dn=0; (function _dl(){ if(window.ADLG)ADLG.load(); else if(_dn++<25)setTimeout(_dl,200); })(); }
   if(pg==='subrev')setTimeout(loadSubRev,0);
   if(pg==='support')setTimeout(loadSupport,0);
   if(pg==='inbox')loadInbox();
@@ -846,10 +848,12 @@ function openUserView(uid){
     +(hasProvData||u.role==='provider'?row('النبذة', u.bio):'')
     +row('الحالة', u.is_active?'نشط':'موقوف')
     +row('تاريخ التسجيل', u.created_at?String(u.created_at).slice(0,10):'')
+    +'<div id="um-dlg"></div>'
     +'<div id="um-mail" style="margin-top:12px"></div>'
     +'<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:12px;margin-top:14px" onclick="openUserModal('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>إدارة / تعديل</button>';
   document.getElementById('userModal').classList.add('show');
   _umMail(u);
+  try{ if(window.ADLG && (u.role==='provider'||u.can_provide)) ADLG.userCard(u.id); }catch(e){}
 }
 var _MST={sending:['جاري الإرسال','#64748b','#f1f5f9'],sent:['انرسل','#1d4ed8','#dbeafe'],delayed:['متأخر','#92400e','#fef3c7'],delivered:['وصل ✓','#15803d','#dcfce7'],opened:['فتحه ✓','#15803d','#dcfce7'],clicked:['ضغط الرابط ✓','#15803d','#dcfce7'],bounced:['رجع ✗','#b91c1c','#fee2e2'],complained:['سبام ✗','#b91c1c','#fee2e2'],failed:['فشل ✗','#b91c1c','#fee2e2'],suppressed:['محظور — البريد غير موجود ✗','#b91c1c','#fee2e2']};
 function _umMail(u){
@@ -6291,7 +6295,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={support:'support.view',subrev:'requests.review',subc:'requests.view',nstats:'analytics.view',invites:'analytics.view',named:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={dlgs:'users.view',support:'support.view',subrev:'requests.review',subc:'requests.view',nstats:'analytics.view',invites:'analytics.view',named:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){

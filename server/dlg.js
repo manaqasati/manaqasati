@@ -22,16 +22,18 @@
       + '.dl-me{display:flex;align-items:center;gap:12px}.dl-av{width:46px;height:46px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px;flex:none}'
       + '.dl-st{display:inline-block;font-size:11.5px;font-weight:800;border-radius:99px;padding:3px 10px}.dl-ok{background:#dcfce7;color:#15803d}.dl-wt{background:#fef3c7;color:#92400e}'
       + '.dl-ban{display:flex;align-items:center;gap:8px;background:#fff7e6;border:1px solid #fde3a7;color:#7c4a03;border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;margin:0 0 12px;line-height:1.6}[data-theme=dark] .dl-ban{background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.35);color:#fcd34d}'
-      + '.dl-row{display:flex;gap:8px;flex-wrap:wrap}.dl-row .dl-b{flex:1;min-width:150px}';
+      + '.dl-row{display:flex;gap:8px;flex-wrap:wrap}.dl-row .dl-b{flex:1;min-width:140px}.dl-b:disabled{opacity:.5;cursor:not-allowed}.dl-ps{background:#fee2e2;color:#b91c1c}'
+      + '.dl-lg{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--border,#eef0f3)}.dl-lg>span{font-size:16px;line-height:1.4}.dl-lg b{display:block;font-size:13.5px;font-weight:800;line-height:1.6}.dl-lg i{font-style:normal;font-weight:600;color:var(--text2,#475569)}.dl-lg small{display:block;font-size:11.5px;color:var(--muted,#64748b);font-weight:600}'
+      + '.dl-more{background:none;border:0;color:#1e3a8a;font:inherit;font-weight:800;font-size:13px;cursor:pointer;width:100%;padding:10px 0 0}[data-theme=dark] .dl-more{color:#93c5fd}';
     D.head.appendChild(st);
   }
   // ─── وضع المفوّض ───
   var PAGE_PERM = { browse: 'bids', works: 'bids', profile: 'profile', proof: 'proofs', sub: 'sub', chat: 'chat' };
-  function okPage(p){ if (!S.me) return true; if (p === 'saai' || p === 'dlg') return false; var k = PAGE_PERM[p]; return !k || S.me.perms.indexOf(k) >= 0; }
+  function okPage(p){ if (p === 'dlgme') return !!S.me; if (!S.me) return true; if (p === 'saai' || p === 'dlg') return false; var k = PAGE_PERM[p]; return !k || S.me.perms.indexOf(k) >= 0; }
   function hide(id){ var e = D.getElementById(id); if (e) e.style.display = 'none'; }
   function applyMe(){
     css(); var m = S.me;
-    hide('ni-dlg'); hide('ni-saai');
+    hide('ni-dlg'); hide('ni-saai'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
     // bn-profile هو زر «المزيد» بالجوال (فيه الإشعارات والخروج) — ما نخفيه
     ['browse', 'works', 'profile', 'proof', 'sub'].forEach(function(p){ if (!okPage(p)) { hide('ni-' + p); if (p !== 'profile') hide('bn-' + p); } });
     if (!okPage('chat')) { hide('ni-chat'); hide('bn-chat'); }
@@ -70,19 +72,69 @@
         + '<div class="dl-h" style="font-size:14px;margin-top:14px">وش يقدر يسوي؟</div><div id="dl-perms">' + permRows(['bids', 'chat', 'awarded']) + '</div>'
         + '<button type="button" class="dl-b dl-bp" id="dl-add" style="margin-top:12px">إرسال الدعوة</button><div class="dl-s" style="text-align:center;margin-top:8px;font-size:12px">يوصله إيميل يحدد منه كلمة سرّه، وبعدها يحمّل التطبيق ويدخل بإيميله</div></div>';
     } else {
-      var act = d.status === 'active';
+      var act = d.status === 'active', adm = d.paused && d.paused_by === 'admin';
       h += '<div class="dl-c"><div class="dl-me"><span class="dl-av">' + esc(String(d.name || 'م').charAt(0)) + '</span><div style="flex:1;min-width:0"><div class="dl-h" style="margin:0">' + esc(d.name) + '</div><div class="dl-s" dir="ltr" style="text-align:right">' + esc(d.email) + '</div></div>'
-        + '<span class="dl-st ' + (act ? 'dl-ok' : 'dl-wt') + '">' + (act ? 'فعّال' : 'بانتظار التفعيل') + '</span></div>'
+        + '<span class="dl-st ' + (d.paused ? 'dl-ps' : act ? 'dl-ok' : 'dl-wt') + '">' + (d.paused ? (adm ? 'أوقفته الإدارة' : 'موقوف مؤقتاً') : act ? 'فعّال' : 'بانتظار التفعيل') + '</span></div>'
         + '<div class="dl-s" style="margin-top:8px;font-size:12px">' + (act ? (d.last_login ? 'آخر دخول: ' + fmtD(d.last_login) : 'ما دخل للحين') : 'أرسلنا له رابط التفعيل على إيميله — صالح 3 أيام') + '</div>'
         + '<div class="dl-h" style="font-size:14px;margin-top:14px">صلاحياته</div><div id="dl-perms">' + permRows(d.perms || []) + '</div>'
         + '<button type="button" class="dl-b dl-bp" id="dl-save" style="margin-top:12px">حفظ الصلاحيات</button>'
-        + '<div class="dl-row" style="margin-top:10px"><button type="button" class="dl-b dl-bo" id="dl-resend">' + (act ? 'إرسال رابط كلمة سر جديدة' : 'إعادة إرسال رابط التفعيل') + '</button><button type="button" class="dl-b dl-bd" id="dl-del">إزالة المفوّض</button></div></div>';
+        + '<div class="dl-row" style="margin-top:10px"><button type="button" class="dl-b dl-bo" id="dl-pause"' + (adm ? ' disabled title="أوقفته الإدارة"' : '') + '>' + (d.paused ? '▶ رجّعه' : '⏸ إيقاف مؤقت') + '</button><button type="button" class="dl-b dl-bo" id="dl-resend">' + (act ? 'رابط كلمة سر جديدة' : 'إعادة إرسال التفعيل') + '</button></div></div>'
+        + '<div class="dl-c"><div class="dl-h" style="font-size:14px">نشاطه</div><div id="dl-log"><div class="dl-s">جاري التحميل...</div></div></div>'
+        + '<button type="button" class="dl-b dl-bd" id="dl-del">إزالة المفوّض</button>';
     }
     h += locked() + '<div class="dl-s" style="text-align:center;font-size:12px">تقدر تضيف مفوّض واحد — أكثر من مفوّض قريباً بالاشتراك</div></div>';
     pg.innerHTML = h;
     var pr = D.getElementById('dl-perms'); if (pr) wire(pr);
     var on = function(id, f){ var e = D.getElementById(id); if (e) e.addEventListener('click', f); };
-    on('dl-add', add); on('dl-save', save); on('dl-resend', resend); on('dl-del', del);
+    on('dl-add', add); on('dl-save', save); on('dl-resend', resend); on('dl-del', del); on('dl-pause', pause);
+    if (d) loadLog(8);
+  }
+  var ICO = { 'قدّم عرض': '📝', 'عدّل عرض': '✏️', 'سحب عرض': '↩️', 'أرسل رسالة': '💬', 'دخل من جهاز جديد': '🔑', 'فعّل حسابه': '✅', 'عدّل الصلاحيات': '⚙️', 'أوقف المفوّض مؤقتاً': '⏸', 'رجّع المفوّض': '▶', 'أضاف المفوّض': '➕', 'غيّر كلمة سرّه': '🔐', 'عدّل الملف': '👤', 'وثّق مشروع': '⭐' };
+  function when(s){ try { var d = new Date(s), n = new Date(), m = Math.round((n - d) / 60000); if (m < 1) return 'الحين'; if (m < 60) return 'قبل ' + m + ' دقيقة'; var h = Math.round(m / 60); if (h < 24) return 'قبل ' + h + ' ساعة'; return d.getDate() + '/' + (d.getMonth() + 1) + '/' + d.getFullYear(); } catch(e) { return ''; } }
+  function loadLog(n){
+    api('/api/provider/delegate/log?limit=' + n).then(function(L){
+      var b = D.getElementById('dl-log'); if (!b) return;
+      if (!Array.isArray(L) || !L.length) { b.innerHTML = '<div class="dl-s">ما فيه نشاط للحين</div>'; return; }
+      b.innerHTML = L.map(function(x){ var who = x.actor === 'owner' ? 'أنت' : x.actor === 'admin' ? 'الإدارة' : (x.name || ''); return '<div class="dl-lg"><span>' + (ICO[x.action] || '•') + '</span><div><b>' + (who ? who + ': ' : '') + esc(x.action) + (x.detail ? ' <i>— ' + esc(x.detail) + '</i>' : '') + '</b><small>' + when(x.created_at) + '</small></div></div>'; }).join('')
+        + (L.length >= n && n < 100 ? '<button type="button" class="dl-more" id="dl-lmore">عرض الكل ›</button>' : '');
+      var mo = D.getElementById('dl-lmore'); if (mo) mo.addEventListener('click', function(){ loadLog(100); });
+    });
+  }
+  function pause(){
+    if (S.busy || !S.d) return; var p = !S.d.paused;
+    if (p && !confirm('توقف ' + (S.d.name || 'المفوّض') + ' مؤقتاً؟ يطلع من الحساب لين ترجّعه.')) return;
+    S.busy = true; busy('dl-pause', 1, '...');
+    api('/api/provider/delegate/pause', { method: 'POST', body: JSON.stringify({ paused: p }) }).then(function(r){ S.busy = false;
+      if (!r || !r.ok) { busy('dl-pause', 0); return toast((r && r.message) || 'تعذّر — حاول مرة ثانية', 'error'); }
+      S.d = r.delegate; render(); toast(p ? '⏸ أوقفته مؤقتاً' : '▶ رجّع يشتغل', 'success'); });
+  }
+  // ─── «حسابي» للمفوّض ───
+  function loadMe(){
+    var pg = D.getElementById('page-dlgme'); if (!pg) return; css();
+    if (!S.me) { pg.innerHTML = '<div class="dl-c" style="text-align:center">هذي الصفحة للمفوّض فقط</div>'; return; }
+    pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
+    api('/api/me/dlg/info').then(function(r){
+      if (!r || !r.dlg) { pg.innerHTML = '<div class="dl-c" style="text-align:center">تعذّر التحميل</div>'; return; }
+      var m = r.dlg;
+      pg.innerHTML = '<div class="dl-w"><div class="dl-c"><div class="dl-me"><span class="dl-av">' + esc(String(m.name || 'م').charAt(0)) + '</span><div style="flex:1;min-width:0"><div class="dl-h" style="margin:0">' + esc(m.name) + '</div><div class="dl-s" dir="ltr" style="text-align:right">' + esc(m.email) + '</div></div></div>'
+        + '<div class="dl-s" style="margin-top:10px">مفوّض على حساب <b>' + esc(S.me.owner_name || '') + '</b></div></div>'
+        + '<div class="dl-c"><div class="dl-h" style="font-size:14px">صلاحياتي</div><div class="dl-chips">' + m.perms.map(function(k){ return '<span class="dl-chip" style="background:#eff4ff;color:#1e40af">' + esc(LBL[k] ? LBL[k][0] : k) + '</span>'; }).join('') + '</div><div class="dl-s" style="margin-top:8px;font-size:12px">تبي صلاحية زيادة؟ اطلبها من صاحب الحساب</div></div>'
+        + '<div class="dl-c"><div class="dl-h" style="font-size:14px">تغيير كلمة سرّي</div><div class="dl-s" style="font-size:12px">كلمة سرّك أنت — ما تأثر على صاحب الحساب</div>'
+        + '<input class="dl-f" id="dm-old" type="password" autocomplete="current-password" placeholder="كلمة السر الحالية" dir="ltr"><input class="dl-f" id="dm-new" type="password" autocomplete="new-password" placeholder="كلمة السر الجديدة (8 حروف أو أكثر)" dir="ltr"><input class="dl-f" id="dm-new2" type="password" autocomplete="new-password" placeholder="أعد كتابتها" dir="ltr">'
+        + '<button type="button" class="dl-b dl-bp" id="dm-save" style="margin-top:12px">حفظ كلمة السر</button></div>'
+        + '<button type="button" class="dl-b dl-bd" id="dm-out">تسجيل الخروج</button></div>';
+      D.getElementById('dm-save').addEventListener('click', chPw);
+      D.getElementById('dm-out').addEventListener('click', function(){ if (W.doLogout) W.doLogout(); });
+    });
+  }
+  function chPw(){
+    if (S.busy) return; var o = D.getElementById('dm-old').value, n = D.getElementById('dm-new').value, n2 = D.getElementById('dm-new2').value;
+    if (!o) return toast('اكتب كلمة السر الحالية', 'error'); if (n.length < 8) return toast('كلمة السر الجديدة لازم 8 حروف أو أكثر', 'error'); if (n !== n2) return toast('كلمتين السر مو متطابقة', 'error');
+    S.busy = true; busy('dm-save', 1, 'جاري الحفظ...');
+    api('/api/me/dlg/password', { method: 'POST', body: JSON.stringify({ old_password: o, new_password: n }) }).then(function(r){ S.busy = false; busy('dm-save', 0);
+      if (!r || !r.ok) return toast((r && r.message) || 'تعذّر الحفظ', 'error');
+      try { if (W._newSess) W._newSess(r); else localStorage.setItem('token', r.token); } catch(e) {}
+      ['dm-old', 'dm-new', 'dm-new2'].forEach(function(id){ D.getElementById(id).value = ''; }); toast('✓ تغيّرت كلمة السر', 'success'); });
   }
   function busy(id, v, txt){ var b = D.getElementById(id); if (!b) return; if (v) { b.dataset.t = b.textContent; b.textContent = txt || '...'; b.disabled = true; } else { b.textContent = b.dataset.t || b.textContent; b.disabled = false; } }
   function add(){
@@ -130,6 +182,6 @@
       else { S.me = null; var n = D.getElementById('ni-dlg'); if (n) n.style.display = ''; }
     });
   }
-  W.DLG = { load: load, okPage: okPage, filter: filterTiles, isMe: function(){ return !!S.me; } };
+  W.DLG = { load: load, loadMe: loadMe, okPage: okPage, filter: filterTiles, isMe: function(){ return !!S.me; } };
   if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0);
 })();

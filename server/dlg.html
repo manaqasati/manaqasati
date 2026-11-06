@@ -46,7 +46,7 @@ input:focus{outline:none;border-color:var(--p)}
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
   function bad(m){ app.innerHTML = '<div class="card ok"><div class="ic">⏳</div><h1>' + esc(m) + '</h1><a class="btn bo" href="/auth.html">تسجيل الدخول</a></div>'; }
   function form(){
-    app.innerHTML = '<div class="card"><h1>👋 أهلاً ' + esc(info.name) + '</h1><p class="s"><b>' + esc(info.owner_name) + '</b> أضافك مفوّضاً على حسابه في مناقصة. حدّد كلمة سرّك وتدخل على طول.</p>'
+    app.innerHTML = '<div class="card"><h1>👋 أهلاً ' + esc(info.name) + '</h1><p class="s">' + (info.active ? 'حدّد كلمة سر جديدة لدخولك كمفوّض على حساب <b>' + esc(info.owner_name) + '</b>.' : '<b>' + esc(info.owner_name) + '</b> أضافك مفوّضاً على حسابه في مناقصة. حدّد كلمة سرّك وتدخل على طول.') + '</p>'
       + '<div class="chips">' + (info.perms || []).map(function(p){ return '<span>' + esc(p) + '</span>'; }).join('') + '</div>'
       + '<label>إيميلك</label><input value="' + esc(info.email) + '" dir="ltr" disabled>'
       + '<label for="p1">كلمة السر (8 حروف أو أكثر)</label><input id="p1" type="password" autocomplete="new-password" dir="ltr">'
@@ -71,7 +71,7 @@ input:focus{outline:none;border-color:var(--p)}
   }
   function done(){
     var inApp = !!window.ReactNativeWebView;
-    app.innerHTML = '<div class="card ok"><div class="ic">✅</div><h1>تم تفعيل حسابك</h1><p class="s">من الحين تدخل بإيميلك وكلمة سرّك. حمّل التطبيق عشان توصلك الإشعارات أول بأول.</p>'
+    app.innerHTML = '<div class="card ok"><div class="ic">✅</div><h1>' + (info.active ? 'تم تغيير كلمة السر' : 'تم تفعيل حسابك') + '</h1><p class="s">من الحين تدخل بإيميلك وكلمة سرّك. حمّل التطبيق عشان توصلك الإشعارات أول بأول.</p>'
       + (inApp ? '' : '<div class="apps"><a class="btn bo" href="https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611">آيفون</a><a class="btn bo" href="https://play.google.com/store/apps/details?id=com.manaqasa.app">أندرويد</a></div>')
       + '<a class="btn" id="dash" href="/dashboard-provider.html">ادخل لوحة المؤسسة</a></div>';
   }

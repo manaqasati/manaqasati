@@ -349,7 +349,7 @@ function _setAvatar(img){
   });
 })();
 
-var _pages={sub:'🤝 مقاول باطن',home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي',proof:'⭐ أعمالي الموثّقة',dlg:'👥 المفوّض'};
+var _pages={sub:'🤝 مقاول باطن',home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي',proof:'⭐ أعمالي الموثّقة',dlg:'👥 المفوّض',dlgme:'👤 حسابي كمفوّض'};
 
 var _prefetchTimer={};
 function prefetchPage(page){
@@ -391,6 +391,7 @@ function _gotoPageInner(page){
   else if(page==='saai')loadSaai();
   else if(page==='proof'){ if(window.WP)WP.load(); else setTimeout(function(){ if(window.WP)WP.load(); },500); }
   else if(page==='dlg'){ if(window.DLG)DLG.load(); else setTimeout(function(){ if(window.DLG)DLG.load(); },500); }
+  else if(page==='dlgme'){ if(window.DLG)DLG.loadMe(); else setTimeout(function(){ if(window.DLG)DLG.loadMe(); },500); }
   else if(page==='sub'){ if(window.SubC)SubC.load(); else setTimeout(function(){ if(window.SubC)SubC.load(); },400); }
   if(page!=='chat'){clearInterval(_provConvPolling);}
 }
@@ -401,7 +402,7 @@ window.addEventListener('popstate',function(){
   var _sm=h.match(/^sub\/(\d+)$/); if(_sm){ if(_curPage==='sub'&&window.SubC){ SubC.open(parseInt(_sm[1]),null,true); return; } window._subOpen=parseInt(_sm[1]); h='sub'; }
   if(/^sub\/(new|\d+\/edit)$/.test(h)){ h='sub'; }
   if(h==='sub'&&_curPage==='sub'&&window.SubC&&SubC.list){ SubC.list(); return; }
-  var known=['home','browse','works','reviews','notifs','profile','chat','saai','sub','proof','dlg'];
+  var known=['home','browse','works','reviews','notifs','profile','chat','saai','sub','proof','dlg','dlgme'];
   var target=known.indexOf(h)>=0?h:'home';
   window._pSkipHash=true; gotoPage(target); window._pSkipHash=false;
 });
