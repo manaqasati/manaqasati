@@ -41,17 +41,21 @@
       + '.wp-er{display:none;color:#b91c1c;font-weight:800;font-size:13px;margin-top:9px}'
       + '.wp-note{background:var(--p-light,#eff6ff);color:var(--p,#1e40af);border-radius:13px;padding:10px 12px;font-size:12.5px;font-weight:800;line-height:1.7;margin-bottom:12px}'
       + '.wp-new{display:inline-block;background:#ef4444;color:#fff;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:900;vertical-align:middle;margin-inline-start:6px;animation:wpP 1.6s ease-in-out infinite}@keyframes wpP{50%{transform:scale(1.08)}}'
-      + '.wp-c{background:var(--white,#fff);border:2px solid #fbbf24;border-radius:20px;padding:14px;margin-bottom:12px}'
-      + '[data-theme="dark"] .wp-c{border-color:rgba(251,191,36,.55)}'
-      + '.wp-ct{font-weight:900;font-size:15.5px;color:var(--text);line-height:1.5}'
       + '.wp-pv{border:2px dashed #93c5fd;border-radius:16px;padding:10px;margin-top:10px;background:var(--p-light,#f8fbff)}'
       + '[data-theme="dark"] .wp-pv{border-color:#2b4377;background:rgba(37,99,235,.08)}'
       + '.wp-pvh{display:flex;gap:9px;align-items:center}.wp-av{width:40px;height:40px;border-radius:12px;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;flex:none;overflow:hidden}.wp-av img{width:100%;height:100%;object-fit:cover}'
       + '.wp-vb{display:inline-flex;align-items:center;background:linear-gradient(90deg,#1d4ed8,#2563eb);color:#fff;border-radius:999px;padding:2px 9px;font-size:10.5px;font-weight:900;white-space:nowrap}'
       + '.wp-pvi{display:flex;gap:5px;margin-top:8px}.wp-pvi img,.wp-pvi span{width:52px;height:52px;border-radius:9px;object-fit:cover;flex:none}.wp-pvi span{background:linear-gradient(135deg,#dbe5f5,#c7d2fe);display:flex;align-items:center;justify-content:center;font-size:18px}'
       + '[data-theme="dark"] .wp-pvi span{background:linear-gradient(135deg,#1e2d52,#24365e)}'
-      + '.wp-steps{margin-top:8px}.wp-stp{display:flex;gap:10px;align-items:center;padding:7px 0}.wp-stp .n{width:28px;height:28px;border-radius:50%;background:#dbeafe;color:#1d4ed8;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none;font-size:13px}'
-      + '.wp-stp.d .n{background:#22c55e;color:#fff}.wp-stp .t{font-weight:800;font-size:13.5px;color:var(--text)}.wp-stp.d .t{color:var(--muted);text-decoration:line-through}'
+      + '.wp-bn{display:flex;align-items:center;gap:10px;border-radius:16px;padding:10px 12px;margin-bottom:12px;background:linear-gradient(90deg,#fff7e0,#fffbeb);border:1.5px solid #fcd34d}'
+      + '[data-theme="dark"] .wp-bn{background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.45)}'
+      + '.wp-bi{font-size:22px;flex:none}.wp-bt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.5}.wp-bt b{font-size:13.5px;font-weight:900;color:var(--text)}.wp-bt span{font-size:11.5px;font-weight:700;color:var(--muted,#64748b)}'
+      + '.wp-bgo{border:0;border-radius:11px;background:#0f2544;color:#fff;font-family:inherit;font-weight:900;font-size:12.5px;padding:8px 12px;cursor:pointer;white-space:nowrap;flex:none}'
+      + '[data-theme="dark"] .wp-bgo{background:#fbbf24;color:#1f2937}'
+      + '.wp-bx{width:30px;height:30px;border-radius:50%;border:0;background:rgba(15,29,58,.07);color:var(--muted,#64748b);font-weight:900;font-size:13px;cursor:pointer;flex:none}'
+      + '.wp-bs-d{display:none}@media(min-width:769px){.wp-bs-m{display:none}.wp-bs-d{display:inline}.wp-bn{padding:12px 16px}.wp-bt b{font-size:14.5px}.wp-bt span{font-size:12.5px}.wp-bgo{padding:10px 16px;font-size:13.5px}}'
+      + '.wp-grid{display:block}@media(min-width:900px){.wp-grid{display:grid;grid-template-columns:minmax(300px,380px) 1fr;gap:14px;align-items:start}.wp-grid .wp-hero{margin-bottom:0}}'
+      + '.wp-pvl{font-size:12px;font-weight:800;color:#c7d2fe;margin:12px 0 6px}.wp-hero .wp-pv{background:#fff;border-color:#bfdbfe}.wp-hero .wp-n{color:#0f1d3a}'
       + '.wp-mini{display:flex;gap:10px;align-items:center}.wp-mini .ic{width:40px;height:40px;border-radius:12px;background:#fef3c7;display:flex;align-items:center;justify-content:center;font-size:19px;flex:none}';
     D.head.appendChild(st);
   }
@@ -71,38 +75,37 @@
   }
   function nextTxt(n){ for (var i = 0; i < LV.length; i++) if (n < LV[i][0]) return 'باقي ' + (LV[i][0] - n) + ' — ' + LV[i][1]; return 'وصلت لأعلى مستوى 🏆'; }
 
-  // ─── بطاقة الرئيسية: يشوف كيف بيطلع عرضه للعميل + 3 خطوات ───
+  // ─── معاينة «كذا يشوف العميل عرضك» ───
+  function pvHtml(d){
+    var me = d.me || {}, im = [];
+    (d.items || []).filter(function(x){ return x.status !== 'removed'; }).forEach(function(x){ (x.images || []).forEach(function(u){ u = safe(u); if (u && im.length < 3) im.push(u); }); });
+    var av = safe(me.profile_image);
+    return '<div class="wp-pv"><div class="wp-pvh"><div class="wp-av">' + (av ? '<img src="' + esc(av) + '" alt="">' : esc(String(me.name || 'م').charAt(0))) + '</div>'
+      + '<div style="flex:1;min-width:0"><div class="wp-n" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(me.name || 'اسمك') + '</div>'
+      + '<div class="wp-m" style="margin-top:3px">' + (me.rcount ? '<span style="color:#f59e0b">★ ' + esc(me.rating) + '</span> · ' : '') + '<span class="wp-vb">✓ أعمال موثّقة</span></div></div></div>'
+      + '<div class="wp-pvi">' + im.map(function(u){ return '<img src="' + esc(u) + '" alt="" loading="lazy">'; }).join('') + (im.length < 3 ? new Array(3 - im.length + 1).join('<span>📷</span>') : '') + '</div></div>';
+  }
+  // ─── الرئيسية: شريط صغير بسطر واحد — مؤقت (يختفي لو فتح القسم أو ضغط ✕ أو بعد 3 زيارات) ───
+  var BN_MAX = 3;
+  function bnGet(k){ try { return localStorage.getItem(k); } catch(e) { return null; } }
+  function bnSet(k, v){ try { localStorage.setItem(k, v); } catch(e) {} }
+  function bnShow(){
+    if (!isNew()) return false;                       // فتح القسم مرة = خلاص
+    if (bnGet('mnq_wp_bn_x')) return false;            // قفله بـ✕
+    var n = parseInt(bnGet('mnq_wp_bn_n')) || 0;
+    var cnt = false; try { cnt = !sessionStorage.getItem('mnq_wp_bn_s'); if (cnt) sessionStorage.setItem('mnq_wp_bn_s', '1'); } catch(e) {}
+    if (cnt) { n++; bnSet('mnq_wp_bn_n', String(n)); }
+    return n <= BN_MAX;
+  }
   function homeCard(){
     css(); var pg = D.getElementById('page-home'); if (!pg) return;
     var k = pg.querySelector('.pa-kpis'); if (!k) return;
     var box = D.getElementById('wp-home'); if (!box) { box = D.createElement('div'); box.id = 'wp-home'; k.parentNode.insertBefore(box, k.nextSibling); }
-    fetchD(true).then(function(d){
-      if (!d) { box.innerHTML = ''; return; }
-      var n = d.verified || 0, it = d.items || [], me = d.me || {};
-      if (n >= 5) { box.innerHTML = ''; return; }
-      var nw = isNew() ? '<span class="wp-new wp-newc">جديد</span>' : '';
-      var im = []; it.filter(function(x){ return x.status !== 'removed'; }).forEach(function(x){ (x.images || []).forEach(function(u){ u = safe(u); if (u && im.length < 3) im.push(u); }); });
-      var av = safe(me.profile_image);
-      var pv = '<div class="wp-pv"><div class="wp-pvh"><div class="wp-av">' + (av ? '<img src="' + esc(av) + '" alt="">' : esc(String(me.name || 'م').charAt(0))) + '</div>'
-        + '<div style="flex:1;min-width:0"><div class="wp-n" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(me.name || 'اسمك') + '</div>'
-        + '<div class="wp-m" style="margin-top:3px">' + (me.rcount ? '<span style="color:#f59e0b">★ ' + esc(me.rating) + '</span> · ' : '') + '<span class="wp-vb">✓ أعمال موثّقة</span></div></div></div>'
-        + '<div class="wp-pvi">' + im.map(function(u){ return '<img src="' + esc(u) + '" alt="" loading="lazy">'; }).join('') + (im.length < 3 ? new Array(3 - im.length + 1).join('<span>📷</span>') : '') + '</div></div>';
-      var h = '<div class="wp-c">';
-      if (!n) {
-        var s1 = it.length > 0;
-        h += '<div class="wp-ct">⭐ خلّ عرضك يبان كذا للعميل' + nw + '</div>' + pv
-          + '<div class="wp-steps"><div class="wp-stp' + (s1 ? ' d' : '') + '"><span class="n">' + (s1 ? '✓' : '1') + '</span><span class="t">ارفع صور مشروع سويته</span></div>'
-          + '<div class="wp-stp' + (s1 ? ' d' : '') + '"><span class="n">' + (s1 ? '✓' : '2') + '</span><span class="t">أرسل الرابط لصاحبه بالواتساب</span></div>'
-          + '<div class="wp-stp"><span class="n">3</span><span class="t">يقيّمك ← تاخذ الشارة وعروضك تطلع أول</span></div></div>'
-          + (s1 ? '<div class="wp-m" style="margin-top:4px">⏳ بانتظار تقييم صاحب المشروع — ذكّره من «أعمالي الموثّقة»</div><button type="button" class="wp-b wp-o" onclick="WP.go(0)">أعمالي الموثّقة</button>'
-                : '<button type="button" class="wp-b wp-y" onclick="WP.go(1)">＋ ابدأ بمشروع واحد</button>');
-      } else {
-        h += '<div class="wp-ct">✓ عرضك صار يبان كذا للعميل' + nw + '</div>' + pv
-          + '<div class="wp-m" style="margin-top:8px;font-size:13px">عندك ' + n + ' ' + (n === 1 ? 'مشروع موثّق' : 'مشاريع موثّقة') + ' · ' + esc(nextTxt(n)) + '</div>'
-          + '<div style="display:flex;gap:8px"><button type="button" class="wp-b wp-y" style="flex:2" onclick="WP.go(1)">＋ وثّق مشروع ثاني</button><button type="button" class="wp-b wp-o" style="flex:1" onclick="WP.go(0)">أعمالي</button></div>';
-      }
-      box.innerHTML = h + '</div>';
-    }).catch(function(){ box.innerHTML = ''; });
+    if (!bnShow()) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="wp-bn" role="region" aria-label="ميزة جديدة: وثّق أعمالك"><span class="wp-bi" aria-hidden="true">⭐</span>'
+      + '<div class="wp-bt"><b>جديد: وثّق أعمالك</b><span class="wp-bs-m">عملاؤك يقيّمونك ← عروضك تطلع أول</span><span class="wp-bs-d">ارفع صور مشروع سويته، صاحبه يقيّمك — تاخذ شارة «أعمال موثّقة ✓» وعروضك تطلع قبل غيرك</span></div>'
+      + '<button type="button" class="wp-bgo" onclick="WP.go(1)"><span class="wp-bs-m">جرّب</span><span class="wp-bs-d">وثّق أول مشروع</span></button>'
+      + '<button type="button" class="wp-bx" aria-label="إخفاء" onclick="WP.hideBanner()">✕</button></div>';
   }
   // ─── بطاقة «تقييماتي» ───
   function reviewsCard(){
@@ -123,13 +126,14 @@
   function page(){
     var pg = D.getElementById('page-proof'); if (!pg) return;
     var d = S.d || { items: [], verified: 0, month_left: 5 }, n = d.verified || 0;
-    var h = '<div class="wp-hero"><div class="wp-k">⭐ وثّق أعمالك</div><div class="wp-t">مشاريعك اللي سويتها — يأكّدها أصحابها بتقييم</div>'
+    var h = '<div class="wp-grid"><div class="wp-hero"><div class="wp-k">⭐ وثّق أعمالك</div><div class="wp-t">' + (n ? 'عندك ' + n + ' ' + (n === 1 ? 'مشروع موثّق' : 'مشاريع موثّقة') : 'مشاريعك اللي سويتها — يأكّدها أصحابها بتقييم') + '</div>'
       + '<div class="wp-s">العميل لما يشوف شغل مشابه لمشروعه وأكّده صاحبه، يثق فيك أكثر ويختار عرضك. ' + esc(nextTxt(n)) + '</div>' + levels(n)
+      + '<div class="wp-pvl">كذا يشوف العميل عرضك:</div>' + pvHtml(d)
       + (d.month_left > 0 ? '<button type="button" class="wp-b wp-y" onclick="WP.form()">＋ وثّق مشروع</button>' : '<div class="wp-s" style="margin-top:10px">وصلت حد هالشهر (' + d.month_max + ' مشاريع) — تقدر تضيف بعدين</div>') + '</div>';
-    h += '<div class="wp-card"><div class="wp-h">أعمالي الموثّقة' + (d.items.length ? '<span class="wp-pl wp-ok">' + n + ' موثّق</span>' : '') + '</div>';
+    h += '<div><div class="wp-card"><div class="wp-h">أعمالي الموثّقة' + (d.items.length ? '<span class="wp-pl wp-ok">' + n + ' موثّق</span>' : '') + '</div>';
     if (d.items.length) h += d.items.map(item).join('');
     else h += '<div class="wp-m" style="padding:14px 0;text-align:center">ما وثّقت أي مشروع للحين — ابدأ بمشروع واحد سويته وصاحبه راضي عنه</div>';
-    h += '</div><div class="wp-note">💡 اختار مشاريع أصحابها راضين — التقييم يظهر في صفحتك وما ينحذف بعد ما ينكتب.</div>';
+    h += '</div><div class="wp-note">💡 اختار مشاريع أصحابها راضين — التقييم يظهر في صفحتك وما ينحذف بعد ما ينكتب.</div></div></div>';
     pg.innerHTML = h;
   }
   function load(){
@@ -223,7 +227,8 @@
   }
   function find(id){ return ((S.d && S.d.items) || []).filter(function(x){ return x.id === id; })[0]; }
   W.WP = {
-    homeCard: homeCard, reviewsCard: reviewsCard, load: load, go: go, form: function(){ S.form = S.form || { imgs: [] }; form(); },
+    homeCard: homeCard, reviewsCard: reviewsCard, isNew: isNew,
+    hideBanner: function(){ bnSet('mnq_wp_bn_x', '1'); var b = D.getElementById('wp-home'); if (b) b.innerHTML = ''; }, load: load, go: go, form: function(){ S.form = S.form || { imgs: [] }; form(); },
     rmImg: function(i){ keep(); S.form.imgs.splice(i, 1); paintUps(); },
     remind: function(id){
       api('/api/provider/proofs/' + id + '/remind', { method: 'POST', body: '{}' }).then(function(r){ if (r && r.ok) { openWa(r.wa_phone, r.wa_text); fetchD(true).then(page); } else toast((r && r.message) || 'تعذّر', 'error'); }).catch(function(){ toast('تعذّر', 'error'); });

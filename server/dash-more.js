@@ -10,7 +10,7 @@
   function badgeOf(ids){ for (var i = 0; i < ids.length; i++){ var el = D.getElementById(ids[i]); if (el && el.style.display !== 'none'){ var n = parseInt(el.textContent, 10); if (n > 0) return n; } } return 0; }
   function fmt(n){ try { return Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 }); } catch(e){ return String(n); } }
 
-  var SV = {
+  var SV = { medal: '<circle cx="12" cy="9" r="6"/><path d="M9 14.5 7.5 22l4.5-2.5 4.5 2.5L15 14.5"/><path d="m9.8 9 1.5 1.5 3-3"/>',
     search:'<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
     doc:'<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/>',
     money:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
@@ -68,6 +68,7 @@
     return tile('c1', 'search', 'تصفح المشاريع', nOpen ? nOpen + ' مشروع يناسبك' : 'مشاريع تناسب تخصصك', nOpen, 'pg:browse')
       + tile('c2', 'doc', 'عروضي ومشاريعي', 'عروضك وحالة كل واحد', 0, 'pg:works')
       + tile('c6', 'team', 'مقاول باطن', 'اطلب أو قدّم · شركائي', (W._subCount > 0 ? W._subCount : ((W._subIsNew && W._subIsNew()) ? 'جديد' : 0)), 'pg:sub')
+      + tile('c7', 'medal', 'أعمالي الموثّقة', 'وثّق شغلك — عروضك تطلع أول', ((W.WP && W.WP.isNew && W.WP.isNew()) ? 'جديد' : 0), 'pg:proof')
       + tile('c3', 'money', 'محفظة السعي', due ? 'عليك ' + fmt(due) + ' ريال — سدّد' : 'ما عليك شي ✓', due ? '!' : 0, 'pg:saai', !!due)
       + tile('c4', 'star', 'تقييماتي', rat ? '★ ' + rat.toFixed(1) + ' من عملائك' : 'تقييمات عملائك', 0, 'pg:reviews')
       + tile('c5', 'bell', 'الإشعارات', nNot ? nNot + ' جديدة' : 'كل التنبيهات', nNot, 'pg:notifs')
