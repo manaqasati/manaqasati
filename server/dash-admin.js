@@ -3050,6 +3050,16 @@ async function deleteRequest(id){
 }
 
 var _WPF={no_phone:'المقيّم ما عنده جوال بحسابه',phone_mismatch:'جوال المقيّم غير اللي كتبه المزوّد',provider_account:'المقيّم حسابه مزوّد',new_account:'حساب المقيّم جديد (أقل من ساعة)',same_ip:'نفس شبكة المزوّد'};
+// وين وقف صاحب المشروع (فتح الرابط / راح للدخول / طلع له خطأ)
+function _wpAgo(d){ try{ return d?(window.timeAgo?timeAgo(d):new Date(d).toLocaleString('ar-SA')):''; }catch(e){ return ''; } }
+function _wpTrail(x){
+  var p=[];
+  p.push(x.views?'👀 فتح الرابط '+x.views+' مرة':'⏳ ما فتح الرابط');
+  if(x.login_at)p.push('🔐 راح للدخول '+_wpAgo(x.login_at));
+  if(x.inapp)p.push('📱 فتحه من داخل تطبيق (واتساب/سناب…)');
+  if(x.last_err)p.push('<span style="color:#b91c1c">⚠️ '+esc(x.last_err)+' — '+_wpAgo(x.err_at)+'</span>');
+  return '<span style="font-size:11.5px;color:var(--muted);font-weight:700">'+p.join(' · ')+'</span>';
+}
 function _wpAdmin(){
   var t=document.getElementById('reviews-table'); if(!t)return;
   var box=document.getElementById('wp-adm'); if(!box){ box=document.createElement('div'); box.id='wp-adm'; t.parentNode.insertBefore(box,t); }
@@ -3061,7 +3071,7 @@ function _wpAdmin(){
         var im=(x.images||[]).slice(0,3).map(function(u){u=_safeUrl(u);return u?'<a href="'+esc(u)+'"><img src="'+esc(u)+'" style="width:46px;height:46px;border-radius:9px;object-fit:cover" alt=""></a>':'';}).join('');
         var st=x.hidden?'<span style="color:#b91c1c;font-weight:900">انحذف</span>':(x.status==='reviewed'?'<span style="color:#15803d;font-weight:900">✓ تقيّم '+(x.rating||'')+'/5</span>':'<span style="color:#92400e;font-weight:900">بانتظار التقييم</span>');
         var f=(x.flags||[]).map(function(k){return '<span style="display:inline-block;background:#fef3c7;color:#92400e;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;margin:2px">⚠️ '+esc(_WPF[k]||k)+'</span>';}).join('');
-        return '<div style="display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--border);padding:10px 0"><div style="display:flex;gap:4px;flex:none">'+im+'</div><div style="flex:1;min-width:0;font-size:12.5px;line-height:1.7"><b>'+esc(x.title)+'</b> · '+esc(x.business_name||x.provider_name||'')+'<br>'+st+(x.reviewer_name?' · المقيّم: '+esc(x.reviewer_name):' · العميل: '+esc(x.client_name||''))+(x.comment?'<br><span style="color:var(--muted)">«'+esc(x.comment)+'»</span>':'')+(f?'<br>'+f:'')+'</div>'
+        return '<div style="display:flex;gap:10px;align-items:flex-start;border-top:1px solid var(--border);padding:10px 0"><div style="display:flex;gap:4px;flex:none">'+im+'</div><div style="flex:1;min-width:0;font-size:12.5px;line-height:1.7"><b>'+esc(x.title)+'</b> · '+esc(x.business_name||x.provider_name||'')+'<br>'+st+(x.reviewer_name?' · المقيّم: '+esc(x.reviewer_name):' · العميل: '+esc(x.client_name||''))+(x.comment?'<br><span style="color:var(--muted)">«'+esc(x.comment)+'»</span>':'')+(f?'<br>'+f:'')+(!x.hidden&&x.status==='pending'?'<br>'+_wpTrail(x):'')+'</div>'
           +(x.hidden?'':'<button class="act-btn ab-danger" onclick="_wpRemove('+x.id+')">حذف</button>')+'</div>';
       }).join('')+'</div>';
   }).catch(function(){ box.innerHTML=''; });

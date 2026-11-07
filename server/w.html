@@ -44,6 +44,9 @@ textarea{width:100%;border:1.5px solid var(--bd);border-radius:13px;padding:12px
 .ok{text-align:center;padding:26px 12px}.ok .e{font-size:46px}.ok h2{margin:8px 0 6px;font-size:20px}.ok p{color:var(--mu);font-weight:700;line-height:1.8;margin:0}
 .note{background:var(--soft);border:1px solid #bfdbfe;color:#1e40af;border-radius:14px;padding:12px;font-size:13.5px;font-weight:800;line-height:1.8;margin-top:14px;text-align:center}
 [data-theme="dark"] .note{color:#bfdbfe;border-color:#2b4377}
+.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:14px;padding:12px;font-size:13.5px;font-weight:800;line-height:1.8;margin-top:14px;text-align:center}
+[data-theme="dark"] .warn{background:rgba(245,158,11,.12);color:#fcd34d;border-color:#78530f}
+.warn .btn{margin-top:8px;padding:11px;font-size:14.5px}
 .sk{height:240px;border-radius:16px;background:linear-gradient(90deg,var(--soft),var(--bd),var(--soft));background-size:200% 100%;animation:sk 1.2s infinite}
 @keyframes sk{to{background-position:-200% 0}}
 </style>
@@ -63,8 +66,14 @@ textarea{width:100%;border:1.5px solid var(--bd);border-radius:13px;padding:12px
   function safe(u){ u = String(u || ''); return /^(https?:)?\/\//i.test(u) || u.charAt(0) === '/' ? u : ''; }
   function tok(){ try { return localStorage.getItem('token') || ''; } catch(e) { return ''; } }
   function hdr(){ var h = { 'Content-Type': 'application/json' }; var t = tok(); if (t) h.Authorization = 'Bearer ' + t; return h; }
-  function get(){ try { return JSON.parse(sessionStorage.getItem(KEY) || 'null'); } catch(e) { return null; } }
-  function put(v){ try { if (v) sessionStorage.setItem(KEY, JSON.stringify(v)); else sessionStorage.removeItem(KEY); } catch(e) {} }
+  // التقييم المحفوظ قبل الدخول — localStorage (يبقى لو الدخول فتح تبويب ثاني) وينتهي بعد يومين
+  function get(){ try { var v = JSON.parse(localStorage.getItem(KEY) || sessionStorage.getItem(KEY) || 'null'); if (v && v.ts && Date.now() - v.ts > 2 * 864e5) { put(null); return null; } return v; } catch(e) { return null; } }
+  function put(v){ try { if (v) { v.ts = Date.now(); localStorage.setItem(KEY, JSON.stringify(v)); } else { localStorage.removeItem(KEY); sessionStorage.removeItem(KEY); } } catch(e) {} }
+  // فاتح الرابط من داخل واتساب/سناب/انستقرام… (دخول Google ما يشتغل هناك) — تطبيق مناقصة نفسه مستثنى
+  var UA = navigator.userAgent || '';
+  var INAPP = !window.ReactNativeWebView && /FBAN|FBAV|Instagram|Snapchat|WhatsApp|TikTok|musical_ly|Line\/|Twitter|; wv\)/i.test(UA);
+  // «وين وقف العميل؟» — يوصل للمزوّد والإدارة
+  function ev(e, m){ try { fetch(API + '/api/w/' + TOK + '/ev', { method: 'POST', headers: hdr(), body: JSON.stringify({ e: e, m: m || '', inapp: INAPP }), keepalive: true }).catch(function(){}); } catch(x) {} }
 
   function head(){
     var p = D.provider || {}, im = safe(p.profile_image);
@@ -106,9 +115,12 @@ textarea{width:100%;border:1.5px solid var(--bd);border-radius:13px;padding:12px
       + '<textarea id="cm" maxlength="600" placeholder="كلمة عنه (اختياري)…"></textarea>'
       + '<div class="err" id="er" role="alert"></div>'
       + '<button class="btn bp" type="button" id="go">' + (tok() ? 'أرسل التقييم' : 'أكّد إنك صاحب المشروع وأرسل') + '</button>'
-      + '<div class="hint">' + (tok() ? '' : 'بدخول Google أو Apple أو جوالك — ضغطة وحدة، عشان نتأكد إن التقييم منك') + '</div></div>';
+      + '<div class="hint">' + (tok() ? '' : '⚠️ التقييم ما يوصل إلا بعد ما تأكّد بالدخول (Google أو Apple أو جوالك) — بعدها نرجّعك هنا وينرسل تلقائياً') + '</div></div>';
+    var sv = get();
+    if (!tok() && INAPP) h = '<div class="warn" id="inapp">📱 فاتح الرابط من داخل تطبيق؟ عشان الدخول يشتغل افتحه في المتصفح (سفاري أو كروم): اضغط ⋮ أو ••• فوق واختر «فتح في المتصفح»، أو انسخ الرابط والصقه في المتصفح<button class="btn bo" type="button" id="cpl">📋 انسخ الرابط</button></div>' + h;
+    if (tok() && /after=1/.test(location.search) && !(sv && sv.quality && sv.time && sv.deal)) h = '<div class="warn" id="last">✅ تم الدخول — باقي خطوة أخيرة: اختر النجوم واضغط «أرسل التقييم»</div>' + h;
     app.innerHTML = h;
-    var sv = get(); if (sv) { R = { quality: sv.quality || 0, time: sv.time || 0, deal: sv.deal || 0 }; document.getElementById('cm').value = sv.comment || ''; paint(); }
+    var cpl = document.getElementById('cpl'); if (cpl) cpl.onclick = function(){ var u = location.origin + '/w/' + TOK, me = this; try { navigator.clipboard.writeText(u).then(function(){ me.textContent = '✓ انتسخ — الصقه في المتصفح'; }, function(){ prompt('انسخ الرابط:', u); }); } catch(e) { prompt('انسخ الرابط:', u); } }; if (sv) { R = { quality: sv.quality || 0, time: sv.time || 0, deal: sv.deal || 0 }; document.getElementById('cm').value = sv.comment || ''; paint(); }
     app.querySelectorAll('.st').forEach(function(g){
       g.addEventListener('click', function(e){ var b = e.target.closest('button'); if (!b) return; R[g.getAttribute('data-k')] = parseInt(b.getAttribute('data-v')); paint(); });
     });
@@ -127,16 +139,16 @@ textarea{width:100%;border:1.5px solid var(--bd);border-radius:13px;padding:12px
     var cm = (document.getElementById('cm') || {}).value || '';
     if (!R.quality || !R.time || !R.deal) return err('اختر النجوم للثلاث');
     var body = { quality: R.quality, time: R.time, deal: R.deal, comment: cm };
-    if (!tok()) { put(body); location.href = '/auth.html?redirect=work&role=client&w=' + encodeURIComponent(TOK); return; }
+    if (!tok()) { put(body); ev('login'); location.href = '/auth.html?redirect=work&role=client&w=' + encodeURIComponent(TOK); return; }
     var b = document.getElementById('go'); b.disabled = true; b.textContent = 'جاري الإرسال…';
     fetch(API + '/api/w/' + TOK + '/review', { method: 'POST', headers: hdr(), body: JSON.stringify(body) })
       .then(function(r){ return r.json().then(function(d){ return { s: r.status, d: d }; }); })
       .then(function(x){
         if (x.s === 401) { put(body); try { localStorage.removeItem('token'); } catch(e) {} location.href = '/auth.html?redirect=work&role=client&w=' + encodeURIComponent(TOK); return; }
-        if (x.s >= 400) { b.disabled = false; b.textContent = 'أرسل التقييم'; put(null); return err((x.d && x.d.message) || 'تعذّر الإرسال'); }
+        if (x.s >= 400) { b.disabled = false; b.textContent = 'أرسل التقييم'; put(null); var m = (x.d && x.d.message) || 'تعذّر الإرسال'; ev('err', m + ' (' + x.s + ')'); return err(m); }
         put(null); D.status = 'reviewed'; D.mine = true; render(); try { history.replaceState(null, '', '/w/' + TOK); } catch(e) {}
       })
-      .catch(function(){ b.disabled = false; b.textContent = 'أرسل التقييم'; err('تعذّر الاتصال — حاول مرة ثانية'); });
+      .catch(function(){ b.disabled = false; b.textContent = 'أرسل التقييم'; ev('err', 'تعذّر الاتصال وقت الإرسال'); err('تعذّر الاتصال — حاول مرة ثانية'); });
   }
   function load(){
     if (!TOK) { app.innerHTML = '<div class="card ok"><div class="e">🔗</div><h2>الرابط غير صحيح</h2></div>'; return; }
@@ -144,6 +156,7 @@ textarea{width:100%;border:1.5px solid var(--bd);border-radius:13px;padding:12px
       .then(function(x){
         if (x.s >= 400) { app.innerHTML = '<div class="card ok"><div class="e">🔗</div><h2>' + esc((x.d && x.d.message) || 'الرابط غير صحيح') + '</h2><a class="btn bo" href="/">الصفحة الرئيسية</a></div>'; return; }
         D = x.d; render();
+        if (D.status === 'pending' && !D.is_provider_self && !/after=1/.test(location.search)) ev('open');
       })
       .catch(function(){ app.innerHTML = '<div class="card ok"><div class="e">📡</div><h2>تعذّر التحميل</h2><p>تأكد من النت وحاول مرة ثانية</p><button class="btn bp" type="button" onclick="location.reload()">حاول مرة ثانية</button></div>'; });
   }

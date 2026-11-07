@@ -40,6 +40,7 @@
       + '.wp-it{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--border,#eef2f8)}.wp-it:first-of-type{border-top:0}'
       + '.wp-th{width:60px;height:60px;border-radius:13px;flex:none;object-fit:cover;background:var(--bg,#f1f5f9)}'
       + '.wp-n{font-weight:900;font-size:14px;color:var(--text)}.wp-m{font-size:12px;color:var(--muted,#64748b);font-weight:700;margin-top:2px;line-height:1.6}'
+      + '.wp-tr{font-size:11.5px;font-weight:800;margin-top:4px;line-height:1.6}'
       + '.wp-pl{display:inline-block;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:900;white-space:nowrap}.wp-ok{background:#dcfce7;color:#15803d}.wp-wt{background:#fef3c7;color:#92400e}.wp-rm{background:#fee2e2;color:#b91c1c}'
       + '[data-theme="dark"] .wp-ok{background:rgba(34,197,94,.18);color:#86efac}[data-theme="dark"] .wp-wt{background:rgba(245,158,11,.18);color:#fcd34d}'
       + '.wp-sm{border:1px solid var(--border,#dbe5f5);background:var(--white,#fff);color:var(--text);border-radius:10px;padding:7px 10px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;white-space:nowrap}'
@@ -161,11 +162,21 @@
     var hd = pg.querySelector('.pghd'); if (hd && hd.nextSibling) pg.insertBefore(c, hd.nextSibling); else pg.insertBefore(c, pg.firstChild);
   }
   // ─── الصفحة ───
+  // «وين وقف العميل؟» — آخر خطوة وصلها صاحب المشروع
+  function trail(x){
+    var t, c = '#64748b';
+    if (x.last_err && (!x.login_at || new Date(x.err_at) >= new Date(x.login_at))) { t = '⚠️ طلع له خطأ ' + ago(x.err_at) + ': ' + esc(x.last_err); c = '#b91c1c'; }
+    else if (x.login_at) { t = '🔐 راح لصفحة الدخول ' + ago(x.login_at) + ' وما كمّل — ذكّره يكمّل الدخول' + (x.inapp ? ' ويفتح الرابط في المتصفح' : ''); c = '#b45309'; }
+    else if (x.views) { t = '👀 فتح الرابط' + (x.views > 1 ? ' ' + x.views + ' مرات' : '') + ' وما أرسل التقييم'; c = '#b45309'; }
+    else t = '⏳ ما فتح الرابط للحين';
+    return '<div class="wp-tr" style="color:' + c + '">' + t + '</div>';
+  }
   function item(x){
     var im = safe((x.images || [])[0]);
     var st = x.status === 'reviewed' ? '<span class="wp-pl wp-ok">✓ موثّق</span>' : x.status === 'removed' ? '<span class="wp-pl wp-rm">انحذف</span>' : '<span class="wp-pl wp-wt">بانتظار تقييمه</span>';
     var m = x.status === 'reviewed' ? '<span style="color:#f59e0b">' + '★★★★★'.slice(0, Math.round(x.rating || 0)) + '</span> · ' + esc(x.client_name || '') + ' قيّمك ' + (x.rating || '') + '/5'
       : x.status === 'pending' ? 'أرسلت الرابط لـ«' + esc(x.client_name || '') + '» ' + esc(ago(x.reminded_at || x.created_at)) : 'انحذف بعد المراجعة';
+    if (x.status === 'pending') m += trail(x);
     var act = x.status === 'pending' ? '<div style="display:flex;gap:6px;margin-top:7px"><button type="button" class="wp-sm" onclick="WP.remind(' + x.id + ')">📲 ذكّره</button><button type="button" class="wp-sm" onclick="WP.copy(' + x.id + ')">🔗 انسخ الرابط</button><button type="button" class="wp-sm" onclick="WP.del(' + x.id + ')" aria-label="حذف">🗑</button></div>' : '';
     return '<div class="wp-it">' + (im ? '<img class="wp-th" src="' + esc(im) + '" alt="" loading="lazy">' : '<div class="wp-th"></div>') + '<div style="flex:1;min-width:0"><div class="wp-n">' + esc(x.title) + '</div><div class="wp-m">' + m + '</div>' + act + '</div>' + st + '</div>';
   }
