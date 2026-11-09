@@ -1978,7 +1978,7 @@ function _payGo(body,btn){
     showToast((d&&d.message)||'تعذّر إنشاء عملية السداد','error'); if(btn){btn.disabled=false;btn.textContent='متابعة إلى الدفع';}
   }).catch(function(){ showToast('تعذّر الاتصال','error'); if(btn){btn.disabled=false;btn.textContent='متابعة إلى الدفع';} });
 }
-var _PAYNOTE='<div class="sd-s" style="text-align:center;margin-top:-4px">🔒 الدفع آمن بالبطاقة أو Apple Pay · يُعتمد السداد تلقائياً فور إتمامه</div>';
+var _PAYNOTE='<div class="sd-s" style="text-align:center;margin-top:-4px">🔒 الدفع آمن · يُعتمد السداد تلقائياً فور إتمامه</div>';
 function loadSaai(){
   var pg=_el('page-saai'); if(!pg)return;
   pg.innerHTML='<div class="loading">جاري التحميل...</div>';

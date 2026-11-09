@@ -53,7 +53,7 @@ body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;min-height:
 .pvb{display:flex;justify-content:space-between;margin-top:16px;font-size:11px;opacity:.9}.pvb b{display:block;font-size:13px;opacity:1;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pay{width:100%;margin-top:18px;border:0;border-radius:14px;background:#1e3a8a;color:#fff;font-family:inherit;font-size:17px;font-weight:800;padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 20px rgba(30,58,138,.3)}
 .pay:disabled{opacity:.6;cursor:default}
-.trust{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;color:#64748b;font-size:11.5px;font-weight:800;margin-top:12px}
+.trust{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;color:#64748b;font-size:11.5px;font-weight:800;margin-top:12px;line-height:1}.trust span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}.trust svg{flex:none;color:#16a34a}
 .sum .r{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:10px;gap:10px}.sum .r span{color:#64748b;font-weight:700;font-size:13px}.sum .r b{text-align:left}
 .sum hr{border:0;height:1px;background:#e6eefb;margin:4px 0 12px}
 .sum .r span.amt{font-family:Cairo,sans-serif;font-size:26px;font-weight:900;color:#172554}.amt small{font-size:13px}
@@ -92,7 +92,7 @@ body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;min-height:
 (function(){
 var Q=new URLSearchParams(location.search), REF=String(Q.get('ref')||'').replace(/[^a-f0-9]/g,'').slice(0,40);
 var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
-var app=document.getElementById('app'), P=null, M='card', BUSY=false, VN=0;
+var app=document.getElementById('app'), P=null, M='', BUSY=false, VN=0;
 var LOCK='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 var APL='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.1-1.2 2.9-2.4.9-1.3 1.3-2.7 1.3-2.8 0 0-2.4-1-2.4-3.9zM14 5.4c.7-.8 1.1-1.9 1-3-1 .1-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>';
 function lg(k,w,h){w=w||34;h=h||22;var b='<svg viewBox="0 0 46 30" width="'+w+'" height="'+h+'"><rect x=".5" y=".5" width="45" height="29" rx="5" fill="#fff" stroke="#dfe3ea"/>';
@@ -101,7 +101,7 @@ function lg(k,w,h){w=w||34;h=h||22;var b='<svg viewBox="0 0 46 30" width="'+w+'"
  return b+'<circle cx="19" cy="15" r="7.5" fill="#eb001b"/><circle cx="27" cy="15" r="7.5" fill="#f79e1b"/><path d="M23 8.6a7.5 7.5 0 0 1 0 12.8 7.5 7.5 0 0 1 0-12.8z" fill="#ff5f00"/></svg>';}
 function logos(w,h){return '<span class="logos">'+lg('mada',w,h)+lg('visa',w,h)+lg('mc',w,h)+'</span>';}
 var CVV='<svg viewBox="0 0 34 22" width="34" height="22"><rect x=".5" y=".5" width="33" height="21" rx="3" fill="#fff" stroke="#cbd5e1"/><rect x="1" y="4" width="32" height="4" fill="#1e293b"/><rect x="16" y="12" width="13" height="6" rx="1" fill="#fff" stroke="#dc2626"/><text x="22.5" y="16.8" font-size="4.5" fill="#dc2626" text-anchor="middle" font-family="Arial">123</text></svg>';
-var TRUST='<div class="trust"><span>🔒 اتصال مشفّر</span><span>🛡️ تحقق 3-D Secure</span><span>✓ معتمد PCI DSS</span></div>';
+var TRUST='<div class="trust"><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>اتصال مشفّر</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/></svg>تحقق 3-D Secure</span><span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>معتمد PCI DSS</span></div>';
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function fmt(n){return Number(n||0).toLocaleString('en-US');}
 function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},o.headers||{});
@@ -118,11 +118,11 @@ function summary(){
   +'<div class="r lgsum"><span>مبلغ الاتفاق</span><b>'+fmt(P.contract_value)+' ر.س</b></div>'
   +'<div class="r lgsum"><span>نسبة السعي</span><b>3%</b></div><hr>'
   +'<div class="r" style="align-items:center;margin:0"><b style="font-size:15px;color:#172554;text-align:right">المطلوب سداده</b><span class="amt">'+fmt(P.amount)+' <small>ر.س</small></span></div>'
-  +'<div class="okn">✓ يُعتمد السداد تلقائياً فور إتمام الدفع، دون الحاجة إلى رفع إيصال</div></div>';
+  +'<div class="okn">✓ يُعتمد السداد تلقائياً فور إتمام الدفع</div></div>';
 }
 var apOK=false; try{ apOK=!!(window.ApplePaySession&&ApplePaySession.canMakePayments()); }catch(e){}
 function render(){
- var ap=P.applepay&&apOK; if(!ap)M='card';
+ var ap=P.applepay&&apOK; if(!ap||!M)M=ap?'apple':'card';
  var meth='<div class="lbl">اختر طريقة الدفع</div><div class="meth">'
   +(ap?'<button type="button" class="opt'+(M==='apple'?' on':'')+'" data-m="apple"><span class="rd"></span><span><b>Apple Pay</b><small>الدفع السريع من جهازك</small></span><span class="apl">'+APL+'Pay</span></button>':'')
   +'<button type="button" class="opt'+(M==='card'?' on':'')+'" data-m="card"><span class="rd"></span><span><b>بطاقة</b><small>مدى · فيزا · ماستركارد</small></span>'+logos()+'</button></div>';
@@ -182,14 +182,25 @@ function payCard(){
  }).catch(function(e){ if(e&&e.message==='auth')return; setBusy(false); showErr('تعذّر الاتصال، يُرجى التحقق من الإنترنت والمحاولة مجدداً'); });
 }
 function loadAsset(tag,attrs){ return new Promise(function(ok,no){ var el=document.createElement(tag); for(var k in attrs)el.setAttribute(k,attrs[k]); el.onload=ok; el.onerror=no; document.head.appendChild(el); }); }
+// مكتبة Apple Pay تنحمّل مرة وحدة فقط — تحميلها مرتين يفتح نافذتين وتتسكر الأولى فوراً
+var _mysrP=null;
+function loadMysr(){ var V='1.15.0'; if(!_mysrP) _mysrP=Promise.all([loadAsset('link',{rel:'stylesheet',href:'https://cdn.moyasar.com/mpf/'+V+'/moyasar.css'}),loadAsset('script',{src:'https://cdn.moyasar.com/mpf/'+V+'/moyasar.js'})]).catch(function(e){ _mysrP=null; throw e; }); return _mysrP; }
 function mountApple(){
- var V='1.15.0';
- Promise.all([loadAsset('link',{rel:'stylesheet',href:'https://cdn.moyasar.com/mpf/'+V+'/moyasar.css'}),loadAsset('script',{src:'https://cdn.moyasar.com/mpf/'+V+'/moyasar.js'})]).then(function(){
+ loadMysr().then(function(){
+   var el=document.querySelector('.mysr-form'); if(!el||el.getAttribute('data-on'))return; el.setAttribute('data-on','1');
    Moyasar.init({ element:'.mysr-form', amount:P.amount*100, currency:'SAR', description:'سعي منصة مناقصة — '+String(P.title||'').slice(0,60)+' #'+REF,
      publishable_api_key:P.pk, callback_url:P.callback, methods:['applepay'], metadata:{ref:REF,kind:'saai'},
      apple_pay:{country:'SA',label:'منصة مناقصة',validate_merchant_url:'https://api.moyasar.com/v1/applepay/initiate'},
-     on_completed:function(p){ return verify(p&&p.id,true); } });
+     on_completed:function(p){ return verify(p&&p.id,true); },
+     on_failure:function(e){ showErr('لم تكتمل عملية الدفع عبر Apple Pay'+(e&&e.message?'':'')+'. لم يُخصم أي مبلغ، ويمكنك المحاولة مجدداً أو اختيار الدفع بالبطاقة.'); } });
+   _hideGw();
  }).catch(function(){ showErr('تعذّر تحميل Apple Pay، يُرجى اختيار الدفع بالبطاقة'); });
+}
+// نخفي أي نص لاسم بوابة الدفع داخل زر Apple Pay (يبقى «الدفع آمن» فقط)
+function _hideGw(){
+ var box=document.querySelector('.mysr-form'); if(!box)return;
+ var run=function(){ [].forEach.call(box.querySelectorAll('*'),function(el){ if(el.querySelector('button,iframe,apple-pay-button')||el.tagName==='BUTTON')return; if(/ميسر|ميسّر|moyasar/i.test(el.textContent||'')&&!/apple/i.test(el.className||''))el.style.display='none'; }); };
+ run(); try{ new MutationObserver(run).observe(box,{childList:true,subtree:true}); }catch(e){}
 }
 function verify(id,quiet){
  if(!quiet) app.innerHTML='<div class="center">'+steps(1)+'<div class="spin"></div><div class="h1" style="font-size:19px">جارٍ التحقق من عملية الدفع</div><div class="mu" style="margin-top:8px;line-height:1.9">يُرجى عدم إغلاق الصفحة أو الرجوع حتى اكتمال العملية.</div></div>';
