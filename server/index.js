@@ -813,6 +813,7 @@ setInterval(() => _jobLock('autopublish', async () => {
     if (mins <= 0) return; // 0 = تعطيل النشر التلقائي — المراجعة اليدوية إجبارية
     const r = await pool.query(
       `UPDATE requests SET status='open' WHERE status IN ('pending_review','review') AND COALESCE(submitted_at, created_at) <= NOW() - ($1 || ' minutes')::interval
+         AND invited_provider_id IS NULL   -- الموجّه لمزوّد بالاسم ما ينتشر تلقائياً: لازم الإدارة تراجعه
          AND EXISTS (SELECT 1 FROM users cu WHERE cu.id=requests.client_id AND COALESCE(cu.email_verified,TRUE)=TRUE) RETURNING id, client_id, title, category, city`,
       [String(mins)]
     );
