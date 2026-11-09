@@ -219,7 +219,7 @@ function loadSaaiAdmin(){
   var box=document.getElementById('saai-list'); if(!box)return;
   box.innerHTML='<div class="loading"><div class="spinner"></div></div>';
   fetch(API+'/api/admin/saai',hdr()).then(function(r){return r.json();}).then(function(d){
-    d=d||{}; _SA.items=d.items||[]; _SA.sum=d.summary||{}; _SA.monthly=d.monthly||[];
+    d=d||{}; _SA.items=d.items||[]; _SA.sum=d.summary||{}; _SA.monthly=d.monthly||[]; _SA.online=!!d.online;
     var sm=_SA.sum;
     var bd=document.getElementById('saai-badge'); var _bn=(sm.awaiting_n||0)+(sm.deferred_attn||0); if(bd){ if(_bn>0){bd.textContent=_bn;bd.style.display='flex';}else bd.style.display='none'; }
     _saSum();
@@ -377,7 +377,7 @@ function _saRow(x){
   var due=_saDue(x), left=Math.ceil((due-Date.now())/864e5), dt='', when='<div class="sa-when">انقبل '+_saDT(x.assigned_at||x.created_at)+'</div>';
   if(st==='overdue') dt='<div class="sa-tl"><div class="b"><i style="width:100%;background:#dc2626"></i></div><small style="color:#dc2626">متأخر '+_saDays((x.age_days||0)-10)+'</small><div class="sa-when">آخر موعد كان '+_saD(due)+'</div></div>';
   else if(st==='due') dt='<div class="sa-tl"><div class="b"><i style="width:'+Math.min(100,Math.round((x.age_days||0)*10))+'%;background:'+(left<=2?'#d97706':'#16a34a')+'"></i></div><small style="color:'+(left<=2?'#b45309':'#15803d')+'">'+(left<=0?'آخر يوم اليوم':'باقي '+_saDays(left))+'</small><div class="sa-when">آخر موعد '+_saD(due)+'</div></div>';
-  else if(st==='approved') dt='<div class="sa-tl"><span class="pl" style="background:#e3f5e9;color:#166534">✓ معتمد</span><div class="sa-when">'+_saDT(x.approved_at)+'</div></div>';
+  else if(st==='approved') dt='<div class="sa-tl"><span class="pl" style="background:#e3f5e9;color:#166534">✓ معتمد</span>'+(x.pay_method?'<span class="pl" title="رقم العملية في ميسّر: '+esc(x.pay_ref||'')+'" style="background:#eff4ff;color:#1e3a8a;margin-top:4px">💳 مدفوع إلكترونياً'+(x.pay_method==='applepay'?' · Apple Pay':'')+'</span>':'')+'<div class="sa-when">'+_saDT(x.approved_at)+'</div></div>';
   else if(st==='cancelled') dt='<div class="sa-tl"><span class="pl" style="background:#f1f5f9;color:#64748b">ملغي'+(x.defer_state==='client_cancel'?' — العميل أكّد':(x.defer_state==='admin_cancel'?' — بقرارك':''))+'</span><div class="sa-when">'+_saDT(x.decided_at||x.client_answer_at||x.defer_at)+'</div></div>';
   else if(st==='deferred') dt='<div class="sa-tl"><span class="pl" style="background:#e0e7ff;color:#3730a3">⏸ مؤجّل لـ '+_saD(x.defer_until)+'</span><div class="sa-when">'+(x.defer_state==='confirmed'?'✓ متفق عليه':'ننتظر رد العميل')+' · '+_saDT(x.decided_at||x.client_answer_at||x.defer_at)+'</div></div>';
   var ph=_waNorm(x.provider_phone);
@@ -386,6 +386,7 @@ function _saRow(x){
   var rem='<button class="act-btn ab-default" title="تذكير بالتطبيق والإيميل" onclick="_saRemind(['+x.id+'])">🔔 تذكير</button>';
   var act='';
   if(x.status==='pending') act=need?_ed:(st==='overdue'?waT+rem:rem)+(need?'':'');
+  if((x.status==='pending'||x.status==='deferred')&&_SA.online) act+='<button class="act-btn ab-default" title="'+(x.provider_bank_ok?'هذا المزوّد يقدر يسدد بالتحويل البنكي — اضغط لإلغاء السماح':'للمبالغ الكبيرة: يظهر للمزوّد خيار التحويل البنكي ورفع الإيصال')+'" onclick="_saBankOk('+x.provider_id+','+(x.provider_bank_ok?0:1)+')">'+(x.provider_bank_ok?'🏦 التحويل مفتوح ✕':'🏦 اسمح بالتحويل')+'</button>';
   else if(x.status==='deferred') act='<button class="act-btn ab-default" onclick="_saDefer('+x.id+',\'resume\')">رجّعه مستحق</button>';
   if(x.status==='approved'&&x.proof_url) act='<a class="sa-proof" href="'+esc(_safeUrl(x.proof_url))+'" target="_blank" rel="noopener" title="الإيصال">'+(/\.(png|jpe?g|webp|gif)(\?|$)/i.test(x.proof_url)?'<img src="'+esc(_safeUrl(x.proof_url))+'" alt="إيصال">':'PDF')+'</a>';
   return '<div class="sa-it'+(need==='big'?' wrn':'')+'">'
@@ -395,7 +396,30 @@ function _saRow(x){
     +'<div class="sa-amt"><b>'+(need==='unit'?'—':fmtNum(x.saai_amount))+' <small>ر.س</small></b><div>'+src+'</div></div>'
     +dt+'<div class="sa-act">'+act+'</div></div>';
 }
+function _saBankOk(pid,on){
+  if(on&&!confirm('السماح لهذا المزوّد بالسداد بالتحويل البنكي ورفع الإيصال؟ (يبقى الدفع بالبطاقة متاح له)'))return;
+  fetch(API+'/api/admin/users/'+pid+'/bank-ok',Object.assign({method:'POST',body:JSON.stringify({on:!!on})},hdr())).then(function(r){return r.json();}).then(function(d){ if(d&&d.ok){toast(on?'فُتح التحويل البنكي لهذا المزوّد':'أُلغي التحويل البنكي — يسدد بالبطاقة','success');loadSaaiAdmin();} else toast((d&&d.message)||'تعذّر','error'); }).catch(function(){toast('تعذّر الاتصال','error');});
+}
+function _saPayBox(){
+  var ch=document.getElementById('sa-chart'); if(!ch||!ch.parentNode)return;
+  var bx=document.getElementById('sa-pay'); if(!bx){ bx=document.createElement('div'); bx.id='sa-pay'; bx.className=ch.className; ch.parentNode.insertBefore(bx,ch.nextSibling); }
+  fetch(API+'/api/admin/pay/settings',hdr()).then(function(r){return r.json();}).then(function(p){ p=p||{};
+    bx.innerHTML='<div class="ad-ch"><h3>الدفع الإلكتروني</h3></div>'
+      +'<div style="font-size:12.5px;font-weight:700;line-height:1.9;padding:4px 2px">'+(p.online?'<span style="color:#15803d">✓ مفعّل — المزوّدون يسددون بالبطاقة، والاعتماد تلقائي</span>':'<span style="color:#b45309">غير مفعّل — أضف MOYASAR_SK و MOYASAR_PK في Railway</span>')+'</div>'
+      +(p.online?'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px"><b style="font-size:12.5px">Apple Pay:</b><span class="pl" style="background:'+(p.applepay?'#e3f5e9;color:#166534':'#f1f5f9;color:#64748b')+'">'+(p.applepay?'ظاهر للمزوّدين':'مخفي')+'</span>'
+        +'<button class="act-btn ab-default" onclick="_saPaySet({applepay:'+(!p.applepay)+'})">'+(p.applepay?'إخفاء':'إظهار')+'</button>'
+        +'<button class="act-btn ab-default" onclick="_saPayAssoc()">'+(p.has_assoc?'✓ ملف التحقق مرفوع — تحديث':'رفع ملف تحقق الدومين')+'</button></div>'
+        +'<div style="font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.7">أظهر Apple Pay بعد ما ترفع ملف التحقق وتسجّل الدومين في لوحة ميسّر.</div>':'');
+  }).catch(function(){});
+}
+function _saPaySet(b){ fetch(API+'/api/admin/pay/settings',Object.assign({method:'PUT',body:JSON.stringify(b)},hdr())).then(function(r){return r.json();}).then(function(d){ toast(d&&d.ok?'تم الحفظ':'تعذّر', d&&d.ok?'success':'error'); _saPayBox(); }); }
+function _saPayAssoc(){
+  var inp=document.createElement('input'); inp.type='file';
+  inp.onchange=function(){ var f=inp.files&&inp.files[0]; if(!f)return; var rd=new FileReader(); rd.onload=function(){ _saPaySet({assoc:String(rd.result||'')}); }; rd.readAsText(f); };
+  inp.click();
+}
 function _saSide(){
+  _saPayBox();
   var late=_SA.items.filter(function(x){return _saBucket(x)==='late';});
   var by={}; late.forEach(function(x){ var k=x.provider_id; if(!by[k])by[k]={name:x.provider_name,n:0,amt:0,days:0,phone:x.provider_phone,ids:[]}; by[k].n++; by[k].amt+=parseFloat(x.saai_amount)||0; by[k].days=Math.max(by[k].days,(x.age_days||0)-10); by[k].ids.push(x.id); });
   var arr=Object.keys(by).map(function(k){return by[k];}).sort(function(a,b){return b.days-a.days;}).slice(0,6);

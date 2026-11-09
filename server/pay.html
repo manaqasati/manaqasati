@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#172554">
+<title>صفحة الدفع — مناقصة</title>
+<link rel="icon" href="/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;min-height:100vh;-webkit-font-smoothing:antialiased}
+.top{height:62px;background:#172554;border-bottom:3px solid #0ea5e9;display:flex;align-items:center;justify-content:space-between;padding:0 18px;color:#fff;position:sticky;top:0;z-index:5}
+.top b{font-size:21px;font-weight:900}.top b i{color:#38bdf8;font-style:normal}
+.top .sec{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:#bbf7d0}
+.top a{color:#fff;text-decoration:none;font-size:13px;font-weight:800;opacity:.85}
+.wrap{max-width:1040px;margin:0 auto;padding:22px 16px 120px}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.h1{font-size:22px;font-weight:900;color:#172554}.mu{color:#64748b;font-size:12.5px;font-weight:700}
+.steps{display:flex;gap:8px;align-items:center;justify-content:center}
+.st{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:#94a3b8}
+.st span.n{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11.5px;color:#64748b;background:#e2e8f0}
+.st.on{color:#172554}.st.on span.n{background:#1e3a8a;color:#fff}.st.ok{color:#172554}.st.ok span.n{background:#16a34a;color:#fff}
+.st i{width:26px;height:2px;background:#e2e8f0;display:block}.st.ok i{background:#16a34a}
+.grid{display:flex;gap:18px;align-items:flex-start}
+.main{flex:1.35;min-width:0}.side{flex:1;min-width:0}
+.card{background:#fff;border:1px solid #e6eefb;border-radius:18px;box-shadow:0 2px 10px rgba(30,58,138,.05);padding:20px}
+.card+.card{margin-top:14px}
+.lbl{font-size:14px;font-weight:900;color:#172554;margin-bottom:10px}
+.meth{display:flex;gap:10px}
+.opt{flex:1;display:flex;align-items:center;gap:10px;padding:14px;border-radius:14px;border:2px solid #e2e8f0;background:#fff;cursor:pointer;font-family:inherit;text-align:right;color:inherit}
+.opt.on{border-color:#1e3a8a;background:#eff6ff}
+.rd{width:20px;height:20px;border-radius:50%;border:2px solid #cbd5e1;display:flex;align-items:center;justify-content:center;flex:none}
+.opt.on .rd{border-color:#1e3a8a}.opt.on .rd:after{content:'';width:10px;height:10px;border-radius:50%;background:#1e3a8a}
+.opt b{display:block;font-size:14px;color:#172554}.opt small{display:block;font-size:11.5px;color:#64748b;font-weight:700;margin-top:2px}
+.apl{display:inline-flex;align-items:center;gap:2px;background:#000;color:#fff;border-radius:7px;padding:4px 8px;font-weight:700;font-size:12px;direction:ltr;margin-right:auto}
+.logos{display:inline-flex;gap:5px;direction:ltr;margin-right:auto}
+.form{display:flex;gap:18px;align-items:flex-start;margin-top:16px}
+.fields{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0}
+.f label{display:block;font-size:12px;font-weight:800;color:#334766;margin-bottom:6px}
+.inp{display:flex;align-items:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:12px;padding:0 12px;background:#fff;transition:.15s}
+.inp:focus-within{border:2px solid #1d4ed8;box-shadow:0 0 0 4px rgba(29,78,216,.12);padding:0 11.5px}
+.inp.bad{border-color:#dc2626}
+.inp input{flex:1;min-width:0;border:0;outline:0;font-family:inherit;font-size:16px;font-weight:700;padding:12px 0;background:transparent;direction:ltr;text-align:left;color:#1e293b}
+.inp input::placeholder{color:#94a3b8;font-weight:500}
+.row2{display:flex;gap:10px}.row2 .f{flex:1;min-width:0}
+.acc{display:flex;justify-content:space-between;align-items:center}
+.cardpv{width:270px;flex:none;aspect-ratio:1.586;border-radius:18px;padding:18px 20px;background:linear-gradient(135deg,#172554,#1d4ed8 70%,#38bdf8);color:#fff;position:relative;overflow:hidden;box-shadow:0 14px 30px rgba(30,58,138,.35);direction:ltr}
+.cardpv:before{content:'';position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.07);top:-80px;right:-60px}
+.chip{width:42px;height:30px;border-radius:6px;background:linear-gradient(135deg,#fde68a,#d4a72c)}
+.pvn{font-size:17px;letter-spacing:2px;white-space:nowrap;font-weight:700;margin-top:26px;font-family:monospace}
+.pvb{display:flex;justify-content:space-between;margin-top:16px;font-size:11px;opacity:.9}.pvb b{display:block;font-size:13px;opacity:1;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pay{width:100%;margin-top:18px;border:0;border-radius:14px;background:#1e3a8a;color:#fff;font-family:inherit;font-size:17px;font-weight:800;padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 8px 20px rgba(30,58,138,.3)}
+.pay:disabled{opacity:.6;cursor:default}
+.trust{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;color:#64748b;font-size:11.5px;font-weight:800;margin-top:12px}
+.sum .r{display:flex;justify-content:space-between;font-size:13.5px;margin-bottom:10px;gap:10px}.sum .r span{color:#64748b;font-weight:700;font-size:13px}.sum .r b{text-align:left}
+.sum hr{border:0;height:1px;background:#e6eefb;margin:4px 0 12px}
+.sum .r span.amt{font-family:Cairo,sans-serif;font-size:26px;font-weight:900;color:#172554}.amt small{font-size:13px}
+.okn{padding:10px 12px;border-radius:12px;background:#f0fdf4;color:#15803d;font-size:12.5px;font-weight:800;margin-top:12px}
+.err{display:none;padding:12px 14px;border-radius:12px;background:#fef3f2;border:1.5px solid #fecdca;color:#b42318;font-size:13px;font-weight:800;margin-top:14px}
+.apbox{text-align:center;padding:10px 0}.apbox p{color:#64748b;font-size:13px;font-weight:700;line-height:1.9;margin-top:10px}
+.mysr-form{margin-top:14px}
+.center{max-width:440px;margin:30px auto;text-align:center}
+.spin{width:78px;height:78px;border-radius:50%;border:6px solid #dbeafe;border-top-color:#1d4ed8;margin:20px auto;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+.ticket{border-radius:22px;background:#fff;box-shadow:0 12px 30px rgba(30,58,138,.12);overflow:hidden;text-align:right}
+.tk-h{padding:24px;text-align:center;color:#fff;background:linear-gradient(135deg,#15803d,#22c55e)}
+.tk-h .ic{width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.2);font-size:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 8px}
+.tk-cut{position:relative;height:22px}.tk-cut:before{content:'';position:absolute;top:10px;right:18px;left:18px;border-top:2px dashed #e2e8f0}
+.tk-cut i{position:absolute;top:0;width:22px;height:22px;border-radius:50%;background:#f0f5ff}.tk-cut i:first-child{right:-11px}.tk-cut i:last-child{left:-11px}
+.tk-b{padding:6px 22px 22px}.tk-b .r{display:flex;justify-content:space-between;font-size:13.5px;padding:7px 0}.tk-b .r span{color:#64748b;font-weight:700}
+.btn2{display:block;width:100%;margin-top:12px;border-radius:14px;padding:14px;font-family:inherit;font-weight:800;font-size:15px;text-decoration:none;text-align:center;cursor:pointer;border:0}
+.b-pri{background:#1e3a8a;color:#fff}.b-sec{background:#fff;border:1.5px solid #e2e8f0;color:#1e293b}
+.bar{display:none}
+@media (max-width:820px){
+  .grid{flex-direction:column}.main,.side{width:100%}.side{order:-1}
+  .form{flex-direction:column-reverse;align-items:stretch}.fields{width:100%}.cardpv{width:100%;max-width:360px;margin:0 auto}
+  .meth{flex-direction:column}
+  .sum .lgsum{display:none}
+  .wrap{padding-top:14px}
+  .hd{flex-direction:column;align-items:stretch}.hd .steps{order:-1}
+  .pay.desk{display:none}
+  .bar{display:block;position:fixed;bottom:0;right:0;left:0;background:#fff;border-top:1px solid #e6eefb;padding:12px 16px calc(12px + env(safe-area-inset-bottom));z-index:6}
+  .bar .pay{margin-top:0}
+}
+</style>
+</head>
+<body>
+<div class="top"><a href="/dashboard-provider.html#saai">‹ رجوع</a><b>مناقصة <i>•</i></b><span class="sec"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>صفحة دفع آمنة</span></div>
+<div class="wrap" id="app"><div class="center"><div class="spin"></div><div class="mu">جارٍ التحميل…</div></div></div>
+<script>
+(function(){
+var Q=new URLSearchParams(location.search), REF=String(Q.get('ref')||'').replace(/[^a-f0-9]/g,'').slice(0,40);
+var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
+var app=document.getElementById('app'), P=null, M='card', BUSY=false, VN=0;
+var LOCK='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+var APL='<svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.1-1.2 2.9-2.4.9-1.3 1.3-2.7 1.3-2.8 0 0-2.4-1-2.4-3.9zM14 5.4c.7-.8 1.1-1.9 1-3-1 .1-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>';
+function lg(k,w,h){w=w||34;h=h||22;var b='<svg viewBox="0 0 46 30" width="'+w+'" height="'+h+'"><rect x=".5" y=".5" width="45" height="29" rx="5" fill="#fff" stroke="#dfe3ea"/>';
+ if(k==='mada')return b+'<rect x="6" y="9" width="14" height="4.2" fill="#259bd6"/><rect x="6" y="15.5" width="14" height="4.2" fill="#84b740"/><text x="31.5" y="14" font-size="7.5" font-weight="700" fill="#1d1d1b" text-anchor="middle" font-family="Tajawal">مدى</text><text x="31.5" y="21.5" font-size="6.5" font-weight="700" fill="#1d1d1b" text-anchor="middle" font-family="Arial">mada</text></svg>';
+ if(k==='visa')return b+'<text x="23" y="19.5" font-size="12.5" font-weight="900" font-style="italic" fill="#1a1f71" text-anchor="middle" font-family="Arial">VISA</text></svg>';
+ return b+'<circle cx="19" cy="15" r="7.5" fill="#eb001b"/><circle cx="27" cy="15" r="7.5" fill="#f79e1b"/><path d="M23 8.6a7.5 7.5 0 0 1 0 12.8 7.5 7.5 0 0 1 0-12.8z" fill="#ff5f00"/></svg>';}
+function logos(w,h){return '<span class="logos">'+lg('mada',w,h)+lg('visa',w,h)+lg('mc',w,h)+'</span>';}
+var CVV='<svg viewBox="0 0 34 22" width="34" height="22"><rect x=".5" y=".5" width="33" height="21" rx="3" fill="#fff" stroke="#cbd5e1"/><rect x="1" y="4" width="32" height="4" fill="#1e293b"/><rect x="16" y="12" width="13" height="6" rx="1" fill="#fff" stroke="#dc2626"/><text x="22.5" y="16.8" font-size="4.5" fill="#dc2626" text-anchor="middle" font-family="Arial">123</text></svg>';
+var TRUST='<div class="trust"><span>🔒 اتصال مشفّر</span><span>🛡️ تحقق 3-D Secure</span><span>✓ معتمد PCI DSS</span></div>';
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function fmt(n){return Number(n||0).toLocaleString('en-US');}
+function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},o.headers||{});
+ return fetch(p,o).then(function(r){ if(r.status===401){ goLogin(); throw new Error('auth'); } return r.json().catch(function(){return {};}).then(function(j){ j.__s=r.status; return j; }); });}
+function goLogin(){ try{localStorage.removeItem('token');}catch(e){} location.href='/auth.html?redirect=pay&ref='+REF; }
+function steps(c){var L=['المبلغ','الدفع','التأكيد'];return '<div class="steps">'+L.map(function(t,i){return '<div class="st '+(i<c?'ok':(i===c?'on':''))+'"><span class="n">'+(i<c?'✓':i+1)+'</span>'+t+(i<2?'<i></i>':'')+'</div>';}).join('')+'</div>';}
+function fail(msg){ app.innerHTML='<div class="center"><div class="card"><div style="font-size:38px">⚠️</div><div class="h1" style="margin:8px 0">'+esc(msg)+'</div><a class="btn2 b-pri" href="/dashboard-provider.html#saai">العودة إلى محفظة السعي</a></div></div>'; }
+if(!REF){ fail('رابط الدفع غير صحيح'); return; }
+if(!TOK){ goLogin(); return; }
+
+function summary(){
+ return '<div class="card sum"><div class="lbl">ملخص السداد</div>'
+  +'<div class="r"><span>المشروع</span><b>'+esc(P.title)+'</b></div>'
+  +'<div class="r lgsum"><span>مبلغ الاتفاق</span><b>'+fmt(P.contract_value)+' ر.س</b></div>'
+  +'<div class="r lgsum"><span>نسبة السعي</span><b>3%</b></div><hr>'
+  +'<div class="r" style="align-items:center;margin:0"><b style="font-size:15px;color:#172554;text-align:right">المطلوب سداده</b><span class="amt">'+fmt(P.amount)+' <small>ر.س</small></span></div>'
+  +'<div class="okn">✓ يُعتمد السداد تلقائياً فور إتمام الدفع، دون الحاجة إلى رفع إيصال</div></div>';
+}
+var apOK=false; try{ apOK=!!(window.ApplePaySession&&ApplePaySession.canMakePayments()); }catch(e){}
+function render(){
+ var ap=P.applepay&&apOK; if(!ap)M='card';
+ var meth='<div class="lbl">اختر طريقة الدفع</div><div class="meth">'
+  +(ap?'<button type="button" class="opt'+(M==='apple'?' on':'')+'" data-m="apple"><span class="rd"></span><span><b>Apple Pay</b><small>الدفع السريع من جهازك</small></span><span class="apl">'+APL+'Pay</span></button>':'')
+  +'<button type="button" class="opt'+(M==='card'?' on':'')+'" data-m="card"><span class="rd"></span><span><b>بطاقة</b><small>مدى · فيزا · ماستركارد</small></span>'+logos()+'</button></div>';
+ var body;
+ if(M==='apple'){
+  body='<div class="apbox"><p>اضغط زر Apple Pay وأكّد العملية عبر Face ID أو بصمة الإصبع،<br>دون الحاجة إلى إدخال بيانات البطاقة.</p><div class="mysr-form"></div></div>';
+ } else {
+  body='<div class="form"><div class="fields">'
+   +'<div class="acc"><span class="mu" style="font-size:11.5px">البطاقات المقبولة</span>'+logos(40,26)+'</div>'
+   +'<div class="f"><label for="cn">رقم البطاقة</label><div class="inp" id="w-cn"><input id="cn" inputmode="numeric" autocomplete="cc-number" placeholder="0000 0000 0000 0000" maxlength="23"><span id="cb"></span></div></div>'
+   +'<div class="row2"><div class="f"><label for="ce">تاريخ الانتهاء</label><div class="inp" id="w-ce"><input id="ce" inputmode="numeric" autocomplete="cc-exp" placeholder="MM / YY" maxlength="7"></div></div>'
+   +'<div class="f"><label for="cv">رمز الأمان (CVV)</label><div class="inp" id="w-cv"><input id="cv" inputmode="numeric" autocomplete="cc-csc" placeholder="•••" maxlength="4" type="password">'+CVV+'</div></div></div>'
+   +'<div class="f"><label for="nm">الاسم على البطاقة</label><div class="inp" id="w-nm"><input id="nm" autocomplete="cc-name" placeholder="NAME ON CARD" maxlength="60" style="text-transform:uppercase"></div></div>'
+   +'</div><div class="cardpv"><div style="display:flex;justify-content:space-between;align-items:center;position:relative"><div class="chip"></div><b id="pvb" style="font-size:15px"></b></div><div class="pvn" id="pvn">•••• •••• •••• ••••</div><div class="pvb"><div>CARD HOLDER<b id="pvh">—</b></div><div style="text-align:right">EXPIRES<b id="pve">MM/YY</b></div></div></div></div>'
+   +'<button type="button" class="pay desk" id="payb">'+LOCK+' ادفع '+fmt(P.amount)+' ر.س</button>';
+ }
+ app.innerHTML='<div class="hd"><div><div class="h1">سداد السعي</div><div class="mu">'+esc(P.title)+'</div></div>'+steps(1)+'</div>'
+  +'<div class="grid"><div class="main"><div class="card">'+meth+body+'<div class="err" id="err"></div>'+TRUST+'</div></div><div class="side">'+summary()+'</div></div>'
+  +(M==='card'?'<div class="bar"><button type="button" class="pay" id="payb2">'+LOCK+' ادفع '+fmt(P.amount)+' ر.س</button><div class="mu" style="text-align:center;margin-top:6px;font-size:11.5px">يُعتمد السداد تلقائياً فور إتمام الدفع</div></div>':'');
+ [].forEach.call(app.querySelectorAll('.opt'),function(b){ b.onclick=function(){ if(BUSY)return; M=b.getAttribute('data-m'); render(); }; });
+ if(M==='card') wireCard(); else mountApple();
+}
+function brand(n){ if(/^4/.test(n))return 'visa'; if(/^(5[1-5]|2[2-7])/.test(n))return 'mc'; return ''; }
+function luhn(n){var s=0,a=false;for(var i=n.length-1;i>=0;i--){var d=+n[i];if(a){d*=2;if(d>9)d-=9;}s+=d;a=!a;}return s%10===0;}
+function wireCard(){
+ var cn=g('cn'),ce=g('ce'),cv=g('cv'),nm=g('nm');
+ cn.oninput=function(){ var d=cn.value.replace(/\D/g,'').slice(0,19); cn.value=d.replace(/(.{4})/g,'$1 ').trim(); g('pvn').textContent=(d+'•'.repeat(Math.max(0,16-d.length))).replace(/(.{4})/g,'$1 ').trim(); bad('cn',0); showErr(''); };
+ ce.oninput=function(){ var d=ce.value.replace(/\D/g,'').slice(0,4); ce.value=d.length>2?d.slice(0,2)+' / '+d.slice(2):d; g('pve').textContent=d.length?(d.slice(0,2)+'/'+d.slice(2)):'MM/YY'; bad('ce',0); showErr(''); };
+ cv.oninput=function(){ cv.value=cv.value.replace(/\D/g,'').slice(0,4); bad('cv',0); showErr(''); };
+ nm.oninput=function(){ g('pvh').textContent=nm.value.toUpperCase()||'—'; bad('nm',0); showErr(''); };
+ [g('payb'),g('payb2')].forEach(function(b){ if(b)b.onclick=payCard; });
+}
+function g(id){return document.getElementById(id);}
+function bad(id,on){ var w=g('w-'+id); if(w)w.classList[on?'add':'remove']('bad'); }
+function showErr(m){ var e=g('err'); if(e){ e.textContent=m; e.style.display=m?'block':'none'; } }
+function setBusy(on,txt){ BUSY=on; [g('payb'),g('payb2')].forEach(function(b){ if(b){ b.disabled=on; b.innerHTML=on?(txt||'جارٍ المعالجة…'):LOCK+' ادفع '+fmt(P.amount)+' ر.س'; } }); }
+function payCard(){
+ if(BUSY)return; showErr('');
+ var n=g('cn').value.replace(/\D/g,''), e=g('ce').value.replace(/\D/g,''), c=g('cv').value.replace(/\D/g,''), nm=g('nm').value.trim();
+ var mm=+e.slice(0,2), yy=+e.slice(2,4), now=new Date(), cy=now.getFullYear()%100, cmn=now.getMonth()+1, ok=true;
+ if(n.length<13||!luhn(n)){bad('cn',1);ok=false;}
+ if(e.length!==4||mm<1||mm>12||yy<cy||(yy===cy&&mm<cmn)){bad('ce',1);ok=false;}
+ if(c.length<3){bad('cv',1);ok=false;}
+ if(!/^[A-Za-z][A-Za-z .'-]{1,58}$/.test(nm)||nm.split(/\s+/).length<2){bad('nm',1);ok=false;}
+ if(!ok){ showErr('يُرجى التحقق من بيانات البطاقة المظللة باللون الأحمر'); return; }
+ setBusy(true,'جارٍ التحقق من البطاقة…');
+ var fd=new FormData(); fd.append('publishable_api_key',P.pk); fd.append('save_only','true'); fd.append('name',nm); fd.append('number',n); fd.append('month',String(mm)); fd.append('year',String(2000+yy)); fd.append('cvc',c);
+ fetch(P.tokens_url,{method:'POST',body:fd}).then(function(r){ return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,j:j}; }); }).then(function(x){
+   var t=x.j&&(x.j.id||x.j.token);
+   if(!x.ok||!t){ setBusy(false); showErr('تعذّر التحقق من بيانات البطاقة، يُرجى مراجعتها والمحاولة مجدداً'); return; }
+   setBusy(true,'جارٍ تنفيذ عملية الدفع…');
+   return api('/api/pay/saai/'+REF+'/card',{method:'POST',body:JSON.stringify({token:t})}).then(function(d){
+     if(d&&d.paid){ load(); return; }
+     if(d&&d.url){ setBusy(true,'جارٍ التحويل إلى صفحة التحقق الخاصة بالبنك…'); location.href=d.url; return; }
+     setBusy(false); showErr((d&&d.message)||'تعذّر إتمام عملية الدفع');
+   });
+ }).catch(function(e){ if(e&&e.message==='auth')return; setBusy(false); showErr('تعذّر الاتصال، يُرجى التحقق من الإنترنت والمحاولة مجدداً'); });
+}
+function loadAsset(tag,attrs){ return new Promise(function(ok,no){ var el=document.createElement(tag); for(var k in attrs)el.setAttribute(k,attrs[k]); el.onload=ok; el.onerror=no; document.head.appendChild(el); }); }
+function mountApple(){
+ var V='1.15.0';
+ Promise.all([loadAsset('link',{rel:'stylesheet',href:'https://cdn.moyasar.com/mpf/'+V+'/moyasar.css'}),loadAsset('script',{src:'https://cdn.moyasar.com/mpf/'+V+'/moyasar.js'})]).then(function(){
+   Moyasar.init({ element:'.mysr-form', amount:P.amount*100, currency:'SAR', description:'سعي منصة مناقصة — '+String(P.title||'').slice(0,60)+' #'+REF,
+     publishable_api_key:P.pk, callback_url:P.callback, methods:['applepay'], metadata:{ref:REF,kind:'saai'},
+     apple_pay:{country:'SA',label:'منصة مناقصة',validate_merchant_url:'https://api.moyasar.com/v1/applepay/initiate'},
+     on_completed:function(p){ return verify(p&&p.id,true); } });
+ }).catch(function(){ showErr('تعذّر تحميل Apple Pay، يُرجى اختيار الدفع بالبطاقة'); });
+}
+function verify(id,quiet){
+ if(!quiet) app.innerHTML='<div class="center">'+steps(1)+'<div class="spin"></div><div class="h1" style="font-size:19px">جارٍ التحقق من عملية الدفع</div><div class="mu" style="margin-top:8px;line-height:1.9">يُرجى عدم إغلاق الصفحة أو الرجوع حتى اكتمال العملية.</div></div>';
+ return api('/api/pay/saai/'+REF+'/verify',{method:'POST',body:JSON.stringify({id:id||''})}).then(function(d){
+   if(d&&d.paid){ history.replaceState(null,'','/pay.html?ref='+REF); return load(); }
+   if(d&&d.pending&&(VN=(VN||0)+1)<8){ setTimeout(function(){ verify(id,true); },2500); return; }
+   history.replaceState(null,'','/pay.html?ref='+REF);
+   return load().then(function(){ showErr('لم تكتمل عملية الدفع: '+((d&&d.message)||'تعذّر إتمام عملية الدفع')+'. لم يُخصم أي مبلغ، ويمكنك المحاولة مجدداً.'); });
+ }).catch(function(e){ if(e&&e.message==='auth')return; fail('تعذّر التحقق، يُرجى تحديث الصفحة'); });
+}
+function done(){
+ var dt=P.paid_at?new Date(P.paid_at):new Date(); var two=function(x){return (x<10?'0':'')+x;};
+ var ds=two(dt.getDate())+'/'+two(dt.getMonth()+1)+'/'+dt.getFullYear()+' · '+two(dt.getHours())+':'+two(dt.getMinutes());
+ var how=P.method==='applepay'?'Apple Pay':((P.card_brand?String(P.card_brand).replace(/^\w/,function(c){return c.toUpperCase();})+' ':'بطاقة ')+(P.card_last4?'···· '+P.card_last4:''));
+ var rows=[['المبلغ','<span style="font-family:Cairo,sans-serif;font-size:17px;color:#172554">'+fmt(P.amount)+' ر.س</span>'],['المشروع',esc(P.title)],['طريقة الدفع',esc(how)],['رقم العملية','<span dir="ltr">'+esc(P.moyasar_id||'')+'</span>'],['التاريخ',ds]];
+ app.innerHTML='<div class="center" style="max-width:420px">'+steps(3)+'<div class="ticket" style="margin-top:16px"><div class="tk-h"><div class="ic">✓</div><b style="font-size:19px">تم السداد بنجاح</b><div style="font-size:12.5px;opacity:.9;margin-top:4px">اعتُمد السداد تلقائياً</div></div><div class="tk-cut"><i></i><i></i></div><div class="tk-b">'
+  +rows.map(function(r){return '<div class="r"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';}).join('')+'</div></div>'
+  +'<a class="btn2 b-pri" href="/dashboard-provider.html#saai" style="margin-top:16px">العودة إلى محفظة السعي</a><div class="mu" style="margin-top:10px">أُرسل إيصال السداد إلى بريدك الإلكتروني</div></div>';
+}
+function load(){
+ return api('/api/pay/saai/'+REF).then(function(d){
+   if(d.__s===404||!d.ref){ fail((d&&d.message)||'عملية السداد غير موجودة'); return; }
+   P=d; if(P.status==='paid'){ done(); return; }
+   if(!P.online){ fail('الدفع الإلكتروني غير متاح حالياً'); return; }
+   render();
+ });
+}
+var rid=Q.get('id');
+if(rid){ verify(rid); } else load().catch(function(e){ if(e&&e.message!=='auth')fail('تعذّر التحميل، يُرجى تحديث الصفحة'); });
+})();
+</script>
+</body>
+</html>

@@ -879,7 +879,10 @@ function _authDone(d,url){
         var params=new URLSearchParams(location.search);
         var redir=params.get('redirect');
         var provId=params.get('provider_id');
-        if(redir==='work'){
+        if(redir==='pay'){
+          var _pr=String(params.get('ref')||'').replace(/[^a-f0-9]/g,'').slice(0,40);
+          location.href=_pr?'/pay.html?ref='+_pr:'dashboard-provider.html#saai';
+        } else if(redir==='work'){
           // «وثّق أعمالك»: صاحب المشروع رجع لصفحة التقييم — يتأكد ويرسل تقييمه
           var _wt=String(params.get('w')||'').replace(/[^A-Za-z0-9_-]/g,'').slice(0,40);
           location.href=_wt?'/w/'+_wt+'?after=1':(rl==='provider'?'dashboard-provider.html':'dashboard-client.html');

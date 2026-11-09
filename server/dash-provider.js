@@ -1637,7 +1637,7 @@ function _pfSection(key,title,sub,icon,node,open){
 
 function _pfWallet(){
   var box=_el('pf-wal'); if(!box)return;
-  _api('/api/provider/saai').then(function(d){
+  _payCfgGet().then(function(){ return _api('/api/provider/saai'); }).then(function(d){
     d=d||{}; var items=Array.isArray(d.items)?d.items:[];
     var pend=items.filter(function(x){return x.status==='pending';});
     var subm=items.filter(function(x){return x.status==='submitted';});
@@ -1670,7 +1670,7 @@ function _pfWallet(){
     box.innerHTML='<div class="pf-wal-h"><span class="pf-wal-ic">'+I+'</span><div style="flex:1;min-width:0"><div class="pf-wal-t">محفظة السعي</div><div class="pf-wal-s">سعي المنصة 3% من مبلغ الاتفاق النهائي</div></div>'+pill+'</div>'
       +body
       +(items.length?'<div class="pf-wal-stats"><div><b>'+fmtN(d.contract_total||0)+'</b><span>إجمالي العقود</span></div><div><b class="g">'+fmtN(d.approved_total||0)+'</b><span>مدفوع ومعتمد</span></div><div><b class="b">'+pend.length+'</b><span>مشروع مستحق</span></div></div>':'')
-      +(unpaid.length?'<div class="pf-wal-btns"><button class="pf-wal-b1" style="flex:1" onclick="gotoPage(\'saai\')">سدّد وارفع الإيصال</button></div>'
+      +(unpaid.length?'<div class="pf-wal-btns"><button class="pf-wal-b1" style="flex:1" onclick="gotoPage(\'saai\')">'+(_payOnly()?'سدّد الآن':'سدّد وارفع الإيصال')+'</button></div>'
         :'<div class="pf-wal-btns"><button class="pf-wal-b1" style="flex:1" onclick="_spSelfOpen()">سدّد السعي</button></div><div style="font-size:11.5px;color:var(--muted);font-weight:700;text-align:center;margin-top:8px;line-height:1.7">اتفقت مع عميل من المنصة؟ سدّد سعيك هنا حتى لو ما قبل عرضك داخل المنصة</div>');
   }).catch(function(){ box.innerHTML=''; box.style.display='none'; });
 }
@@ -1967,10 +1967,22 @@ function _openNewChatSearch(){
 }
 
 function _saaiSubNo(id){ var n=prompt('ما تم الاتفاق مع المقاول؟ اكتب السبب باختصار (يوصل المقاول يأكّد):'); if(n===null)return; _api('/api/sub/saai/'+id+'/nodeal',{method:'POST',body:JSON.stringify({note:n})}).then(function(r){ if(r&&r.ok){ showToast('وصل المقاول — ننتظر تأكيده','success'); loadSaai(); } else showToast((r&&r.message)||'تعذّر','error'); }); }
+// الدفع الإلكتروني: هل السداد بالبطاقة فقط لهذا المزوّد؟ (التحويل البنكي يفتحه المشرف للمبالغ الكبيرة)
+window._payCfg=null;
+function _payCfgGet(){ return window._payCfg?Promise.resolve(window._payCfg):_api('/api/pay/config').then(function(c){ window._payCfg=c||{}; return window._payCfg; }).catch(function(){ window._payCfg={online:false,bank_ok:true}; return window._payCfg; }); }
+function _payOnly(){ var c=window._payCfg; return !!(c&&c.online&&!c.bank_ok); }
+function _payGo(body,btn){
+  if(btn){btn.disabled=true;btn.textContent='جارٍ التحويل إلى صفحة الدفع…';}
+  _api('/api/pay/saai/init',{method:'POST',body:JSON.stringify(body)}).then(function(d){
+    if(d&&d.ref){ location.href='/pay.html?ref='+d.ref; return; }
+    showToast((d&&d.message)||'تعذّر إنشاء عملية السداد','error'); if(btn){btn.disabled=false;btn.textContent='متابعة إلى الدفع';}
+  }).catch(function(){ showToast('تعذّر الاتصال','error'); if(btn){btn.disabled=false;btn.textContent='متابعة إلى الدفع';} });
+}
+var _PAYNOTE='<div class="sd-s" style="text-align:center;margin-top:-4px">🔒 الدفع آمن بالبطاقة أو Apple Pay · يُعتمد السداد تلقائياً فور إتمامه</div>';
 function loadSaai(){
   var pg=_el('page-saai'); if(!pg)return;
   pg.innerHTML='<div class="loading">جاري التحميل...</div>';
-  _api('/api/provider/saai').then(function(d){
+  _payCfgGet().then(function(){ return _api('/api/provider/saai'); }).then(function(d){
     if(!d){ _loadFail(pg,'loadSaai','السعي'); return; }
     var items=d.items||[];
     var wallet='<div style="background:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(135deg,#172554,#1e3a8a 60%,#2563eb);background-size:22px 22px,22px 22px,auto;color:#fff;border-radius:18px;padding:22px;margin-bottom:16px">'
@@ -1994,8 +2006,8 @@ function loadSaai(){
             :(ds==='await_admin'?'<span class="saai-pl" style="background:#e0e7ff;color:#3730a3">⏳ التأجيل ينتظر موافقة الإدارة</span>'
             :'<span class="saai-pl" style="background:#fef9c3;color:#854d0e">⏳ بانتظار تأكيد العميل '+(x.defer_kind==='cancel'?'(إلغاء)':'(تأجيل'+(du?' لين '+du:'')+')')+'</span>');
           due='<div style="font-size:11px;color:var(--muted);margin-top:4px">اتفقتوا وتبي تسدد الحين؟ ما يحتاج تنتظر</div>';
-          act='<div class="saai-acts"><button class="btn-new" style="padding:9px 14px;font-size:12.5px" onclick="openSaaiSubmit('+x.id+','+(parseFloat(x.contract_value)||0)+','+_jsa(x.project_title||'مشروع')+')">سدّد وارفع الإيصال</button></div>'; }
-        else { pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#fef3c7;color:#d97706">'+((parseFloat(x.contract_value)||0)>0?'مستحق (تقديري) · '+fmtN(x.saai_amount)+' ر.س':'حدّد مبلغ الاتفاق')+'</span>'; act='<div class="saai-acts"><button class="btn-new" style="padding:9px 16px;font-size:12.5px" onclick="openSaaiSubmit('+x.id+','+(parseFloat(x.contract_value)||0)+','+_jsa(x.project_title||'مشروع')+')">سدّد وارفع الإيصال</button>'+((x.defer_state==='conflict')?'':(x.source==='sub'?'<button class="saai-defer" onclick="_saaiSubNo('+x.id+')">ما تم الاتفاق؟</button>':'<button class="saai-defer" onclick="_saaiDeferOpen('+x.id+','+_jsa(x.project_title||'مشروع')+')">العميل أجّل أو ألغى؟</button>'))+'</div>'; due=_saaiDue(x.due_from||x.created_at)+(x.defer_state==='conflict'?'<div style="font-size:11.5px;color:#b91c1c;font-weight:800;margin-top:4px">العميل ذكر إن '+(x.client_answer==='started'?'التنفيذ بدأ':'الاتفاق قائم')+' — لو فيه لبس تواصل معنا</div>':(x.defer_state==='resumed'?'<div style="font-size:11.5px;color:#3730a3;font-weight:800;margin-top:4px">انتهى التأجيل — المهلة بدأت من جديد</div>':'')); }
+          act='<div class="saai-acts"><button class="btn-new" style="padding:9px 14px;font-size:12.5px" onclick="openSaaiSubmit('+x.id+','+(parseFloat(x.contract_value)||0)+','+_jsa(x.project_title||'مشروع')+')">'+(_payOnly()?'سدّد الآن':'سدّد وارفع الإيصال')+'</button></div>'; }
+        else { pill='<span style="font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:20px;background:#fef3c7;color:#d97706">'+((parseFloat(x.contract_value)||0)>0?'مستحق (تقديري) · '+fmtN(x.saai_amount)+' ر.س':'حدّد مبلغ الاتفاق')+'</span>'; act='<div class="saai-acts"><button class="btn-new" style="padding:9px 16px;font-size:12.5px" onclick="openSaaiSubmit('+x.id+','+(parseFloat(x.contract_value)||0)+','+_jsa(x.project_title||'مشروع')+')">'+(_payOnly()?'سدّد الآن':'سدّد وارفع الإيصال')+'</button>'+((x.defer_state==='conflict')?'':(x.source==='sub'?'<button class="saai-defer" onclick="_saaiSubNo('+x.id+')">ما تم الاتفاق؟</button>':'<button class="saai-defer" onclick="_saaiDeferOpen('+x.id+','+_jsa(x.project_title||'مشروع')+')">العميل أجّل أو ألغى؟</button>'))+'</div>'; due=_saaiDue(x.due_from||x.created_at)+(x.defer_state==='conflict'?'<div style="font-size:11.5px;color:#b91c1c;font-weight:800;margin-top:4px">العميل ذكر إن '+(x.client_answer==='started'?'التنفيذ بدأ':'الاتفاق قائم')+' — لو فيه لبس تواصل معنا</div>':(x.defer_state==='resumed'?'<div style="font-size:11.5px;color:#3730a3;font-weight:800;margin-top:4px">انتهى التأجيل — المهلة بدأت من جديد</div>':'')); }
         return '<div style="display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)"><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px;color:#0f2544">'+_esc(x.project_title||'مشروع')+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:2px">'+(x.status==='pending'?((parseFloat(x.contract_value)||0)>0?'سعر عرضك: '+fmtN(x.contract_value)+' ر.س':'سعرك كان بالمتر/الوحدة — أدخل المبلغ الإجمالي'):'مبلغ الاتفاق: '+fmtN(x.contract_value)+' ر.س')+(x.city?' · '+_esc(x.city):'')+'</div><div style="margin-top:5px">'+pill+due+'</div></div>'+act+'</div>';
       }).join('');
       list='<div class="card" style="padding:6px 18px">'+list+'</div>';
@@ -2003,7 +2015,7 @@ function loadSaai(){
     var selfBtn='<button type="button" class="sp-self" onclick="_spSelfOpen()"><span class="sp-ic"><svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="12" y1="15" x2="16" y2="15"/></svg></span><span class="sp-tx"><b>سدّد سعي على مشروع ثاني</b><small>اتفقت مع عميل والعرض ما انقبل داخل المنصة؟ سدّد من هنا</small></span><span class="sp-ar">‹</span></button>';
     pg.innerHTML='<div class="sa-wrap"><div class="sa-m">'+wallet+list+'</div><div class="sa-s">'+selfBtn+'<div id="saai-bank"></div></div></div>';
     // بيانات التحويل + الحاسبة (لمن يحوّل مباشرة)
-    _api('/api/bank-info').then(function(bk){
+    if(!_payOnly()) _api('/api/bank-info').then(function(bk){
       bk=bk||{}; var bx=_el('saai-bank'); if(!bx)return;
       var row=function(lbl,val,copy){ return '<div style="display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border);gap:10px"><div style="font-size:12px;font-weight:700;color:var(--muted);flex-shrink:0">'+lbl+'</div><div style="display:flex;align-items:center;gap:8px"><div style="font-size:13.5px;font-weight:800;'+(copy?'direction:ltr;':'')+'word-break:break-all">'+_esc(val||'')+'</div>'+(copy?'<button onclick="_copyTxt('+_jsa(val)+',this)" style="background:var(--bg,#eef2f9);border:1px solid var(--border);border-radius:8px;padding:5px 10px;font-size:11px;font-weight:800;color:var(--p);cursor:pointer;font-family:Tajawal,sans-serif">نسخ</button>':'')+'</div></div>'; };
       bx.innerHTML=''
@@ -2034,6 +2046,7 @@ function openSaaiSubmit(id, contract, title){
   var m=_el('saaiModal'); if(!m){ m=document.createElement('div'); m.id='saaiModal'; document.body.appendChild(m); }
   m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(3px)';
   m.onclick=function(e){ if(e.target===m) m.remove(); };
+  _payCfgGet().then(function(){ if(window._spStep===2)_spRender(2); });
   if(!window._bankInfo) _api('/api/bank-info').then(function(b){ window._bankInfo=b||{}; if(window._spStep===2)_spRender(2); }).catch(function(){});
   _spRender(window._sp.contract>0?1:2, window._sp.contract>0?false:true);
 }
@@ -2050,7 +2063,7 @@ function _spRender(step, diff){
       +'<button type="button" class="sd-x" onclick="_el(\'saaiModal\').remove()">إلغاء</button></div>';
     return;
   }
-  var bk=window._bankInfo||{};
+  var bk=window._bankInfo||{}; var PO=_payOnly();
   var R=['خصم للعميل','تقليل الأعمال','زيادة الأعمال','غيره'];
   var cp=function(v){ return v?'<button type="button" class="sd-ch" style="padding:4px 10px;font-size:11.5px" onclick="_copyTxt(\''+_esc(String(v).replace(/'/g,''))+'\',this)">نسخ</button>':''; };
   m.innerHTML='<div class="sd-box" role="dialog" aria-label="سداد السعي">'+hd
@@ -2060,13 +2073,20 @@ function _spRender(step, diff){
       +(S.contract>0?'<div class="sd-when" style="padding:0"><span>وش السبب؟</span><div>'+R.map(function(r){return '<button type="button" class="sd-ch'+(S.reason===r?' on':'')+'" onclick="window._sp.reason=\''+r+'\';[].forEach.call(this.parentNode.children,function(x){x.classList.remove(\'on\')});this.classList.add(\'on\')">'+r+'</button>';}).join('')+'</div></div>':'')
       :'<div class="sd-info" style="display:flex;justify-content:space-between;align-items:center"><span>المبلغ المتفق عليه</span><b>'+fmtN(S.amt)+' ر.س</b></div>')
     +'<div style="background:#eff4ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:11px;text-align:center"><div style="font-size:12px;color:#1d4ed8;font-weight:800">السعي المستحق (3%)</div><div id="sp-fee" style="font-family:Cairo,sans-serif;font-size:24px;font-weight:900;color:#0f2544">'+fmtN(Math.round((S.amt||0)*0.03))+' ر.س</div></div>'
-    +(bk.iban?'<div class="sd-info"><b>حوّل على:</b> '+_esc(bk.bank_name||'')+(bk.account_name?' · '+_esc(bk.account_name):'')
+    +(PO?'<button type="button" id="saai-pay" class="sd-send" onclick="_spPay(this)">متابعة إلى الدفع</button>':
+    (bk.iban?'<div class="sd-info"><b>حوّل على:</b> '+_esc(bk.bank_name||'')+(bk.account_name?' · '+_esc(bk.account_name):'')
       +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:5px"><span style="direction:ltr;font-weight:900;word-break:break-all">'+_esc(bk.iban)+'</span>'+cp(bk.iban)+'</div></div>':'')
     +'<label style="display:flex;gap:10px;align-items:center;border:1.8px dashed #93c5fd;background:#f8fbff;border-radius:13px;padding:13px;font-size:13px;font-weight:800;color:#1e3a8a;cursor:pointer">📎 <span id="saai-proof-lbl">ارفع إيصال التحويل</span><span style="margin-right:auto;font-size:11.5px;color:#64748b">صورة أو PDF</span>'
       +'<input type="file" id="saai-proof" accept="image/*,application/pdf" onchange="_onSaaiProof(this)" style="display:none"></label>'
-    +'<button type="button" id="saai-send" class="sd-send" onclick="submitSaai()">إرسال للاعتماد</button>'
+    +'<button type="button" id="saai-send" class="sd-send" onclick="submitSaai()">إرسال للاعتماد</button>')
     +(S.contract>0?'<button type="button" class="sd-x" onclick="_spRender(1)">رجوع</button>':'<button type="button" class="sd-x" onclick="_el(\'saaiModal\').remove()">إلغاء</button>')
-    +'<div class="sd-s" style="text-align:center;margin-top:-4px">بعد الإرسال تراجع الإدارة الإيصال وتعتمد الاستلام.</div></div>';
+    +(PO?_PAYNOTE:'<div class="sd-s" style="text-align:center;margin-top:-4px">بعد الإرسال تراجع الإدارة الإيصال وتعتمد الاستلام.</div>')+'</div>';
+}
+function _spPay(btn){
+  var S=window._sp||{}; var amt=Math.round(parseFloat(S.amt)||0);
+  if(amt<=0){ showToast('أدخل المبلغ المتفق عليه','error'); return; }
+  if(S.diff&&S.contract>0&&amt!==S.contract&&!S.reason){ showToast('اختر سبب اختلاف المبلغ','error'); return; }
+  _payGo({ledger_id:window._saaiId,contract_value:amt,reason:(S.diff&&amt!==S.contract)?S.reason:''},btn);
 }
 // ═══ السداد الذاتي: يختار المشروع (من عروضه حتى المقفلة) أو يكتب اسمه ← المبلغ ← الإيصال ═══
 window._ss={rid:null,title:'',amt:0,list:[]};
@@ -2076,6 +2096,7 @@ function _spSelfOpen(){
   m.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(3px)';
   m.onclick=function(e){ if(e.target===m) m.remove(); };
   m.innerHTML='<div class="sd-box"><div class="sd-t">سداد السعي</div><div class="sd-s">جاري تحميل مشاريعك…</div></div>';
+  _payCfgGet().then(function(){ _ssRender(); });
   if(!window._bankInfo) _api('/api/bank-info').then(function(b){ window._bankInfo=b||{}; _ssRender(); }).catch(function(){});
   _api('/api/provider/saai/projects').then(function(l){ window._ss.list=Array.isArray(l)?l:[]; _ssRender(); }).catch(function(){ window._ss.list=[]; _ssRender(); });
 }
@@ -2099,11 +2120,18 @@ function _ssRender(){
     +(other?'<input id="ss-title" maxlength="120" placeholder="اسم المشروع أو العميل" value="'+_esc(S.title)+'" oninput="window._ss.title=this.value" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-family:Tajawal,sans-serif;font-size:14px">':'')
     +(S.rid?'<div><label style="display:block;font-size:12.5px;font-weight:800;color:#334766;margin-bottom:6px">المبلغ اللي اتفقتوا عليه (ر.س)</label><input id="ss-amt" type="number" inputmode="numeric" value="'+(S.amt||'')+'" oninput="window._ss.amt=parseFloat(this.value)||0;var e=_el(\'ss-fee\');if(e)e.textContent=fmtN(Math.round(window._ss.amt*0.03))+\' ر.س\'" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid var(--border);border-radius:12px;font-family:Tajawal,sans-serif;font-size:16px;font-weight:900"></div>'
       +'<div style="background:#eff4ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:10px;text-align:center"><div style="font-size:12px;color:#1d4ed8;font-weight:800">السعي (3%)</div><div id="ss-fee" style="font-family:Cairo,sans-serif;font-size:22px;font-weight:900;color:#0f2544">'+fmtN(Math.round((S.amt||0)*0.03))+' ر.س</div></div>'
-      +(bk.iban?'<div class="sd-info"><b>حوّل على:</b> '+_esc(bk.bank_name||'')+(bk.account_name?' · '+_esc(bk.account_name):'')+'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:5px"><span style="direction:ltr;font-weight:900;word-break:break-all">'+_esc(bk.iban)+'</span><button type="button" class="sd-ch" style="padding:4px 10px;font-size:11.5px" onclick="_copyTxt(\''+_esc(String(bk.iban).replace(/\'/g,''))+'\',this)">نسخ</button></div></div>':'')
+      +(_payOnly()?'<button type="button" id="ss-pay" class="sd-send" onclick="_ssPay(this)">متابعة إلى الدفع</button>'+_PAYNOTE:(bk.iban?'<div class="sd-info"><b>حوّل على:</b> '+_esc(bk.bank_name||'')+(bk.account_name?' · '+_esc(bk.account_name):'')+'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:5px"><span style="direction:ltr;font-weight:900;word-break:break-all">'+_esc(bk.iban)+'</span><button type="button" class="sd-ch" style="padding:4px 10px;font-size:11.5px" onclick="_copyTxt(\''+_esc(String(bk.iban).replace(/\'/g,''))+'\',this)">نسخ</button></div></div>':'')
       +'<label style="display:flex;gap:10px;align-items:center;border:1.8px dashed #93c5fd;background:#f8fbff;border-radius:13px;padding:13px;font-size:13px;font-weight:800;color:#1e3a8a;cursor:pointer">📎 <span id="saai-proof-lbl">'+(window._saaiProof?'✓ تم إرفاق الإيصال':'ارفع إيصال التحويل')+'</span><span style="margin-right:auto;font-size:11.5px;color:#64748b">صورة أو PDF</span><input type="file" accept="image/*,application/pdf" onchange="_onSaaiProof(this)" style="display:none"></label>'
       +'<button type="button" id="ss-send" class="sd-send" onclick="_ssSend()">إرسال للاعتماد</button>'
-      +'<div class="sd-s" style="text-align:center;margin-top:-4px">بعد اعتماد الإدارة ينحسب المشروع لك وتقدر تطلب تقييم العميل</div>':'')
+      +'<div class="sd-s" style="text-align:center;margin-top:-4px">بعد اعتماد الإدارة ينحسب المشروع لك وتقدر تطلب تقييم العميل</div>')+'':'')
     +'<button type="button" class="sd-x" onclick="_el(\'saaiModal\').remove()">إلغاء</button></div>';
+}
+function _ssPay(btn){
+  var S=window._ss, amt=Math.round(parseFloat(S.amt)||0);
+  if(S.rid===-1&&String(S.title||'').trim().length<3){ showToast('اكتب اسم المشروع','error'); return; }
+  if(amt<=0){ showToast('أدخل المبلغ اللي اتفقتوا عليه','error'); return; }
+  var body={contract_value:amt}; if(S.rid>0)body.request_id=S.rid; else body.title=S.title;
+  _payGo(body,btn);
 }
 function _ssSend(){
   var S=window._ss, amt=Math.round(parseFloat(S.amt)||0);

@@ -156,13 +156,13 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 // المصادر المسموحة (خطوط جوجل، أدوات التحليل والبكسلات، مكتبات CDN، خرائط جوجل، صور R2/Cloudinary)
 const _CSP_RO = process.env.CSP_OFF === '1' ? '' : [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' https://www.clarity.ms https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://analytics.tiktok.com https://sc-static.net https://connect.facebook.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/client https://appleid.cdn-apple.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
+  "script-src 'self' 'unsafe-inline' https://www.clarity.ms https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://analytics.tiktok.com https://sc-static.net https://connect.facebook.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/client https://appleid.cdn-apple.com https://cdn.moyasar.com https://applepay.cdn-apple.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style https://cdn.moyasar.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "connect-src 'self' wss: https://accounts.google.com/gsi/ https://appleid.apple.com https://manaqasati-production.up.railway.app https://manaqasa.com https://www.manaqasa.com https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.tiktok.com https://*.tiktokw.us https://tr.snapchat.com https://*.snapchat.com https://www.facebook.com https://*.facebook.com https://cdn.jsdelivr.net" + (R2_PUBLIC_URL ? ' ' + R2_PUBLIC_URL.replace(/\/+$/,'') : ''),
-  "frame-src 'self' https://accounts.google.com https://appleid.apple.com https://maps.google.com https://www.google.com https://www.facebook.com https://*.tiktok.com",
+  "connect-src 'self' wss: https://api.moyasar.com https://accounts.google.com/gsi/ https://appleid.apple.com https://manaqasati-production.up.railway.app https://manaqasa.com https://www.manaqasa.com https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://*.analytics.google.com https://analytics.tiktok.com https://*.tiktok.com https://*.tiktokw.us https://tr.snapchat.com https://*.snapchat.com https://www.facebook.com https://*.facebook.com https://cdn.jsdelivr.net" + (R2_PUBLIC_URL ? ' ' + R2_PUBLIC_URL.replace(/\/+$/,'') : ''),
+  "frame-src 'self' https://*.moyasar.com https://accounts.google.com https://appleid.apple.com https://maps.google.com https://www.google.com https://www.facebook.com https://*.tiktok.com",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "object-src 'none'",
@@ -194,7 +194,7 @@ app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
   if (p.startsWith('/api/')) return next();
-  const deny = p.startsWith('/node_modules') || /(^|\/)\./.test(p)
+  const deny = p.startsWith('/node_modules') || (/(^|\/)\./.test(p) && p !== '/.well-known/apple-developer-merchantid-domain-association')
     || /^\/contracts\/[^/]+\.(pdf|docx|json)$/.test(p) || /^\/[a-z0-9-]+\.docx$/.test(p)
     || (/\.(js|mjs|cjs|ts|map)$/.test(p) && !_PUBLIC_JS.has(p))
     || (/\.(json|patch|diff|log|md|sql|lock|env|sh|ya?ml|bak|orig|txt|csv|zip|gz|tar)$/.test(p) && p !== '/manifest.json' && p !== '/robots.txt');
@@ -3979,6 +3979,9 @@ async function setupDatabase() {
     // سداد ذاتي: المزوّد يسدد بنفسه (اتفق برا أو العميل ما قبل داخل المنصة) — مشروع من عروضه أو مشروع خارج القائمة
     try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS decided_at TIMESTAMP'); } catch(e){}
     try { await _mig("ALTER TABLE users ADD COLUMN IF NOT EXISTS tours_seen TEXT[] DEFAULT '{}'"); } catch(e){}
+    try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS pay_method VARCHAR(10)'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS pay_ref VARCHAR(80)'); await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ok BOOLEAN DEFAULT FALSE');
+      await _mig(`CREATE TABLE IF NOT EXISTS saai_payments (id SERIAL PRIMARY KEY, ref VARCHAR(40) UNIQUE NOT NULL, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, ledger_id INTEGER, request_id INTEGER, self_title TEXT, contract_value NUMERIC(14,2), amount INTEGER NOT NULL, reason VARCHAR(60), status VARCHAR(12) DEFAULT 'new', method VARCHAR(12), moyasar_id VARCHAR(80) UNIQUE, card_brand VARCHAR(20), card_last4 VARCHAR(8), err TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), paid_at TIMESTAMPTZ)`);
+      await _mig('CREATE INDEX IF NOT EXISTS saai_payments_prov ON saai_payments(provider_id, created_at DESC)'); } catch(e){ console.error('pay mig:', e.message); }
     try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS source VARCHAR(10)'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS self_title TEXT'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS self_reason TEXT'); } catch(e){}
     try { await _mig("DELETE FROM saai_ledger WHERE provider_id IS NULL OR (request_id IS NULL AND self_title IS NULL)"); } catch(e){}
     // التحقق برمز من 6 أرقام (بديل الرابط لو ما اشتغل عند بعض تطبيقات البريد)
@@ -7944,7 +7947,7 @@ app.get('/api/admin/saai', requirePermission('settings.manage'), async (req, res
               COALESCE(r.title, s.self_title) AS project_title, r.city, b.price AS offer_price, b.price_unit, s.source, s.self_title, s.self_reason, r.assigned_provider_id AS req_assigned, r.status AS req_status,
               COALESCE(NULLIF(u.business_name,''), u.name) AS provider_name, u.id AS provider_id, u.phone AS provider_phone,
               (SELECT COUNT(*) FROM saai_ledger s2 WHERE s2.provider_id=s.provider_id AND s2.status='approved' AND s2.id<>s.id)::int AS provider_paid_n,
-              GREATEST(0, EXTRACT(EPOCH FROM (NOW() - COALESCE(s.due_from,s.created_at)))/86400)::int AS age_days, COALESCE(s.due_from,s.created_at) AS due_from, s.defer_kind, s.defer_until, s.defer_state, s.defer_at, s.defer_note, s.client_answer, s.client_answer_at, s.defer_count, s.decided_at, r.assigned_at, cl.name AS client_name, cl.phone AS client_phone
+              GREATEST(0, EXTRACT(EPOCH FROM (NOW() - COALESCE(s.due_from,s.created_at)))/86400)::int AS age_days, COALESCE(s.due_from,s.created_at) AS due_from, s.defer_kind, s.defer_until, s.defer_state, s.defer_at, s.defer_note, s.client_answer, s.client_answer_at, s.defer_count, s.decided_at, r.assigned_at, cl.name AS client_name, cl.phone AS client_phone, s.pay_method, s.pay_ref, COALESCE(u.bank_ok,FALSE) AS provider_bank_ok
        FROM saai_ledger s
        LEFT JOIN requests r ON r.id=s.request_id
        JOIN users u ON u.id=s.provider_id
@@ -7973,7 +7976,7 @@ app.get('/api/admin/saai', requirePermission('settings.manage'), async (req, res
        FROM generate_series(date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh') - INTERVAL '5 months', date_trunc('month', now() AT TIME ZONE 'Asia/Riyadh'), INTERVAL '1 month') m ORDER BY m`)).rows;
     sum.due_total = (sum.due||0) + (sum.overdue||0);
     r.rows.forEach(x => { if (x.proof_url) x.proof_url = _pf(x.proof_url); });
-    res.json({ items: r.rows, summary: Object.assign(sum, { awaiting_sum: sum.awaiting }), monthly });
+    res.json({ items: r.rows, summary: Object.assign(sum, { awaiting_sum: sum.awaiting }), monthly, online: _payOn() });
   } catch(e){ console.error('admin-saai:', e.message); res.json({ items: [], summary: {}, monthly: [] }); }
 });
 // الجولة التعريفية: وش شاف المستخدم (مرة وحدة لكل حساب)
@@ -8082,6 +8085,7 @@ app.post('/api/admin/saai/:id/approve', requirePermission('settings.manage'), as
 app.post('/api/provider/saai/:id/submit', auth, async (req, res) => {
   try {
     if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
+    if (!(await _bankAllowed(req.user.id))) return res.status(403).json({ code: 'pay_online', message: 'يتم سداد السعي إلكترونياً بالبطاقة أو Apple Pay' });
     const id = parseInt(req.params.id);
     const newVal = Math.max(0, parseFloat(req.body.contract_value)||0);
     const proof = req.body.proof || null;
@@ -8227,6 +8231,7 @@ app.get('/api/provider/saai/projects', auth, async (req, res) => {
 app.post('/api/provider/saai/self', auth, rateLimiter(10, 600000), async (req, res) => {
   try {
     if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
+    if (!(await _bankAllowed(req.user.id))) return res.status(403).json({ code: 'pay_online', message: 'يتم سداد السعي إلكترونياً بالبطاقة أو Apple Pay' });
     const val = Math.round(Math.max(0, parseFloat(req.body.contract_value) || 0));
     if (!(val > 0)) return res.status(400).json({ message: 'أدخل المبلغ اللي اتفقتوا عليه' });
     const proof = String(req.body.proof || '');
@@ -8264,6 +8269,185 @@ app.post('/api/provider/saai/self', auth, rateLimiter(10, 600000), async (req, r
     _notifyAdmins('💰 سداد سعي ذاتي', `مزوّد سدّد ${fee.toLocaleString('en-US')} ر.س على «${rid ? 'مشروع #' + rid : title}» — راجع الإيصال`).catch(()=>{});
     res.json({ ok: true, id });
   } catch(e){ console.error('saai-self:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
+});
+// ═══ الدفع الإلكتروني (بوابة ميسّر) — سداد السعي ═══
+// المفاتيح من Railway فقط: MOYASAR_SK (سري) و MOYASAR_PK (عام). لا يظهر اسم البوابة للمستخدم.
+const MOYASAR_SK = process.env.MOYASAR_SK || '', MOYASAR_PK = process.env.MOYASAR_PK || '';
+const MOYASAR_API = (process.env.MOYASAR_API || 'https://api.moyasar.com/v1').replace(/\/+$/,'');
+const _payOn = () => !!(MOYASAR_SK && MOYASAR_PK);
+async function _bankAllowed(uid){
+  if (!_payOn()) return true;
+  try { const r = (await pool.query('SELECT bank_ok FROM users WHERE id=$1', [uid])).rows[0]; return !!(r && r.bank_ok); } catch(e){ return false; }
+}
+async function _mysr(method, path, body){
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 20000);
+  try {
+    const r = await fetch(MOYASAR_API + path, { method, signal: ctl.signal, headers: { 'Authorization': 'Basic ' + Buffer.from(MOYASAR_SK + ':').toString('base64'), 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+    let j = {}; try { j = await r.json(); } catch(e){}
+    return { ok: r.ok, status: r.status, data: j || {} };
+  } finally { clearTimeout(tm); }
+}
+const _payErr = (m) => { m = String(m || '').trim(); if (/insufficient/i.test(m)) return 'الرصيد غير كافٍ'; if (/declin|reject/i.test(m)) return 'رُفضت العملية من البنك المُصدِر للبطاقة'; if (/expired/i.test(m)) return 'البطاقة منتهية الصلاحية'; if (/3.?d|authenticat/i.test(m)) return 'لم يكتمل التحقق من البنك'; return 'تعذّر إتمام عملية الدفع'; };
+app.get('/api/pay/config', auth, async (req, res) => {
+  try {
+    const u = (await pool.query('SELECT bank_ok FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
+    const ap = (await getSetting('applepay_on', '0')) === '1';
+    res.json({ online: _payOn(), bank_ok: !_payOn() || !!u.bank_ok, applepay: _payOn() && ap });
+  } catch(e){ res.json({ online: false, bank_ok: true, applepay: false }); }
+});
+// إنشاء طلب سداد (يحدد المبلغ النهائي) ← يرجّع رقم مرجعي لصفحة الدفع
+app.post('/api/pay/saai/init', auth, rateLimiter(30, 600000), async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.status(403).json({ message: 'للمزوّدين فقط' });
+    if (!_payOn()) return res.status(503).json({ message: 'الدفع الإلكتروني غير متاح حالياً' });
+    const val = Math.round(Math.max(0, parseFloat(req.body.contract_value) || 0));
+    if (!(val > 0)) return res.status(400).json({ message: 'أدخل المبلغ المتفق عليه' });
+    const fee = Math.round(val * SAAI_RATE);
+    if (fee < 1) return res.status(400).json({ message: 'المبلغ أقل من الحد الأدنى للسداد الإلكتروني' });
+    const reason = _cleanTxt(req.body.reason || '', 40) || null;
+    let ledgerId = parseInt(req.body.ledger_id) || null, rid = null, title = null;
+    if (ledgerId) {
+      const row = (await pool.query('SELECT s.id, s.status, s.request_id, COALESCE(r.title, s.self_title) AS title FROM saai_ledger s LEFT JOIN requests r ON r.id=s.request_id WHERE s.id=$1 AND s.provider_id=$2', [ledgerId, req.user.id])).rows[0];
+      if (!row) return res.status(404).json({ message: 'السجل غير موجود' });
+      if (row.status === 'approved') return res.status(400).json({ message: 'هذا السعي مسدّد ومعتمد مسبقاً' });
+      rid = row.request_id; title = row.title;
+    } else {
+      rid = parseInt(req.body.request_id) || null; title = _cleanTxt(req.body.title || '', 120);
+      if (rid) {
+        const b = (await pool.query('SELECT r.title, r.assigned_provider_id FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.request_id=$1 AND b.provider_id=$2', [rid, req.user.id])).rows[0];
+        if (!b) return res.status(400).json({ message: 'لم نجد عرضك على هذا المشروع' });
+        if (b.assigned_provider_id && String(b.assigned_provider_id) !== String(req.user.id)) return res.status(400).json({ message: 'هذا المشروع مُسنَد إلى مزوّد آخر' });
+        const ex = (await pool.query('SELECT id, status FROM saai_ledger WHERE request_id=$1 AND provider_id=$2', [rid, req.user.id])).rows[0];
+        if (ex && ex.status === 'approved') return res.status(400).json({ message: 'سعي هذا المشروع مسدّد ومعتمد مسبقاً' });
+        if (ex) ledgerId = ex.id;
+        title = b.title;
+      } else if (title.length < 3) return res.status(400).json({ message: 'اختر المشروع أو اكتب اسمه' });
+    }
+    const ref = crypto.randomBytes(12).toString('hex');
+    await pool.query(`INSERT INTO saai_payments (ref, provider_id, ledger_id, request_id, self_title, contract_value, amount, reason) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [ref, req.user.id, ledgerId, rid, title || 'مشروع', val, fee, reason]);
+    res.json({ ok: true, ref, amount: fee });
+  } catch(e){ console.error('pay-init:', e.message); res.status(500).json({ message: 'تعذّر إنشاء عملية السداد' }); }
+});
+async function _payRow(ref, uid){
+  const r = (await pool.query('SELECT * FROM saai_payments WHERE ref=$1', [String(ref || '').slice(0, 40)])).rows[0];
+  if (!r || String(r.provider_id) !== String(uid)) return null;
+  return r;
+}
+app.get('/api/pay/saai/:ref', auth, async (req, res) => {
+  try {
+    const p = await _payRow(req.params.ref, req.user.id);
+    if (!p) return res.status(404).json({ message: 'عملية السداد غير موجودة' });
+    const ap = _payOn() && (await getSetting('applepay_on', '0')) === '1';
+    res.json({ ref: p.ref, amount: p.amount, contract_value: Number(p.contract_value), title: p.self_title, status: p.status, method: p.method, card_brand: p.card_brand, card_last4: p.card_last4, paid_at: p.paid_at, moyasar_id: p.status === 'paid' ? p.moyasar_id : null, pk: MOYASAR_PK, applepay: ap, online: _payOn(), callback: SITE_URL + '/pay.html?ref=' + p.ref, tokens_url: process.env.MOYASAR_TOKENS_URL || 'https://api.moyasar.com/v1/tokens' });
+  } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// اعتماد السداد بعد التأكد من البوابة مباشرة (لا نعتمد على ما تقوله الصفحة)
+async function _payFinalize(p, pay){
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const cur = (await c.query('SELECT * FROM saai_payments WHERE id=$1 FOR UPDATE', [p.id])).rows[0];
+    if (cur.status === 'paid') { await c.query('COMMIT'); return { already: true }; }
+    const src = pay.source || {};
+    const method = src.type === 'applepay' ? 'applepay' : 'card';
+    const last4 = String(src.number || src.last_four || '').replace(/[^0-9]/g, '').slice(-4) || null;
+    await c.query(`UPDATE saai_payments SET status='paid', paid_at=NOW(), moyasar_id=$2, method=$3, card_brand=$4, card_last4=$5, err=NULL WHERE id=$1`, [p.id, pay.id, method, String(src.company || src.scheme || '').slice(0, 20) || null, last4]);
+    const val = Number(cur.contract_value), fee = cur.amount;
+    let ledgerId = cur.ledger_id;
+    if (!ledgerId && cur.request_id) { const ex = (await c.query('SELECT id FROM saai_ledger WHERE request_id=$1 AND provider_id=$2', [cur.request_id, cur.provider_id])).rows[0]; if (ex) ledgerId = ex.id; }
+    if (ledgerId) {
+      const row = (await c.query('SELECT contract_value, edits_log, status FROM saai_ledger WHERE id=$1 FOR UPDATE', [ledgerId])).rows[0];
+      let log = Array.isArray(row && row.edits_log) ? row.edits_log : [];
+      if (row && Number(row.contract_value) !== val) log.push({ from: Number(row.contract_value), to: val, at: new Date().toISOString(), by: 'provider', reason: cur.reason || 'سداد إلكتروني' });
+      await c.query(`UPDATE saai_ledger SET contract_value=$1, saai_amount=$2, status='approved', approved_at=NOW(), decided_at=NOW(), submitted_at=COALESCE(submitted_at,NOW()), pay_method=$3, pay_ref=$4, edits_log=$5::jsonb WHERE id=$6`, [val, fee, method, pay.id, JSON.stringify(log.slice(-30)), ledgerId]);
+    } else {
+      let bidId = null; if (cur.request_id) { const b = (await c.query('SELECT id FROM bids WHERE request_id=$1 AND provider_id=$2', [cur.request_id, cur.provider_id])).rows[0]; bidId = b ? b.id : null; }
+      ledgerId = (await c.query(`INSERT INTO saai_ledger (request_id, provider_id, bid_id, contract_value, saai_amount, status, submitted_at, approved_at, decided_at, source, self_title, self_reason, pay_method, pay_ref, edits_log)
+        VALUES ($1,$2,$3,$4,$5,'approved',NOW(),NOW(),NOW(),'self',$6,$7,$8,$9,'[]'::jsonb) RETURNING id`, [cur.request_id, cur.provider_id, bidId, val, fee, cur.request_id ? null : cur.self_title, cur.reason, method, pay.id])).rows[0].id;
+      await c.query('UPDATE saai_payments SET ledger_id=$1 WHERE id=$2', [ledgerId, p.id]);
+    }
+    await c.query('COMMIT');
+    try { await notify(cur.provider_id, 'تم سداد السعي بنجاح ✅', 'اعتُمد سداد سعي المنصة (' + fee.toLocaleString('en-US') + ' ر.س) على «' + (cur.self_title || 'مشروع') + '» تلقائياً. شكراً لالتزامك.', 'saai_approved', cur.request_id); } catch(e){}
+    _notifyAdmins('💳 سداد سعي إلكتروني', `${fee.toLocaleString('en-US')} ر.س على «${cur.self_title || 'مشروع'}» — اعتُمد تلقائياً`, 'saai', ledgerId).catch(()=>{});
+    try { const u = (await pool.query('SELECT email, name FROM users WHERE id=$1', [cur.provider_id])).rows[0];
+      if (u && u.email) { const t = 'إيصال سداد سعي المنصة'; sendEmail(u.email, t, emailTpl(t, `<p>مرحباً${u.name ? ' ' + eEsc(u.name) : ''}،</p><p>تم استلام سداد سعي المنصة بنجاح، واعتُمد تلقائياً.</p><p>المشروع: <b>${eEsc(cur.self_title || 'مشروع')}</b><br>المبلغ: <b>${fee.toLocaleString('en-US')} ر.س</b><br>رقم العملية: <b dir="ltr">${eEsc(String(pay.id))}</b></p>`, 'محفظة السعي', SITE_URL + '/dashboard-provider.html')).catch(()=>{}); } } catch(e){}
+    return { ok: true, ledger_id: ledgerId };
+  } catch(e){ try { await c.query('ROLLBACK'); } catch(_){} throw e; } finally { c.release(); }
+}
+function _payMatches(p, pay){
+  if (!pay || !pay.id) return false;
+  if (String(pay.currency || '').toUpperCase() !== 'SAR') return false;
+  if (Number(pay.amount) !== p.amount * 100) return false;
+  const md = pay.metadata || {};
+  return md.ref === p.ref || String(pay.description || '').includes('#' + p.ref);
+}
+// الدفع بالبطاقة: الصفحة ترسل رمز البطاقة (بيانات البطاقة ما تمر على سيرفرنا) ← ننشئ العملية ← تحقق البنك
+app.post('/api/pay/saai/:ref/card', auth, rateLimiter(15, 600000), async (req, res) => {
+  try {
+    if (!_payOn()) return res.status(503).json({ message: 'الدفع الإلكتروني غير متاح حالياً' });
+    const p = await _payRow(req.params.ref, req.user.id);
+    if (!p) return res.status(404).json({ message: 'عملية السداد غير موجودة' });
+    if (p.status === 'paid') return res.json({ ok: true, paid: true });
+    const token = String(req.body.token || '').trim();
+    if (!/^[A-Za-z0-9_\-]{6,120}$/.test(token)) return res.status(400).json({ message: 'بيانات البطاقة غير مكتملة' });
+    const r = await _mysr('POST', '/payments', { amount: p.amount * 100, currency: 'SAR', description: 'سعي منصة مناقصة — ' + String(p.self_title || 'مشروع').slice(0, 60) + ' #' + p.ref, callback_url: SITE_URL + '/pay.html?ref=' + p.ref, source: { type: 'token', token }, metadata: { ref: p.ref, kind: 'saai', provider: String(p.provider_id) } });
+    const d = r.data || {}, src = d.source || {};
+    if (!r.ok || !d.id) { const m = _payErr(d.message || (d.errors && JSON.stringify(d.errors))); await pool.query("UPDATE saai_payments SET status='failed', err=$2 WHERE id=$1", [p.id, String(d.message || r.status).slice(0, 300)]); return res.status(400).json({ message: m }); }
+    if (d.status === 'paid') { if (!_payMatches(p, d)) return res.status(400).json({ message: 'تعذّر التحقق من العملية' }); await _payFinalize(p, d); return res.json({ ok: true, paid: true }); }
+    if (d.status === 'initiated' && src.transaction_url) { await pool.query("UPDATE saai_payments SET status='initiated', moyasar_id=$2, err=NULL WHERE id=$1", [p.id, d.id]); return res.json({ ok: true, url: src.transaction_url }); }
+    await pool.query("UPDATE saai_payments SET status='failed', err=$2 WHERE id=$1", [p.id, String(src.message || d.status || '').slice(0, 300)]);
+    res.status(400).json({ message: _payErr(src.message) });
+  } catch(e){ console.error('pay-card:', e.message); res.status(500).json({ message: 'تعذّر الاتصال ببوابة الدفع، يُرجى المحاولة مجدداً' }); }
+});
+// التحقق بعد الرجوع من البنك أو بعد Apple Pay — نسأل البوابة مباشرة
+app.post('/api/pay/saai/:ref/verify', auth, rateLimiter(40, 600000), async (req, res) => {
+  try {
+    if (!_payOn()) return res.status(503).json({ message: 'الدفع الإلكتروني غير متاح حالياً' });
+    const p = await _payRow(req.params.ref, req.user.id);
+    if (!p) return res.status(404).json({ message: 'عملية السداد غير موجودة' });
+    if (p.status === 'paid') return res.json({ ok: true, paid: true });
+    const id = String(req.body.id || p.moyasar_id || '').trim();
+    if (!/^[A-Za-z0-9_\-]{6,80}$/.test(id)) return res.status(400).json({ message: 'لم نتمكن من التحقق من العملية' });
+    const used = (await pool.query('SELECT 1 FROM saai_payments WHERE moyasar_id=$1 AND id<>$2', [id, p.id])).rows[0];
+    if (used) return res.status(400).json({ message: 'هذه العملية مستخدمة مسبقاً' });
+    const r = await _mysr('GET', '/payments/' + encodeURIComponent(id));
+    const d = r.data || {};
+    if (!r.ok || !d.id) return res.status(400).json({ message: 'لم نتمكن من التحقق من العملية' });
+    if (d.status === 'paid') {
+      if (!_payMatches(p, d)) { await pool.query("UPDATE saai_payments SET err='mismatch' WHERE id=$1", [p.id]); return res.status(400).json({ message: 'بيانات العملية غير مطابقة — تواصل مع الدعم' }); }
+      await _payFinalize(p, d); return res.json({ ok: true, paid: true });
+    }
+    if (d.status === 'initiated') return res.json({ ok: false, pending: true, message: 'العملية قيد التحقق' });
+    const msg = _payErr((d.source || {}).message);
+    await pool.query("UPDATE saai_payments SET status='failed', moyasar_id=COALESCE(moyasar_id,$3), err=$2 WHERE id=$1", [p.id, String((d.source || {}).message || d.status || '').slice(0, 300), (await pool.query('SELECT 1 FROM saai_payments WHERE moyasar_id=$1', [id])).rows[0] ? null : id]);
+    res.json({ ok: false, message: msg });
+  } catch(e){ console.error('pay-verify:', e.message); res.status(500).json({ message: 'تعذّر التحقق، يُرجى المحاولة مجدداً' }); }
+});
+// الإدارة: السماح بالتحويل البنكي لمزوّد معيّن (للمبالغ الكبيرة)
+app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const on = !!(req.body && req.body.on);
+    const r = await pool.query('UPDATE users SET bank_ok=$1 WHERE id=$2 RETURNING id', [on, parseInt(req.params.id)]);
+    if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
+    logAdmin(req, on ? 'bank_ok_on' : 'bank_ok_off', 'user', parseInt(req.params.id), '').catch(()=>{});
+    res.json({ ok: true, bank_ok: on });
+  } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/pay/settings', requirePermission('settings.manage'), async (req, res) => {
+  try { res.json({ online: _payOn(), applepay: (await getSetting('applepay_on', '0')) === '1', has_assoc: !!(await getSetting('applepay_assoc', '')) }); } catch(e){ res.json({}); }
+});
+app.put('/api/admin/pay/settings', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (typeof b.assoc === 'string' && b.assoc.trim()) await setSetting('applepay_assoc', b.assoc.trim().slice(0, 20000));
+    if (typeof b.applepay === 'boolean') await setSetting('applepay_on', b.applepay ? '1' : '0');
+    logAdmin(req, 'pay_settings', 'settings', null, JSON.stringify({ applepay: b.applepay })).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e){ res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
+app.get('/.well-known/apple-developer-merchantid-domain-association', async (req, res) => {
+  try { const t = await getSetting('applepay_assoc', ''); if (!t) return res.status(404).end(); res.type('text/plain').send(t); } catch(e){ res.status(404).end(); }
 });
 app.get('/api/provider/saai', auth, async (req, res) => {
   try {
@@ -12823,6 +13007,7 @@ app.get('/api/bank-info', async (req, res) => {
     for (const k of Object.keys(BANK_DEFAULTS)) {
       out[k] = await getSetting('bank_'+k, BANK_DEFAULTS[k]);
     }
+    out.online = _payOn();
     res.json(out);
   } catch(e){ res.json(BANK_DEFAULTS); }
 });

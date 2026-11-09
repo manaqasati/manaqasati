@@ -248,6 +248,14 @@ function copyText(text, btn) {
   function set(id,v){ v=String(v==null?'':v).trim(); var e=document.getElementById(id); if(v&&e) e.textContent=v; }
   fetch(API+'/api/bank-info').then(function(r){return r.json();}).then(function(d){
     if(!d) return;
+    if(d.online){
+      var bc=document.querySelector('.bank-card'); if(bc) bc.style.display='none';
+      var st=document.querySelectorAll('.steps-card .step-text');
+      if(st[1]) st[1].innerHTML='ادفع من <strong>«محفظة السعي»</strong> في لوحتك بالبطاقة (مدى، فيزا، ماستركارد) أو Apple Pay';
+      if(st[2]) st[2].innerHTML='يُعتمد السداد <strong>تلقائياً</strong> فور إتمام الدفع، ويصلك إيصال على بريدك الإلكتروني';
+      var cta=document.querySelector('.pay-cta'); if(cta) cta.textContent='ادفع من محفظة السعي';
+      return;
+    }
     set('name-val',d.account_name); set('acc-val',d.account_number); set('iban-val',d.iban); set('iban-step',d.iban);
     set('bank-val',d.bank_name); set('bank-hdr',d.bank_name);
     if(d.bank_name&&String(d.bank_name).indexOf('الراجحي')<0){ var bs=document.getElementById('bank-sub'); if(bs) bs.textContent=''; }
