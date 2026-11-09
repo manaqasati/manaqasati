@@ -175,7 +175,7 @@ app.use(cors({ exposedHeaders: ['X-Total-Count'] }));
 // ملف تحقق Apple Pay (ميسّر) — مسار صريح لأن express.static يتجاهل المجلدات اللي تبدأ بنقطة
 app.get('/.well-known/apple-developer-merchantid-domain-association', (req, res) => {
   res.type('text/plain');
-  res.sendFile(require('path').join(__dirname, '.well-known', 'apple-developer-merchantid-domain-association'));
+  res.sendFile(require('path').join(__dirname, '.well-known', 'apple-developer-merchantid-domain-association'), { dotfiles: 'allow' });
 });
 // ترويسات أمان أساسية
 app.use((req, res, next) => {
