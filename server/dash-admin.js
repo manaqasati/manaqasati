@@ -848,12 +848,13 @@ function openUserView(uid){
     +(hasProvData||u.role==='provider'?row('النبذة', u.bio):'')
     +row('الحالة', u.is_active?'نشط':'موقوف')
     +row('تاريخ التسجيل', u.created_at?String(u.created_at).slice(0,10):'')
-    +'<div id="um-dlg"></div>'
+    +'<div id="um-pban"></div><div id="um-dlg"></div>'
     +'<div id="um-mail" style="margin-top:12px"></div>'
     +'<button class="act-btn ab-primary" style="width:100%;justify-content:center;padding:12px;margin-top:14px" onclick="openUserModal('+u.id+')"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4z"/></svg>إدارة / تعديل</button>';
   document.getElementById('userModal').classList.add('show');
   _umMail(u);
   try{ if(window.ADLG && (u.role==='provider'||u.can_provide)) ADLG.userCard(u.id); }catch(e){}
+  _pbUmCard(u);
 }
 var _MST={sending:['جاري الإرسال','#64748b','#f1f5f9'],sent:['انرسل','#1d4ed8','#dbeafe'],delayed:['متأخر','#92400e','#fef3c7'],delivered:['وصل ✓','#15803d','#dcfce7'],opened:['فتحه ✓','#15803d','#dcfce7'],clicked:['ضغط الرابط ✓','#15803d','#dcfce7'],bounced:['رجع ✗','#b91c1c','#fee2e2'],complained:['سبام ✗','#b91c1c','#fee2e2'],failed:['فشل ✗','#b91c1c','#fee2e2'],suppressed:['محظور — البريد غير موجود ✗','#b91c1c','#fee2e2']};
 function _umMail(u){
@@ -2219,7 +2220,7 @@ function renderProjReview(){
       +'<div style="border-top:1px solid var(--border);padding-top:12px"><div style="font-size:13px;font-weight:900">لو تبي تطلب تعديل أو ترفض — اختر السبب:</div>'+reasonChips('rv-notes-'+sel.id)
         +'<textarea id="rv-notes-'+sel.id+'" placeholder="ملاحظات التعديل للعميل، أو سبب الرفض النهائي..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:Tajawal,sans-serif;font-size:13px;min-height:54px;resize:vertical;box-sizing:border-box"></textarea></div>'
       +_prProvBox(sel)
-      +'<div class="pr-btns"><button id="pr-approve-'+sel.id+'"'+(_prDupBlock(sel.id)?' class="pr-dis" title="اختر وش تسوي بالتكرار فوق أول"':'')+' style="background:#16a34a;color:#fff" onclick="reviewAct('+sel.id+',\'approve\')">✓ اعتماد ونشر</button><button style="background:#d97706;color:#fff" onclick="reviewAct('+sel.id+',\'needs_edit\')">طلب تعديل</button><button style="background:#fff;color:#dc2626;border:1.5px solid #fecaca;flex:0 1 auto;min-width:100px" onclick="reviewAct('+sel.id+',\'reject\')">رفض</button></div>'
+      +'<div class="pr-btns"><button id="pr-approve-'+sel.id+'"'+(_prDupBlock(sel.id)?' class="pr-dis" title="اختر وش تسوي بالتكرار فوق أول"':'')+' style="background:#16a34a;color:#fff" onclick="reviewAct('+sel.id+',\'approve\')">✓ اعتماد ونشر</button><button style="background:#d97706;color:#fff" onclick="reviewAct('+sel.id+',\'needs_edit\')">طلب تعديل</button><button style="background:#fff;color:#dc2626;border:1.5px solid #fecaca;flex:0 1 auto;min-width:100px" onclick="reviewAct('+sel.id+',\'reject\')">رفض</button></div>'+_pbReviewBox(sel)
     +'</div>'
     +'<div class="pr-side"><div class="pr-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b style="font-size:15px">فحص الجودة</b><span class="pl" style="background:'+(q.score>=80?'#e3f5e9;color:#166534':(q.score>=55?'#fef3c7;color:#92400e':'#fef2f2;color:#b91c1c'))+'">'+q.score+'%</span></div>'
       +q.checks.map(function(c){return '<div class="pr-ck"><span class="pr-dot '+c.s+'">'+(c.s==='ok'?'✓':(c.s==='warn'?'!':'×'))+'</span>'+esc(c.t)+(c.fix?'<button type="button" class="pr-fix" onclick="'+c.fix+'">'+c.fixT+'</button>':'')+'</div>';}).join('')+'</div>'
@@ -8298,6 +8299,7 @@ function _spPaintInfo(){
   if(u.ban)susp+='<div class="sp-ban"><b>⛔ '+esc(u.ban.label)+'</b><small>'+(u.ban.until_txt?'لين '+esc(u.ban.until_txt):'بدون مدة')+(u.ban.reason?' · '+esc(u.ban.reason):'')+'</small><div><button onclick="_discLiftDirect('+u.id+',\'ban\')">ارفع الإيقاف</button><button onclick="discOpen('+u.id+')">تغيير</button></div></div>';
   else if(u.bid_review)susp+='<div class="sp-warn">🔎 عروضه تحت المراجعة'+(u.bid_review_manual?' · اعتُمد '+u.bid_review_ok+' من '+u.clean_need:'')+'<div style="margin-top:6px"><button class="sp-b2" onclick="_discLiftDirect('+u.id+',\'review\')">ارفع المراجعة</button></div></div>';
   if(u.role==='provider'&&permOK('bids.edit')&&!u.ban)susp+='<button class="sp-b2 w" style="margin-top:0;color:#991b1b;border-color:#fecaca" onclick="discOpen('+u.id+')">⛔ إيقاف عن العروض</button>';
+  susp+=_pbUserBox(u,'_spReloadInfo');
   el.innerHTML='<button class="sp-bk sp-bk2" onclick="_spSetView(\'chat\')">‹ رجوع للمحادثة</button>'
     +'<div class="sp-uc"><span class="sp-av lg">'+esc(_spNm(u).charAt(0))+'</span><b>'+esc(_spNm(u))+'</b>'+(u.business_name&&u.name?'<small>'+esc(u.name)+'</small>':'')+'<small>'+_spRole(u.role)+(u.city?' · '+esc(u.city):'')+(u.created_at?' · منذ '+_adAgo(u.created_at).replace('قبل ',''):'')+'</small>'
     +(u.phone?'<a class="sp-ph" href="tel:'+esc(u.phone)+'" dir="ltr">'+esc(u.phone)+'</a>':'')+(u.email?'<small dir="ltr" style="word-break:break-all">'+esc(u.email)+'</small>':'')+'</div>'+susp
@@ -8511,4 +8513,70 @@ function _pzWatchOpen(){
   var o=document.getElementById('pzWM'); if(o)o.remove();
   o=document.createElement('div'); o.className='overlay show'; o.id='pzWM'; o.innerHTML='<div class="modal" style="max-width:640px"><div class="modal-head"><h3>⏸ مشاريع موقوفة تحتاج متابعة</h3><button class="modal-x" aria-label="إغلاق" onclick="document.getElementById(\'pzWM\').remove()">✕</button></div><div class="modal-body">'+body+'</div></div>';
   o.onclick=function(e){ if(e.target===o)o.remove(); }; document.body.appendChild(o);
+}
+
+// ═══ منع مزوّد مزعج من نشر المشاريع ═══
+function _pbIsProv(role,cp){ return role==='provider'||!!cp; }
+function _pbAgo(d){ try{ return new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'long'}); }catch(e){ return ''; } }
+function _pbState(at,reason,uid,after){
+  return '<div style="margin-top:8px;padding:11px 12px;border-radius:12px;background:#fef3f2;border:1.5px solid #fecdca;text-align:right"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b style="font-size:13px;color:#b42318">🚫 ممنوع من نشر المشاريع</b><button type="button" onclick="pbLift('+uid+',\''+(after||'')+'\')" style="font-family:inherit;font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:99px;background:#fff;color:#1d4ed8;border:1px solid #bfdbfe;cursor:pointer">ارفع المنع</button></div><div style="font-size:11.5px;font-weight:700;color:#7a271a;margin-top:4px">من '+esc(_pbAgo(at))+(reason?' · السبب: '+esc(reason):'')+'</div></div>';
+}
+function _pbBtn(uid,name,rid,after,extra){
+  return '<button type="button" class="pb-btn" onclick="pbOpen('+uid+','+JSON.stringify(String(name||'')).replace(/"/g,'&quot;')+','+(rid||0)+',\''+(after||'')+'\')" style="width:100%;margin-top:8px;font-family:inherit;font-size:13px;font-weight:800;padding:10px;border-radius:12px;background:var(--white,#fff);color:#b42318;border:2px dashed #fda29b;cursor:pointer;'+(extra||'')+'">🚫 '+(rid?'رفض + منع هذا المزوّد من نشر المشاريع':'منع نشر المشاريع')+'</button>';
+}
+function _pbUserBox(u,after){
+  if(!permOK('requests.review'))return '';
+  if(u.post_ban_at) return _pbState(u.post_ban_at,u.post_ban_reason,u.id,after);
+  return _pbIsProv(u.role,u.can_provide)?_pbBtn(u.id,u.business_name||u.name,0,after):'';
+}
+function _pbReviewBox(sel){
+  if(!_pbIsProv(sel.client_role,sel.client_cp)||!permOK('requests.review'))return '';
+  var w=(sel.client_prev?'نشر '+sel.client_prev+' طلب قبل'+(sel.client_rej?' · '+sel.client_rej+' منها انرفضت':''):'أول طلب ينشره');
+  return '<div id="pb-rv-'+sel.id+'" style="margin-top:10px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;font-weight:800;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:8px 10px"><span style="background:#fef3c7;border-radius:99px;padding:2px 9px">حساب مزوّد</span><span>'+esc(w)+'</span></div>'
+    +(sel.client_post_ban?_pbState(sel.client_post_ban,'',sel.client_id,'_pbAfterReview'):_pbBtn(sel.client_id,sel.client_biz||sel.client_name,sel.id,'_pbAfterReview'))
+    +'<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:5px;font-weight:700">يقدر يقدّم عروض عادي — بس ما ينشر مشاريع</div></div>';
+}
+function _pbAfterReview(res,rid){
+  if(rid){ _projReview=(_projReview||[]).filter(function(x){return x.id!==rid;}); setProjReviewBadge(_projReview.length); window._prDone=(window._prDone||0)+1; renderProjReview();
+    if(!_projReview.length){var host=document.getElementById('projreview-list');if(host)host.innerHTML=emptyState('لا توجد مشاريع بانتظار المراجعة 🎉');} }
+  else { try{ loadProjReview(); }catch(e){} }
+}
+function _pbUmCard(u){
+  var el=document.getElementById('um-pban'); if(!el||!permOK('requests.review'))return;
+  if(!_pbIsProv(u.role,u.can_provide)&&!u.post_ban_at){ el.innerHTML=''; return; }
+  fetch(API+'/api/admin/users/'+u.id+'/post-ban',hdr()).then(function(r){return r.json();}).then(function(d){
+    var x={id:u.id,role:u.role,can_provide:u.can_provide,business_name:u.business_name,name:u.name,post_ban_at:d&&d.ban&&d.ban.at,post_ban_reason:d&&d.ban&&d.ban.reason};
+    el.innerHTML=_pbUserBox(x,'_pbUmReload');
+  }).catch(function(){});
+}
+function _pbUmReload(){ var u=null; try{ var m=document.querySelector('#um-pban'); if(m&&window._pbLastUid) u=(_allUsers||[]).find(function(x){return x.id===window._pbLastUid;}); }catch(e){} if(u)_pbUmCard(u); }
+function _spReloadInfo(){ try{ if(window._SP&&_SP.cur&&typeof _spOpen==="function"){ _SP.sig="";_spOpen(_SP.cur,true,true); } }catch(e){} }
+function pbOpen(uid,name,rid,after){
+  window._pbLastUid=uid;
+  var o=document.createElement('div'); o.id='pbOv';
+  o.style.cssText='position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px';
+  o.innerHTML='<div style="background:var(--white,#fff);color:var(--text,#0f172a);border-radius:18px;max-width:460px;width:100%;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.25);font-family:Tajawal,sans-serif;text-align:right">'
+    +'<div style="display:flex;gap:10px;align-items:center"><span style="width:42px;height:42px;border-radius:12px;background:#fef3f2;display:flex;align-items:center;justify-content:center;font-size:20px">🚫</span><div><b style="font-size:16px">منع من نشر المشاريع</b><div style="font-size:12px;color:var(--muted);font-weight:700">'+esc(name||'')+'</div></div></div>'
+    +'<p style="font-size:13.5px;line-height:1.8;margin:12px 0">ما يقدر ينشر أي مشروع بعدها. لو حاول، تطلع له رسالة: «حسابك مزوّد — قدّم عروضك على المشاريع المناسبة لك».</p>'
+    +'<div style="font-size:12.5px;font-weight:800;margin-bottom:5px">السبب (يوصله)</div><textarea id="pb-why" style="width:100%;box-sizing:border-box;min-height:56px;padding:10px 12px;border:1.5px solid var(--border,#e2e8f0);border-radius:10px;font-family:inherit;font-size:13px;background:var(--white,#fff);color:inherit">ينشر إعلانات عن خدماته بدل مشاريع حقيقية</textarea>'
+    +(rid?'<label style="display:flex;gap:8px;align-items:center;font-size:13px;font-weight:700;margin-top:10px;cursor:pointer"><input type="checkbox" id="pb-rej" checked style="width:18px;height:18px"> ارفض هذا الطلب بعد (#'+rid+')</label>':'')
+    +'<div style="background:var(--bg,#f8fafc);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:12px;font-weight:700;color:var(--muted);line-height:1.9">• يقدر يقدّم عروض عادي على المشاريع<br>• ترفع المنع متى ما تبي من بطاقة المستخدم<br>• يوصله إشعار وإيميل بالسبب</div>'
+    +'<div style="display:flex;gap:8px;margin-top:14px"><button type="button" id="pb-go" style="flex:1;font-family:inherit;font-size:14px;font-weight:900;padding:12px;border-radius:12px;background:#b42318;color:#fff;border:0;cursor:pointer">امنعه</button><button type="button" id="pb-x" style="font-family:inherit;font-size:14px;font-weight:800;padding:12px 18px;border-radius:12px;background:var(--white,#fff);color:inherit;border:1px solid var(--border,#d0d5dd);cursor:pointer">إلغاء</button></div></div>';
+  document.body.appendChild(o);
+  o.addEventListener('click',function(e){ if(e.target===o) o.remove(); });
+  document.getElementById('pb-x').onclick=function(){ o.remove(); };
+  document.getElementById('pb-go').onclick=function(){
+    var why=(document.getElementById('pb-why').value||'').trim(); if(!why){ toast('اكتب السبب — يوصله','error'); return; }
+    var rj=rid&&document.getElementById('pb-rej')&&document.getElementById('pb-rej').checked?rid:0, b=this; b.disabled=true; b.textContent='جاري المنع…';
+    fetch(API+'/api/admin/users/'+uid+'/post-ban',Object.assign({method:'POST',body:JSON.stringify({reason:why,reject_id:rj||null})},hdr()))
+      .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+      .then(function(res){ if(!res.ok){ b.disabled=false; b.textContent='امنعه'; toast((res.d&&res.d.message)||'تعذّر التنفيذ','error'); return; }
+        o.remove(); toast((res.d&&res.d.message)||'انمنع ✓','success'); try{ if(after&&window[after]) window[after](res.d,res.d&&res.d.rejected); }catch(e){} })
+      .catch(function(){ b.disabled=false; b.textContent='امنعه'; toast('تعذّر الاتصال','error'); });
+  };
+}
+async function pbLift(uid,after){
+  window._pbLastUid=uid;
+  if(!await askConfirm({title:'رفع المنع',message:'يرجع يقدر ينشر مشاريع ويوصله إشعار. متأكد؟',confirmText:'ارفع المنع'}))return;
+  fetch(API+'/api/admin/users/'+uid+'/post-ban',Object.assign({method:'DELETE'},hdr())).then(function(r){return r.json();}).then(function(d){ toast((d&&d.message)||'رُفع المنع','success'); try{ if(after&&window[after]) window[after](d); }catch(e){} }).catch(function(){ toast('تعذّر الاتصال','error'); });
 }

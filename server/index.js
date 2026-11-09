@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -3828,6 +3828,7 @@ async function setupDatabase() {
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_ban_kind VARCHAR(10)`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_ban_reason TEXT`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_ban_at TIMESTAMPTZ`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS post_ban_at TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS post_ban_reason TEXT, ADD COLUMN IF NOT EXISTS post_ban_by VARCHAR(120)`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_manual BOOLEAN DEFAULT FALSE`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_ok INTEGER DEFAULT 0`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS bid_review_reason TEXT`);
@@ -6270,6 +6271,7 @@ app.post('/api/admin/proxy-request', requirePermission('requests.edit'), async (
 
 app.post('/api/requests', auth, clientOnly, async (req, res) => {
   try {
+    { const pb = await _postBan(req.user.id); if (pb) return res.status(403).json({ code: 'post_ban', message: _POSTBAN_MSG, ban: pb }); }
     if (req.body.title != null) req.body.title = _cleanTxt(req.body.title, 150);
     if (req.body.description != null) req.body.description = String(req.body.description).slice(0, 5000);
     // الإيميل غير المفعّل ما يمنع النشر (كل مشروع يمر على المراجعة أصلاً) — بس ما ينشر تلقائياً لين يتفعّل أو تعتمده الإدارة
@@ -10352,7 +10354,10 @@ app.get('/api/admin/requests', requirePermission('requests.view'), async (req, r
         (array_agg(price ORDER BY id) FILTER (WHERE status='accepted'))[1] AS acc
         FROM bids GROUP BY request_id),
       sl AS (SELECT DISTINCT ON (request_id) request_id, id FROM saai_ledger WHERE request_id IS NOT NULL ORDER BY request_id, id)
-      SELECT r.*, u.name as client_name, p.name as provider_name, COALESCE(bs.n,0) as bid_count, bs.acc as accepted_price, bs.mn as min_bid, sl.id as saai_id, u.phone as client_phone,
+      SELECT r.*, u.name as client_name, u.role AS client_role, COALESCE(u.can_provide,FALSE) AS client_cp, NULLIF(u.business_name,'') AS client_biz, u.post_ban_at AS client_post_ban,
+        CASE WHEN r.status IN ('pending_review','review') THEN (SELECT COUNT(*) FROM requests q2 WHERE q2.client_id=r.client_id AND q2.id<>r.id AND q2.category IS DISTINCT FROM 'direct')::int END AS client_prev,
+        CASE WHEN r.status IN ('pending_review','review') THEN (SELECT COUNT(*) FROM requests q3 WHERE q3.client_id=r.client_id AND q3.id<>r.id AND q3.status='rejected')::int END AS client_rej,
+        p.name as provider_name, COALESCE(bs.n,0) as bid_count, bs.acc as accepted_price, bs.mn as min_bid, sl.id as saai_id, u.phone as client_phone,
         (SELECT COALESCE(NULLIF(iv.business_name,''),iv.name) FROM users iv WHERE iv.id=r.invited_provider_id) AS invited_name,
         CASE WHEN r.invite_state='exclusive' AND r.invite_started_at IS NOT NULL THEN GREATEST(0, EXTRACT(EPOCH FROM (r.invite_started_at + ((CASE WHEN EXISTS(SELECT 1 FROM bids ib0 WHERE ib0.request_id=r.id AND ib0.provider_id=r.invited_provider_id) THEN ${INVITE_BID_HOURS} ELSE ${INVITE_OPEN_HOURS} END) || ' hours')::interval - NOW())))::int END AS invite_left_sec,
         EXISTS(SELECT 1 FROM bids ib WHERE ib.request_id=r.id AND ib.provider_id=r.invited_provider_id) AS invite_has_bid,
@@ -11707,6 +11712,47 @@ app.get('/api/admin/review-history', requirePermission('requests.review'), async
     res.json(r.rows.map(x => { const d0 = String(x.details||''); const act = A[d0] || (/^مكرر/.test(d0) ? 'dup' : (/^مزوّد سجّل كعميل/.test(d0) ? 'is_provider' : 'other'));
       if (act === 'is_provider') { const ph = normPhone(x.phone); return { id: x.id, rid: x.rid, action: act, at: x.created_at, admin: x.admin_name, title: x.title, status: x.status, client_name: x.client_name, note: 'تعريف بشغله — وجّهناه يفعّل حساب المزوّد', wa_link: ph ? `https://wa.me/${ph}?text=${encodeURIComponent(`السلام عليكم ${x.client_name || ''}، معك فريق منصة مناقصة 👋\nشفنا إنك نشرت «${x.title}» — وواضح إنه تعريف بشغلك كمقدّم خدمة، مو مشروع تطلب له عروض.\n\nفعّل «تقديم العروض» مجاناً من هنا وتوصلك مشاريع العملاء في تخصصك ومدينتك:\n${SITE_URL}/dashboard-client.html#becomeprov`)}` : null }; } return { id: x.id, rid: x.rid, action: act, at: x.created_at, admin: x.admin_name, title: x.title, status: x.status, client_name: x.client_name, note: act==='approve' ? null : x.review_notes, wa_link: _reviewWa(act, x.title, act==='approve' ? '' : x.review_notes, x.phone, x.rid, _drFirst(x.client_name)) }; }));
   } catch(e) { console.error('review-history:', e.message); res.json([]); }
+});
+// ═══ منع مزوّد مزعج من نشر المشاريع (ينشر إعلانات بدل مشاريع) — يقدر يقدّم عروض عادي ═══
+const _POSTBAN_MSG = 'حسابك مزوّد — نشر المشاريع مخصّص للعملاء. قدّم عروضك على المشاريع المناسبة لك';
+async function _postBan(uid){
+  try { const u = (await pool.query('SELECT post_ban_at, post_ban_reason FROM users WHERE id=$1', [uid])).rows[0];
+    return u && u.post_ban_at ? { at: u.post_ban_at, reason: u.post_ban_reason || null } : null; } catch(e) { return null; }
+}
+async function _postBanSet(req, uid, reason){
+  const an = req.adminUser ? req.adminUser.name : null;
+  const u = (await pool.query(`UPDATE users SET post_ban_at=NOW(), post_ban_reason=$2, post_ban_by=$3 WHERE id=$1 AND role<>'admin' RETURNING id, name, email`, [uid, reason, an])).rows[0];
+  if (!u) return null;
+  const title = '🚫 حسابك ما يقدر ينشر مشاريع';
+  await notify(uid, title, _POSTBAN_MSG + (reason ? ' · السبب: ' + reason : ''), 'post_ban', null, { url: '/dashboard-provider.html' }).catch(() => {});
+  if (u.email) sendEmail(u.email, title, emailTpl(title, `<p>مرحباً${u.name ? ' ' + eEsc(_supFirst(u.name)) : ''}،</p><p>${eEsc(_POSTBAN_MSG)}.</p>${reason ? `<p><strong>السبب:</strong> ${eEsc(reason)}</p>` : ''}<p>تقدر تقدّم عروضك على المشاريع عادي، والتعريف بشغلك مكانه صفحتك العامة. لو عندك مشروع حقيقي تبي تنشره، تواصل مع فريق مناقصة.</p>`, 'تصفّح المشاريع', SITE_URL + '/dashboard-provider.html'), { uid, kind: 'post_ban' }).catch(() => {});
+  return u;
+}
+app.get('/api/admin/users/:id/post-ban', requirePermission('users.view'), async (req, res) => { res.json({ ban: await _postBan(parseInt(req.params.id) || 0) }); });
+app.get('/api/me/post-ban', auth, async (req, res) => { res.json({ ban: await _postBan(req.user.id), message: _POSTBAN_MSG }); });
+app.post('/api/admin/users/:id/post-ban', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id), reason = String((req.body || {}).reason || '').trim().slice(0, 300);
+    if (!reason) return res.status(400).json({ message: 'اكتب السبب — يوصله' });
+    let rejected = null;
+    const rid = parseInt((req.body || {}).reject_id) || 0;
+    if (rid) {
+      const r = await pool.query(`UPDATE requests SET status='rejected', review_notes=$1 WHERE id=$2 AND client_id=$3 AND status IN ('pending_review','review','needs_edit','open') RETURNING id, title`, [reason, rid, uid]);
+      if (r.rows.length) { rejected = r.rows[0].id; await logAdmin(req, 'review_request', 'request', rid, 'رفض مشروع (إعلان) + منع النشر'); }
+    }
+    const u = await _postBanSet(req, uid, reason);
+    if (!u) return res.status(404).json({ message: 'غير موجود' });
+    await logAdmin(req, 'post_ban', 'user', uid, reason + (rejected ? ' · رُفض #' + rejected : ''));
+    res.json({ ok: true, rejected, message: 'انمنع من نشر المشاريع' + (rejected ? ' ورُفض الطلب' : '') });
+  } catch(e) { console.error('post-ban:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
+});
+app.delete('/api/admin/users/:id/post-ban', requirePermission('requests.review'), async (req, res) => {
+  try {
+    const uid = parseInt(req.params.id);
+    const r = await pool.query('UPDATE users SET post_ban_at=NULL, post_ban_reason=NULL, post_ban_by=NULL WHERE id=$1 AND post_ban_at IS NOT NULL RETURNING id', [uid]);
+    if (r.rows.length) { notify(uid, '✅ تقدر تنشر مشاريع من جديد', 'رفعنا المنع عن نشر المشاريع في حسابك.', 'post_ban', null).catch(() => {}); await logAdmin(req, 'post_unban', 'user', uid, ''); }
+    res.json({ ok: true, message: r.rows.length ? 'رُفع المنع' : 'ما كان ممنوع' });
+  } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 app.put('/api/admin/requests/:id/review', requirePermission('requests.review'), async (req, res) => {
   try {
@@ -14820,7 +14866,7 @@ app.get('/api/admin/support/:tid', requirePermission('support.view'), async (req
     if (rd.rows.length) wsBroadcast(t.user_id, { type: 'support_read', tid: t.id });
     const uid = t.user_id;
     const u = (await pool.query(`SELECT id, name, NULLIF(business_name,'') AS business_name, role, COALESCE(can_provide,FALSE) AS can_provide, COALESCE(can_request,FALSE) AS can_request,
-        city, phone, email, created_at, profile_image, COALESCE(bid_review,FALSE) AS bid_review, COALESCE(bid_review_manual,FALSE) AS bid_review_manual, COALESCE(bid_review_ok,0) AS bid_review_ok, bid_warned_at, is_active FROM users WHERE id=$1`, [uid])).rows[0] || {};
+        city, phone, email, created_at, profile_image, COALESCE(bid_review,FALSE) AS bid_review, COALESCE(bid_review_manual,FALSE) AS bid_review_manual, COALESCE(bid_review_ok,0) AS bid_review_ok, bid_warned_at, is_active, post_ban_at, post_ban_reason FROM users WHERE id=$1`, [uid])).rows[0] || {};
     u.ban = await _bidBan(uid); u.clean_need = BID_CLEAN_NEED;
     const [rq, bc, sc, pr, assigned] = await Promise.all([
       pool.query(`SELECT r.id, r.title, r.status, (SELECT COUNT(*) FROM bids b WHERE b.request_id=r.id)::int AS bids,
