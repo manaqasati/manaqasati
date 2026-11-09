@@ -172,6 +172,11 @@ const _CSP_RO = process.env.CSP_OFF === '1' ? '' : [
   "report-uri /api/csp-report"   // report-uri يشتغل في كل المتصفحات (report-to ما يوصل بشكل موثوق)
 ].join('; ');
 app.use(cors({ exposedHeaders: ['X-Total-Count'] }));
+// ملف تحقق Apple Pay (ميسّر) — مسار صريح لأن express.static يتجاهل المجلدات اللي تبدأ بنقطة
+app.get('/.well-known/apple-developer-merchantid-domain-association', (req, res) => {
+  res.type('text/plain');
+  res.sendFile(require('path').join(__dirname, '.well-known', 'apple-developer-merchantid-domain-association'));
+});
 // ترويسات أمان أساسية
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
