@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>فاتورة اشتراك — مناقصة</title>
+<link rel="icon" href="/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Tajawal,sans-serif;background:#e2e8f0;color:#1e293b;padding:24px 12px}
+.inv{max-width:760px;margin:0 auto;background:#fff;border-radius:8px;box-shadow:0 10px 30px rgba(15,23,42,.12);padding:34px;display:flex;flex-direction:column;gap:18px}
+.r{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.logo{font-size:26px;font-weight:900;color:#172554}.logo i{color:#0ea5e9;font-style:normal}
+.mu{color:#64748b;font-size:12.5px;font-weight:700}
+.boxes{display:flex;gap:12px;flex-wrap:wrap}.box{flex:1;min-width:150px;padding:12px 14px;border-radius:10px;background:#f8fafc}.box b{display:block;font-size:13.5px;margin-top:3px}
+table{width:100%;border-collapse:collapse;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;font-size:13px}
+th{background:#172554;color:#fff;padding:10px 14px;text-align:right;font-weight:800;font-size:12.5px}td{padding:11px 14px;border-top:1px solid #f1f5f9}
+td.v,th.v{text-align:left;font-family:Cairo,sans-serif;white-space:nowrap}
+.tot{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-radius:12px;background:#eff4ff}
+.tot b{font-size:16px;color:#172554}.tot span{font-family:Cairo,sans-serif;font-size:28px;font-weight:900;color:#172554}
+.pill{display:inline-block;padding:3px 10px;border-radius:99px;background:#ecfdf3;color:#067647;font-size:12px;font-weight:800}
+.acts{max-width:760px;margin:0 auto 14px;display:flex;gap:8px;justify-content:space-between}
+.btn{border:0;border-radius:10px;padding:10px 16px;font-family:inherit;font-weight:800;font-size:13.5px;cursor:pointer;text-decoration:none;background:#1e3a8a;color:#fff}.btn.s{background:#fff;color:#1e293b;border:1.5px solid #cbd5e1}
+@media print{body{background:#fff;padding:0}.acts{display:none}.inv{box-shadow:none;border-radius:0}}
+</style>
+</head>
+<body>
+<div class="acts"><a class="btn s" href="/plan.html">‹ اشتراكي</a><button class="btn" onclick="window.print()">⬇ حفظ PDF / طباعة</button></div>
+<div class="inv" id="inv"><div class="mu">جارٍ التحميل…</div></div>
+<script>
+(function(){
+var no=new URLSearchParams(location.search).get('no')||''; var T=''; try{T=localStorage.getItem('token')||'';}catch(e){}
+var box=document.getElementById('inv');
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function m(v){return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:2});}
+function d(x){ if(!x)return ''; x=new Date(x); var t=function(n){return (n<10?'0':'')+n;}; return t(x.getDate())+'/'+t(x.getMonth()+1)+'/'+x.getFullYear(); }
+if(!T){ location.href='/auth.html?redirect=plan'; return; }
+fetch('/api/subs/invoice/'+encodeURIComponent(no),{headers:{Authorization:'Bearer '+T}}).then(function(r){return r.json().then(function(j){return {s:r.status,j:j};});}).then(function(x){
+  if(x.s!==200){ box.innerHTML='<div class="mu">'+esc(x.j.message||'الفاتورة غير موجودة')+'</div>'; return; }
+  var I=x.j; var how=I.method==='applepay'?'Apple Pay':((I.brand?esc(I.brand)+' ':'بطاقة ')+(I.last4?'···· '+esc(I.last4):''));
+  box.innerHTML='<div class="r"><div><div class="logo">مناقصة <i>•</i></div><div class="mu">manaqasa.com</div></div><div style="text-align:left"><div style="font-size:22px;font-weight:900;color:#172554">فاتورة اشتراك</div><span class="pill">مدفوعة</span></div></div>'
+   +'<div class="boxes"><div class="box"><span class="mu">رقم الفاتورة</span><b dir="ltr" style="text-align:right">'+esc(I.no)+'</b></div><div class="box"><span class="mu">تاريخ الإصدار</span><b>'+d(I.at)+'</b></div><div class="box"><span class="mu">المشترك</span><b>'+esc(I.name)+'</b></div></div>'
+   +'<table><tr><th>البند</th><th class="v">المبلغ</th></tr>'+I.lines.map(function(l){return '<tr><td style="'+(l.v<0?'color:#15803d;font-weight:800':'font-weight:700')+'">'+esc(l.t)+'</td><td class="v" style="'+(l.v<0?'color:#15803d':'')+'">'+(l.v<0?'− ':'')+m(Math.abs(l.v))+' ر.س</td></tr>';}).join('')+'</table>'
+   +(I.period_start&&I.period_end?'<div class="mu">الفترة: '+d(I.period_start)+' – '+d(I.period_end)+'</div>':'')
+   +'<div class="tot"><b>الإجمالي المدفوع</b><span>'+m(I.amount)+' <small style="font-size:14px">ر.س</small></span></div>'
+   +'<div class="r mu"><span>طريقة الدفع: <b style="color:#1e293b">'+how+'</b></span><span>رقم العملية: <b style="color:#1e293b" dir="ltr">'+esc(I.pay_id||'')+'</b></span><span>تاريخ الدفع: <b style="color:#1e293b">'+d(I.at)+'</b></span></div>'
+   +'<div style="height:1px;background:#e2e8f0"></div><div class="mu" style="text-align:center">صادرة إلكترونياً من منصة مناقصة</div>';
+}).catch(function(){ box.innerHTML='<div class="mu">تعذّر التحميل</div>'; });
+})();
+</script>
+</body>
+</html>

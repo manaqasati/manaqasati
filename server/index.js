@@ -3408,7 +3408,7 @@ async function _dlgStateOf(id){
 }
 function _dlgDrop(id){ _dlgState.delete(id); }
 // وش يقدر يسوي المفوّض: الحساس لصاحب الحساب بس، والباقي حسب الصلاحيات، وأي شي ما نعرفه يُرفض
-const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai)/;
+const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai|subs\/|pay\/)/;
 const _DLG_GET_DENY = { chat: /^\/api\/(messages|provider\/conversations)/ };
 const _DLG_FREE = /^\/api\/(me\/dlg(\/|$)|push|push-token|notifications|me\/ping|me\/provider-hint|live\/ping|hit|lk\/event|csp-report|demo\/ev|tour|pro\/\d+\/view|requests\/\d+\/(view|revisit|watch-open)$|saved-requests\/|drafts\/save|upload\/attachment|support\/|reports$|blocks\/|auth\/refresh$)/;
 const _DLG_GROUPS = [
@@ -3979,6 +3979,17 @@ async function setupDatabase() {
     // سداد ذاتي: المزوّد يسدد بنفسه (اتفق برا أو العميل ما قبل داخل المنصة) — مشروع من عروضه أو مشروع خارج القائمة
     try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS decided_at TIMESTAMP'); } catch(e){}
     try { await _mig("ALTER TABLE users ADD COLUMN IF NOT EXISTS tours_seen TEXT[] DEFAULT '{}'"); } catch(e){}
+    try {
+      await _mig(`CREATE TABLE IF NOT EXISTS subs (user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, tier VARCHAR(8), cycle CHAR(1) DEFAULT 'm', status VARCHAR(10), period_start TIMESTAMPTZ, period_end TIMESTAMPTZ, auto_renew BOOLEAN DEFAULT TRUE, cancel_at_end BOOLEAN DEFAULT FALSE, next_tier VARCHAR(8), next_cycle CHAR(1), next_addons JSONB, addons JSONB DEFAULT '{}'::jsonb, card_token VARCHAR(120), card_brand VARCHAR(20), card_last4 VARCHAR(8), pay_method VARCHAR(12), grace_until TIMESTAMPTZ, reminded_for TIMESTAMPTZ, grace_reminded BOOLEAN DEFAULT FALSE, trial_used BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
+      await _mig(`CREATE TABLE IF NOT EXISTS sub_pay (id SERIAL PRIMARY KEY, ref VARCHAR(40) UNIQUE NOT NULL, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind VARCHAR(10), tier VARCHAR(8), cycle CHAR(1), addons JSONB, lines JSONB, amount_h INTEGER NOT NULL, coupon VARCHAR(30), discount_h INTEGER DEFAULT 0, status VARCHAR(12) DEFAULT 'new', moyasar_id VARCHAR(80) UNIQUE, method VARCHAR(12), card_brand VARCHAR(20), card_last4 VARCHAR(8), err TEXT, invoice_no VARCHAR(24) UNIQUE, period_start TIMESTAMPTZ, period_end TIMESTAMPTZ, refunded_h INTEGER DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW(), paid_at TIMESTAMPTZ)`);
+      await _mig('CREATE INDEX IF NOT EXISTS sub_pay_user ON sub_pay(user_id, created_at DESC)');
+      await _mig('CREATE SEQUENCE IF NOT EXISTS sub_inv_seq START 1001');
+      await _mig(`CREATE TABLE IF NOT EXISTS coupons (code VARCHAR(30) PRIMARY KEY, kind VARCHAR(5) DEFAULT 'pct', value NUMERIC(10,2), tiers TEXT[], cycles TEXT[], max_uses INTEGER, used INTEGER DEFAULT 0, starts_at TIMESTAMPTZ, ends_at TIMESTAMPTZ, once_per_user BOOLEAN DEFAULT TRUE, new_only BOOLEAN DEFAULT FALSE, public_offer BOOLEAN DEFAULT FALSE, active BOOLEAN DEFAULT TRUE, note TEXT, created_at TIMESTAMPTZ DEFAULT NOW())`);
+      await _mig('CREATE TABLE IF NOT EXISTS coupon_uses (id SERIAL PRIMARY KEY, code VARCHAR(30), user_id INTEGER, pay_id INTEGER, at TIMESTAMPTZ DEFAULT NOW())');
+      await _mig('CREATE TABLE IF NOT EXISTS sub_log (id SERIAL PRIMARY KEY, user_id INTEGER, kind VARCHAR(24), note TEXT, by_name VARCHAR(120), at TIMESTAMPTZ DEFAULT NOW())');
+      await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_code VARCHAR(16), ADD COLUMN IF NOT EXISTS ref_by INTEGER, ADD COLUMN IF NOT EXISTS ref_credit INTEGER DEFAULT 0, ADD COLUMN IF NOT EXISTS ref_rewarded BOOLEAN DEFAULT FALSE');
+      await _mig('CREATE UNIQUE INDEX IF NOT EXISTS users_ref_code ON users(ref_code) WHERE ref_code IS NOT NULL');
+    } catch(e){ console.error('subs mig:', e.message); }
     try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS pay_method VARCHAR(10)'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS pay_ref VARCHAR(80)'); await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ok BOOLEAN DEFAULT FALSE');
       await _mig(`CREATE TABLE IF NOT EXISTS saai_payments (id SERIAL PRIMARY KEY, ref VARCHAR(40) UNIQUE NOT NULL, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, ledger_id INTEGER, request_id INTEGER, self_title TEXT, contract_value NUMERIC(14,2), amount INTEGER NOT NULL, reason VARCHAR(60), status VARCHAR(12) DEFAULT 'new', method VARCHAR(12), moyasar_id VARCHAR(80) UNIQUE, card_brand VARCHAR(20), card_last4 VARCHAR(8), err TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), paid_at TIMESTAMPTZ)`);
       await _mig('CREATE INDEX IF NOT EXISTS saai_payments_prov ON saai_payments(provider_id, created_at DESC)'); } catch(e){ console.error('pay mig:', e.message); }
@@ -8458,7 +8469,13 @@ app.post('/api/pay/webhook', rateLimiter(120, 60000), async (req, res) => {
     res.json({ ok: true });   // نرد بسرعة ونكمل
     if (!ref || !d.id || !_payOn()) return;
     const p = (await pool.query('SELECT * FROM saai_payments WHERE ref=$1', [ref])).rows[0];
-    if (!p) { console.warn('pay-webhook: unknown ref', ref, type); return; }
+    if (!p) {
+      const sp = (await pool.query('SELECT * FROM sub_pay WHERE ref=$1', [ref])).rows[0];
+      if (sp && (type === 'payment_paid' || type === 'payment_failed' || type === 'payment_faild')) { const x = await _subCheck(sp, d.id); console.log('pay-webhook sub', type, ref, x.paid ? 'paid' : (x.message || '')); }
+      else if (sp && type === 'payment_refunded') { await pool.query("UPDATE sub_pay SET err='مسترجع من البوابة' WHERE id=$1", [sp.id]); _subLog(sp.user_id, 'refunded', sp.invoice_no || sp.ref); }
+      else console.warn('pay-webhook: unknown ref', ref, type);
+      return;
+    }
     if (type === 'payment_paid' || type === 'payment_failed' || type === 'payment_faild') {
       const x = await _payCheck(p, d.id);
       console.log('pay-webhook', type, ref, x.paid ? 'paid' : (x.message || ''));
@@ -8498,6 +8515,477 @@ app.get('/api/admin/pay/recent', requirePermission('settings.manage'), async (re
   try { const r = await pool.query(`SELECT p.ref, p.amount, p.status, p.method, p.card_last4, p.moyasar_id, p.err, p.created_at, p.paid_at, p.self_title, COALESCE(NULLIF(u.business_name,''),u.name) AS provider_name
       FROM saai_payments p LEFT JOIN users u ON u.id=p.provider_id ORDER BY p.created_at DESC LIMIT 30`); res.json(r.rows); } catch(e){ res.json([]); }
 });
+// ═══════════ الاشتراكات (مساعد الفوز · مؤسسة): الباقات، الإضافات، الكوبونات، التجديد ═══════════
+// المبالغ داخلياً بالهللة (عدد صحيح). الدفع عبر نفس بوابة السعي. لا يظهر اسم البوابة للمستخدم.
+const SUB_DEF = {
+  tiers: { pro: { name: 'مساعد الفوز', m: 99, y: 990 }, ent: { name: 'مؤسسة', m: 249, y: 2490 } },
+  limits: {
+    free: { projects: 0, dlg: 1, tech: 0, branch: 0, map: 0 },
+    pro:  { projects: 5, dlg: 3, tech: 10, branch: 1, map: 0 },
+    ent:  { projects: 25, dlg: 10, tech: 50, branch: 99, map: 1 }
+  },
+  addons: {
+    dlg:    { name: 'مشرف أو مندوب إضافي', p: 19, n: 1, k: 'dlg', tiers: ['pro', 'ent'], on: 1 },
+    tech:   { name: '5 فنيين إضافيين', p: 19, n: 5, k: 'tech', tiers: ['pro', 'ent'], on: 1 },
+    proj:   { name: '5 مشاريع نشطة إضافية', p: 19, n: 5, k: 'projects', tiers: ['pro', 'ent'], on: 1 },
+    branch: { name: 'فرع إضافي', p: 49, n: 1, k: 'branch', tiers: ['ent'], on: 1 }
+  },
+  trial_days: 14, grace_days: 7, remind_days: 3, ref_months: 1
+};
+const SUB_TN = { free: 'المجانية', pro: 'مساعد الفوز', ent: 'مؤسسة' };
+let _subCfgC = null;
+async function _subCfg(){
+  if (_subCfgC && _subCfgC.exp > Date.now()) return _subCfgC.v;
+  let s = {}; try { s = JSON.parse(await getSetting('sub_cfg', '{}') || '{}') || {}; } catch(e){ s = {}; }
+  const v = JSON.parse(JSON.stringify(SUB_DEF));
+  ['pro', 'ent'].forEach(t => { if (s.tiers && s.tiers[t]) ['m', 'y'].forEach(c => { const n = Number(s.tiers[t][c]); if (n >= 1 && n < 100000) v.tiers[t][c] = Math.round(n); }); });
+  ['free', 'pro', 'ent'].forEach(t => { if (s.limits && s.limits[t]) Object.keys(v.limits[t]).forEach(k => { const n = Number(s.limits[t][k]); if (n >= 0 && n < 10000) v.limits[t][k] = Math.round(n); }); });
+  Object.keys(v.addons).forEach(a => { const x = s.addons && s.addons[a]; if (x) { const n = Number(x.p); if (n >= 1 && n < 10000) v.addons[a].p = Math.round(n); if (x.on === 0 || x.on === false) v.addons[a].on = 0; if (x.on === 1 || x.on === true) v.addons[a].on = 1; } });
+  ['trial_days', 'grace_days', 'remind_days', 'ref_months'].forEach(k => { const n = Number(s[k]); if (n >= 0 && n <= 90) v[k] = Math.round(n); });
+  _subCfgC = { v, exp: Date.now() + 30000 }; return v;
+}
+const _H = sar => Math.round(Number(sar || 0) * 100);
+const _SAR = h => Math.round(h) / 100;
+function _subPrice(cfg, tier, cycle){ const t = cfg.tiers[tier]; return t ? _H(cycle === 'y' ? t.y : t.m) : 0; }
+function _subAddonsH(cfg, addons, cycle){ let s = 0; Object.keys(addons || {}).forEach(a => { const d = cfg.addons[a]; const q = parseInt(addons[a]) || 0; if (d && q > 0) s += _H(d.p) * q; }); return s * (cycle === 'y' ? 12 : 1); }
+function _subLive(s){ return !!(s && ['trial', 'active', 'grace'].includes(s.status) && (s.status === 'grace' ? new Date(s.grace_until) > new Date() : new Date(s.period_end) > new Date())); }
+async function _plnRow(uid){ return (await pool.query('SELECT * FROM subs WHERE user_id=$1', [uid])).rows[0] || null; }
+async function _subLimits(uid){
+  const cfg = await _subCfg(); const s = await _plnRow(uid); const tier = _subLive(s) ? s.tier : 'free';
+  const L = Object.assign({}, cfg.limits[tier] || cfg.limits.free);
+  if (tier !== 'free') Object.keys(s.addons || {}).forEach(a => { const d = cfg.addons[a]; if (d) L[d.k] = (L[d.k] || 0) + d.n * (parseInt(s.addons[a]) || 0); });
+  return { tier, limits: L };
+}
+function _subFrac(s){ const a = new Date(s.period_start).getTime(), b = new Date(s.period_end).getTime(), n = Date.now(); if (!(b > a) || n >= b) return 0; return Math.min(1, Math.max(0, (b - n) / (b - a))); }
+function _addMonths(d, m){ const x = new Date(d); const day = x.getUTCDate(); x.setUTCMonth(x.getUTCMonth() + m); if (x.getUTCDate() < day) x.setUTCDate(0); return x; }
+function _subNextEnd(start, cycle){ return _addMonths(start, cycle === 'y' ? 12 : 1); }
+async function _subLog(uid, kind, note, by){ try { await pool.query('INSERT INTO sub_log (user_id, kind, note, by_name) VALUES ($1,$2,$3,$4)', [uid, kind, String(note || '').slice(0, 400), by || null]); } catch(e){} }
+async function _subEverPaid(uid){ return !!(await pool.query("SELECT 1 FROM sub_pay WHERE user_id=$1 AND status='paid' AND amount_h>0 LIMIT 1", [uid])).rows[0]; }
+// الكوبون: على سعر الباقة فقط، وعلى الدفعة اللي استُخدم فيها فقط
+async function _couponCheck(code, uid, tier, cycle){
+  code = String(code || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 30);
+  if (!code) return { ok: false };
+  const c = (await pool.query('SELECT * FROM coupons WHERE code=$1', [code])).rows[0];
+  if (!c || !c.active) return { ok: false, message: 'رمز الخصم غير صحيح' };
+  const now = new Date();
+  if (c.starts_at && new Date(c.starts_at) > now) return { ok: false, message: 'رمز الخصم لم يبدأ بعد' };
+  if (c.ends_at && new Date(c.ends_at) < now) return { ok: false, message: 'انتهت صلاحية رمز الخصم' };
+  if (c.max_uses && c.used >= c.max_uses) return { ok: false, message: 'نفدت استخدامات رمز الخصم' };
+  if (Array.isArray(c.tiers) && c.tiers.length && !c.tiers.includes(tier)) return { ok: false, message: 'رمز الخصم لا ينطبق على هذه الباقة' };
+  if (Array.isArray(c.cycles) && c.cycles.length && !c.cycles.includes(cycle)) return { ok: false, message: 'رمز الخصم لا ينطبق على ' + (cycle === 'y' ? 'الاشتراك السنوي' : 'الاشتراك الشهري') };
+  if (c.once_per_user && (await pool.query('SELECT 1 FROM coupon_uses WHERE code=$1 AND user_id=$2', [code, uid])).rows[0]) return { ok: false, message: 'استخدمت رمز الخصم هذا مسبقاً' };
+  if (c.new_only && await _subEverPaid(uid)) return { ok: false, message: 'رمز الخصم للمشتركين الجدد فقط' };
+  return { ok: true, c };
+}
+function _couponOff(c, baseH){ if (!c) return 0; const v = Number(c.value) || 0; const off = c.kind === 'fixed' ? _H(v) : Math.round(baseH * Math.min(100, v) / 100); return Math.max(0, Math.min(baseH, off)); }
+// حساب أي عملية (اشتراك جديد · تجديد · ترقية · إضافة) — نفس الحساب للعرض وللدفع
+async function _subQuote(uid, body){
+  const cfg = await _subCfg(); const s = await _plnRow(uid); const live = _subLive(s);
+  const kind = String(body.kind || 'new');
+  const lines = []; let amount = 0, coupon = null, discount = 0, tier, cycle, addons = null, msg = null;
+  if (kind === 'new') {
+    tier = body.tier === 'ent' ? 'ent' : 'pro'; cycle = body.cycle === 'y' ? 'y' : 'm';
+    if (live && s.status !== 'trial') return { error: 'عندك اشتراك فعّال — استخدم الترقية أو التجديد' };
+    const base = _subPrice(cfg, tier, cycle);
+    lines.push({ t: 'باقة ' + cfg.tiers[tier].name + ' — ' + (cycle === 'y' ? 'سنوي' : 'شهري'), h: base });
+    if (body.coupon) { const cc = await _couponCheck(body.coupon, uid, tier, cycle); if (!cc.ok) return { error: cc.message || 'رمز الخصم غير صحيح', coupon_error: true }; coupon = cc.c.code; discount = _couponOff(cc.c, base); lines.push({ t: 'خصم ' + coupon, h: -discount }); }
+    amount = base - discount;
+  } else if (kind === 'renew') {
+    if (!s || !['active', 'grace', 'expired', 'cancelled'].includes(s.status) || s.tier === 'free') return { error: 'لا يوجد اشتراك للتجديد' };
+    tier = s.next_tier || s.tier; cycle = s.next_cycle || s.cycle; addons = s.next_addons || s.addons || {};
+    const base = _subPrice(cfg, tier, cycle);
+    lines.push({ t: 'تجديد باقة ' + cfg.tiers[tier].name + ' — ' + (cycle === 'y' ? 'سنوي' : 'شهري'), h: base });
+    const ah = _subAddonsH(cfg, addons, cycle); if (ah) lines.push({ t: 'الإضافات', h: ah });
+    if (body.coupon) { const cc = await _couponCheck(body.coupon, uid, tier, cycle); if (!cc.ok) return { error: cc.message, coupon_error: true }; coupon = cc.c.code; discount = _couponOff(cc.c, base); lines.push({ t: 'خصم ' + coupon, h: -discount }); }
+    amount = base + ah - discount;
+  } else if (kind === 'upgrade') {
+    if (!live || s.status === 'trial' || s.tier !== 'pro') return { error: 'الترقية متاحة لمشتركي مساعد الفوز' };
+    tier = 'ent'; cycle = s.cycle; addons = {};
+    const f = _subFrac(s); const days = Math.max(1, Math.round((new Date(s.period_end) - Date.now()) / 864e5));
+    const diff = Math.round((_subPrice(cfg, 'ent', cycle) - _subPrice(cfg, 'pro', cycle)) * f);
+    const credit = Math.round(_subAddonsH(cfg, s.addons, cycle) * f);
+    lines.push({ t: 'فرق الباقة عن ' + days + ' يوماً متبقية', h: diff });
+    if (credit) lines.push({ t: 'رصيد الإضافات غير المستخدم', h: -credit });
+    amount = Math.max(0, diff - credit);
+    msg = 'ابتداءً من ' + new Date(s.period_end).toISOString().slice(0, 10) + ' يُجدَّد الاشتراك بمبلغ ' + cfg.tiers.ent[cycle] + ' ر.س';
+  } else if (kind === 'addon') {
+    if (!live || s.status === 'trial') return { error: 'الإضافات متاحة للمشتركين فقط' };
+    const a = String(body.addon || ''); const d = cfg.addons[a]; const q = Math.max(1, Math.min(20, parseInt(body.qty) || 1));
+    if (!d || !d.on) return { error: 'الإضافة غير متاحة' };
+    if (!d.tiers.includes(s.tier)) return { error: 'هذه الإضافة متاحة لباقة ' + d.tiers.map(t => cfg.tiers[t].name).join(' و') + ' فقط' };
+    tier = s.tier; cycle = s.cycle; addons = { [a]: q };
+    const f = _subFrac(s); const days = Math.max(1, Math.round((new Date(s.period_end) - Date.now()) / 864e5));
+    const full = _H(d.p) * q * (cycle === 'y' ? 12 : 1);
+    lines.push({ t: d.name + (q > 1 ? ' × ' + q : '') + ' — عن ' + days + ' يوماً متبقية', h: Math.round(full * f) });
+    amount = Math.max(100, Math.round(full * f));
+    msg = 'ثم تُضاف ' + _SAR(_H(d.p) * q) + ' ر.س شهرياً إلى تجديدك';
+  } else return { error: 'نوع غير معروف' };
+  if (amount > 0 && amount < 100) amount = 100;   // الحد الأدنى للدفع الإلكتروني ريال واحد
+  return { kind, tier, cycle, addons, lines, amount, coupon, discount, note: msg };
+}
+// تفعيل أثر الدفعة على الاشتراك (بعد التأكد من البوابة أو لما المبلغ صفر)
+async function _subApply(c, sp, pay){
+  const cfg = await _subCfg();
+  const s = (await c.query('SELECT * FROM subs WHERE user_id=$1 FOR UPDATE', [sp.user_id])).rows[0];
+  const src = (pay && pay.source) || {};
+  const tok = src.token && /^token_/.test(String(src.token)) ? String(src.token) : null;
+  const method = pay ? (src.type === 'applepay' ? 'applepay' : 'card') : (sp.amount_h > 0 ? 'card' : 'free');
+  const last4 = String(src.number || src.last_four || '').replace(/[^0-9]/g, '').slice(-4) || null;
+  const brand = String(src.company || src.scheme || '').slice(0, 20) || null;
+  const now = new Date(); let start = now, end, note = '';
+  if (sp.kind === 'new' || sp.kind === 'renew') {
+    const tier = sp.tier, cycle = sp.cycle;
+    if (sp.kind === 'renew' && s && s.status === 'active' && new Date(s.period_end) > now) start = new Date(s.period_end);
+    end = _subNextEnd(start, cycle);
+    // مكافأة الدعوة والرصيد المؤجّل
+    const u = (await c.query('SELECT ref_by, ref_credit, ref_rewarded FROM users WHERE id=$1 FOR UPDATE', [sp.user_id])).rows[0] || {};
+    if (u.ref_credit > 0) { end = _addMonths(end, u.ref_credit); await c.query('UPDATE users SET ref_credit=0 WHERE id=$1', [sp.user_id]); note += ' +' + u.ref_credit + ' شهر رصيد دعوات'; }
+    let rewardRef = null;
+    if (sp.kind === 'new' && sp.amount_h > 0 && u.ref_by && !u.ref_rewarded && cfg.ref_months > 0) { end = _addMonths(end, cfg.ref_months); rewardRef = u.ref_by; await c.query('UPDATE users SET ref_rewarded=TRUE WHERE id=$1', [sp.user_id]); note += ' +' + cfg.ref_months + ' شهر هدية الدعوة'; }
+    const addons = sp.kind === 'renew' ? (sp.addons || (s && (s.next_addons || s.addons)) || {}) : {};
+    await c.query(`INSERT INTO subs (user_id, tier, cycle, status, period_start, period_end, auto_renew, cancel_at_end, next_tier, next_cycle, next_addons, addons, card_token, card_brand, card_last4, pay_method, grace_until, reminded_for, grace_reminded, trial_used, updated_at)
+      VALUES ($1,$2,$3,'active',$4,$5,TRUE,FALSE,NULL,NULL,NULL,$6::jsonb,$7,$8,$9,$10,NULL,NULL,FALSE,TRUE,NOW())
+      ON CONFLICT (user_id) DO UPDATE SET tier=$2, cycle=$3, status='active', period_start=$4, period_end=$5, cancel_at_end=FALSE, next_tier=NULL, next_cycle=NULL, next_addons=NULL, addons=$6::jsonb,
+        card_token=COALESCE($7, subs.card_token), card_brand=COALESCE($8, subs.card_brand), card_last4=COALESCE($9, subs.card_last4), pay_method=$10, grace_until=NULL, reminded_for=NULL, grace_reminded=FALSE, updated_at=NOW()`,
+      [sp.user_id, tier, cycle, start, end, JSON.stringify(addons), tok, brand, last4, method]);
+    if (rewardRef) {
+      const r2 = (await c.query('SELECT * FROM subs WHERE user_id=$1 FOR UPDATE', [rewardRef])).rows[0];
+      if (r2 && _subLive(r2) && r2.status !== 'trial') await c.query('UPDATE subs SET period_end=$2, updated_at=NOW() WHERE user_id=$1', [rewardRef, _addMonths(r2.period_end, cfg.ref_months)]);
+      else await c.query('UPDATE users SET ref_credit=COALESCE(ref_credit,0)+$2 WHERE id=$1', [rewardRef, cfg.ref_months]);
+      sp._refReward = rewardRef;
+    }
+  } else if (sp.kind === 'upgrade') {
+    await c.query(`UPDATE subs SET tier='ent', addons='{}'::jsonb, next_addons=NULL, next_tier=NULL, card_token=COALESCE($2,card_token), card_brand=COALESCE($3,card_brand), card_last4=COALESCE($4,card_last4), updated_at=NOW() WHERE user_id=$1`, [sp.user_id, tok, brand, last4]);
+    start = s.period_start; end = s.period_end;
+  } else if (sp.kind === 'addon') {
+    const a = Object.keys(sp.addons || {})[0]; const q = parseInt((sp.addons || {})[a]) || 1;
+    const cur = Object.assign({}, s.addons || {}); cur[a] = (parseInt(cur[a]) || 0) + q;
+    let nx = s.next_addons ? Object.assign({}, s.next_addons) : null; if (nx) nx[a] = (parseInt(nx[a]) || 0) + q;
+    await c.query(`UPDATE subs SET addons=$2::jsonb, next_addons=$3::jsonb, card_token=COALESCE($4,card_token), card_brand=COALESCE($5,card_brand), card_last4=COALESCE($6,card_last4), updated_at=NOW() WHERE user_id=$1`, [sp.user_id, JSON.stringify(cur), nx ? JSON.stringify(nx) : null, tok, brand, last4]);
+    start = new Date(); end = s.period_end;
+  }
+  let inv = null;
+  if (sp.amount_h > 0) { const n = (await c.query("SELECT nextval('sub_inv_seq') AS n")).rows[0].n; inv = 'INV-' + now.getUTCFullYear() + '-' + String(n).padStart(4, '0'); }
+  await c.query(`UPDATE sub_pay SET status='paid', paid_at=NOW(), moyasar_id=COALESCE($2,moyasar_id), method=$3, card_brand=$4, card_last4=$5, invoice_no=$6, period_start=$7, period_end=$8, err=NULL WHERE id=$1`,
+    [sp.id, pay ? pay.id : null, method, brand, last4, inv, start, end]);
+  if (sp.coupon) { await c.query('UPDATE coupons SET used=used+1 WHERE code=$1', [sp.coupon]); await c.query('INSERT INTO coupon_uses (code, user_id, pay_id) VALUES ($1,$2,$3)', [sp.coupon, sp.user_id, sp.id]); }
+  sp._inv = inv; sp._end = end; sp._note = note;
+}
+async function _subFinalize(sp, pay){
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const cur = (await c.query('SELECT * FROM sub_pay WHERE id=$1 FOR UPDATE', [sp.id])).rows[0];
+    if (cur.status === 'paid') { await c.query('COMMIT'); return { already: true }; }
+    await _subApply(c, cur, pay);
+    await c.query('COMMIT');
+    const cfg = await _subCfg();
+    const K = { new: 'تم تفعيل اشتراكك ✅', renew: 'تم تجديد اشتراكك ✅', upgrade: 'تمت ترقية اشتراكك إلى مؤسسة ✅', addon: 'تمت إضافة الإضافة إلى اشتراكك ✅' };
+    const body = (cur.kind === 'addon' ? 'الإضافة مفعّلة الآن.' : 'باقة ' + (cfg.tiers[cur.tier] ? cfg.tiers[cur.tier].name : '') + ' فعّالة حتى ' + new Date(cur._end || Date.now()).toISOString().slice(0, 10) + '.') + (cur._note || '');
+    _subLog(cur.user_id, 'paid_' + cur.kind, _SAR(cur.amount_h) + ' ر.س' + (cur._inv ? ' · ' + cur._inv : '') + (cur._note || ''));
+    try { await notify(cur.user_id, K[cur.kind] || 'تم', body, 'sub'); } catch(e){}
+    try { const u = (await pool.query('SELECT email, name FROM users WHERE id=$1', [cur.user_id])).rows[0];
+      if (u && u.email && cur.amount_h > 0) sendEmail(u.email, (K[cur.kind] || 'تم') + ' — فاتورة ' + (cur._inv || ''), emailTpl(K[cur.kind] || 'تم', `<p>مرحباً${u.name ? ' ' + eEsc(u.name) : ''}،</p><p>${eEsc(body)}</p><p>المبلغ المدفوع: <b>${_SAR(cur.amount_h)} ر.س</b><br>رقم الفاتورة: <b dir="ltr">${eEsc(cur._inv || '')}</b></p>`, 'عرض الفاتورة', SITE_URL + '/invoice.html?no=' + encodeURIComponent(cur._inv || ''))).catch(()=>{}); } catch(e){}
+    if (cur._refReward) { try { await notify(cur._refReward, '🎁 ربحت شهراً مجانياً', 'اشترك مزوّد عن طريق رمز دعوتك — أُضيف شهر مجاني إلى اشتراكك.', 'sub'); } catch(e){} }
+    _notifyAdmins('💳 اشتراك: ' + (K[cur.kind] || cur.kind).replace(' ✅', ''), _SAR(cur.amount_h) + ' ر.س', 'sub', cur.user_id).catch(()=>{});
+    return { ok: true };
+  } catch(e){ try { await c.query('ROLLBACK'); } catch(_){} throw e; } finally { c.release(); }
+}
+async function _subPayRow(ref, uid){ const r = (await pool.query('SELECT * FROM sub_pay WHERE ref=$1', [String(ref || '').slice(0, 40)])).rows[0]; if (!r || (uid && String(r.user_id) !== String(uid))) return null; return r; }
+function _subMatches(p, d){ if (!d || !d.id || String(d.currency || '').toUpperCase() !== 'SAR' || Number(d.amount) !== p.amount_h) return false; const md = d.metadata || {}; return md.ref === p.ref || String(d.description || '').includes('#' + p.ref); }
+async function _subCheck(p, id){
+  if (p.status === 'paid') return { paid: true };
+  id = String(id || p.moyasar_id || '').trim();
+  if (!/^[A-Za-z0-9_\-]{6,80}$/.test(id)) return { code: 400, message: 'لم نتمكن من التحقق من العملية' };
+  if ((await pool.query('SELECT 1 FROM sub_pay WHERE moyasar_id=$1 AND id<>$2', [id, p.id])).rows[0] || (await pool.query('SELECT 1 FROM saai_payments WHERE moyasar_id=$1', [id])).rows[0]) return { code: 400, message: 'هذه العملية مستخدمة مسبقاً' };
+  await pool.query('UPDATE sub_pay SET moyasar_id=$2 WHERE id=$1 AND moyasar_id IS NULL', [p.id, id]).catch(()=>{});
+  const r = await _mysr('GET', '/payments/' + encodeURIComponent(id)); const d = r.data || {};
+  if (!r.ok || !d.id) { const why = 'verify ' + r.status + (d.message ? ' · ' + d.message : ''); await pool.query('UPDATE sub_pay SET err=$2 WHERE id=$1', [p.id, why.slice(0, 300)]); return { code: 400, message: 'لم نتمكن من التحقق من العملية' }; }
+  if (d.status === 'paid') { if (!_subMatches(p, d)) { await pool.query("UPDATE sub_pay SET err=$2 WHERE id=$1", [p.id, 'mismatch: ' + d.amount]); return { code: 400, message: 'بيانات العملية غير مطابقة — تواصل مع الدعم' }; } await _subFinalize(p, d); return { paid: true }; }
+  if (d.status === 'initiated') return { pending: true, message: 'العملية قيد التحقق' };
+  await pool.query("UPDATE sub_pay SET status='failed', err=$2 WHERE id=$1", [p.id, String((d.source || {}).message || d.status || '').slice(0, 300)]);
+  return { failed: true, message: _payErr((d.source || {}).message) };
+}
+// فتح الاشتراكات للمزوّدين: مقفلة افتراضياً لين تكتمل مزايا الباقات — وتقدر الإدارة تفتحها لمزوّدين معيّنين للتجربة
+async function _subOpen(uid){ try { if ((await getSetting('subs_open', '0')) === '1') return true; const t = String(await getSetting('subs_testers', '') || '').split(/[\s,،]+/).map(x => parseInt(x)).filter(Boolean); return t.includes(parseInt(uid)); } catch(e){ return false; } }
+app.get('/api/subs/open', auth, async (req, res) => { res.json({ open: req.user.role === 'provider' && await _subOpen(req.user.id) }); });
+// ── واجهات المزوّد ──
+const _subOwner = async (req, res, next) => { if (!req.user || req.user.role !== 'provider') return res.status(403).json({ message: 'الاشتراكات لحسابات المزوّدين' }); next(); };
+app.get('/api/subs/me', auth, _subOwner, async (req, res) => {
+  try {
+    const cfg = await _subCfg(); const s = await _plnRow(req.user.id); const L = await _subLimits(req.user.id);
+    let u = (await pool.query('SELECT ref_code, ref_credit FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
+    if (!u.ref_code) { for (let i = 0; i < 5 && !u.ref_code; i++) { const code = 'M' + crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6); try { await pool.query('UPDATE users SET ref_code=$2 WHERE id=$1 AND ref_code IS NULL', [req.user.id, code]); u.ref_code = (await pool.query('SELECT ref_code FROM users WHERE id=$1', [req.user.id])).rows[0].ref_code; } catch(e){} } }
+    const refN = (await pool.query('SELECT COUNT(*)::int n FROM users WHERE ref_by=$1 AND ref_rewarded', [req.user.id])).rows[0].n;
+    const inv = (await pool.query("SELECT invoice_no, kind, tier, cycle, amount_h, coupon, paid_at FROM sub_pay WHERE user_id=$1 AND status='paid' AND amount_h>0 ORDER BY paid_at DESC LIMIT 24", [req.user.id])).rows;
+    const dlgN = (await pool.query('SELECT COUNT(*)::int n FROM provider_delegates WHERE owner_id=$1', [req.user.id]).catch(() => ({ rows: [{ n: 0 }] }))).rows[0].n;
+    const live = _subLive(s);
+    const renewH = s && s.tier && s.tier !== 'free' ? _subPrice(cfg, s.next_tier || s.tier, s.next_cycle || s.cycle) + _subAddonsH(cfg, s.next_addons || s.addons, s.next_cycle || s.cycle) : 0;
+    res.json({ open: await _subOpen(req.user.id),
+      cfg: { tiers: cfg.tiers, limits: cfg.limits, addons: cfg.addons, trial_days: cfg.trial_days, grace_days: cfg.grace_days, ref_months: cfg.ref_months },
+      sub: s ? { tier: s.tier, cycle: s.cycle, status: live ? s.status : (s.status === 'cancelled' ? 'cancelled' : 'expired'), period_start: s.period_start, period_end: s.period_end, grace_until: s.grace_until, auto_renew: s.auto_renew, cancel_at_end: s.cancel_at_end, next_tier: s.next_tier, next_cycle: s.next_cycle, addons: s.addons || {}, next_addons: s.next_addons, card: s.card_last4 ? { brand: s.card_brand, last4: s.card_last4, saved: !!s.card_token } : null, pay_method: s.pay_method, renew_h: renewH } : null,
+      tier: L.tier, limits: L.limits, usage: { dlg: dlgN },
+      trial_ok: !(s && s.trial_used) && !(await _subEverPaid(req.user.id)),
+      ref: { code: u.ref_code, link: SITE_URL + '/plan.html?ref=' + u.ref_code, rewarded: refN, credit: u.ref_credit || 0 },
+      invoices: inv.map(x => ({ no: x.invoice_no, kind: x.kind, tier: x.tier, cycle: x.cycle, amount: _SAR(x.amount_h), coupon: x.coupon, at: x.paid_at })),
+      offer: await _subOffer()
+    });
+  } catch(e){ console.error('subs-me:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+async function _subOffer(){ try { const c = (await pool.query("SELECT code, kind, value, tiers, cycles, ends_at FROM coupons WHERE active AND public_offer AND (starts_at IS NULL OR starts_at<=NOW()) AND (ends_at IS NULL OR ends_at>NOW()) AND (max_uses IS NULL OR max_uses=0 OR used<max_uses) ORDER BY created_at DESC LIMIT 1")).rows[0]; return c ? { code: c.code, kind: c.kind, value: Number(c.value), tiers: c.tiers, cycles: c.cycles, ends_at: c.ends_at } : null; } catch(e){ return null; } }
+app.post('/api/subs/quote', auth, _subOwner, async (req, res) => {
+  try { const q = await _subQuote(req.user.id, req.body || {}); if (q.error) return res.status(400).json({ message: q.error, coupon_error: !!q.coupon_error }); res.json({ lines: q.lines.map(l => ({ t: l.t, v: _SAR(l.h) })), amount: _SAR(q.amount), coupon: q.coupon, note: q.note }); }
+  catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/subs/trial', auth, _subOwner, rateLimiter(5, 3600000), async (req, res) => {
+  try {
+    if (!(await _subOpen(req.user.id))) return res.status(403).json({ message: 'الاشتراكات غير متاحة حالياً' });
+    const cfg = await _subCfg(); const s = await _plnRow(req.user.id);
+    if ((s && s.trial_used) || await _subEverPaid(req.user.id)) return res.status(400).json({ message: 'استخدمت التجربة المجانية مسبقاً' });
+    if (!cfg.trial_days) return res.status(400).json({ message: 'التجربة المجانية غير متاحة حالياً' });
+    const end = new Date(Date.now() + cfg.trial_days * 864e5);
+    await pool.query(`INSERT INTO subs (user_id, tier, cycle, status, period_start, period_end, trial_used, addons) VALUES ($1,'pro','m','trial',NOW(),$2,TRUE,'{}'::jsonb)
+      ON CONFLICT (user_id) DO UPDATE SET tier='pro', cycle='m', status='trial', period_start=NOW(), period_end=$2, trial_used=TRUE, addons='{}'::jsonb, cancel_at_end=FALSE, updated_at=NOW()`, [req.user.id, end]);
+    _subLog(req.user.id, 'trial', cfg.trial_days + ' يوم');
+    try { await notify(req.user.id, 'بدأت تجربتك المجانية ✅', 'باقة مساعد الفوز متاحة لك ' + cfg.trial_days + ' يوماً مجاناً، وتتوقف تلقائياً بنهايتها.', 'sub'); } catch(e){}
+    res.json({ ok: true, until: end });
+  } catch(e){ console.error('subs-trial:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/subs/checkout', auth, _subOwner, rateLimiter(30, 600000), async (req, res) => {
+  try {
+    if (!_payOn()) return res.status(503).json({ message: 'الدفع الإلكتروني غير متاح حالياً' });
+    { const _k = String((req.body || {}).kind || 'new'); if ((_k === 'new' || _k === 'addon' || _k === 'upgrade') && !(await _subOpen(req.user.id))) return res.status(403).json({ message: 'الاشتراكات غير متاحة حالياً' }); }
+    const q = await _subQuote(req.user.id, req.body || {});
+    if (q.error) return res.status(400).json({ message: q.error, coupon_error: !!q.coupon_error });
+    const ref = crypto.randomBytes(12).toString('hex');
+    const id = (await pool.query(`INSERT INTO sub_pay (ref, user_id, kind, tier, cycle, addons, lines, amount_h, coupon, discount_h) VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8,$9,$10) RETURNING id`,
+      [ref, req.user.id, q.kind, q.tier, q.cycle, q.addons ? JSON.stringify(q.addons) : null, JSON.stringify(q.lines), q.amount, q.coupon, q.discount || 0])).rows[0].id;
+    if (q.amount <= 0) { await _subFinalize({ id }, null); return res.json({ ok: true, free: true }); }
+    res.json({ ok: true, ref });
+  } catch(e){ console.error('subs-checkout:', e.message); res.status(500).json({ message: 'تعذّر إنشاء عملية الدفع' }); }
+});
+app.post('/api/subs/change', auth, _subOwner, async (req, res) => {
+  try {
+    const cfg = await _subCfg(); const s = await _plnRow(req.user.id); const a = String(req.body.act || '');
+    if (!s || !_subLive(s)) return res.status(400).json({ message: 'لا يوجد اشتراك فعّال' });
+    if (a === 'cancel') { await pool.query('UPDATE subs SET cancel_at_end=TRUE, updated_at=NOW() WHERE user_id=$1', [req.user.id]); _subLog(req.user.id, 'cancel_at_end', ''); return res.json({ ok: true, message: 'سيتوقف الاشتراك بنهاية الفترة الحالية، وتبقى المزايا متاحة حتى ذلك التاريخ' }); }
+    if (a === 'resume') { await pool.query('UPDATE subs SET cancel_at_end=FALSE, updated_at=NOW() WHERE user_id=$1', [req.user.id]); _subLog(req.user.id, 'resume', ''); return res.json({ ok: true, message: 'تم استئناف التجديد التلقائي' }); }
+    if (a === 'auto') { const on = !!req.body.on; await pool.query('UPDATE subs SET auto_renew=$2, updated_at=NOW() WHERE user_id=$1', [req.user.id, on]); return res.json({ ok: true }); }
+    if (s.status === 'trial') return res.status(400).json({ message: 'اشترك أولاً لتعديل الباقة' });
+    if (a === 'yearly') { if (s.cycle === 'y') return res.status(400).json({ message: 'اشتراكك سنوي' }); await pool.query("UPDATE subs SET next_cycle='y', updated_at=NOW() WHERE user_id=$1", [req.user.id]); _subLog(req.user.id, 'to_yearly', ''); return res.json({ ok: true, message: 'سيتحول اشتراكك إلى سنوي (' + cfg.tiers[s.next_tier || s.tier].y + ' ر.س) من التجديد القادم' }); }
+    if (a === 'monthly') { await pool.query("UPDATE subs SET next_cycle=CASE WHEN cycle='m' THEN NULL ELSE 'm' END, updated_at=NOW() WHERE user_id=$1", [req.user.id]); return res.json({ ok: true, message: 'سيتحول اشتراكك إلى شهري من التجديد القادم' }); }
+    if (a === 'downgrade') { if (s.tier !== 'ent') return res.status(400).json({ message: 'غير متاح' }); await pool.query("UPDATE subs SET next_tier='pro', next_addons='{}'::jsonb, updated_at=NOW() WHERE user_id=$1", [req.user.id]); _subLog(req.user.id, 'downgrade', ''); return res.json({ ok: true, message: 'ستنتقل إلى باقة مساعد الفوز من التجديد القادم' }); }
+    if (a === 'undowngrade') { await pool.query('UPDATE subs SET next_tier=NULL, updated_at=NOW() WHERE user_id=$1', [req.user.id]); return res.json({ ok: true }); }
+    if (a === 'addon_less') {
+      const k = String(req.body.addon || ''); const cur = parseInt((s.addons || {})[k]) || 0; const nx = Object.assign({}, s.next_addons || s.addons || {});
+      const n = parseInt(nx[k]) || 0; if (!cfg.addons[k] || n <= 0) return res.status(400).json({ message: 'لا توجد إضافة لإلغائها' });
+      nx[k] = n - 1; await pool.query('UPDATE subs SET next_addons=$2::jsonb, updated_at=NOW() WHERE user_id=$1', [req.user.id, JSON.stringify(nx)]); _subLog(req.user.id, 'addon_less', k);
+      return res.json({ ok: true, message: 'تبقى الإضافة متاحة حتى نهاية الفترة المدفوعة، ولن تُجدَّد' + (cur > nx[k] ? '' : '') });
+    }
+    res.status(400).json({ message: 'إجراء غير معروف' });
+  } catch(e){ console.error('subs-change:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/subs/ref', auth, _subOwner, async (req, res) => {
+  try {
+    const code = String(req.body.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16); if (!code) return res.json({ ok: false });
+    const r = (await pool.query('SELECT id FROM users WHERE ref_code=$1', [code])).rows[0];
+    if (!r || String(r.id) === String(req.user.id)) return res.json({ ok: false });
+    if (await _subEverPaid(req.user.id)) return res.json({ ok: false, message: 'رمز الدعوة للمشتركين الجدد' });
+    const u = await pool.query('UPDATE users SET ref_by=$2 WHERE id=$1 AND ref_by IS NULL RETURNING id', [req.user.id, r.id]);
+    res.json({ ok: !!u.rows.length });
+  } catch(e){ res.json({ ok: false }); }
+});
+app.get('/api/subs/invoice/:no', auth, async (req, res) => {
+  try {
+    const no = String(req.params.no || '').slice(0, 24);
+    const p = (await pool.query("SELECT p.*, COALESCE(NULLIF(u.business_name,''),u.name) AS uname, u.email FROM sub_pay p JOIN users u ON u.id=p.user_id WHERE p.invoice_no=$1 AND p.status='paid'", [no])).rows[0];
+    if (!p) return res.status(404).json({ message: 'الفاتورة غير موجودة' });
+    if (String(p.user_id) !== String(req.user.id) && req.user.role !== 'admin') return res.status(404).json({ message: 'الفاتورة غير موجودة' });
+    res.json({ no: p.invoice_no, at: p.paid_at, name: p.uname, lines: (p.lines || []).map(l => ({ t: l.t, v: _SAR(l.h) })), amount: _SAR(p.amount_h), method: p.method, last4: p.card_last4, brand: p.card_brand, pay_id: p.moyasar_id, period_start: p.period_start, period_end: p.period_end });
+  } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// صفحة الدفع: بيانات عملية اشتراك
+app.get('/api/pay/sub/:ref', auth, async (req, res) => {
+  try {
+    const p = await _subPayRow(req.params.ref, req.user.id); if (!p) return res.status(404).json({ message: 'عملية الدفع غير موجودة' });
+    const cfg = await _subCfg(); const ap = _payOn() && (await getSetting('applepay_on', '0')) === '1';
+    const T = { new: 'الاشتراك في باقة ' + ((cfg.tiers[p.tier] || {}).name || ''), renew: 'تجديد الاشتراك', upgrade: 'الترقية إلى باقة مؤسسة', addon: 'إضافة إلى اشتراكك' };
+    res.json({ kind: 'sub', ref: p.ref, amount: _SAR(p.amount_h), amount_h: p.amount_h, title: T[p.kind] || 'الاشتراك', lines: (p.lines || []).map(l => ({ t: l.t, v: _SAR(l.h) })), status: p.status, method: p.method, card_brand: p.card_brand, card_last4: p.card_last4, paid_at: p.paid_at, moyasar_id: p.status === 'paid' ? p.moyasar_id : null, invoice_no: p.invoice_no, period_end: p.period_end,
+      pk: MOYASAR_PK, applepay: ap, online: _payOn(), callback: SITE_URL + '/pay.html?t=sub&ref=' + p.ref, payments_url: process.env.MOYASAR_PAYMENTS_URL || 'https://api.moyasar.com/v1/payments', tokens_url: process.env.MOYASAR_TOKENS_URL || 'https://api.moyasar.com/v1/tokens' });
+  } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/pay/sub/:ref/verify', auth, rateLimiter(40, 600000), async (req, res) => {
+  try {
+    if (!_payOn()) return res.status(503).json({ message: 'الدفع الإلكتروني غير متاح حالياً' });
+    const p = await _subPayRow(req.params.ref, req.user.id); if (!p) return res.status(404).json({ message: 'عملية الدفع غير موجودة' });
+    const x = await _subCheck(p, req.body.id);
+    if (x.paid) return res.json({ ok: true, paid: true });
+    if (x.pending) return res.json({ ok: false, pending: true, message: x.message });
+    if (x.failed) return res.json({ ok: false, message: x.message });
+    res.status(x.code || 400).json({ message: x.message });
+  } catch(e){ console.error('sub-verify:', e.message); res.status(500).json({ message: 'تعذّر التحقق، يُرجى المحاولة مجدداً' }); }
+});
+app.post('/api/pay/sub/:ref/log', auth, rateLimiter(20, 600000), async (req, res) => {
+  try { const p = await _subPayRow(req.params.ref, req.user.id); if (p && p.status !== 'paid') { const m = _cleanTxt(req.body && req.body.m || '', 250); if (m) await pool.query('UPDATE sub_pay SET err=$2 WHERE id=$1', [p.id, m]); } res.json({ ok: true }); } catch(e){ res.json({ ok: true }); }
+});
+// ── التجديد التلقائي والمهلة والتذكيرات (كل ساعة) ──
+async function _subRenewCharge(s){
+  const cfg = await _subCfg();
+  const q = await _subQuote(s.user_id, { kind: 'renew' }); if (q.error || !q.amount) return { ok: false, why: q.error || 'no amount' };
+  const ref = crypto.randomBytes(12).toString('hex');
+  const sp = (await pool.query(`INSERT INTO sub_pay (ref, user_id, kind, tier, cycle, addons, lines, amount_h) VALUES ($1,$2,'renew',$3,$4,$5::jsonb,$6::jsonb,$7) RETURNING *`, [ref, s.user_id, q.tier, q.cycle, JSON.stringify(q.addons || {}), JSON.stringify(q.lines), q.amount])).rows[0];
+  if (!s.card_token || !s.auto_renew || !_payOn()) return { ok: false, ref, why: 'no token' };
+  const r = await _mysr('POST', '/payments', { amount: q.amount, currency: 'SAR', description: 'تجديد اشتراك منصة مناقصة #' + ref, callback_url: SITE_URL + '/pay.html?t=sub&ref=' + ref, source: { type: 'token', token: s.card_token }, metadata: { ref, kind: 'sub_renew' } });
+  const d = r.data || {};
+  if (r.ok && d.id && d.status === 'paid' && _subMatches(sp, d)) { await _subFinalize(sp, d); return { ok: true }; }
+  await pool.query("UPDATE sub_pay SET status='failed', moyasar_id=$2, err=$3 WHERE id=$1", [sp.id, d.id || null, String((d.source || {}).message || d.message || d.status || r.status).slice(0, 300)]).catch(()=>{});
+  return { ok: false, ref, why: (d.source || {}).message || d.message || d.status };
+}
+async function _subMail(uid, title, body, btn){
+  try { await notify(uid, title, body, 'sub'); } catch(e){}
+  try { const u = (await pool.query('SELECT email, name FROM users WHERE id=$1', [uid])).rows[0]; if (u && u.email) sendEmail(u.email, title, emailTpl(title, `<p>مرحباً${u.name ? ' ' + eEsc(u.name) : ''}،</p><p>${eEsc(body)}</p>`, btn || 'إدارة الاشتراك', SITE_URL + '/plan.html')).catch(()=>{}); } catch(e){}
+}
+async function _subTick(){
+  const cfg = await _subCfg(); const fmtD = d => new Date(d).toISOString().slice(0, 10);
+  // تذكير قبل التجديد
+  const rem = (await pool.query(`SELECT * FROM subs WHERE status='active' AND NOT cancel_at_end AND period_end > NOW() AND period_end <= NOW() + ($1 || ' days')::interval AND (reminded_for IS NULL OR reminded_for <> period_end)`, [String(cfg.remind_days)])).rows;
+  for (const s of rem) {
+    await pool.query('UPDATE subs SET reminded_for=period_end WHERE user_id=$1', [s.user_id]);
+    const amt = _SAR(_subPrice(cfg, s.next_tier || s.tier, s.next_cycle || s.cycle) + _subAddonsH(cfg, s.next_addons || s.addons, s.next_cycle || s.cycle));
+    if (s.card_token && s.auto_renew) await _subMail(s.user_id, 'تذكير: يتجدد اشتراكك قريباً', 'سيتجدد اشتراكك تلقائياً في ' + fmtD(s.period_end) + ' بمبلغ ' + amt + ' ر.س من البطاقة المحفوظة ···· ' + (s.card_last4 || '') + '. يمكنك إيقاف التجديد في أي وقت من صفحة «اشتراكي».');
+    else await _subMail(s.user_id, 'تذكير: جدّد اشتراكك', 'ينتهي اشتراكك في ' + fmtD(s.period_end) + '. لتجنّب توقف المزايا، جدّد الاشتراك (' + amt + ' ر.س) من صفحة «اشتراكي».', 'جدّد اشتراكك');
+  }
+  // انتهاء الفترة
+  const due = (await pool.query(`SELECT * FROM subs WHERE status IN ('active','trial') AND period_end <= NOW() LIMIT 200`)).rows;
+  for (const s of due) {
+    if (s.status === 'trial') { await pool.query("UPDATE subs SET status='expired', updated_at=NOW() WHERE user_id=$1", [s.user_id]); _subLog(s.user_id, 'trial_end', ''); await _subMail(s.user_id, 'انتهت تجربتك المجانية', 'انتهت فترة التجربة المجانية لباقة مساعد الفوز، وعاد حسابك إلى الباقة المجانية. يمكنك الاشتراك في أي وقت لاستعادة المزايا.', 'اشترك الآن'); continue; }
+    if (s.cancel_at_end) { await pool.query("UPDATE subs SET status='cancelled', updated_at=NOW() WHERE user_id=$1", [s.user_id]); _subLog(s.user_id, 'ended', 'إلغاء بنهاية الفترة'); await _subMail(s.user_id, 'انتهى اشتراكك', 'انتهى اشتراكك، وعاد حسابك إلى الباقة المجانية. بياناتك وعملاؤك محفوظون، ويعود كل شيء فور الاشتراك من جديد.', 'اشترك من جديد'); continue; }
+    const x = await _subRenewCharge(s);
+    if (x.ok) { _subLog(s.user_id, 'auto_renew', 'ok'); continue; }
+    const gu = new Date(new Date(s.period_end).getTime() + cfg.grace_days * 864e5);
+    await pool.query("UPDATE subs SET status='grace', grace_until=$2, grace_reminded=FALSE, updated_at=NOW() WHERE user_id=$1", [s.user_id, gu]);
+    _subLog(s.user_id, 'grace', String(x.why || ''));
+    await _subMail(s.user_id, 'تعذّر تجديد الاشتراك', (s.card_token ? 'رُفضت عملية الخصم من البطاقة المحفوظة. ' : 'حان موعد تجديد اشتراكك. ') + 'تبقى جميع الميزات متاحة لمدة ' + cfg.grace_days + ' أيام، ويُرجى السداد قبل ' + fmtD(gu) + ' لتجنّب إيقاف الاشتراك.', 'تحديث وسيلة الدفع والسداد');
+  }
+  // تذكير قبل انتهاء المهلة بيومين + الإيقاف
+  const g2 = (await pool.query(`SELECT * FROM subs WHERE status='grace' AND NOT grace_reminded AND grace_until > NOW() AND grace_until <= NOW() + interval '2 days'`)).rows;
+  for (const s of g2) { await pool.query('UPDATE subs SET grace_reminded=TRUE WHERE user_id=$1', [s.user_id]); await _subMail(s.user_id, 'تذكير: يتبقى يومان على انتهاء المهلة', 'يتبقى يومان على إيقاف اشتراكك. جدّد الآن من صفحة «اشتراكي» للحفاظ على المزايا.', 'جدّد اشتراكك'); }
+  const gx = (await pool.query(`SELECT * FROM subs WHERE status='grace' AND grace_until <= NOW()`)).rows;
+  for (const s of gx) { await pool.query("UPDATE subs SET status='expired', updated_at=NOW() WHERE user_id=$1", [s.user_id]); _subLog(s.user_id, 'expired', 'انتهت المهلة'); await _subMail(s.user_id, 'توقف اشتراكك', 'انتهت مهلة السداد وعاد حسابك إلى الباقة المجانية، وتوقفت تذكيرات خطط الصيانة لعملائك. بياناتك محفوظة، ويعود كل شيء فور تجديد الاشتراك.', 'جدّد اشتراكك'); }
+}
+setInterval(() => _jobLock('subs', _subTick), 60 * 60 * 1000);
+setTimeout(() => _jobLock('subs', _subTick), 90 * 1000);
+// ── الإدارة ──
+app.get('/api/admin/subs', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const cfg = await _subCfg();
+    const rows = (await pool.query(`SELECT s.*, COALESCE(NULLIF(u.business_name,''),u.name) AS uname, u.city, u.phone, u.email,
+        (SELECT coupon FROM sub_pay p WHERE p.user_id=s.user_id AND p.status='paid' ORDER BY paid_at DESC LIMIT 1) AS last_coupon,
+        (SELECT COUNT(*)::int FROM sub_pay p WHERE p.user_id=s.user_id AND p.status='paid' AND amount_h>0) AS paid_n,
+        (SELECT moyasar_id FROM sub_pay p WHERE p.user_id=s.user_id AND p.status='paid' AND amount_h>0 ORDER BY paid_at DESC LIMIT 1) AS last_pay,
+        (SELECT ref FROM sub_pay p WHERE p.user_id=s.user_id AND p.status='paid' AND amount_h>0 ORDER BY paid_at DESC LIMIT 1) AS last_ref
+      FROM subs s JOIN users u ON u.id=s.user_id ORDER BY s.updated_at DESC LIMIT 1000`)).rows;
+    let mrr = 0; const st = { pro: 0, pro_y: 0, ent: 0, ent_y: 0, trial: 0, grace: 0, cancelled_m: 0 };
+    const m0 = new Date(); m0.setUTCDate(1); m0.setUTCHours(0, 0, 0, 0);
+    rows.forEach(s => { const live = _subLive(s); s.live = live;
+      if (live && s.status !== 'trial') { const p = _subPrice(cfg, s.tier, s.cycle) / (s.cycle === 'y' ? 12 : 1) + _subAddonsH(cfg, s.addons, 'm'); mrr += p; st[s.tier] = (st[s.tier] || 0) + 1; if (s.cycle === 'y') st[s.tier + '_y']++; }
+      if (live && s.status === 'trial') st.trial++; if (s.status === 'grace' && live) st.grace++;
+      if (['cancelled', 'expired'].includes(s.status) && new Date(s.updated_at) >= m0) st.cancelled_m++; });
+    const tr = (await pool.query(`SELECT COUNT(*)::int n, COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM sub_pay p WHERE p.user_id=s.user_id AND p.status='paid' AND p.amount_h>0))::int c FROM subs s WHERE trial_used`)).rows[0];
+    const newM = (await pool.query(`SELECT COUNT(DISTINCT user_id)::int n FROM sub_pay WHERE status='paid' AND kind='new' AND paid_at >= $1`, [m0])).rows[0].n;
+    const revM = (await pool.query(`SELECT COALESCE(SUM(amount_h),0)::bigint h FROM sub_pay WHERE status='paid' AND paid_at >= $1`, [m0])).rows[0].h;
+    res.json({ items: rows.map(s => ({ user_id: s.user_id, name: s.uname, city: s.city, phone: s.phone, tier: s.tier, cycle: s.cycle, status: s.live ? s.status : (s.status === 'cancelled' ? 'cancelled' : 'expired'), period_end: s.period_end, grace_until: s.grace_until, addons: s.addons, cancel_at_end: s.cancel_at_end, card_last4: s.card_last4, auto: !!s.card_token && s.auto_renew, coupon: s.last_coupon, paid_n: s.paid_n, last_ref: s.last_ref, renew: _SAR(_subPrice(cfg, s.next_tier || s.tier, s.next_cycle || s.cycle) + _subAddonsH(cfg, s.next_addons || s.addons, s.next_cycle || s.cycle)), since: s.created_at })),
+      stats: { mrr: _SAR(mrr), pro: st.pro, pro_y: st.pro_y, ent: st.ent, ent_y: st.ent_y, trial: st.trial, grace: st.grace, cancelled_m: st.cancelled_m, trial_conv: tr.n ? Math.round(tr.c * 100 / tr.n) : 0, new_m: newM, revenue_m: _SAR(Number(revM)) } });
+  } catch(e){ console.error('admin-subs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/subs/:uid/log', requirePermission('settings.manage'), async (req, res) => {
+  try { const uid = parseInt(req.params.uid);
+    const log = (await pool.query('SELECT kind, note, by_name, at FROM sub_log WHERE user_id=$1 ORDER BY at DESC LIMIT 40', [uid])).rows;
+    const pays = (await pool.query('SELECT ref, kind, amount_h, status, invoice_no, coupon, moyasar_id, err, created_at, paid_at, refunded_h FROM sub_pay WHERE user_id=$1 ORDER BY created_at DESC LIMIT 30', [uid])).rows.map(p => Object.assign(p, { amount: _SAR(p.amount_h), refunded: _SAR(p.refunded_h || 0) }));
+    res.json({ log, pays }); } catch(e){ res.json({ log: [], pays: [] }); }
+});
+app.post('/api/admin/subs/:uid/action', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const uid = parseInt(req.params.uid); const b = req.body || {}; const act = String(b.act || ''); const by = (req.admin && (req.admin.name || req.admin.email)) || (req.user && req.user.name) || 'admin';
+    const u = (await pool.query("SELECT id FROM users WHERE id=$1 AND role='provider'", [uid])).rows[0]; if (!u) return res.status(404).json({ message: 'مزوّد غير موجود' });
+    const s = await _plnRow(uid); const days = Math.max(1, Math.min(730, parseInt(b.days) || 30));
+    if (act === 'extend') {
+      if (!s) return res.status(400).json({ message: 'لا يوجد اشتراك — استخدم «منح باقة»' });
+      const base = _subLive(s) ? new Date(s.status === 'grace' ? Math.max(Date.now(), new Date(s.period_end).getTime()) : s.period_end) : new Date();
+      const end = new Date(base.getTime() + days * 864e5);
+      await pool.query("UPDATE subs SET period_end=$2, status=CASE WHEN status IN ('grace','expired','cancelled') THEN 'active' ELSE status END, grace_until=NULL, updated_at=NOW() WHERE user_id=$1", [uid, end]);
+      await _subLog(uid, 'admin_extend', days + ' يوم', by); try { await notify(uid, '🎁 تمديد مجاني لاشتراكك', 'مدّدت الإدارة اشتراكك ' + days + ' يوماً — حتى ' + end.toISOString().slice(0, 10) + '.', 'sub'); } catch(e){}
+    } else if (act === 'grant') {
+      const tier = b.tier === 'ent' ? 'ent' : 'pro'; const end = new Date(Date.now() + days * 864e5);
+      await pool.query(`INSERT INTO subs (user_id, tier, cycle, status, period_start, period_end, pay_method, addons) VALUES ($1,$2,'m','active',NOW(),$3,'grant','{}'::jsonb)
+        ON CONFLICT (user_id) DO UPDATE SET tier=$2, status='active', period_start=NOW(), period_end=$3, grace_until=NULL, cancel_at_end=TRUE, pay_method='grant', updated_at=NOW()`, [uid, tier, end]);
+      await pool.query('UPDATE subs SET cancel_at_end=TRUE WHERE user_id=$1 AND card_token IS NULL', [uid]);
+      await _subLog(uid, 'admin_grant', tier + ' · ' + days + ' يوم', by); try { await notify(uid, '🎁 منحتك الإدارة باقة ' + SUB_TN[tier], 'متاحة لك ' + days + ' يوماً حتى ' + end.toISOString().slice(0, 10) + '.', 'sub'); } catch(e){}
+    } else if (act === 'cancel') {
+      if (!s) return res.status(400).json({ message: 'لا يوجد اشتراك' });
+      if (b.now) await pool.query("UPDATE subs SET status='cancelled', period_end=NOW(), cancel_at_end=TRUE, updated_at=NOW() WHERE user_id=$1", [uid]);
+      else await pool.query('UPDATE subs SET cancel_at_end=TRUE, updated_at=NOW() WHERE user_id=$1', [uid]);
+      await _subLog(uid, 'admin_cancel', b.now ? 'فوراً' : 'بنهاية الفترة', by);
+    } else if (act === 'retry') {
+      if (!s || s.status !== 'grace') return res.status(400).json({ message: 'إعادة المحاولة للمشتركين في مهلة الدفع فقط' });
+      const x = await _subRenewCharge(s); await _subLog(uid, 'admin_retry', x.ok ? 'نجح' : String(x.why || 'فشل'), by);
+      if (!x.ok) return res.status(400).json({ message: 'لم ينجح الخصم: ' + (x.why || (s.card_token ? 'رفض البنك' : 'لا توجد بطاقة محفوظة')) });
+    } else if (act === 'refund') {
+      const p = (await pool.query("SELECT * FROM sub_pay WHERE user_id=$1 AND ref=$2 AND status='paid'", [uid, String(b.ref || '')])).rows[0];
+      if (!p || !p.moyasar_id) return res.status(400).json({ message: 'اختر دفعة مدفوعة إلكترونياً' });
+      const amt = Math.min(p.amount_h - (p.refunded_h || 0), b.amount ? _H(b.amount) : p.amount_h - (p.refunded_h || 0));
+      if (!(amt >= 100)) return res.status(400).json({ message: 'المبلغ غير صحيح' });
+      const r = await _mysr('POST', '/payments/' + encodeURIComponent(p.moyasar_id) + '/refund', { amount: amt });
+      if (!r.ok) return res.status(400).json({ message: 'رفضت البوابة الاسترجاع: ' + ((r.data && r.data.message) || r.status) });
+      await pool.query('UPDATE sub_pay SET refunded_h=COALESCE(refunded_h,0)+$2 WHERE id=$1', [p.id, amt]);
+      await _subLog(uid, 'admin_refund', _SAR(amt) + ' ر.س · ' + (p.invoice_no || p.ref), by);
+    } else return res.status(400).json({ message: 'إجراء غير معروف' });
+    logAdmin(req, 'sub_' + act, 'user', uid, JSON.stringify(b).slice(0, 200)).catch(()=>{});
+    res.json({ ok: true });
+  } catch(e){ console.error('admin-sub-action:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/admin/subs/tick', requirePermission('settings.manage'), async (req, res) => { try { await _subTick(); res.json({ ok: true }); } catch(e){ console.error('subs-tick:', e.message); res.status(500).json({ message: e.message }); } });
+app.get('/api/admin/coupons', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const rows = (await pool.query('SELECT * FROM coupons ORDER BY created_at DESC LIMIT 300')).rows;
+    const m0 = new Date(); m0.setUTCDate(1); m0.setUTCHours(0, 0, 0, 0);
+    const st = (await pool.query(`SELECT COUNT(*)::int uses, COALESCE(SUM(p.discount_h),0)::bigint disc FROM coupon_uses cu JOIN sub_pay p ON p.id=cu.pay_id WHERE cu.at >= $1`, [m0])).rows[0];
+    const share = (await pool.query(`SELECT COUNT(*)::int n, COUNT(*) FILTER (WHERE coupon IS NOT NULL)::int c FROM sub_pay WHERE status='paid' AND kind='new' AND paid_at >= $1`, [m0])).rows[0];
+    res.json({ items: rows.map(c => Object.assign(c, { value: Number(c.value) })), stats: { active: rows.filter(c => c.active && (!c.ends_at || new Date(c.ends_at) > new Date())).length, total: rows.length, uses_m: st.uses, disc_m: _SAR(Number(st.disc)), share: share.n ? Math.round(share.c * 100 / share.n) : 0 }, cfg: { ref_months: (await _subCfg()).ref_months } });
+  } catch(e){ console.error('coupons:', e.message); res.json({ items: [], stats: {} }); }
+});
+app.post('/api/admin/coupons', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const b = req.body || {}; const code = String(b.code || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '').slice(0, 30);
+    if (code.length < 3) return res.status(400).json({ message: 'اكتب رمزاً من 3 أحرف أو أكثر (إنجليزي وأرقام)' });
+    const kind = b.kind === 'fixed' ? 'fixed' : 'pct'; const value = Number(b.value);
+    if (!(value > 0) || (kind === 'pct' && value > 100)) return res.status(400).json({ message: 'قيمة الخصم غير صحيحة' });
+    const tiers = (Array.isArray(b.tiers) ? b.tiers : []).filter(t => ['pro', 'ent'].includes(t)); const cycles = (Array.isArray(b.cycles) ? b.cycles : []).filter(c => ['m', 'y'].includes(c));
+    const d = v => (v && /^\d{4}-\d{2}-\d{2}/.test(String(v))) ? new Date(String(v).slice(0, 10) + 'T00:00:00+03:00') : null;
+    const ends = d(b.ends_at); if (ends) ends.setTime(ends.getTime() + 864e5 - 1000);
+    const exists = (await pool.query('SELECT 1 FROM coupons WHERE code=$1', [code])).rows[0];
+    if (exists && !b.edit) return res.status(409).json({ message: 'الرمز موجود مسبقاً' });
+    await pool.query(`INSERT INTO coupons (code, kind, value, tiers, cycles, max_uses, starts_at, ends_at, once_per_user, new_only, public_offer, active, note)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,TRUE,$12)
+      ON CONFLICT (code) DO UPDATE SET kind=$2, value=$3, tiers=$4, cycles=$5, max_uses=$6, starts_at=$7, ends_at=$8, once_per_user=$9, new_only=$10, public_offer=$11, note=$12`,
+      [code, kind, value, tiers, cycles, Math.max(0, parseInt(b.max_uses) || 0) || null, d(b.starts_at), ends, b.once_per_user !== false, !!b.new_only, !!b.public_offer, _cleanTxt(b.note || '', 120) || null]);
+    if (b.public_offer) await pool.query('UPDATE coupons SET public_offer=FALSE WHERE code<>$1', [code]);
+    logAdmin(req, 'coupon_save', 'coupon', null, code).catch(()=>{}); res.json({ ok: true, code });
+  } catch(e){ console.error('coupon-save:', e.message); res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
+app.post('/api/admin/coupons/:code/toggle', requirePermission('settings.manage'), async (req, res) => {
+  try { const r = await pool.query('UPDATE coupons SET active=NOT active WHERE code=$1 RETURNING active', [String(req.params.code || '').toUpperCase()]); if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' }); logAdmin(req, 'coupon_toggle', 'coupon', null, req.params.code).catch(()=>{}); res.json({ ok: true, active: r.rows[0].active }); }
+  catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/sub/cfg', requirePermission('settings.manage'), async (req, res) => { try { res.json(Object.assign({}, await _subCfg(), { open: (await getSetting('subs_open', '0')) === '1', testers: await getSetting('subs_testers', '') })); } catch(e){ res.json(SUB_DEF); } });
+app.put('/api/admin/sub/cfg', requirePermission('settings.manage'), async (req, res) => {
+  try { const b = req.body || {}; const keep = { tiers: b.tiers, limits: b.limits, addons: b.addons, trial_days: b.trial_days, grace_days: b.grace_days, remind_days: b.remind_days, ref_months: b.ref_months };
+    await setSetting('sub_cfg', JSON.stringify(keep)); _subCfgC = null;
+    if (typeof b.open === 'boolean') await setSetting('subs_open', b.open ? '1' : '0');
+    if (typeof b.testers === 'string') await setSetting('subs_testers', b.testers.replace(/[^0-9,\s،]/g, '').slice(0, 500)); const v = await _subCfg(); logAdmin(req, 'sub_cfg', 'settings', null, JSON.stringify(v.tiers)).catch(()=>{}); res.json({ ok: true, cfg: v }); }
+  catch(e){ res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
+
 // الإدارة: السماح بالتحويل البنكي لمزوّد معيّن (للمبالغ الكبيرة)
 app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), async (req, res) => {
   try {

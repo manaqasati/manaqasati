@@ -1969,6 +1969,8 @@ function _openNewChatSearch(){
 function _saaiSubNo(id){ var n=prompt('ما تم الاتفاق مع المقاول؟ اكتب السبب باختصار (يوصل المقاول يأكّد):'); if(n===null)return; _api('/api/sub/saai/'+id+'/nodeal',{method:'POST',body:JSON.stringify({note:n})}).then(function(r){ if(r&&r.ok){ showToast('وصل المقاول — ننتظر تأكيده','success'); loadSaai(); } else showToast((r&&r.message)||'تعذّر','error'); }); }
 // الدفع الإلكتروني: هل السداد بالبطاقة فقط لهذا المزوّد؟ (التحويل البنكي يفتحه المشرف للمبالغ الكبيرة)
 window._payCfg=null;
+// «اشتراكي» يظهر لما تفتح الإدارة الاشتراكات (أو للمزوّدين المختارين للتجربة)
+setTimeout(function(){ _api('/api/subs/open').then(function(r){ if(r&&r.open){ window._subsOpen=true; var n=_el('ni-plan'); if(n&&!(window.DLG&&DLG.isMe&&DLG.isMe())) n.style.display=''; } }).catch(function(){}); },1200);
 function _payCfgGet(){ return window._payCfg?Promise.resolve(window._payCfg):_api('/api/pay/config').then(function(c){ window._payCfg=c||{}; return window._payCfg; }).catch(function(){ window._payCfg={online:false,bank_ok:true}; return window._payCfg; }); }
 function _payOnly(){ var c=window._payCfg; return !!(c&&c.online&&!c.bank_ok); }
 function _payGo(body,btn){

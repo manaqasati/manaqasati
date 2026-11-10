@@ -90,7 +90,8 @@ body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;min-height:
 <div class="wrap" id="app"><div class="center"><div class="spin"></div><div class="mu">جارٍ التحميل…</div></div></div>
 <script>
 (function(){
-var Q=new URLSearchParams(location.search), REF=String(Q.get('ref')||'').replace(/[^a-f0-9]/g,'').slice(0,40);
+var Q=new URLSearchParams(location.search), REF=String(Q.get('ref')||'').replace(/[^a-f0-9]/g,'').slice(0,40), SUB=Q.get('t')==='sub', B='/api/pay/'+(SUB?'sub':'saai')+'/'+REF, SELF='/pay.html?'+(SUB?'t=sub&':'')+'ref='+REF, BACK=SUB?'/plan.html':'/dashboard-provider.html#saai', BACKT=SUB?'العودة إلى اشتراكي':'العودة إلى محفظة السعي';
+if(SUB){ try{ document.querySelector('.top a').setAttribute('href',BACK); document.title='الدفع — مناقصة'; }catch(e){} }
 var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
 var app=document.getElementById('app'), P=null, M='', BUSY=false, VN=0;
 var LOCK='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
@@ -106,19 +107,25 @@ function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){retur
 function fmt(n){return Number(n||0).toLocaleString('en-US');}
 function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},o.headers||{});
  return fetch(p,o).then(function(r){ if(r.status===401){ goLogin(); throw new Error('auth'); } return r.json().catch(function(){return {};}).then(function(j){ j.__s=r.status; return j; }); });}
-function goLogin(){ try{localStorage.removeItem('token');}catch(e){} location.href='/auth.html?redirect=pay&ref='+REF; }
+function goLogin(){ try{localStorage.removeItem('token');}catch(e){} location.href='/auth.html?redirect=pay&ref='+REF+(SUB?'&t=sub':''); }
 function steps(c){var L=['المبلغ','الدفع','التأكيد'];return '<div class="steps">'+L.map(function(t,i){return '<div class="st '+(i<c?'ok':(i===c?'on':''))+'"><span class="n">'+(i<c?'✓':i+1)+'</span>'+t+(i<2?'<i></i>':'')+'</div>';}).join('')+'</div>';}
-function fail(msg){ app.innerHTML='<div class="center"><div class="card"><div style="font-size:38px">⚠️</div><div class="h1" style="margin:8px 0">'+esc(msg)+'</div><a class="btn2 b-pri" href="/dashboard-provider.html#saai">العودة إلى محفظة السعي</a></div></div>'; }
+function fail(msg){ app.innerHTML='<div class="center"><div class="card"><div style="font-size:38px">⚠️</div><div class="h1" style="margin:8px 0">'+esc(msg)+'</div><a class="btn2 b-pri" href="'+BACK+'">'+BACKT+'</a></div></div>'; }
 if(!REF){ fail('رابط الدفع غير صحيح'); return; }
 if(!TOK){ goLogin(); return; }
 
+var OKN=SUB?'✓ يُفعَّل الاشتراك فور إتمام الدفع':'✓ يُعتمد السداد تلقائياً فور إتمام الدفع';
+function money(v){ return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
 function summary(){
+ if(SUB) return '<div class="card sum"><div class="lbl">ملخص الطلب</div>'
+  +(P.lines||[]).map(function(l){ return '<div class="r"><span>'+esc(l.t)+'</span><b style="'+(l.v<0?'color:#15803d':'')+'">'+(l.v<0?'− ':'')+money(Math.abs(l.v))+' ر.س</b></div>'; }).join('')+'<hr>'
+  +'<div class="r" style="align-items:center;margin:0"><b style="font-size:15px;color:#172554;text-align:right">الإجمالي</b><span class="amt">'+money(P.amount)+' <small>ر.س</small></span></div>'
+  +'<div class="okn">'+OKN+'</div><div class="mu" style="font-size:11.5px;margin-top:10px;line-height:1.7">بإتمام الدفع توافق على <a href="/terms.html#subs" target="_blank" style="color:#1e3a8a">شروط الاشتراك والتجديد والإلغاء</a>. تُحفظ البطاقة بأمان لدى بوابة الدفع للتجديد التلقائي، ويمكنك إيقافه في أي وقت.</div></div>';
  return '<div class="card sum"><div class="lbl">ملخص السداد</div>'
   +'<div class="r"><span>المشروع</span><b>'+esc(P.title)+'</b></div>'
   +'<div class="r lgsum"><span>مبلغ الاتفاق</span><b>'+fmt(P.contract_value)+' ر.س</b></div>'
   +'<div class="r lgsum"><span>نسبة السعي</span><b>3%</b></div><hr>'
   +'<div class="r" style="align-items:center;margin:0"><b style="font-size:15px;color:#172554;text-align:right">المطلوب سداده</b><span class="amt">'+fmt(P.amount)+' <small>ر.س</small></span></div>'
-  +'<div class="okn">✓ يُعتمد السداد تلقائياً فور إتمام الدفع</div></div>';
+  +'<div class="okn">'+OKN+'</div></div>';
 }
 var apOK=false; try{ apOK=!!(window.ApplePaySession&&ApplePaySession.canMakePayments()); }catch(e){}
 function render(){
@@ -137,11 +144,11 @@ function render(){
    +'<div class="f"><label for="cv">رمز الأمان (CVV)</label><div class="inp" id="w-cv"><input id="cv" inputmode="numeric" autocomplete="cc-csc" placeholder="•••" maxlength="4" type="password">'+CVV+'</div></div></div>'
    +'<div class="f"><label for="nm">الاسم على البطاقة</label><div class="inp" id="w-nm"><input id="nm" autocomplete="cc-name" placeholder="NAME ON CARD" maxlength="60" style="text-transform:uppercase"></div></div>'
    +'</div><div class="cardpv"><div style="display:flex;justify-content:space-between;align-items:center;position:relative"><div class="chip"></div><b id="pvb" style="font-size:15px"></b></div><div class="pvn" id="pvn">•••• •••• •••• ••••</div><div class="pvb"><div>CARD HOLDER<b id="pvh">—</b></div><div style="text-align:right">EXPIRES<b id="pve">MM/YY</b></div></div></div></div>'
-   +'<button type="button" class="pay desk" id="payb">'+LOCK+' ادفع '+fmt(P.amount)+' ر.س</button>';
+   +'<button type="button" class="pay desk" id="payb">'+LOCK+' ادفع '+money(P.amount)+' ر.س</button>';
  }
- app.innerHTML='<div class="hd"><div><div class="h1">سداد السعي</div><div class="mu">'+esc(P.title)+'</div></div>'+steps(1)+'</div>'
+ app.innerHTML='<div class="hd"><div><div class="h1">'+(SUB?'الدفع':'سداد السعي')+'</div><div class="mu">'+esc(P.title)+'</div></div>'+steps(1)+'</div>'
   +'<div class="grid"><div class="main"><div class="card">'+meth+body+'<div class="err" id="err"></div>'+TRUST+'</div></div><div class="side">'+summary()+'</div></div>'
-  +(M==='card'?'<div class="bar"><button type="button" class="pay" id="payb2">'+LOCK+' ادفع '+fmt(P.amount)+' ر.س</button><div class="mu" style="text-align:center;margin-top:6px;font-size:11.5px">يُعتمد السداد تلقائياً فور إتمام الدفع</div></div>':'');
+  +(M==='card'?'<div class="bar"><button type="button" class="pay" id="payb2">'+LOCK+' ادفع '+money(P.amount)+' ر.س</button><div class="mu" style="text-align:center;margin-top:6px;font-size:11.5px">'+OKN.replace('✓ ','')+'</div></div>':'');
  [].forEach.call(app.querySelectorAll('.opt'),function(b){ b.onclick=function(){ if(BUSY)return; M=b.getAttribute('data-m'); render(); }; });
  if(M==='card') wireCard(); else mountApple();
 }
@@ -158,7 +165,7 @@ function wireCard(){
 function g(id){return document.getElementById(id);}
 function bad(id,on){ var w=g('w-'+id); if(w)w.classList[on?'add':'remove']('bad'); }
 function showErr(m){ var e=g('err'); if(e){ e.textContent=m; e.style.display=m?'block':'none'; } }
-function setBusy(on,txt){ BUSY=on; [g('payb'),g('payb2')].forEach(function(b){ if(b){ b.disabled=on; b.innerHTML=on?(txt||'جارٍ المعالجة…'):LOCK+' ادفع '+fmt(P.amount)+' ر.س'; } }); }
+function setBusy(on,txt){ BUSY=on; [g('payb'),g('payb2')].forEach(function(b){ if(b){ b.disabled=on; b.innerHTML=on?(txt||'جارٍ المعالجة…'):LOCK+' ادفع '+money(P.amount)+' ر.س'; } }); }
 function payCard(){
  if(BUSY)return; showErr('');
  var n=g('cn').value.replace(/\D/g,''), e=g('ce').value.replace(/\D/g,''), c=g('cv').value.replace(/\D/g,''), nm=g('nm').value.trim();
@@ -169,12 +176,23 @@ function payCard(){
  if(!/^[A-Za-z][A-Za-z .'-]{1,58}$/.test(nm)||nm.split(/\s+/).length<2){bad('nm',1);ok=false;}
  if(!ok){ showErr('يُرجى التحقق من بيانات البطاقة المظللة باللون الأحمر'); return; }
  setBusy(true,'جارٍ التحقق من البطاقة…');
+ if(SUB){ // الاشتراك: الدفعة تنشأ مباشرة مع حفظ البطاقة للتجديد (بيانات البطاقة ما تمر على سيرفرنا)
+   fetch(P.payments_url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({publishable_api_key:P.pk,amount:Math.round(P.amount*100),currency:'SAR',description:'اشتراك منصة مناقصة — '+String(P.title||'').slice(0,60)+' #'+REF,callback_url:P.callback,metadata:{ref:REF,kind:'sub'},source:{type:'creditcard',name:nm,number:n,month:mm,year:2000+yy,cvc:c,save_card:true}})})
+   .then(function(r){ return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,j:j}; }); }).then(function(x){
+     var d=x.j||{}, src=d.source||{};
+     if(x.ok&&d.status==='initiated'&&src.transaction_url){ setBusy(true,'جارٍ التحويل إلى صفحة التحقق الخاصة بالبنك…'); location.href=src.transaction_url; return; }
+     if(x.ok&&d.status==='paid'){ return verify(d.id); }
+     setBusy(false); var m=String(src.message||d.message||''); showErr(/insufficient/i.test(m)?'الرصيد غير كافٍ':(/declin|reject/i.test(m)?'رُفضت العملية من البنك المُصدِر للبطاقة':'تعذّر إتمام عملية الدفع، يُرجى مراجعة بيانات البطاقة والمحاولة مجدداً'));
+     if(m) api(B+'/log',{method:'POST',body:JSON.stringify({m:'card: '+m.slice(0,150)})}).catch(function(){});
+   }).catch(function(){ setBusy(false); showErr('تعذّر الاتصال، يُرجى التحقق من الإنترنت والمحاولة مجدداً'); });
+   return;
+ }
  var fd=new FormData(); fd.append('publishable_api_key',P.pk); fd.append('save_only','true'); fd.append('name',nm); fd.append('number',n); fd.append('month',String(mm)); fd.append('year',String(2000+yy)); fd.append('cvc',c);
  fetch(P.tokens_url,{method:'POST',body:fd}).then(function(r){ return r.json().catch(function(){return {};}).then(function(j){ return {ok:r.ok,j:j}; }); }).then(function(x){
    var t=x.j&&(x.j.id||x.j.token);
    if(!x.ok||!t){ setBusy(false); showErr('تعذّر التحقق من بيانات البطاقة، يُرجى مراجعتها والمحاولة مجدداً'); return; }
    setBusy(true,'جارٍ تنفيذ عملية الدفع…');
-   return api('/api/pay/saai/'+REF+'/card',{method:'POST',body:JSON.stringify({token:t})}).then(function(d){
+   return api(B+'/card',{method:'POST',body:JSON.stringify({token:t})}).then(function(d){
      if(d&&d.paid){ load(); return; }
      if(d&&d.url){ setBusy(true,'جارٍ التحويل إلى صفحة التحقق الخاصة بالبنك…'); location.href=d.url; return; }
      setBusy(false); showErr((d&&d.message)||'تعذّر إتمام عملية الدفع');
@@ -188,14 +206,14 @@ function loadMysr(){ var V='1.15.0'; if(!_mysrP) _mysrP=Promise.all([loadAsset('
 function mountApple(){
  loadMysr().then(function(){
    var el=document.querySelector('.mysr-form'); if(!el||el.getAttribute('data-on'))return; el.setAttribute('data-on','1');
-   Moyasar.init({ element:'.mysr-form', amount:P.amount*100, currency:'SAR', description:'سعي منصة مناقصة — '+String(P.title||'').slice(0,60)+' #'+REF,
-     publishable_api_key:P.pk, callback_url:P.callback, methods:['applepay'], metadata:{ref:REF,kind:'saai'},
+   Moyasar.init({ element:'.mysr-form', amount:Math.round(P.amount*100), currency:'SAR', description:(SUB?'اشتراك منصة مناقصة — ':'سعي منصة مناقصة — ')+String(P.title||'').slice(0,60)+' #'+REF,
+     publishable_api_key:P.pk, callback_url:P.callback, methods:['applepay'], metadata:{ref:REF,kind:SUB?'sub':'saai'},
      apple_pay:{country:'SA',label:'Manaqasa',validate_merchant_url:'https://api.moyasar.com/v1/applepay/initiate'},
      on_completed:function(p){ return verify(p&&p.id,true); },
      on_failure:function(e){ var d=''; try{ d=typeof e==='string'?e:(e&&(e.message||e.error||(e.source&&e.source.message)))||''; if(!d&&e){ d=[e.name,e.type,e.code,String(e)].filter(function(v){return v&&v!=='[object Object]';}).join(' | ')||JSON.stringify(e); } }catch(_){ d=String(e); } d=String(d||'').slice(0,200);
        showErr('لم تكتمل عملية الدفع عبر Apple Pay. لم يُخصم أي مبلغ، ويمكنك المحاولة مجدداً أو اختيار الدفع بالبطاقة.');
        var er=g('err'); if(er&&d){ var sm=document.createElement('div'); sm.style.cssText='font-size:11px;font-weight:700;opacity:.7;margin-top:6px;direction:ltr;text-align:left;word-break:break-word'; sm.textContent='رمز: '+d; er.appendChild(sm); }
-       api('/api/pay/saai/'+REF+'/log',{method:'POST',body:JSON.stringify({m:'applepay: '+d})}).catch(function(){}); } });
+       api(B+'/log',{method:'POST',body:JSON.stringify({m:'applepay: '+d})}).catch(function(){}); } });
    _hideGw();
  }).catch(function(){ showErr('تعذّر تحميل Apple Pay، يُرجى اختيار الدفع بالبطاقة'); });
 }
@@ -207,10 +225,10 @@ function _hideGw(){
 }
 function verify(id,quiet){
  if(!quiet) app.innerHTML='<div class="center">'+steps(1)+'<div class="spin"></div><div class="h1" style="font-size:19px">جارٍ التحقق من عملية الدفع</div><div class="mu" style="margin-top:8px;line-height:1.9">يُرجى عدم إغلاق الصفحة أو الرجوع حتى اكتمال العملية.</div></div>';
- return api('/api/pay/saai/'+REF+'/verify',{method:'POST',body:JSON.stringify({id:id||''})}).then(function(d){
-   if(d&&d.paid){ history.replaceState(null,'','/pay.html?ref='+REF); return load(); }
+ return api(B+'/verify',{method:'POST',body:JSON.stringify({id:id||''})}).then(function(d){
+   if(d&&d.paid){ history.replaceState(null,'',SELF); return load(); }
    if(d&&d.pending&&(VN=(VN||0)+1)<8){ setTimeout(function(){ verify(id,true); },2500); return; }
-   history.replaceState(null,'','/pay.html?ref='+REF);
+   history.replaceState(null,'',SELF);
    return load().then(function(){ showErr('لم تكتمل عملية الدفع: '+((d&&d.message)||'تعذّر إتمام عملية الدفع')+'. لم يُخصم أي مبلغ، ويمكنك المحاولة مجدداً.'); });
  }).catch(function(e){ if(e&&e.message==='auth')return; fail('تعذّر التحقق، يُرجى تحديث الصفحة'); });
 }
@@ -218,13 +236,13 @@ function done(){
  var dt=P.paid_at?new Date(P.paid_at):new Date(); var two=function(x){return (x<10?'0':'')+x;};
  var ds=two(dt.getDate())+'/'+two(dt.getMonth()+1)+'/'+dt.getFullYear()+' · '+two(dt.getHours())+':'+two(dt.getMinutes());
  var how=P.method==='applepay'?'Apple Pay':((P.card_brand?String(P.card_brand).replace(/^\w/,function(c){return c.toUpperCase();})+' ':'بطاقة ')+(P.card_last4?'···· '+P.card_last4:''));
- var rows=[['المبلغ','<span style="font-family:Cairo,sans-serif;font-size:17px;color:#172554">'+fmt(P.amount)+' ر.س</span>'],['المشروع',esc(P.title)],['طريقة الدفع',esc(how)],['رقم العملية','<span dir="ltr">'+esc(P.moyasar_id||'')+'</span>'],['التاريخ',ds]];
- app.innerHTML='<div class="center" style="max-width:420px">'+steps(3)+'<div class="ticket" style="margin-top:16px"><div class="tk-h"><div class="ic">✓</div><b style="font-size:19px">تم السداد بنجاح</b><div style="font-size:12.5px;opacity:.9;margin-top:4px">اعتُمد السداد تلقائياً</div></div><div class="tk-cut"><i></i><i></i></div><div class="tk-b">'
+ var rows=[['المبلغ','<span style="font-family:Cairo,sans-serif;font-size:17px;color:#172554">'+money(P.amount)+' ر.س</span>'],[SUB?'الطلب':'المشروع',esc(P.title)],['طريقة الدفع',esc(how)],['رقم العملية','<span dir="ltr">'+esc(P.moyasar_id||'')+'</span>'],['التاريخ',ds]];
+ app.innerHTML='<div class="center" style="max-width:420px">'+steps(3)+'<div class="ticket" style="margin-top:16px"><div class="tk-h"><div class="ic">✓</div><b style="font-size:19px">'+(SUB?'تم الدفع بنجاح':'تم السداد بنجاح')+'</b><div style="font-size:12.5px;opacity:.9;margin-top:4px">'+(SUB?'اشتراكك مفعّل الآن':'اعتُمد السداد تلقائياً')+'</div></div><div class="tk-cut"><i></i><i></i></div><div class="tk-b">'
   +rows.map(function(r){return '<div class="r"><span>'+r[0]+'</span><b>'+r[1]+'</b></div>';}).join('')+'</div></div>'
-  +'<a class="btn2 b-pri" href="/dashboard-provider.html#saai" style="margin-top:16px">العودة إلى محفظة السعي</a><div class="mu" style="margin-top:10px">أُرسل إيصال السداد إلى بريدك الإلكتروني</div></div>';
+  +(SUB&&P.invoice_no?'<a class="btn2 b-sec" href="/invoice.html?no='+encodeURIComponent(P.invoice_no)+'" style="margin-top:16px">عرض الفاتورة '+esc(P.invoice_no)+'</a>':'')+'<a class="btn2 b-pri" href="'+BACK+'" style="margin-top:'+(SUB&&P.invoice_no?'10':'16')+'px">'+BACKT+'</a><div class="mu" style="margin-top:10px">'+(SUB?'أُرسلت الفاتورة إلى بريدك الإلكتروني':'أُرسل إيصال السداد إلى بريدك الإلكتروني')+'</div></div>';
 }
 function load(){
- return api('/api/pay/saai/'+REF).then(function(d){
+ return api(B).then(function(d){
    if(d.__s===404||!d.ref){ fail((d&&d.message)||'عملية السداد غير موجودة'); return; }
    P=d; if(P.status==='paid'){ done(); return; }
    if(!P.online){ fail('الدفع الإلكتروني غير متاح حالياً'); return; }
