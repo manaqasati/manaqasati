@@ -4002,6 +4002,7 @@ async function setupDatabase() {
       await _mig('ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS notes TEXT');
       await _mig('ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS address VARCHAR(200)');
       await _mig('ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS manual BOOLEAN DEFAULT FALSE');
+      await _mig('ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS email VARCHAR(120)');
       await _mig(`CREATE TABLE IF NOT EXISTS customer_devices (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, customer_id INTEGER REFERENCES provider_customers(id) ON DELETE CASCADE, kind VARCHAR(10) DEFAULT 'device', name VARCHAR(100), brand VARCHAR(60), place VARCHAR(80), qty INTEGER DEFAULT 1, last_service DATE, notes VARCHAR(300), maps VARCHAR(400), added_by VARCHAR(80), created_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig('CREATE INDEX IF NOT EXISTS cdev_cust ON customer_devices(customer_id)');
       await _mig(`CREATE TABLE IF NOT EXISTS provider_techs (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, name VARCHAR(80), phone VARCHAR(20), phone9 VARCHAR(12), active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(provider_id, phone9))`);
@@ -9551,6 +9552,7 @@ app.post('/api/admin/jobs/tick', requirePermission('settings.manage'), async (re
 
 // ═══ دفتر العملاء (للمزوّد): ملف لكل عميل · سجل التعامل · الأجهزة والمواقع · ملاحظات خاصة ═══
 // بعد انتهاء الاشتراك: يشوف الدفتر (قراءة فقط) — الإضافة والتعديل للمشترك
+const _custEmail = v => { v = String(v || '').trim().toLowerCase().slice(0, 120); return /^[^\s@<>]+@[^\s@<>]+\.[a-z]{2,}$/.test(v) ? v : null; };
 const _CUST_STATS = `
   (SELECT COUNT(*)::int FROM jobs j WHERE j.provider_id=c.provider_id AND j.status<>'cancelled' AND (j.client_id=c.client_id OR RIGHT(regexp_replace(COALESCE(j.client_phone,''),'\\D','','g'),9)=c.phone9)) AS jobs_n,
   (SELECT COUNT(*)::int FROM jobs j WHERE j.provider_id=c.provider_id AND j.status IN ('new','scheduled','active','delivered') AND (j.client_id=c.client_id OR RIGHT(regexp_replace(COALESCE(j.client_phone,''),'\\D','','g'),9)=c.phone9)) AS open_n,
@@ -9578,9 +9580,10 @@ app.post('/api/customers', auth, providerOnly, async (req, res) => {
   try { if (!(await _qGate(req, res))) return;
     const name = _cleanTxt(req.body && req.body.name || '', 80), phone = String(req.body && req.body.phone || '').replace(/[^\d+]/g, '').slice(0, 15), p9 = _ph9(phone);
     if (name.length < 2 || p9.length !== 9) return res.status(400).json({ message: 'اكتب اسم العميل ورقم جواله' });
+    const em = _custEmail(req.body.email); if (String(req.body.email || '').trim() && !em) return res.status(400).json({ message: 'الإيميل غير صحيح' });
     if ((await pool.query('SELECT 1 FROM provider_customers WHERE provider_id=$1 AND phone9=$2', [req.user.id, p9])).rows.length) return res.status(409).json({ message: 'هذا العميل موجود في دفترك' });
     const u = (await pool.query("SELECT id FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1 AND id<>$2 ORDER BY id LIMIT 1", [p9, req.user.id])).rows[0];
-    const r = (await pool.query('INSERT INTO provider_customers (provider_id, client_id, name, phone, phone9, address, manual, quotes_n, accepted_n, last_at) VALUES ($1,$2,$3,$4,$5,$6,TRUE,0,0,NOW()) RETURNING id', [req.user.id, u ? u.id : null, name, phone, p9, _cleanTxt(req.body.address || '', 200) || null])).rows[0];
+    const r = (await pool.query('INSERT INTO provider_customers (provider_id, client_id, name, phone, phone9, address, email, manual, quotes_n, accepted_n, last_at) VALUES ($1,$2,$3,$4,$5,$6,$7,TRUE,0,0,NOW()) RETURNING id', [req.user.id, u ? u.id : null, name, phone, p9, _cleanTxt(req.body.address || '', 200) || null, em])).rows[0];
     res.json({ ok: true, id: r.id });
   } catch(e){ console.error('cust-add:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -9596,7 +9599,7 @@ app.get('/api/customers/:id', auth, providerOnly, async (req, res) => {
     const qreqs = c.client_id ? (await pool.query(`SELECT id, service, status, created_at FROM quote_requests WHERE provider_id=$1 AND client_id=$2 AND status IN ('new','seen','declined') ORDER BY created_at DESC LIMIT 50`, [req.user.id, c.client_id])).rows : [];
     const devs = (await pool.query('SELECT * FROM customer_devices WHERE customer_id=$1 ORDER BY kind DESC, id', [c.id])).rows;
     const rt = jobs.filter(j => j.rating > 0); 
-    res.json({ live: await _custLive(req), customer: { id: c.id, client_id: c.client_id, name: c.name, phone: c.phone, address: c.address, notes: c.notes || '', manual: c.manual, created_at: c.created_at, last_at: c.last_at },
+    res.json({ live: await _custLive(req), customer: { id: c.id, client_id: c.client_id, name: c.name, phone: c.phone, address: c.address, email: c.email || '', notes: c.notes || '', manual: c.manual, created_at: c.created_at, last_at: c.last_at },
       stats: { total: c.total, jobs_n: c.jobs_n, open_n: c.open_n, done_n: jobs.filter(j => j.status === 'done').length, quotes_n: quotes.length, quotes_ok: quotes.filter(q => q.status === 'accepted').length, rating: rt.length ? Math.round(rt.reduce((a, j) => a + j.rating, 0) / rt.length * 10) / 10 : null, rating_n: rt.length },
       jobs: jobs.map(j => Object.assign(j, { value: parseFloat(j.value) || 0, extra_total: parseFloat(j.extra_total) || 0, status_t: _JST[j.status] || '' })),
       quotes: quotes.map(q => ({ id: q.id, no: q.q_no, title: q.title, status: _qState(q), total: q.status === 'accepted' && q.options[q.chosen] ? q.options[q.chosen].total : Math.max.apply(null, (q.options || []).map(o => o.total).concat([0])), created_at: q.sent_at || q.created_at })),
@@ -9606,6 +9609,8 @@ app.get('/api/customers/:id', auth, providerOnly, async (req, res) => {
 app.put('/api/customers/:id', auth, providerOnly, async (req, res) => {
   try { if (!(await _qGate(req, res))) return; const b = req.body || {};
     const c = await _custRow(req.user.id, parseInt(req.params.id) || 0); if (!c) return res.status(404).json({ message: 'العميل غير موجود' });
+    if (b.email !== undefined && String(b.email || '').trim() && !_custEmail(b.email)) return res.status(400).json({ message: 'الإيميل غير صحيح' });
+    if (b.email !== undefined) await pool.query('UPDATE provider_customers SET email=$3 WHERE id=$1 AND provider_id=$2', [c.id, req.user.id, _custEmail(b.email)]);
     await pool.query('UPDATE provider_customers SET name=$3, address=$4, notes=$5 WHERE id=$1 AND provider_id=$2', [c.id, req.user.id, _cleanTxt(b.name !== undefined ? b.name : c.name, 80) || c.name, b.address !== undefined ? (_cleanTxt(b.address, 200) || null) : c.address, b.notes !== undefined ? (_cleanML(b.notes, 1500) || null) : c.notes]);
     res.json({ ok: true }); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
