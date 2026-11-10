@@ -741,12 +741,13 @@ function _hhCard(r){
 // عروض الأسعار والمشاريع الخاصة (من مزوّد مشترك) + مهامي لو المستخدم فني — تفشل بصمت
 function _clPriv(){
   var box=document.getElementById('ph-priv'); if(!box) return;
-  Promise.all([jFetch('/api/my/quotes').catch(function(){return null;}),jFetch('/api/my/jobs').catch(function(){return null;}),jFetch('/api/tech/jobs').catch(function(){return null;})]).then(function(r){
-    var Q=(r[0]&&r[0].items)||[], J=(r[1]&&r[1].items)||[], T=r[2]||{}, R=[];
+  Promise.all([jFetch('/api/my/quotes').catch(function(){return null;}),jFetch('/api/my/jobs').catch(function(){return null;}),jFetch('/api/tech/jobs').catch(function(){return null;}),jFetch('/api/my/plans').catch(function(){return null;})]).then(function(r){
+    var Q=(r[0]&&r[0].items)||[], J=(r[1]&&r[1].items)||[], T=r[2]||{}, PL=(r[3]&&r[3].items)||[], R=[];
     var e=function(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); };
     var row=function(ic,t,s,href,b){ return '<a href="'+href+'" style="display:flex;gap:11px;align-items:center;padding:11px 0;border-top:1px solid #f1f5f9;text-decoration:none;color:inherit"><span style="width:38px;height:38px;border-radius:12px;background:#eff4ff;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none">'+ic+'</span><span style="flex:1;min-width:0"><b style="display:block;font-size:13.5px;color:#14223d">'+t+'</b><span style="display:block;font-size:12px;color:#5b6b85;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+s+'</span></span><span style="flex:none;background:#1e3a8a;color:#fff;border-radius:11px;padding:8px 12px;font-weight:800;font-size:12.5px">'+b+'</span></a>'; };
     Q.filter(function(q){return q.status==='sent';}).slice(0,3).forEach(function(q){ R.push(row('📄',(q.reaccept?'عدّل السعر: ':'عرض سعر: ')+e(q.title),e(q.provider_name),'/quote.html?id='+(parseInt(q.id)||0),'افتح')); });
     J.filter(function(j){return ['new','scheduled','active','delivered'].indexOf(j.status)>=0;}).slice(0,3).forEach(function(j){ R.push(row('🧰',e(j.title),e(j.provider_name)+' · '+e(j.status_t),'/job.html?id='+(parseInt(j.id)||0),j.status==='delivered'?'أكّد الاستلام':'تابع')); });
+    PL.filter(function(p){return p.status==='offered';}).forEach(function(p){ R.push(row('🛠','خطة صيانة: '+e(p.title),e(p.provider_name)+' · بانتظار موافقتك','/mplan.html?id='+(parseInt(p.id)||0),'افتح')); });
     if(T.tech&&(T.items||[]).length) R.push(row('👷','مهامي كفني ('+T.items.length+')','مهام من المؤسسة اللي أضافتك','/tech.html','افتح'));
     box.innerHTML=R.length?'<div style="background:#fff;border:1px solid #e1e9f6;border-radius:18px;padding:4px 16px;margin:0 0 14px;box-shadow:0 2px 10px rgba(30,58,138,.05)">'+R.join('')+'</div>':'';
   }).catch(function(){});
@@ -3255,6 +3256,7 @@ function _nfOpenC(id){
   if(n.type==='draft'&&n.ref_id){ location.href='/new.html?did_id='+encodeURIComponent(n.ref_id); return; }
   if((n.type==='pause_ask'||n.type==='req_dup')&&n.ref_id){ openDetail(n.ref_id,null); return; }
   if(n.type==='verify_email'){ try{_vbShow();}catch(e){} return; }
+  if(n.type==='plan'&&n.ref_id){ location.href='/mplan.html?id='+(parseInt(n.ref_id)||0); return; }
   if(n.type==='job'&&n.ref_id){ location.href='/job.html?id='+(parseInt(n.ref_id)||0); return; }
   if(n.type==='tech'){ location.href='/tech.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(n.type==='quote'&&n.ref_id){ location.href='/quote.html?id='+(parseInt(n.ref_id)||0); return; }

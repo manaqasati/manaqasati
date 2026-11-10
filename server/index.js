@@ -3408,7 +3408,7 @@ async function _dlgStateOf(id){
 }
 function _dlgDrop(id){ _dlgState.delete(id); }
 // وش يقدر يسوي المفوّض: الحساس لصاحب الحساب بس، والباقي حسب الصلاحيات، وأي شي ما نعرفه يُرفض
-const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai|subs\/|pay\/|quotes|jobs|team|customers)/;
+const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai|subs\/|pay\/|quotes|jobs|team|customers|plans)/;
 const _DLG_GET_DENY = { chat: /^\/api\/(messages|provider\/conversations)/ };
 const _DLG_FREE = /^\/api\/(me\/dlg(\/|$)|push|push-token|notifications|me\/ping|me\/provider-hint|live\/ping|hit|lk\/event|csp-report|demo\/ev|tour|pro\/\d+\/view|requests\/\d+\/(view|revisit|watch-open)$|saved-requests\/|drafts\/save|upload\/attachment|support\/|reports$|blocks\/|auth\/refresh$)/;
 const _DLG_GROUPS = [
@@ -4005,6 +4005,10 @@ async function setupDatabase() {
       await _mig('ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS email VARCHAR(120)');
       await _mig(`CREATE TABLE IF NOT EXISTS customer_devices (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, customer_id INTEGER REFERENCES provider_customers(id) ON DELETE CASCADE, kind VARCHAR(10) DEFAULT 'device', name VARCHAR(100), brand VARCHAR(60), place VARCHAR(80), qty INTEGER DEFAULT 1, last_service DATE, notes VARCHAR(300), maps VARCHAR(400), added_by VARCHAR(80), created_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig('CREATE INDEX IF NOT EXISTS cdev_cust ON customer_devices(customer_id)');
+      await _mig('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS plan_visit_id INTEGER');
+      await _mig(`CREATE TABLE IF NOT EXISTS maint_plans (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, customer_id INTEGER REFERENCES provider_customers(id) ON DELETE CASCADE, client_id INTEGER REFERENCES users(id) ON DELETE SET NULL, title VARCHAR(120), device_ids JSONB DEFAULT '[]'::jsonb, every_m INTEGER DEFAULT 6, duration_m INTEGER DEFAULT 12, first_at DATE, end_at DATE, price NUMERIC(12,2) DEFAULT 0, price_per VARCHAR(6) DEFAULT 'year', includes VARCHAR(300), tasks JSONB DEFAULT '[]'::jsonb, status VARCHAR(10) DEFAULT 'offered', renew_reminded BOOLEAN DEFAULT FALSE, renewed_to INTEGER, decided_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
+      await _mig(`CREATE TABLE IF NOT EXISTS maint_visits (id SERIAL PRIMARY KEY, plan_id INTEGER REFERENCES maint_plans(id) ON DELETE CASCADE, n INTEGER, due_at DATE, job_id INTEGER, status VARCHAR(10) DEFAULT 'upcoming', postpone_req VARCHAR(300), postpone_at TIMESTAMPTZ, done_at TIMESTAMPTZ)`);
+      await _mig('CREATE INDEX IF NOT EXISTS mv_plan ON maint_visits(plan_id)');
       await _mig(`CREATE TABLE IF NOT EXISTS provider_techs (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, name VARCHAR(80), phone VARCHAR(20), phone9 VARCHAR(12), active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(provider_id, phone9))`);
       await _mig(`CREATE TABLE IF NOT EXISTS jobs (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, client_id INTEGER REFERENCES users(id) ON DELETE SET NULL, client_name VARCHAR(80), client_phone VARCHAR(20), quote_id INTEGER, title VARCHAR(120), address VARCHAR(200), maps VARCHAR(400), value NUMERIC(12,2) DEFAULT 0, extra_total NUMERIC(12,2) DEFAULT 0, status VARCHAR(12) DEFAULT 'new', sched_at TIMESTAMPTZ, tech_id INTEGER, arrived_at TIMESTAMPTZ, finished_at TIMESTAMPTZ, delivered_at TIMESTAMPTZ, confirmed_at TIMESTAMPTZ, auto_confirmed BOOLEAN DEFAULT FALSE, tasks JSONB DEFAULT '[]'::jsonb, photos JSONB DEFAULT '[]'::jsonb, log JSONB DEFAULT '[]'::jsonb, rating INTEGER, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig('CREATE INDEX IF NOT EXISTS jobs_prov ON jobs(provider_id, updated_at DESC)');
@@ -9402,7 +9406,7 @@ app.get('/api/jobs/:id', auth, providerOnly, async (req, res) => {
 app.post('/api/jobs', auth, providerOnly, async (req, res) => {
   try { if (!(await _jobGate(req, res))) return;
     const b = req.body || {}; const L = await _subLimits(req.user.id);
-    const act = (await pool.query("SELECT COUNT(*)::int n FROM jobs WHERE provider_id=$1 AND status IN ('new','scheduled','active') AND quote_id IS NULL", [req.user.id])).rows[0].n;
+    const act = (await pool.query("SELECT COUNT(*)::int n FROM jobs WHERE provider_id=$1 AND status IN ('new','scheduled','active') AND quote_id IS NULL AND plan_visit_id IS NULL", [req.user.id])).rows[0].n;
     if (act >= (L.limits.projects || 0)) return res.status(409).json({ code: 'limit', message: 'وصلت حد المشاريع اليدوية النشطة في باقتك (' + (L.limits.projects || 0) + ') — أضف «5 مشاريع» من صفحة اشتراكي' });
     const title = _cleanTxt(b.title || '', 120), cn = _cleanTxt(b.client_name || '', 80), cp = String(b.client_phone || '').replace(/[^\d+]/g, '').slice(0, 15);
     if (!title || !cn) return res.status(400).json({ message: 'اكتب عنوان المشروع واسم العميل' });
@@ -9439,7 +9443,7 @@ app.post('/api/jobs/:id', auth, providerOnly, async (req, res) => {
       if (!['scheduled', 'active', 'new'].includes(j.status)) return res.status(409).json({ message: 'المشروع مسلّم مسبقاً' });
       if (j.client_id) { await pool.query("UPDATE jobs SET status='delivered', delivered_at=NOW(), updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, 'سلّمت المؤسسة المشروع — بانتظار تأكيد العميل');
         try { await notify(j.client_id, '✅ سلّمك ' + j.pname + ' المشروع', (j.title || '') + ' — أكّد الاستلام وقيّم الخدمة', 'job', id, { url: '/job.html?id=' + id }); } catch(e){} }
-      else { await pool.query("UPDATE jobs SET status='done', delivered_at=NOW(), confirmed_at=NOW(), updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, 'انسلّم المشروع'); }
+      else { await pool.query("UPDATE jobs SET status='done', delivered_at=NOW(), confirmed_at=NOW(), updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, 'انسلّم المشروع'); await _jobDone(id); }
       return res.json({ ok: true });
     }
     if (act === 'cancel') { await pool.query("UPDATE jobs SET status='cancelled', updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, 'أُلغي المشروع'); return res.json({ ok: true }); }
@@ -9534,7 +9538,7 @@ app.post('/api/cjobs/:id', auth, rateLimiter(30, 600000), async (req, res) => {
       return res.json({ ok: true }); }
     if (act === 'confirm') { if (j.status !== 'delivered') return res.status(409).json({ message: j.status === 'done' ? 'أكّدت الاستلام مسبقاً' : 'المزوّد ما سلّم المشروع للحين' });
       const rt = Math.max(0, Math.min(5, parseInt(b.rating) || 0));
-      await pool.query("UPDATE jobs SET status='done', confirmed_at=NOW(), rating=$2, updated_at=NOW() WHERE id=$1", [id, rt || null]); await _jobLog(id, cn + ' أكّد الاستلام' + (rt ? ' وقيّم ' + rt + '/5' : ''));
+      await pool.query("UPDATE jobs SET status='done', confirmed_at=NOW(), rating=$2, updated_at=NOW() WHERE id=$1", [id, rt || null]); await _jobDone(id); await _jobLog(id, cn + ' أكّد الاستلام' + (rt ? ' وقيّم ' + rt + '/5' : ''));
       if (rt) try { await pool.query("INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, type, created_at) VALUES (NULL,$1,$2,$3,$4,'job',NOW())", [req.user.id, j.provider_id, rt, _cleanML(b.comment || '', 600) || null]); } catch(e){ console.error('job-review:', e.message); }
       try { await notify(j.provider_id, '🎉 ' + cn + ' أكّد استلام المشروع', (j.title || '') + (rt ? ' — قيّمك ' + rt + ' من 5' : ''), 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
       return res.json({ ok: true }); }
@@ -9544,7 +9548,8 @@ app.post('/api/cjobs/:id', auth, rateLimiter(30, 600000), async (req, res) => {
 // التأكيد التلقائي بعد 3 أيام من التسليم
 async function _jobTick(){
   const r = (await pool.query("UPDATE jobs SET status='done', confirmed_at=NOW(), auto_confirmed=TRUE, updated_at=NOW() WHERE status='delivered' AND delivered_at < NOW() - interval '3 days' RETURNING id, provider_id, title")).rows;
-  for (const j of r) { await _jobLog(j.id, 'تأكّد الاستلام تلقائياً بعد 3 أيام'); try { await notify(j.provider_id, 'اكتمل المشروع', (j.title || '') + ' — تأكّد الاستلام تلقائياً', 'job', j.id, { url: '/jobs.html?id=' + j.id }); } catch(e){} }
+  for (const j of r) { await _jobDone(j.id); await _jobLog(j.id, 'تأكّد الاستلام تلقائياً بعد 3 أيام'); try { await notify(j.provider_id, 'اكتمل المشروع', (j.title || '') + ' — تأكّد الاستلام تلقائياً', 'job', j.id, { url: '/jobs.html?id=' + j.id }); } catch(e){} }
+  try { await _planTick(); } catch(e){ console.error('plan-tick:', e.message); }
   return r.length;
 }
 setInterval(() => _jobLock('jobs', _jobTick), 60 * 60 * 1000);
@@ -9598,12 +9603,13 @@ app.get('/api/customers/:id', auth, providerOnly, async (req, res) => {
     const quotes = (await pool.query(`SELECT id, q_no, title, status, options, chosen, valid_until, reaccept, sent_at, created_at FROM quotes WHERE provider_id=$1 AND status<>'draft' AND RIGHT(regexp_replace(COALESCE(client_phone,''),'\\D','','g'),9)=$2 ORDER BY created_at DESC LIMIT 100`, [req.user.id, ph])).rows;
     const qreqs = c.client_id ? (await pool.query(`SELECT id, service, status, created_at FROM quote_requests WHERE provider_id=$1 AND client_id=$2 AND status IN ('new','seen','declined') ORDER BY created_at DESC LIMIT 50`, [req.user.id, c.client_id])).rows : [];
     const devs = (await pool.query('SELECT * FROM customer_devices WHERE customer_id=$1 ORDER BY kind DESC, id', [c.id])).rows;
+    const plans = (await pool.query(`SELECT m.id, m.title, m.status, m.every_m, m.price, m.price_per, m.end_at, m.renewed_to, (SELECT MIN(due_at) FROM maint_visits v WHERE v.plan_id=m.id AND v.status IN ('upcoming','created')) AS next_due, (SELECT COUNT(*)::int FROM maint_visits v WHERE v.plan_id=m.id AND v.postpone_req IS NOT NULL) AS postpone_n FROM maint_plans m WHERE m.customer_id=$1 AND m.provider_id=$2 ORDER BY m.id DESC`, [c.id, req.user.id])).rows;
     const rt = jobs.filter(j => j.rating > 0); 
     res.json({ live: await _custLive(req), customer: { id: c.id, client_id: c.client_id, name: c.name, phone: c.phone, address: c.address, email: c.email || '', notes: c.notes || '', manual: c.manual, created_at: c.created_at, last_at: c.last_at },
       stats: { total: c.total, jobs_n: c.jobs_n, open_n: c.open_n, done_n: jobs.filter(j => j.status === 'done').length, quotes_n: quotes.length, quotes_ok: quotes.filter(q => q.status === 'accepted').length, rating: rt.length ? Math.round(rt.reduce((a, j) => a + j.rating, 0) / rt.length * 10) / 10 : null, rating_n: rt.length },
       jobs: jobs.map(j => Object.assign(j, { value: parseFloat(j.value) || 0, extra_total: parseFloat(j.extra_total) || 0, status_t: _JST[j.status] || '' })),
       quotes: quotes.map(q => ({ id: q.id, no: q.q_no, title: q.title, status: _qState(q), total: q.status === 'accepted' && q.options[q.chosen] ? q.options[q.chosen].total : Math.max.apply(null, (q.options || []).map(o => o.total).concat([0])), created_at: q.sent_at || q.created_at })),
-      qreqs, devices: devs });
+      qreqs, devices: devs, plans });
   } catch(e){ console.error('cust:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.put('/api/customers/:id', auth, providerOnly, async (req, res) => {
@@ -9633,6 +9639,138 @@ app.delete('/api/customers/:id/devices/:did', auth, providerOnly, async (req, re
   try { if (!(await _qGate(req, res))) return;
     await pool.query('DELETE FROM customer_devices WHERE id=$1 AND customer_id=$2 AND provider_id=$3', [parseInt(req.params.did) || 0, parseInt(req.params.id) || 0, req.user.id]); res.json({ ok: true }); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
+
+// ═══ خطط الصيانة الدورية (للمشترك، بدون سعي): زيارة كل N شهور · قبل كل زيارة بأسبوع تصير مشروع تلقائياً · العميل يوافق/يأجّل · تذكير بالتجديد ═══
+// إذا وقف اشتراك المزوّد: تتوقف التذكيرات وإنشاء الزيارات (مسؤوليته مع عملائه)
+const _PEV = [1, 3, 4, 6, 12];
+// تواريخ بدون منطقة زمنية: نص YYYY-MM-DD دايماً (DATE من القاعدة يرجع كتاريخ محلي)
+const _ymd = d => { if (typeof d === 'string') return d.slice(0, 10); const x = new Date(d); if (d instanceof Date && !x.getHours() && !x.getMinutes()) return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); return x.toISOString().slice(0, 10); };
+function _addM(d, m){ const x = new Date(_ymd(d) + 'T00:00:00Z'); const day = x.getUTCDate(); x.setUTCMonth(x.getUTCMonth() + m); if (x.getUTCDate() < day) x.setUTCDate(0); return x.toISOString().slice(0, 10); }
+function _planOut(p, visits, devs){ return { id: p.id, title: p.title, customer_id: p.customer_id, client_id: p.client_id, device_ids: p.device_ids || [], devices: devs || undefined, every_m: p.every_m, duration_m: p.duration_m, first_at: p.first_at, end_at: p.end_at, price: parseFloat(p.price) || 0, price_per: p.price_per, includes: p.includes || '', tasks: p.tasks || [], status: p.status, renewed_to: p.renewed_to, decided_at: p.decided_at, created_at: p.created_at, visits: visits || undefined, client_name: p.cname, provider_name: p.pname }; }
+async function _planVisits(p){
+  const n = Math.max(1, Math.floor(p.duration_m / p.every_m));
+  await pool.query('DELETE FROM maint_visits WHERE plan_id=$1 AND job_id IS NULL AND status=$2', [p.id, 'upcoming']);
+  for (let k = 0; k < n; k++) await pool.query('INSERT INTO maint_visits (plan_id, n, due_at) VALUES ($1,$2,$3)', [p.id, k + 1, _ymd(_addM(p.first_at, k * p.every_m))]);
+  await pool.query('UPDATE maint_plans SET end_at=$2 WHERE id=$1', [p.id, _ymd(_addM(p.first_at, p.duration_m))]);
+}
+async function _planRow(id, cond, args){ return (await pool.query(`SELECT m.*, c.name AS cname, c.phone AS cphone, c.address AS caddr, COALESCE(NULLIF(u.business_name,''),u.name) AS pname FROM maint_plans m JOIN provider_customers c ON c.id=m.customer_id JOIN users u ON u.id=m.provider_id WHERE m.id=$1 ${cond}`, [id].concat(args || []))).rows[0]; }
+async function _planFull(p){ const v = (await pool.query('SELECT v.*, j.status AS job_status FROM maint_visits v LEFT JOIN jobs j ON j.id=v.job_id WHERE v.plan_id=$1 ORDER BY v.n', [p.id])).rows;
+  const d = (p.device_ids || []).length ? (await pool.query('SELECT id, name, place, qty, last_service FROM customer_devices WHERE id = ANY($1) AND customer_id=$2', [p.device_ids.map(Number), p.customer_id])).rows : [];
+  return _planOut(p, v, d); }
+function _planIn(b){ const ev = _PEV.includes(parseInt(b.every_m)) ? parseInt(b.every_m) : 6; const du = [6, 12, 24].includes(parseInt(b.duration_m)) ? parseInt(b.duration_m) : 12;
+  const f = /^\d{4}-\d{2}-\d{2}/.test(String(b.first_at || '')) ? String(b.first_at).slice(0, 10) : null;
+  return { title: _cleanTxt(b.title || '', 120), every_m: ev, duration_m: Math.max(du, ev), first_at: f && !isNaN(new Date(f)) ? f : null, price: Math.max(0, Math.min(10000000, parseFloat(b.price) || 0)), price_per: b.price_per === 'visit' ? 'visit' : 'year', includes: _cleanTxt(b.includes || '', 300) || null,
+    tasks: (Array.isArray(b.tasks) ? b.tasks : []).slice(0, 30).map(t => _cleanTxt(t, 120)).filter(t => t.length >= 2), device_ids: (Array.isArray(b.device_ids) ? b.device_ids : []).map(x => parseInt(x)).filter(Boolean).slice(0, 100) }; }
+app.post('/api/plans', auth, providerOnly, async (req, res) => {
+  try { if (!(await _qGate(req, res))) return; const b = req.body || {};
+    const c = (await pool.query('SELECT * FROM provider_customers WHERE id=$1 AND provider_id=$2', [parseInt(b.customer_id) || 0, req.user.id])).rows[0]; if (!c) return res.status(404).json({ message: 'العميل غير موجود' });
+    const d = _planIn(b);
+    if (!d.title) return res.status(400).json({ message: 'اكتب اسم الخطة' });
+    if (!d.first_at || new Date(d.first_at + 'T23:59:59+03:00') < new Date()) return res.status(400).json({ message: 'حدّد موعد أول زيارة (اليوم أو بعده)' });
+    if (!d.tasks.length) return res.status(400).json({ message: 'أضف مهمة وحدة على الأقل لكل زيارة' });
+    if (d.device_ids.length) d.device_ids = (await pool.query('SELECT id FROM customer_devices WHERE id = ANY($1) AND customer_id=$2', [d.device_ids, c.id])).rows.map(r => r.id);
+    const direct = b.direct === true || !c.client_id;
+    const p = (await pool.query(`INSERT INTO maint_plans (provider_id, customer_id, client_id, title, device_ids, every_m, duration_m, first_at, price, price_per, includes, tasks, status, decided_at) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7,$8,$9,$10,$11,$12::jsonb,$13,$14) RETURNING *`,
+      [req.user.id, c.id, c.client_id, d.title, JSON.stringify(d.device_ids), d.every_m, d.duration_m, d.first_at, d.price, d.price_per, d.includes, JSON.stringify(d.tasks), direct ? 'active' : 'offered', direct ? new Date() : null])).rows[0];
+    await _planVisits(p);
+    const pn = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS n FROM users WHERE id=$1", [req.user.id])).rows[0].n;
+    if (c.client_id) try { await notify(c.client_id, direct ? '🛠 فعّل لك ' + pn + ' خطة صيانة' : '🛠 عرض خطة صيانة من ' + pn, d.title + (direct ? '' : ' — افتحها ووافق عليها'), 'plan', p.id, { url: '/mplan.html?id=' + p.id }); } catch(e){}
+    res.json({ ok: true, id: p.id, status: p.status });
+  } catch(e){ console.error('plan-new:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/plans', auth, providerOnly, async (req, res) => {
+  try { const r = await pool.query(`SELECT m.*, c.name AS cname, (SELECT MIN(due_at) FROM maint_visits v WHERE v.plan_id=m.id AND v.status IN ('upcoming','created')) AS next_due, (SELECT COUNT(*)::int FROM maint_visits v WHERE v.plan_id=m.id AND v.postpone_req IS NOT NULL) AS postpone_n FROM maint_plans m JOIN provider_customers c ON c.id=m.customer_id WHERE m.provider_id=$1 ${req.query.customer ? 'AND m.customer_id=$2' : ''} ORDER BY CASE m.status WHEN 'active' THEN 0 WHEN 'offered' THEN 1 ELSE 2 END, m.id DESC LIMIT 300`, req.query.customer ? [req.user.id, parseInt(req.query.customer) || 0] : [req.user.id]);
+    res.json({ items: r.rows.map(p => Object.assign(_planOut(p), { next_due: p.next_due, postpone_n: p.postpone_n })) }); } catch(e){ console.error('plans:', e.message); res.json({ items: [] }); }
+});
+app.get('/api/plans/:id', auth, providerOnly, async (req, res) => {
+  try { const p = await _planRow(parseInt(req.params.id) || 0, 'AND m.provider_id=$2', [req.user.id]); if (!p) return res.status(404).json({ message: 'الخطة غير موجودة' });
+    res.json(Object.assign(await _planFull(p), { client_phone: p.cphone, live: await _custLive(req) })); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/plans/:id', auth, providerOnly, async (req, res) => {
+  try { const p = await _planRow(parseInt(req.params.id) || 0, 'AND m.provider_id=$2', [req.user.id]); if (!p) return res.status(404).json({ message: 'الخطة غير موجودة' });
+    if (!(await _qGate(req, res))) return; const b = req.body || {}, act = String(b.act || '');
+    if (act === 'activate') { if (p.status !== 'offered') return res.status(409).json({ message: 'الخطة مو بانتظار موافقة' });
+      await pool.query("UPDATE maint_plans SET status='active', decided_at=NOW() WHERE id=$1", [p.id]); return res.json({ ok: true }); }
+    if (act === 'cancel') { if (!['offered', 'active'].includes(p.status)) return res.status(409).json({ message: 'الخطة مغلقة' });
+      await pool.query("UPDATE maint_plans SET status='cancelled' WHERE id=$1", [p.id]); await pool.query("UPDATE maint_visits SET status='skipped' WHERE plan_id=$1 AND status='upcoming'", [p.id]);
+      if (p.client_id && p.status === 'active') try { await notify(p.client_id, 'انتهت خطة الصيانة', p.title + ' — ألغاها ' + p.pname, 'plan', p.id, { url: '/mplan.html?id=' + p.id }); } catch(e){}
+      return res.json({ ok: true }); }
+    if (act === 'move') { const v = (await pool.query("SELECT * FROM maint_visits WHERE id=$1 AND plan_id=$2 AND status='upcoming'", [parseInt(b.visit_id) || 0, p.id])).rows[0]; if (!v) return res.status(404).json({ message: 'الزيارة غير موجودة أو صارت مشروع — غيّر الموعد من المشروع' });
+      const dd = /^\d{4}-\d{2}-\d{2}/.test(String(b.due_at || '')) ? String(b.due_at).slice(0, 10) : ''; if (!dd || isNaN(new Date(dd)) || new Date(dd + 'T23:59:59+03:00') < new Date()) return res.status(400).json({ message: 'الموعد غير صحيح' });
+      await pool.query('UPDATE maint_visits SET due_at=$2, postpone_req=NULL WHERE id=$1', [v.id, dd]);
+      if (p.client_id) try { await notify(p.client_id, '🗓 تغيّر موعد صيانتك الدورية', p.title + ' — الزيارة ' + v.n + ': ' + _ymd(dd), 'plan', p.id, { url: '/mplan.html?id=' + p.id }); } catch(e){}
+      return res.json({ ok: true }); }
+    if (act === 'renew') { if (p.renewed_to) return res.status(409).json({ message: 'جدّدتها مسبقاً' });
+      const last = (await pool.query('SELECT MAX(due_at) AS d FROM maint_visits WHERE plan_id=$1', [p.id])).rows[0].d || p.first_at;
+      const first = _ymd(_addM(last, p.every_m)); const direct = b.direct === true || !p.client_id;
+      const n = (await pool.query(`INSERT INTO maint_plans (provider_id, customer_id, client_id, title, device_ids, every_m, duration_m, first_at, price, price_per, includes, tasks, status, decided_at) SELECT provider_id, customer_id, client_id, title, device_ids, every_m, duration_m, $2, COALESCE($3, price), price_per, includes, tasks, $4, $5 FROM maint_plans WHERE id=$1 RETURNING *`,
+        [p.id, first, b.price !== undefined && b.price !== '' ? Math.max(0, parseFloat(b.price) || 0) : null, direct ? 'active' : 'offered', direct ? new Date() : null])).rows[0];
+      await _planVisits(n); await pool.query('UPDATE maint_plans SET renewed_to=$2 WHERE id=$1', [p.id, n.id]);
+      if (p.client_id) try { await notify(p.client_id, direct ? '🛠 تجدّدت خطة الصيانة' : '🛠 ' + p.pname + ' يعرض تجديد خطة الصيانة', n.title + (direct ? '' : ' — افتحها ووافق'), 'plan', n.id, { url: '/mplan.html?id=' + n.id }); } catch(e){}
+      return res.json({ ok: true, id: n.id }); }
+    res.status(400).json({ message: 'إجراء غير معروف' });
+  } catch(e){ console.error('plan-act:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ── العميل ──
+app.get('/api/my/plans', auth, async (req, res) => {
+  try { const r = await pool.query(`SELECT m.*, COALESCE(NULLIF(u.business_name,''),u.name) AS pname, (SELECT MIN(due_at) FROM maint_visits v WHERE v.plan_id=m.id AND v.status IN ('upcoming','created')) AS next_due FROM maint_plans m JOIN users u ON u.id=m.provider_id WHERE m.client_id=$1 AND m.status IN ('offered','active','ended') ORDER BY m.id DESC LIMIT 50`, [req.user.id]);
+    res.json({ items: r.rows.map(p => Object.assign(_planOut(p), { next_due: p.next_due })) }); } catch(e){ res.json({ items: [] }); }
+});
+app.get('/api/cplans/:id', auth, async (req, res) => {
+  try { const p = await _planRow(parseInt(req.params.id) || 0, 'AND m.client_id=$2', [req.user.id]); if (!p) return res.status(404).json({ message: 'الخطة غير موجودة' });
+    const out = await _planFull(p); out.client_name = undefined; const pu = (await pool.query('SELECT phone FROM users WHERE id=$1', [p.provider_id])).rows[0];
+    res.json(Object.assign(out, { provider_phone: pu && pu.phone })); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/cplans/:id', auth, rateLimiter(20, 600000), async (req, res) => {
+  try { const p = await _planRow(parseInt(req.params.id) || 0, 'AND m.client_id=$2', [req.user.id]); if (!p) return res.status(404).json({ message: 'الخطة غير موجودة' });
+    const b = req.body || {}, act = String(b.act || ''), cn = p.cname || 'العميل';
+    if (act === 'accept' || act === 'decline') { if (p.status !== 'offered') return res.status(409).json({ message: 'تم الرد مسبقاً' });
+      await pool.query('UPDATE maint_plans SET status=$2, decided_at=NOW() WHERE id=$1', [p.id, act === 'accept' ? 'active' : 'declined']);
+      if (act === 'decline') await pool.query("UPDATE maint_visits SET status='skipped' WHERE plan_id=$1", [p.id]);
+      try { await notify(p.provider_id, act === 'accept' ? '✅ ' + cn + ' وافق على خطة الصيانة' : cn + ' اعتذر عن خطة الصيانة', p.title, 'plan', p.id, { url: '/customers.html?plan=' + p.id }); } catch(e){}
+      return res.json({ ok: true }); }
+    if (act === 'postpone') { if (p.status !== 'active') return res.status(409).json({ message: 'الخطة مو فعّالة' });
+      const v = (await pool.query("SELECT * FROM maint_visits WHERE id=$1 AND plan_id=$2 AND status IN ('upcoming','created')", [parseInt(b.visit_id) || 0, p.id])).rows[0]; if (!v) return res.status(404).json({ message: 'الزيارة غير موجودة' });
+      const note = _cleanTxt(b.note || '', 300); if (note.length < 3) return res.status(400).json({ message: 'اكتب السبب أو الموعد المناسب لك' });
+      await pool.query('UPDATE maint_visits SET postpone_req=$2, postpone_at=NOW() WHERE id=$1', [v.id, note]);
+      if (v.job_id) await _jobLog(v.job_id, cn + ' طلب تأجيل: ' + note);
+      try { await notify(p.provider_id, '🗓 ' + cn + ' يطلب تأجيل زيارة الصيانة', p.title + ' — ' + note, 'plan', p.id, { url: v.job_id ? '/jobs.html?id=' + v.job_id : '/customers.html?plan=' + p.id }); } catch(e){}
+      return res.json({ ok: true }); }
+    res.status(400).json({ message: 'إجراء غير معروف' });
+  } catch(e){ console.error('cplan-act:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// لما يكتمل مشروع زيارة: الزيارة تصير «تمت» وآخر صيانة للأجهزة = اليوم · والخطة تنتهي بعد آخر زيارة
+async function _jobDone(jid){
+  try { const v = (await pool.query('SELECT v.*, m.device_ids, m.customer_id, m.id AS pid FROM maint_visits v JOIN maint_plans m ON m.id=v.plan_id WHERE v.job_id=$1', [jid])).rows[0]; if (!v) return;
+    await pool.query("UPDATE maint_visits SET status='done', done_at=NOW(), postpone_req=NULL WHERE id=$1", [v.id]);
+    if ((v.device_ids || []).length) await pool.query('UPDATE customer_devices SET last_service=CURRENT_DATE WHERE id = ANY($1) AND customer_id=$2', [v.device_ids.map(Number), v.customer_id]);
+    const left = (await pool.query("SELECT COUNT(*)::int n FROM maint_visits WHERE plan_id=$1 AND status IN ('upcoming','created')", [v.pid])).rows[0].n;
+    if (!left) await pool.query("UPDATE maint_plans SET status='ended' WHERE id=$1 AND status='active'", [v.pid]);
+  } catch(e){ console.error('job-done:', e.message); }
+}
+async function _planTick(){
+  // 1) زيارة خلال 7 أيام → مشروع تلقائي (فقط لو اشتراك المزوّد فعّال)
+  const due = (await pool.query(`SELECT v.*, m.provider_id, m.client_id, m.title, m.tasks, m.price, m.price_per, m.every_m, m.duration_m, m.customer_id, c.name AS cname, c.phone AS cphone, c.address AS caddr, COALESCE(NULLIF(u.business_name,''),u.name) AS pname
+    FROM maint_visits v JOIN maint_plans m ON m.id=v.plan_id JOIN provider_customers c ON c.id=m.customer_id JOIN users u ON u.id=m.provider_id
+    WHERE v.status='upcoming' AND m.status='active' AND v.due_at <= CURRENT_DATE + 7 ORDER BY v.due_at LIMIT 200`)).rows;
+  for (const v of due) {
+    const ss = await _plnRow(v.provider_id); if (!_subLive(ss) || !(await _subOpen(v.provider_id))) continue;
+    const nv = Math.max(1, Math.floor(v.duration_m / v.every_m)); const val = v.price_per === 'visit' ? parseFloat(v.price) || 0 : Math.round((parseFloat(v.price) || 0) / nv * 100) / 100;
+    const tasks = (v.tasks || []).map((t, k) => ({ id: 't' + Date.now().toString(36) + k, t, done: false }));
+    const j = (await pool.query(`INSERT INTO jobs (provider_id, client_id, client_name, client_phone, title, address, value, tasks, log, plan_visit_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10) RETURNING id`,
+      [v.provider_id, v.client_id, v.cname, v.cphone, 'صيانة دورية: ' + v.title + ' (زيارة ' + v.n + ')', v.caddr, val, JSON.stringify(tasks), JSON.stringify([{ at: new Date(), t: 'زيارة ' + v.n + ' من خطة الصيانة — موعدها ' + _ymd(v.due_at) }]), v.id])).rows[0].id;
+    await pool.query("UPDATE maint_visits SET status='created', job_id=$2 WHERE id=$1", [v.id, j]);
+    try { await notify(v.provider_id, '🛠 زيارة صيانة دورية قربت', v.cname + ' — ' + v.title + ' (' + _ymd(v.due_at) + ') — حدّد الموعد والفني', 'job', j, { url: '/jobs.html?id=' + j }); } catch(e){}
+    if (v.client_id) try { await notify(v.client_id, '🔔 صيانتك الدورية قربت', v.title + ' — ' + v.pname + ' · ' + _ymd(v.due_at), 'job', j, { url: '/job.html?id=' + j }); } catch(e){}
+  }
+  // 2) تذكير التجديد قبل نهاية الخطة بشهر
+  const rn = (await pool.query(`SELECT m.*, c.name AS cname FROM maint_plans m JOIN provider_customers c ON c.id=m.customer_id WHERE m.status='active' AND NOT m.renew_reminded AND m.renewed_to IS NULL AND m.end_at <= CURRENT_DATE + 30`)).rows;
+  for (const m of rn) { const ss = await _plnRow(m.provider_id); if (!_subLive(ss)) continue;
+    await pool.query('UPDATE maint_plans SET renew_reminded=TRUE WHERE id=$1', [m.id]);
+    try { await notify(m.provider_id, '🔁 خطة صيانة ' + m.cname + ' تنتهي قريباً', m.title + ' — جدّدها بضغطة', 'plan', m.id, { url: '/customers.html?plan=' + m.id }); } catch(e){} }
+  // 3) الخطط اللي خلص موعدها وكل زياراتها انتهت
+  await pool.query(`UPDATE maint_plans m SET status='ended' WHERE status='active' AND end_at < CURRENT_DATE AND NOT EXISTS (SELECT 1 FROM maint_visits v WHERE v.plan_id=m.id AND v.status IN ('upcoming','created'))`);
+}
 
 // الإدارة: السماح بالتحويل البنكي لمزوّد معيّن (للمبالغ الكبيرة)
 app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), async (req, res) => {

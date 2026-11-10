@@ -736,8 +736,9 @@ function _loadToday(){
     isD?Promise.resolve(null):_api('/api/provider/saai').catch(function(){return null;}),
     isD?Promise.resolve(null):_api('/api/quotes').catch(function(){return null;}),
     isD?Promise.resolve(null):_api('/api/jobs').catch(function(){return null;}),
+    isD?Promise.resolve(null):_api('/api/plans').catch(function(){return null;}),
     _api('/api/tech/jobs').catch(function(){return null;})
-  ]).then(function(r){ window._tdData={q:(r[0]&&r[0].items)||[],c:Array.isArray(r[1])?r[1]:[],s:r[2]||{},qt:(r[3]&&r[3].items)||[],jb:(r[4]&&r[4].items)||[],tj:(r[5]&&r[5].items)||[]}; _renderToday(); }).catch(function(){});
+  ]).then(function(r){ window._tdData={q:(r[0]&&r[0].items)||[],c:Array.isArray(r[1])?r[1]:[],s:r[2]||{},qt:(r[3]&&r[3].items)||[],jb:(r[4]&&r[4].items)||[],pl:(r[5]&&r[5].items)||[],tj:(r[6]&&r[6].items)||[]}; _renderToday(); }).catch(function(){});
 }
 function _renderToday(){
   var box=_el('ph-today'), D=window._tdData; if(!box||!D) return;
@@ -747,6 +748,8 @@ function _renderToday(){
   var nq=D.q.filter(function(x){return x.status==='new';});
   nq.slice(0,3).forEach(function(x){ R.push(ic('📝','#eff4ff')+'<div style="flex:1;min-width:0"><b>طلب تسعيرة: '+_esc(x.service||'خدمة')+'</b><span>'+_esc(x.client_name||'عميل')+(x.district?' · '+_esc(x.district):'')+' · '+timeAgoP(x.approved_at||x.created_at)+'</span></div>'+btn('ردّ عليه','location.href=&quot;/mypage.html&quot;',1)); });
   if(nq.length>3) R.push(ic('📝','#eff4ff')+'<div style="flex:1;min-width:0"><b>و'+(nq.length-3)+' طلبات تسعيرة ثانية</b><span>من صفحتك</span></div>'+btn('كلها','location.href=&quot;/mypage.html&quot;'));
+  // خطط الصيانة: طلبات تأجيل
+  (D.pl||[]).filter(function(p){return p.postpone_n>0&&p.status==='active';}).slice(0,3).forEach(function(p){ R.push(ic('🗓','#fffaeb')+'<div style="flex:1;min-width:0"><b>طلب تأجيل زيارة صيانة</b><span>'+_esc(p.client_name||'')+' · '+_esc(p.title||'')+'</span></div>'+btn('افتح','location.href=&quot;/customers.html?plan='+(parseInt(p.id)||0)+'&quot;',1)); });
   // المشاريع: عمل إضافي ينتظر · بانتظار الموعد · مواعيد اليوم
   var _td=new Date().toDateString();
   (D.jb||[]).forEach(function(j){ var go='location.href=&quot;/jobs.html?id='+(parseInt(j.id)||0)+'&quot;';
@@ -2885,6 +2888,7 @@ function _nfOpenP(id){
   if(t==='message'||t==='admin_message'){ gotoPage('chat'); return; }
   if(t==='saai'){ gotoPage('saai'); return; }
   if(t==='qreq'){ location.href='/mypage.html'; return; }
+  if(t==='plan'){ location.href='/customers.html'+(n.ref_id?'?plan='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='job'){ location.href='/jobs.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='tech'){ location.href='/tech.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='quote'){ location.href='/quotes.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }

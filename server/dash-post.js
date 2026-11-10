@@ -2289,6 +2289,7 @@ function _nfOpenC(id){
   if(!n.is_read){ n.is_read=true; fetch(API+'/api/notifications/'+id+'/read',Object.assign({method:'PUT'},hdr())).catch(function(){}); _nfPaintC(); try{_notifRecount();}catch(e){} try{loadNotifCount();}catch(e){} }
   var k=_nfKind(n.type).g;
   if(n.type==='draft'&&n.ref_id){ location.href='/new.html?did_id='+encodeURIComponent(n.ref_id); return; }
+  if(n.type==='plan'&&n.ref_id){ location.href='/mplan.html?id='+(parseInt(n.ref_id)||0); return; }
   if(n.type==='job'&&n.ref_id){ location.href='/job.html?id='+(parseInt(n.ref_id)||0); return; }
   if(n.type==='tech'){ location.href='/tech.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(n.type==='quote'&&n.ref_id){ location.href='/quote.html?id='+(parseInt(n.ref_id)||0); return; }
