@@ -8438,6 +8438,36 @@ app.post('/api/pay/saai/:ref/verify', auth, rateLimiter(40, 600000), async (req,
     res.status(x.code || 400).json({ message: x.message, id: x.id || null });
   } catch(e){ console.error('pay-verify:', e.message); res.status(500).json({ message: 'تعذّر التحقق، يُرجى المحاولة مجدداً' }); }
 });
+// إشعار البوابة المباشر (Webhook): يعتمد السداد حتى لو المزوّد سكّر الصفحة قبل الرجوع
+// الأمان: كلمة السر لازم تطابق MOYASAR_WEBHOOK_SECRET، وبعدها نتحقق من العملية عند البوابة بالمفتاح السري (ما نثق بمحتوى الإشعار)
+const MOYASAR_WH = process.env.MOYASAR_WEBHOOK_SECRET || '';
+app.post('/api/pay/webhook', rateLimiter(120, 60000), async (req, res) => {
+  try {
+    const b = req.body || {};
+    const tok = String(b.secret_token || '');
+    const okTok = MOYASAR_WH && tok.length === MOYASAR_WH.length && crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(MOYASAR_WH));
+    if (!okTok) { console.warn('pay-webhook: bad secret'); return res.status(401).json({ ok: false }); }
+    const d = b.data || {}, type = String(b.type || '');
+    const ref = String((d.metadata && d.metadata.ref) || ((String(d.description || '').match(/#([a-f0-9]{24})\b/) || [])[1]) || '').slice(0, 40);
+    res.json({ ok: true });   // نرد بسرعة ونكمل
+    if (!ref || !d.id || !_payOn()) return;
+    const p = (await pool.query('SELECT * FROM saai_payments WHERE ref=$1', [ref])).rows[0];
+    if (!p) { console.warn('pay-webhook: unknown ref', ref, type); return; }
+    if (type === 'payment_paid' || type === 'payment_failed' || type === 'payment_faild') {
+      const x = await _payCheck(p, d.id);
+      console.log('pay-webhook', type, ref, x.paid ? 'paid' : (x.message || ''));
+    } else if (type === 'payment_refunded' || type === 'payment_voided') {
+      await pool.query("UPDATE saai_payments SET err=$2 WHERE id=$1", [p.id, (type === 'payment_refunded' ? 'مسترجع' : 'ملغي') + ' من البوابة · ' + new Date().toISOString().slice(0, 16)]);
+      if (p.ledger_id) {
+        const row = (await pool.query('SELECT edits_log FROM saai_ledger WHERE id=$1', [p.ledger_id])).rows[0];
+        const log = Array.isArray(row && row.edits_log) ? row.edits_log : [];
+        log.push({ by: 'gateway', at: new Date().toISOString(), note: type === 'payment_refunded' ? 'استُرجع المبلغ من بوابة الدفع' : 'أُلغيت العملية في بوابة الدفع' });
+        await pool.query('UPDATE saai_ledger SET edits_log=$2::jsonb WHERE id=$1', [p.ledger_id, JSON.stringify(log.slice(-30))]);
+      }
+      _notifyAdmins('↩️ استرجاع سداد سعي', `${p.amount} ر.س على «${p.self_title || 'مشروع'}» — راجع حالة السعي`, 'saai', p.ledger_id).catch(()=>{});
+    }
+  } catch(e){ console.error('pay-webhook:', e.message); if (!res.headersSent) res.status(500).json({ ok: false }); }
+});
 // الإدارة: إعادة التحقق من عملية (مثلاً بعد تصحيح المفتاح) — تُعتمد لو البوابة تقول مدفوعة
 app.post('/api/admin/pay/:ref/recheck', requirePermission('settings.manage'), async (req, res) => {
   try {
@@ -8473,7 +8503,7 @@ app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), a
   } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/pay/settings', requirePermission('settings.manage'), async (req, res) => {
-  try { res.json({ online: _payOn(), applepay: (await getSetting('applepay_on', '0')) === '1', has_assoc: !!(await getSetting('applepay_assoc', '')) }); } catch(e){ res.json({}); }
+  try { res.json({ online: _payOn(), applepay: (await getSetting('applepay_on', '0')) === '1', has_assoc: !!(await getSetting('applepay_assoc', '')), webhook: !!MOYASAR_WH }); } catch(e){ res.json({}); }
 });
 app.put('/api/admin/pay/settings', requirePermission('settings.manage'), async (req, res) => {
   try {
