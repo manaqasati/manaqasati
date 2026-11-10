@@ -33,7 +33,7 @@
   function hide(id){ var e = D.getElementById(id); if (e) e.style.display = 'none'; }
   function applyMe(){
     css(); var m = S.me;
-    hide('ni-dlg'); hide('ni-saai'); hide('ni-plan'); hide('ni-mypage'); hide('ni-quotes'); hide('ni-jobs'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
+    hide('ni-dlg'); hide('ni-saai'); hide('ni-plan'); hide('ni-mypage'); hide('ni-quotes'); hide('ni-jobs'); hide('ni-cust'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
     // bn-profile هو زر «المزيد» بالجوال (فيه الإشعارات والخروج) — ما نخفيه
     ['browse', 'works', 'profile', 'proof', 'sub'].forEach(function(p){ if (!okPage(p)) { hide('ni-' + p); if (p !== 'profile') hide('bn-' + p); } });
     if (!okPage('chat')) { hide('ni-chat'); hide('bn-chat'); }

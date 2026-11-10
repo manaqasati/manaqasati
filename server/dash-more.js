@@ -73,6 +73,7 @@
       + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c2', 'doc', 'صفحتي وطلبات التسعيرة', 'خدماتك · QR · الطلبات الخاصة', 0, 'url:/mypage.html'))
       + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c3', 'doc', 'عروض الأسعار', 'عرض باسمك بـ3 خيارات · عملائي', 0, 'url:/quotes.html'))
       + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c4', 'team', 'مشاريع العملاء والفريق', 'مواعيد · فنيين · تسليم', 0, 'url:/jobs.html'))
+      + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c5', 'team', 'عملائي', 'دفتر العملاء · الأجهزة · الملاحظات', 0, 'url:/customers.html'))
       + tile('c3', 'money', 'محفظة السعي', due ? 'عليك ' + fmt(due) + ' ريال — سدّد' : 'ما عليك شي ✓', due ? '!' : 0, 'pg:saai', !!due)
       + tile('c4', 'star', 'تقييماتي', rat ? '★ ' + rat.toFixed(1) + ' من عملائك' : 'تقييمات عملائك', 0, 'pg:reviews')
       + tile('c5', 'bell', 'الإشعارات', nNot ? nNot + ' جديدة' : 'كل التنبيهات', nNot, 'pg:notifs')

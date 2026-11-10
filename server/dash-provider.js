@@ -2020,7 +2020,7 @@ function _saaiSubNo(id){ var n=prompt('ما تم الاتفاق مع المقا�
 // الدفع الإلكتروني: هل السداد بالبطاقة فقط لهذا المزوّد؟ (التحويل البنكي يفتحه المشرف للمبالغ الكبيرة)
 window._payCfg=null;
 // «اشتراكي» يظهر لما تفتح الإدارة الاشتراكات (أو للمزوّدين المختارين للتجربة)
-setTimeout(function(){ _api('/api/subs/open').then(function(r){ if(r&&r.open){ window._subsOpen=true; var n=_el('ni-plan'), n2=_el('ni-mypage'), n3=_el('ni-quotes'), n4=_el('ni-jobs'); if(!(window.DLG&&DLG.isMe&&DLG.isMe())){ if(n)n.style.display=''; if(n2)n2.style.display=''; if(n3)n3.style.display=''; if(n4)n4.style.display=''; } } }).catch(function(){}); },1200);
+setTimeout(function(){ _api('/api/subs/open').then(function(r){ if(r&&r.open){ window._subsOpen=true; var n=_el('ni-plan'), n2=_el('ni-mypage'), n3=_el('ni-quotes'), n4=_el('ni-jobs'), n5=_el('ni-cust'); if(!(window.DLG&&DLG.isMe&&DLG.isMe())){ if(n)n.style.display=''; if(n2)n2.style.display=''; if(n3)n3.style.display=''; if(n4)n4.style.display=''; if(n5)n5.style.display=''; } } }).catch(function(){}); },1200);
 function _payCfgGet(){ return window._payCfg?Promise.resolve(window._payCfg):_api('/api/pay/config').then(function(c){ window._payCfg=c||{}; return window._payCfg; }).catch(function(){ window._payCfg={online:false,bank_ok:true}; return window._payCfg; }); }
 function _payOnly(){ var c=window._payCfg; return !!(c&&c.online&&!c.bank_ok); }
 function _payGo(body,btn){

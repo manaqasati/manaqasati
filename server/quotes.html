@@ -101,7 +101,7 @@ function list(){
     return '<button class="qi" onclick="_qOpen('+q.id+')"><div class="c"><div class="row" style="gap:6px"><b>'+esc(q.title||'بدون عنوان')+'</b><span class="pill '+s[1]+'">'+s[0]+'</span>'+(q.status==='sent'&&q.viewed_at?'<span class="pill p-g">👁 فتحه</span>':'')+(q.status==='sent'&&!q.viewed_at?'<span class="pill p-gr">ما فتحه</span>':'')+'</div><span class="mu">'+esc(q.client_name||'—')+' · رقم '+q.no+' · '+d(q.updated_at)+(q.options.length>1?' · '+q.options.length+' خيارات':'')+'</span>'+(q.status==='change'&&q.client_note?'<span class="mu" style="color:#b54708">«'+esc(q.client_note)+'»</span>':'')+'</div><div class="amt">'+(ch?m(ch.total):rng(q))+' <small style="font-size:11px;color:#64748b">ر.س</small></div></button>'; }).join('')+'</div>';
   A.innerHTML=h;
 }
-window._qTab=function(t){ S.tab=t; list(); };
+window._qTab=function(t){ if(t==='cust'){ location.href='/customers.html'; return; } S.tab=t; list(); };
 function custs(){
   api('/api/quotes/customers').then(function(r){ var L=r.items||[], el=document.getElementById('cust'); if(!el)return;
     if(!L.length){ el.innerHTML='<div class="card empty"><div style="font-size:38px">👥</div><b style="display:block;margin-top:6px">عملاؤك يظهرون هنا</b><div class="mu" style="margin-top:6px">كل عميل ترسل له عرض سعر ينضاف تلقائياً.</div></div>'; return; }
@@ -215,7 +215,7 @@ load().then(function(){
   var id=parseInt(P.get('id')), qr=parseInt(P.get('qreq'));
   if(id){ var q=S.items.find(function(x){return x.id===id;}); if(q){ _qOpen(id); return; } }
   if(qr&&S.live){ edit({title:P.get('t')||'',client_name:P.get('n')||'',client_phone:'',qreq_id:qr,options:[blank(0)],notes:'',deposit_pct:0,valid_days:14,status:'draft'}); return; }
-  if(P.get('new')&&S.live){ _qNew(); return; }
+  if(P.get('new')&&S.live){ if(P.get('n')||P.get('p')) _qNewFor(P.get('n')||'',P.get('p')||''); else _qNew(); return; }
   if(P.get('tab')==='cust') S.tab='cust';
   list();
 }).catch(function(){});
