@@ -492,6 +492,7 @@ function _renderHome(data){
   else { _fc={t:'ما فيه مشاريع جديدة الحين',s:'يوصلك إشعار أول ما ينزل مشروع يناسب تخصصك ومدينتك',b:'تصفّح كل المشاريع ←',go:'gotoPage(&quot;browse&quot;)'}; }
   html+='<div class="pa-focus"><span class="pa-fi">⚡</span><div class="pa-ft"><small>أهم شي اليوم</small><b>'+_esc(_fc.t)+'</b><span>'+_esc(_fc.s)+'</span></div><button type="button" onclick="'+_fc.go+'">'+_fc.b+'</button></div>';
   html+='<div id="ph-invites"></div>';
+  html+='<div id="ph-today"></div>';
   // الأرقام
   var _wk=Date.now()-7*864e5, _newWk=pool.filter(function(r){return new Date(r.created_at).getTime()>=_wk;}).length;
   var _kp=function(go,ic,cl,lbl,val,sub,sc){ return '<button type="button" class="pa-k" onclick="gotoPage(&quot;'+go+'&quot;)"><span class="pa-ki '+cl+'">'+ic+'</span><span class="pa-kt"><small>'+lbl+'</small><b>'+val+'</b>'+(sub?'<span class="pa-ks '+(sc||'')+'">'+sub+'</span>':'')+'</span></button>'; };
@@ -529,7 +530,7 @@ function _renderHome(data){
 
   pg.innerHTML=html;_lb.done();_loadNotifCount();_loadChatBadge();
   try{if(window.WP&&WP.fillLevel)WP.fillLevel();}catch(e){}
-  _renderInvites();
+  _renderInvites(); _renderToday();
   _renderProvNudges(_myBids,pool,matchedBySpec);
   _renderProvAnswerNudge();
   _profileNudge(profile);
@@ -706,7 +707,7 @@ async function _doBump(){
 
 async function loadHome(){
   var pg=_el('page-home');if(!pg)return;
-  _loadInvites();
+  _loadInvites(); _loadToday();
   var cached=_cacheGet('home_data');if(cached){_renderHome(cached);}else{pg.innerHTML=_skList(4);}
   try{
     var r=await Promise.all([_api('/api/provider/profile'),_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/requests?inc_locked=1'),_api('/api/saved-requests/ids')]);
@@ -724,6 +725,42 @@ async function loadHome(){
 
 function openBidFormDirectly(reqId){_openBidModal(reqId);}
 var _CTL='<div style="display:flex;gap:6px;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#15803d;margin-top:8px;line-height:1.6">📞 بعد عرضك يظهر لك رقم العميل وتكلّمه واتساب مباشرة</div>';
+
+// «يحتاج منك اليوم» — كل مزوّد: رسائل ما رد عليها · سعي مستحق · عروض شافها العميل (اطلب الاعتماد). المشترك: طلبات التسعيرة من صفحته.
+window._tdData=null;
+function _loadToday(){
+  var isD=!!(window.DLG&&DLG.isMe&&DLG.isMe());
+  Promise.all([
+    isD?Promise.resolve(null):_api('/api/provider/qreqs').catch(function(){return null;}),
+    _api('/api/provider/conversations').catch(function(){return null;}),
+    isD?Promise.resolve(null):_api('/api/provider/saai').catch(function(){return null;})
+  ]).then(function(r){ window._tdData={q:(r[0]&&r[0].items)||[],c:Array.isArray(r[1])?r[1]:[],s:r[2]||{}}; _renderToday(); }).catch(function(){});
+}
+function _renderToday(){
+  var box=_el('ph-today'), D=window._tdData; if(!box||!D) return;
+  var R=[], ic=function(e,bg){ return '<span style="width:38px;height:38px;border-radius:12px;background:'+bg+';display:flex;align-items:center;justify-content:center;font-size:17px;flex:none">'+e+'</span>'; };
+  var btn=function(t,go,pri){ return '<button type="button" onclick="'+go+'" style="flex:none;border:'+(pri?'0':'1.5px solid #e2e8f0')+';background:'+(pri?'#1e3a8a':'#fff')+';color:'+(pri?'#fff':'#14223d')+';border-radius:11px;padding:9px 13px;font-family:Tajawal,sans-serif;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap">'+t+'</button>'; };
+  // طلبات التسعيرة (للمشترك — القائمة فاضية لغيره)
+  var nq=D.q.filter(function(x){return x.status==='new';});
+  nq.slice(0,3).forEach(function(x){ R.push(ic('📝','#eff4ff')+'<div style="flex:1;min-width:0"><b>طلب تسعيرة: '+_esc(x.service||'خدمة')+'</b><span>'+_esc(x.client_name||'عميل')+(x.district?' · '+_esc(x.district):'')+' · '+timeAgoP(x.approved_at||x.created_at)+'</span></div>'+btn('ردّ عليه','location.href=&quot;/mypage.html&quot;',1)); });
+  if(nq.length>3) R.push(ic('📝','#eff4ff')+'<div style="flex:1;min-width:0"><b>و'+(nq.length-3)+' طلبات تسعيرة ثانية</b><span>من صفحتك</span></div>'+btn('كلها','location.href=&quot;/mypage.html&quot;'));
+  // السعي المستحق
+  var due=(D.s.items||[]).filter(function(x){return x.status==='pending';});
+  if(due.length){ var tot=due.reduce(function(a,x){return a+(parseFloat(x.saai_amount)||0);},0);
+    R.push(ic('💳','#fffaeb')+'<div style="flex:1;min-width:0"><b>سعي مستحق: '+fmtN(tot)+' ر.س</b><span>'+(due.length===1?'«'+_esc(String(due[0].project_title||'مشروع').slice(0,40))+'»':due.length+' مشاريع')+'</span></div>'+btn('سدّد','gotoPage(&quot;saai&quot;)',1)); }
+  // رسائل ما رد عليها
+  var uc=D.c.filter(function(x){return parseInt(x.unread)>0;}).sort(function(a,b){return new Date(a.last_time||0)-new Date(b.last_time||0);});
+  uc.slice(0,3).forEach(function(x){ R.push(ic('💬','#ecfdf3')+'<div style="flex:1;min-width:0"><b>رسالة من '+_esc(x.client_name||'عميل')+'</b><span>'+_esc(String(x.last_message||x.request_title||'').slice(0,60))+' · '+timeAgoP(x.last_time)+'</span></div>'+btn('ردّ','location.href=&quot;/chat?req='+(parseInt(x.request_id)||0)+'&with='+(parseInt(x.client_id)||0)+'&quot;')); });
+  if(uc.length>3) R.push(ic('💬','#ecfdf3')+'<div style="flex:1;min-width:0"><b>و'+(uc.length-3)+' محادثات ثانية تنتظر ردك</b><span>العميل يرد أكثر على اللي يرد بسرعة</span></div>'+btn('المحادثات','location.href=&quot;/chat&quot;'));
+  // عروض شافها العميل وتقدر تطلب اعتمادها
+  (window._myBids||_myBids||[]).filter(function(b){return b.status==='pending'&&b.seen_at&&b.ask_can;}).slice(0,3).forEach(function(b){
+    R.push(ic('👁','#f2f4f7')+'<div style="flex:1;min-width:0"><b>العميل شاف عرضك: '+_esc(String(b.request_title||'مشروع').slice(0,40))+'</b><span>عرضك '+fmtN(b.price)+' ر.س · اتفقتوا؟ اطلب منه يعتمده</span></div>'+btn('اطلب الاعتماد','_askAccept('+(parseInt(b.id)||0)+',this)'));
+  });
+  if(!R.length){ box.innerHTML=''; return; }
+  box.innerHTML='<div class="pa-today" style="background:#fff;border:1px solid #e1e9f6;border-radius:18px;padding:6px 16px 4px;margin-bottom:14px;box-shadow:0 2px 10px rgba(30,58,138,.05)"><div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0 6px"><b style="font-family:Cairo,sans-serif;font-size:15.5px;font-weight:900;color:#14223d">يحتاج منك اليوم</b><span style="min-width:22px;height:22px;border-radius:99px;background:#ef4444;color:#fff;font-size:12px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;padding:0 7px">'+R.length+'</span></div>'
+    +R.map(function(x){ return '<div class="pa-td" style="display:flex;gap:11px;align-items:center;padding:11px 0;border-top:1px solid #f1f5f9">'+x+'</div>'; }).join('')+'</div>';
+}
+(function(){ var c=document.createElement('style'); c.textContent='.pa-td b{display:block;font-size:13.5px;font-weight:800;color:#14223d;line-height:1.5}.pa-td span{display:block;font-size:12px;color:#5b6b85;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'; document.head.appendChild(c); })();
 
 // المشاريع الموجّهة لي بالاسم — بطاقة مميزة أعلى الرئيسية (تفشل بصمت)
 window._provInvites=[];
