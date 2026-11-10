@@ -70,6 +70,7 @@
       + tile('c6', 'team', 'مقاول باطن', 'اطلب أو قدّم · شركائي', (W._subCount > 0 ? W._subCount : ((W._subIsNew && W._subIsNew()) ? 'جديد' : 0)), 'pg:sub')
       + tile('c7', 'medal', 'أعمالي الموثّقة', 'وثّق شغلك — عروضك تطلع أول', ((W.WP && W.WP.isNew && W.WP.isNew()) ? 'جديد' : 0), 'pg:proof')
       + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c1', 'star', 'اشتراكي', 'مساعد الفوز · مؤسسة', 0, 'url:/plan.html'))
+      + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c2', 'doc', 'صفحتي وطلبات التسعيرة', 'خدماتك · QR · الطلبات الخاصة', 0, 'url:/mypage.html'))
       + tile('c3', 'money', 'محفظة السعي', due ? 'عليك ' + fmt(due) + ' ريال — سدّد' : 'ما عليك شي ✓', due ? '!' : 0, 'pg:saai', !!due)
       + tile('c4', 'star', 'تقييماتي', rat ? '★ ' + rat.toFixed(1) + ' من عملائك' : 'تقييمات عملائك', 0, 'pg:reviews')
       + tile('c5', 'bell', 'الإشعارات', nNot ? nNot + ' جديدة' : 'كل التنبيهات', nNot, 'pg:notifs')

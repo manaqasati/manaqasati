@@ -3987,6 +3987,11 @@ async function setupDatabase() {
       await _mig(`CREATE TABLE IF NOT EXISTS coupons (code VARCHAR(30) PRIMARY KEY, kind VARCHAR(5) DEFAULT 'pct', value NUMERIC(10,2), tiers TEXT[], cycles TEXT[], max_uses INTEGER, used INTEGER DEFAULT 0, starts_at TIMESTAMPTZ, ends_at TIMESTAMPTZ, once_per_user BOOLEAN DEFAULT TRUE, new_only BOOLEAN DEFAULT FALSE, public_offer BOOLEAN DEFAULT FALSE, active BOOLEAN DEFAULT TRUE, note TEXT, created_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig('CREATE TABLE IF NOT EXISTS coupon_uses (id SERIAL PRIMARY KEY, code VARCHAR(30), user_id INTEGER, pay_id INTEGER, at TIMESTAMPTZ DEFAULT NOW())');
       await _mig('CREATE TABLE IF NOT EXISTS sub_log (id SERIAL PRIMARY KEY, user_id INTEGER, kind VARCHAR(24), note TEXT, by_name VARCHAR(120), at TIMESTAMPTZ DEFAULT NOW())');
+      await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS page_services JSONB, ADD COLUMN IF NOT EXISTS page_cover TEXT');
+      await _mig(`CREATE TABLE IF NOT EXISTS quote_requests (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, client_id INTEGER REFERENCES users(id) ON DELETE CASCADE, service VARCHAR(80), district VARCHAR(80), city VARCHAR(60), description TEXT, pref_date VARCHAR(40), status VARCHAR(12) DEFAULT 'review', reject_reason TEXT, decline_reason TEXT, src VARCHAR(10), created_at TIMESTAMPTZ DEFAULT NOW(), approved_at TIMESTAMPTZ, approved_by VARCHAR(120), seen_at TIMESTAMPTZ, decided_at TIMESTAMPTZ)`);
+      await _mig('CREATE INDEX IF NOT EXISTS qreq_prov ON quote_requests(provider_id, created_at DESC)');
+      await _mig('ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS reported BOOLEAN DEFAULT FALSE');
+      await _mig('ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS auto BOOLEAN DEFAULT FALSE');
       await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_code VARCHAR(16), ADD COLUMN IF NOT EXISTS ref_by INTEGER, ADD COLUMN IF NOT EXISTS ref_credit INTEGER DEFAULT 0, ADD COLUMN IF NOT EXISTS ref_rewarded BOOLEAN DEFAULT FALSE');
       await _mig('CREATE UNIQUE INDEX IF NOT EXISTS users_ref_code ON users(ref_code) WHERE ref_code IS NOT NULL');
     } catch(e){ console.error('subs mig:', e.message); }
@@ -8513,7 +8518,7 @@ app.post('/api/pay/saai/:ref/log', auth, rateLimiter(20, 600000), async (req, re
 // الإدارة: آخر عمليات الدفع الإلكتروني (للمتابعة وأسباب الفشل)
 app.get('/api/admin/pay/recent', requirePermission('settings.manage'), async (req, res) => {
   try { const r = await pool.query(`SELECT p.ref, p.amount, p.status, p.method, p.card_last4, p.moyasar_id, p.err, p.created_at, p.paid_at, p.self_title, COALESCE(NULLIF(u.business_name,''),u.name) AS provider_name
-      FROM saai_payments p LEFT JOIN users u ON u.id=p.provider_id ORDER BY p.created_at DESC LIMIT 30`); res.json(r.rows); } catch(e){ res.json([]); }
+      FROM saai_payments p LEFT JOIN users u ON u.id=p.provider_id WHERE NOT (p.status='new' AND p.moyasar_id IS NULL AND p.err IS NULL) ORDER BY p.created_at DESC LIMIT 30`); res.json(r.rows); } catch(e){ res.json([]); }
 });
 // ═══════════ الاشتراكات (مساعد الفوز · مؤسسة): الباقات، الإضافات، الكوبونات، التجديد ═══════════
 // المبالغ داخلياً بالهللة (عدد صحيح). الدفع عبر نفس بوابة السعي. لا يظهر اسم البوابة للمستخدم.
@@ -8986,6 +8991,124 @@ app.put('/api/admin/sub/cfg', requirePermission('settings.manage'), async (req, 
   catch(e){ res.status(500).json({ message: 'تعذّر الحفظ' }); }
 });
 
+
+// ═══ صفحة المزوّد المشترك + «اطلب تسعيرة» (طلب خاص للمزوّد بس — بعد مراجعة الإدارة، بدون سعي، ما يروح للسوق) ═══
+const _QR_ST = { review: 'بانتظار المراجعة', new: 'جديد', seen: 'اطّلع عليه', declined: 'اعتذر', rejected: 'مرفوض' };
+// العميل الموثوق: سبق اعتماد طلب تسعيرة له أو نُشر له مشروع — وما انرفض/اعتُذر/بُلّغ عن أي طلب له. الإدارة تقدر ترجّع «مراجعة الكل».
+async function _qrTrusted(cid){
+  if ((await getSetting('qreq_review_all').catch(() => null)) === '1') return false;
+  const r = (await pool.query(`SELECT
+      (SELECT COUNT(*)::int FROM quote_requests WHERE client_id=$1 AND (status IN ('rejected','declined') OR reported)) AS bad,
+      (SELECT COUNT(*)::int FROM quote_requests WHERE client_id=$1 AND approved_at IS NOT NULL) AS ok_q,
+      (SELECT COUNT(*)::int FROM requests WHERE client_id=$1 AND status NOT IN ('pending_review','review','needs_edit','rejected','deleted') AND COALESCE(category,'')<>'direct') AS ok_p`, [cid])).rows[0];
+  return !r.bad && (r.ok_q > 0 || r.ok_p > 0);
+}
+async function _qrDeliver(q, pnm, pemail, pname){
+  const t = '📝 طلب تسعيرة جديد', bd = '«' + (q.service || 'خدمة') + '»' + (q.district ? ' · ' + q.district : '') + ' — من صفحتك. ردّ عليه بسرعة.';
+  try { await notify(q.provider_id, t, bd, 'qreq', q.id); } catch(e){}
+  if (pemail) sendEmail(pemail, t, emailTpl(t, `<p>مرحباً${pname ? ' ' + eEsc(pname) : ''}،</p><p>${eEsc(bd)}</p><p>${eEsc(String(q.description || '').slice(0, 300))}</p>`, 'افتح الطلب', SITE_URL + '/mypage.html')).catch(()=>{});
+  try { await notify(q.client_id, 'وصل طلبك لـ ' + pnm, 'أرسلنا طلب التسعيرة للمزوّد، وبيتواصل معك قريباً.', 'qreq', q.id); } catch(e){}
+}
+app.get('/api/provider/page', auth, providerOnly, async (req, res) => {
+  try { const u = (await pool.query('SELECT id, page_services, page_cover, business_name, name FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
+    const ss = await _plnRow(req.user.id); const live = _subLive(ss);
+    const pend = (await pool.query("SELECT COUNT(*) FILTER (WHERE status='new')::int n, COUNT(*) FILTER (WHERE status='review')::int r FROM quote_requests WHERE provider_id=$1", [req.user.id])).rows[0];
+    res.json({ name: u.business_name || u.name || '', services: Array.isArray(u.page_services) ? u.page_services : [], cover: u.page_cover || null, live, open: await _subOpen(req.user.id), url: SITE_URL + '/pro/' + req.user.id, new_n: pend.n, review_n: pend.r }); }
+  catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.put('/api/provider/page', auth, providerOnly, async (req, res) => {
+  try {
+    const b = req.body || {};
+    const sv = (Array.isArray(b.services) ? b.services : []).slice(0, 12).map(x => ({ t: _cleanTxt(x && x.t || '', 60), d: _cleanTxt(x && x.d || '', 80), p: Math.round(Math.max(0, Math.min(1000000, parseFloat(x && x.p) || 0))) })).filter(x => x.t.length >= 2);
+    let cover;
+    if (b.cover === null) cover = null;
+    else if (typeof b.cover === 'string' && b.cover.startsWith('data:image/')) { cover = await uploadToCloud(b.cover, 'manaqasa/covers').catch(() => null); if (!cover || String(cover).startsWith('data:')) return res.status(400).json({ message: 'تعذّر رفع صورة الغلاف — صورة أقل من 10 ميجا' }); }
+    if (cover !== undefined) await pool.query('UPDATE users SET page_services=$2::jsonb, page_cover=$3 WHERE id=$1', [req.user.id, JSON.stringify(sv), cover]);
+    else await pool.query('UPDATE users SET page_services=$2::jsonb WHERE id=$1', [req.user.id, JSON.stringify(sv)]);
+    res.json({ ok: true, services: sv, cover: cover !== undefined ? cover : undefined });
+  } catch(e){ console.error('page-save:', e.message); res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
+app.post('/api/pro/:id/qreq', auth, rateLimiter(10, 3600000), async (req, res) => {
+  try {
+    const pid = parseInt(req.params.id); const b = req.body || {};
+    if (String(pid) === String(req.user.id)) return res.status(400).json({ message: 'هذه صفحتك' });
+    const p = (await pool.query("SELECT id, COALESCE(NULLIF(business_name,''),name) AS nm, city FROM users WHERE id=$1 AND role='provider'", [pid])).rows[0];
+    if (!p) return res.status(404).json({ message: 'المزوّد غير موجود' });
+    const ss = await _plnRow(pid); if (!_subLive(ss) || !(await _subOpen(pid))) return res.status(409).json({ code: 'market', message: 'اطلب عروض أسعار عبر مناقصة' });
+    const desc = _cleanTxt(b.description || '', 800);
+    if (desc.length < 10) return res.status(400).json({ message: 'اكتب وصفاً مختصراً للمطلوب (10 أحرف على الأقل)' });
+    const pend = (await pool.query("SELECT COUNT(*)::int n FROM quote_requests WHERE client_id=$1 AND provider_id=$2 AND status IN ('review','new','seen') AND created_at > NOW()-interval '7 days'", [req.user.id, pid])).rows[0].n;
+    if (pend) return res.status(409).json({ message: 'عندك طلب قائم عند هذا المزوّد — انتظر رده' });
+    const day = (await pool.query("SELECT COUNT(*)::int n FROM quote_requests WHERE client_id=$1 AND created_at > NOW()-interval '1 day'", [req.user.id])).rows[0].n;
+    if (day >= 3) return res.status(429).json({ message: 'وصلت الحد اليومي لطلبات التسعيرة — جرّب بكرة' });
+    const id = (await pool.query('INSERT INTO quote_requests (provider_id, client_id, service, district, city, description, pref_date, src) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',
+      [pid, req.user.id, _cleanTxt(b.service || '', 80) || null, _cleanTxt(b.district || '', 80) || null, _cleanTxt(b.city || p.city || '', 60) || null, desc, _cleanTxt(b.pref_date || '', 40) || null, b.src === 'qr' ? 'qr' : 'page'])).rows[0].id;
+    if (await _qrTrusted(req.user.id)) {
+      const q = (await pool.query("UPDATE quote_requests SET status='new', approved_at=NOW(), approved_by='تلقائي — عميل موثوق', auto=TRUE WHERE id=$1 RETURNING *", [id])).rows[0];
+      const pu = (await pool.query('SELECT email, name FROM users WHERE id=$1', [pid])).rows[0] || {};
+      await _qrDeliver(q, p.nm, pu.email, pu.name);
+      return res.json({ ok: true, id, direct: true, message: 'وصل طلبك لـ ' + p.nm + ' مباشرة' });
+    }
+    _notifyAdmins('📝 طلب تسعيرة يحتاج مراجعة', '«' + (b.service || 'خدمة') + '» لـ ' + p.nm, 'qreq', id).catch(()=>{});
+    res.json({ ok: true, id, message: 'وصل طلبك — نراجعه بسرعة ونرسله لـ ' + p.nm });
+  } catch(e){ console.error('qreq:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
+});
+app.get('/api/provider/qreqs', auth, providerOnly, async (req, res) => {
+  try { const r = await pool.query(`SELECT q.id, q.service, q.district, q.city, q.description, q.pref_date, q.status, q.created_at, q.approved_at, q.seen_at, q.decline_reason, q.src, u.name AS client_name, u.phone AS client_phone
+      FROM quote_requests q JOIN users u ON u.id=q.client_id WHERE q.provider_id=$1 AND q.status IN ('new','seen','declined') ORDER BY CASE q.status WHEN 'new' THEN 0 WHEN 'seen' THEN 1 ELSE 2 END, q.approved_at DESC NULLS LAST LIMIT 200`, [req.user.id]);
+    res.json({ items: r.rows }); } catch(e){ res.json({ items: [] }); }
+});
+app.post('/api/provider/qreqs/:id', auth, providerOnly, async (req, res) => {
+  try { const id = parseInt(req.params.id); const act = String(req.body && req.body.act || '');
+    const q = (await pool.query("SELECT q.*, COALESCE(NULLIF(u.business_name,''),u.name) AS pnm FROM quote_requests q JOIN users u ON u.id=q.provider_id WHERE q.id=$1 AND q.provider_id=$2 AND q.status IN ('new','seen','declined')", [id, req.user.id])).rows[0];
+    if (!q) return res.status(404).json({ message: 'الطلب غير موجود' });
+    if (act === 'seen') { await pool.query("UPDATE quote_requests SET status=CASE WHEN status='new' THEN 'seen' ELSE status END, seen_at=COALESCE(seen_at,NOW()) WHERE id=$1", [id]); return res.json({ ok: true }); }
+    if (act === 'report') { const why = _cleanTxt(req.body.reason || '', 200) || 'طلب غير جاد';
+      await pool.query("UPDATE quote_requests SET status='declined', reported=TRUE, decline_reason=COALESCE(decline_reason,$2), decided_at=COALESCE(decided_at,NOW()) WHERE id=$1", [id, why]);
+      _notifyAdmins('⚠️ مزوّد بلّغ عن طلب تسعيرة', q.pnm + ': ' + why, 'qreq', id).catch(()=>{});
+      return res.json({ ok: true }); }
+    if (act === 'decline') { if (q.status === 'declined') return res.json({ ok: true }); const why = _cleanTxt(req.body.reason || '', 200) || 'المزوّد غير متاح لهذا الطلب حالياً';
+      await pool.query("UPDATE quote_requests SET status='declined', decline_reason=$2, decided_at=NOW() WHERE id=$1", [id, why]);
+      try { await notify(q.client_id, 'اعتذر ' + q.pnm + ' عن طلبك', why + ' — تقدر تنشر مشروعك في مناقصة وتوصلك عروض من مزوّدين آخرين.', 'qreq', id); } catch(e){}
+      return res.json({ ok: true }); }
+    res.status(400).json({ message: 'إجراء غير معروف' });
+  } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/admin/qreqs/cfg', requirePermission('requests.edit'), async (req, res) => { res.json({ review_all: (await getSetting('qreq_review_all').catch(() => null)) === '1' }); });
+app.put('/api/admin/qreqs/cfg', requirePermission('settings.manage'), async (req, res) => {
+  try { const v = !!(req.body && req.body.review_all); await setSetting('qreq_review_all', v ? '1' : '0'); logAdmin(req, 'qreq_cfg', 'settings', null, v ? 'review_all' : 'trusted_direct').catch(()=>{}); res.json({ ok: true, review_all: v }); }
+  catch(e){ res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
+app.get('/api/admin/qreqs', requirePermission('requests.edit'), async (req, res) => {
+  try { const st = ['review', 'new', 'seen', 'declined', 'rejected', 'reported'].includes(req.query.status) ? req.query.status : 'review';
+    const r = await pool.query(`SELECT q.*, c.name AS client_name, c.phone AS client_phone, c.email AS client_email, c.created_at AS client_since,
+        COALESCE(NULLIF(p.business_name,''),p.name) AS provider_name,
+        (SELECT COUNT(*)::int FROM quote_requests x WHERE x.client_id=q.client_id) AS client_qn,
+        (SELECT COUNT(*)::int FROM quote_requests x WHERE x.client_id=q.client_id AND x.status='rejected') AS client_rej,
+        (SELECT COUNT(*)::int FROM requests x WHERE x.client_id=q.client_id) AS client_projects
+      FROM quote_requests q JOIN users c ON c.id=q.client_id JOIN users p ON p.id=q.provider_id WHERE ${st === 'reported' ? 'q.reported AND $1::text IS NOT NULL' : 'q.status=$1'} ORDER BY q.created_at ${st === 'review' ? 'ASC' : 'DESC'} LIMIT 200`, [st]);
+    res.json({ items: r.rows }); } catch(e){ console.error('admin-qreqs:', e.message); res.json({ items: [] }); }
+});
+app.post('/api/admin/qreqs/:id', requirePermission('requests.edit'), async (req, res) => {
+  try { const id = parseInt(req.params.id); const act = String(req.body && req.body.act || '');
+    const q = (await pool.query("SELECT q.*, COALESCE(NULLIF(u.business_name,''),u.name) AS pnm, u.email AS pemail, u.name AS pname FROM quote_requests q JOIN users u ON u.id=q.provider_id WHERE q.id=$1 AND q.status='review'", [id])).rows[0];
+    if (!q) return res.status(404).json({ message: 'الطلب غير موجود أو تمت مراجعته' });
+    const by = (req.user && req.user.name) || 'admin';
+    if (act === 'approve') {
+      await pool.query("UPDATE quote_requests SET status='new', approved_at=NOW(), approved_by=$2 WHERE id=$1", [id, by]);
+      await _qrDeliver(q, q.pnm, q.pemail, q.pname);
+      logAdmin(req, 'qreq_approve', 'qreq', id, '').catch(()=>{});
+      return res.json({ ok: true });
+    }
+    if (act === 'reject') { const why = _cleanTxt(req.body.reason || '', 200) || 'الطلب غير واضح';
+      await pool.query("UPDATE quote_requests SET status='rejected', reject_reason=$2, decided_at=NOW(), approved_by=$3 WHERE id=$1", [id, why, by]);
+      if (req.body.notify !== false) try { await notify(q.client_id, 'لم نرسل طلب التسعيرة', why + ' — عدّل الطلب وأرسله من جديد.', 'qreq', id); } catch(e){}
+      logAdmin(req, 'qreq_reject', 'qreq', id, why).catch(()=>{});
+      return res.json({ ok: true });
+    }
+    res.status(400).json({ message: 'إجراء غير معروف' });
+  } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
 // الإدارة: السماح بالتحويل البنكي لمزوّد معيّن (للمبالغ الكبيرة)
 app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), async (req, res) => {
   try {
@@ -9569,6 +9692,8 @@ app.get('/api/providers/:id', async (req, res) => {
       prov.portfolio_images = prov.portfolio_images.filter(img => img && img.length > 0);
     }
     try { const sp = await _replySpeed(prov.id); if (sp) prov.reply_speed = sp.label; } catch(e){}
+    try { const pg = (await pool.query('SELECT page_services, page_cover FROM users WHERE id=$1', [prov.id])).rows[0] || {}; const ss = await _plnRow(prov.id);
+      prov.page_live = _subLive(ss) && (await _subOpen(prov.id)); if (prov.page_live) { prov.page_services = Array.isArray(pg.page_services) ? pg.page_services : []; prov.page_cover = pg.page_cover || null; } } catch(e){}
     try { prov.named_count = (await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE invited_provider_id=$1 AND status NOT IN ('pending_review','review','needs_edit','rejected','deleted')", [prov.id])).rows[0].n; } catch(e){}   // «طلبه العملاء بالاسم»
     if (prov && !(await _viewer(req))) { prov.phone_locked = !!prov.phone; prov.phone = null; }   // رقم المزوّد للمسجّلين
     try { prov.wp_level = await _wpLevel(prov.id); } catch(e) {}

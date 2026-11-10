@@ -162,7 +162,7 @@ function showPage(pg,el){
   if(pg==='logs')loadLogs();
   if(pg==='users')loadUsers();
   if(pg==='requests')loadRequests();
-  if(pg==='projreview')loadProjReview();
+  if(pg==='projreview'){loadProjReview();loadQreqAdmin();}
   if(pg==='offerwatch')loadOfferWatch();
   if(pg==='engagement')loadEngagement();
   if(pg==='contactlog')loadContactLog();
@@ -2164,7 +2164,39 @@ function remindClient(id){
     .catch(function(){toast('تعذّر الاتصال','error');});
 }
 var _projReview=[];
-function setProjReviewBadge(n){var b=document.getElementById('projreview-badge');if(b){b.textContent=n;b.style.display=n?'flex':'none';}}
+function setProjReviewBadge(n){window._prN=n;n=(n||0)+(window._qrN||0);var b=document.getElementById('projreview-badge');if(b){b.textContent=n;b.style.display=n?'flex':'none';}}
+// ═══ طلبات التسعيرة الخاصة (من صفحة المزوّد المشترك) — مراجعة قبل ما توصل المزوّد ═══
+function loadQreqAdmin(){
+  var host=document.getElementById('qreq-box'); if(!host)return;
+  Promise.all([fetch(API+'/api/admin/qreqs?status=review',hdr()).then(function(r){return r.json();}),fetch(API+'/api/admin/qreqs/cfg',hdr()).then(function(r){return r.json();}).catch(function(){return {};}),fetch(API+'/api/admin/qreqs?status=reported',hdr()).then(function(r){return r.json();}).catch(function(){return {};})]).then(function(rs){ var d=rs[0], cf=rs[1]||{}, rep=(rs[2]&&rs[2].items)||[];
+    var L=(d&&d.items)||[]; window._qrN=L.length; setProjReviewBadge(window._prN||0);
+    var ra=!!cf.review_all;
+    var bar='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;font-weight:700;color:#475467"><span>طلبات التسعيرة الخاصة: '+(ra?'<b style="color:#b54708">كل الطلبات تمر على المراجعة</b>':'<b style="color:#067647">العميل الموثوق يوصل طلبه للمزوّد مباشرة</b> — والجديد يُراجَع')+(rep.length?' · <a href="#" onclick="_aqRep();return false" style="color:#b42318">بلاغات المزوّدين ('+rep.length+')</a>':'')+'</span><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="aq-ra" '+(ra?'checked':'')+' onchange="_aqCfg(this.checked)"> مراجعة الكل</label></div>';
+    window._aqRepL=rep;
+    if(!L.length){ host.innerHTML=bar; return; }
+    var h=bar+'<div style="background:#fff;border:1.5px solid #bfd3fe;border-radius:16px;padding:16px;margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px"><b style="font-size:15.5px;color:#172554">طلبات تسعيرة خاصة بانتظار المراجعة <span style="background:#ef4444;color:#fff;border-radius:99px;padding:1px 9px;font-size:12px">'+L.length+'</span></b><span style="font-size:12px;color:#64748b;font-weight:700">تروح للمزوّد بس بعد الاعتماد — ما تنشر في السوق</span></div>';
+    L.forEach(function(q){
+      var warn=(q.client_rej>0?'<span style="background:#fef3f2;color:#b42318;border-radius:99px;padding:2px 8px;font-size:11px;font-weight:800">'+q.client_rej+' مرفوض سابقاً</span>':'');
+      h+='<div id="aq'+q.id+'" style="border-top:1px solid #eef2f8;padding:12px 0;display:flex;flex-direction:column;gap:7px">'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;font-weight:800"><span style="color:#172554">'+esc(q.service||'طلب تسعيرة')+'</span><span style="color:#64748b">← '+esc(q.provider_name)+'</span>'+(q.src==='qr'?'<span style="background:#eff4ff;color:#1e3a8a;border-radius:99px;padding:2px 8px;font-size:11px">QR</span>':'')+'</div>'
+        +'<div style="font-size:12.5px;color:#475467;font-weight:700;display:flex;gap:12px;flex-wrap:wrap"><span>العميل: '+esc(q.client_name)+' · '+esc(q.client_phone||'')+'</span><span>طلباته: '+q.client_qn+' · مشاريعه: '+q.client_projects+'</span>'+warn+(q.district||q.city?'<span>📍 '+esc([q.district,q.city].filter(Boolean).join('، '))+'</span>':'')+(q.pref_date?'<span>🗓 '+esc(q.pref_date)+'</span>':'')+'</div>'
+        +'<div style="background:#f8fafc;border-radius:10px;padding:9px 11px;font-size:13.5px;line-height:1.8;white-space:pre-wrap;word-break:break-word">'+esc(q.description)+'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="act-btn ab-primary" onclick="_aqAct('+q.id+',\'approve\')">اعتماد وإرسال للمزوّد</button><button class="act-btn ab-danger" onclick="_aqAct('+q.id+',\'reject\')">رفض</button></div></div>';
+    });
+    host.innerHTML=h+'</div>';
+  }).catch(function(){ host.innerHTML=''; });
+}
+setTimeout(function(){ try{ if(typeof token!=='undefined'&&token) loadQreqAdmin(); }catch(e){} },2500);
+function _aqCfg(v){ var o=hdr(); o.method='PUT'; o.body=JSON.stringify({review_all:v}); fetch(API+'/api/admin/qreqs/cfg',o).then(function(r){ if(!r.ok)throw 0; toast(v?'كل الطلبات تمر على المراجعة':'العميل الموثوق يوصل طلبه مباشرة','success'); loadQreqAdmin(); }).catch(function(){ toast('تعذّر الحفظ','error'); loadQreqAdmin(); }); }
+function _aqRep(){ var L=window._aqRepL||[]; alert(L.map(function(q){ return '• '+(q.provider_name||'')+' بلّغ عن طلب '+(q.client_name||'')+' ('+(q.client_phone||'')+'): '+(q.decline_reason||''); }).join('\n')||'ما فيه بلاغات'); }
+function _aqAct(id,act){
+  var body={act:act};
+  if(act==='reject'){ var w=prompt('سبب الرفض (يوصل للعميل):','الطلب غير واضح — أضف تفاصيل أكثر'); if(w===null)return; body.reason=w; }
+  var o=hdr(); o.method='POST'; o.body=JSON.stringify(body);
+  fetch(API+'/api/admin/qreqs/'+id,o).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(x){
+    if(!x.ok){ toast(x.j.message||'تعذّر','error'); return; } toast(act==='approve'?'أُرسل للمزوّد':'تم الرفض وإبلاغ العميل','success'); loadQreqAdmin();
+  }).catch(function(){ toast('تعذّر الاتصال','error'); });
+}
 function loadProjReview(){
   var host=document.getElementById('projreview-list');if(!host)return;
   host.innerHTML='<div class="loading"><div class="spinner"></div>جاري التحميل...</div>';
