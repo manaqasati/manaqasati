@@ -8448,6 +8448,8 @@ app.post('/api/pay/webhook', rateLimiter(120, 60000), async (req, res) => {
     const okTok = MOYASAR_WH && tok.length === MOYASAR_WH.length && crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(MOYASAR_WH));
     if (!okTok) { console.warn('pay-webhook: bad secret'); return res.status(401).json({ ok: false }); }
     const d = b.data || {}, type = String(b.type || '');
+    // رمز تحقق ميسّر للـ webhook (يُطلب مرة وحدة عند الإضافة) — نحفظه عشان يظهر في لوحة الإدارة
+    if (type === 'webhook_verification') { const vc = String(d.verification_code || '').slice(0, 12); console.log('pay-webhook: verification code', vc); await setSetting('wh_verify_code', vc).catch(() => {}); return res.json({ ok: true }); }
     const ref = String((d.metadata && d.metadata.ref) || ((String(d.description || '').match(/#([a-f0-9]{24})\b/) || [])[1]) || '').slice(0, 40);
     res.json({ ok: true });   // نرد بسرعة ونكمل
     if (!ref || !d.id || !_payOn()) return;
@@ -8503,7 +8505,7 @@ app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), a
   } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/pay/settings', requirePermission('settings.manage'), async (req, res) => {
-  try { res.json({ online: _payOn(), applepay: (await getSetting('applepay_on', '0')) === '1', has_assoc: !!(await getSetting('applepay_assoc', '')), webhook: !!MOYASAR_WH }); } catch(e){ res.json({}); }
+  try { res.json({ online: _payOn(), applepay: (await getSetting('applepay_on', '0')) === '1', has_assoc: !!(await getSetting('applepay_assoc', '')), webhook: !!MOYASAR_WH, wh_verify_code: await getSetting('wh_verify_code', '') }); } catch(e){ res.json({}); }
 });
 app.put('/api/admin/pay/settings', requirePermission('settings.manage'), async (req, res) => {
   try {
