@@ -4005,6 +4005,8 @@ async function setupDatabase() {
       await _mig('ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS email VARCHAR(120)');
       await _mig(`CREATE TABLE IF NOT EXISTS customer_devices (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, customer_id INTEGER REFERENCES provider_customers(id) ON DELETE CASCADE, kind VARCHAR(10) DEFAULT 'device', name VARCHAR(100), brand VARCHAR(60), place VARCHAR(80), qty INTEGER DEFAULT 1, last_service DATE, notes VARCHAR(300), maps VARCHAR(400), added_by VARCHAR(80), created_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig('CREATE INDEX IF NOT EXISTS cdev_cust ON customer_devices(customer_id)');
+      await _mig('ALTER TABLE customer_devices ADD COLUMN IF NOT EXISTS qr_token VARCHAR(24)');
+      await _mig('CREATE UNIQUE INDEX IF NOT EXISTS cdev_qr ON customer_devices(qr_token)');
       await _mig('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS plan_visit_id INTEGER');
       await _mig(`CREATE TABLE IF NOT EXISTS maint_plans (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, customer_id INTEGER REFERENCES provider_customers(id) ON DELETE CASCADE, client_id INTEGER REFERENCES users(id) ON DELETE SET NULL, title VARCHAR(120), device_ids JSONB DEFAULT '[]'::jsonb, every_m INTEGER DEFAULT 6, duration_m INTEGER DEFAULT 12, first_at DATE, end_at DATE, price NUMERIC(12,2) DEFAULT 0, price_per VARCHAR(6) DEFAULT 'year', includes VARCHAR(300), tasks JSONB DEFAULT '[]'::jsonb, status VARCHAR(10) DEFAULT 'offered', renew_reminded BOOLEAN DEFAULT FALSE, renewed_to INTEGER, decided_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig(`CREATE TABLE IF NOT EXISTS maint_visits (id SERIAL PRIMARY KEY, plan_id INTEGER REFERENCES maint_plans(id) ON DELETE CASCADE, n INTEGER, due_at DATE, job_id INTEGER, status VARCHAR(10) DEFAULT 'upcoming', postpone_req VARCHAR(300), postpone_at TIMESTAMPTZ, done_at TIMESTAMPTZ)`);
@@ -9051,7 +9053,8 @@ app.put('/api/provider/page', auth, providerOnly, async (req, res) => {
     res.json({ ok: true, services: sv, cover: cover !== undefined ? cover : undefined });
   } catch(e){ console.error('page-save:', e.message); res.status(500).json({ message: 'تعذّر الحفظ' }); }
 });
-app.post('/api/pro/:id/qreq', auth, rateLimiter(10, 3600000), async (req, res) => {
+const _qreqLimiter = rateLimiter(10, 3600000);
+async function _qreqHandler(req, res){
   try {
     const pid = parseInt(req.params.id); const b = req.body || {};
     if (String(pid) === String(req.user.id)) return res.status(400).json({ message: 'هذه صفحتك' });
@@ -9075,7 +9078,8 @@ app.post('/api/pro/:id/qreq', auth, rateLimiter(10, 3600000), async (req, res) =
     _notifyAdmins('📝 طلب تسعيرة يحتاج مراجعة', '«' + (b.service || 'خدمة') + '» لـ ' + p.nm, 'qreq', id).catch(()=>{});
     res.json({ ok: true, id, message: 'وصل طلبك — نراجعه بسرعة ونرسله لـ ' + p.nm });
   } catch(e){ console.error('qreq:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
-});
+}
+app.post('/api/pro/:id/qreq', auth, _qreqLimiter, _qreqHandler);
 app.get('/api/provider/qreqs', auth, providerOnly, async (req, res) => {
   try { const r = await pool.query(`SELECT q.id, q.service, q.district, q.city, q.description, q.pref_date, q.status, q.created_at, q.approved_at, q.seen_at, q.decline_reason, q.src, u.name AS client_name, u.phone AS client_phone
       FROM quote_requests q JOIN users u ON u.id=q.client_id WHERE q.provider_id=$1 AND q.status IN ('new','seen','declined') ORDER BY CASE q.status WHEN 'new' THEN 0 WHEN 'seen' THEN 1 ELSE 2 END, q.approved_at DESC NULLS LAST LIMIT 200`, [req.user.id]);
@@ -9771,6 +9775,39 @@ async function _planTick(){
   // 3) الخطط اللي خلص موعدها وكل زياراتها انتهت
   await pool.query(`UPDATE maint_plans m SET status='ended' WHERE status='active' AND end_at < CURRENT_DATE AND NOT EXISTS (SELECT 1 FROM maint_visits v WHERE v.plan_id=m.id AND v.status IN ('upcoming','created'))`);
 }
+
+// ═══ ملصق QR على الجهاز: يطبعه المزوّد ويلصقه الفني عند التسليم · المسح يعرض المزوّد والجهاز (بدون بيانات العميل) · طلب الصيانة يحتاج دخول ويمشي على قواعد «اطلب تسعيرة» ═══
+app.get('/d/:t', (req, res) => res.sendFile(__dirname + '/device.html'));
+app.get('/api/customers/:id/qr', auth, providerOnly, async (req, res) => {
+  try { const c = await _custRow(req.user.id, parseInt(req.params.id) || 0); if (!c) return res.status(404).json({ message: 'العميل غير موجود' });
+    const ids = String(req.query.ids || '').split(',').map(x => parseInt(x)).filter(Boolean);
+    let devs = (await pool.query("SELECT * FROM customer_devices WHERE customer_id=$1 AND kind='device' ORDER BY id", [c.id])).rows;
+    if (ids.length) devs = devs.filter(d => ids.includes(d.id));
+    for (const d of devs) if (!d.qr_token) { d.qr_token = crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12) + d.id.toString(36); await pool.query('UPDATE customer_devices SET qr_token=$2 WHERE id=$1 AND qr_token IS NULL', [d.id, d.qr_token]); }
+    const u = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS name, profile_image, phone FROM users WHERE id=$1", [req.user.id])).rows[0];
+    res.json({ provider: { name: u.name, image: _safeUrl(u.profile_image) || null, phone: u.phone }, customer: c.name, items: await Promise.all(devs.map(async d => { const url = SITE_URL + '/d/' + d.qr_token; let svg = null; try { if (_QR) svg = await _QR.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#172554', light: '#ffffff' } }); } catch(e){} return { id: d.id, name: d.name, place: d.place, qty: d.qty, url, svg }; })) });
+  } catch(e){ console.error('qr:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+async function _devByToken(t){ return (await pool.query(`SELECT d.*, c.provider_id, c.client_id AS owner_id FROM customer_devices d JOIN provider_customers c ON c.id=d.customer_id WHERE d.qr_token=$1`, [String(t || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 24)])).rows[0]; }
+app.get('/api/d/:t', rateLimiter(60, 600000), async (req, res) => {
+  try { const d = await _devByToken(req.params.t); if (!d) return res.status(404).json({ message: 'الملصق غير صحيح' });
+    const u = (await pool.query(`SELECT id, COALESCE(NULLIF(business_name,''),name) AS name, profile_image, city, phone, (badge IN ('verified','موثق')) AS is_verified, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float AS rating, (SELECT COUNT(*)::int FROM reviews WHERE reviewed_id=users.id) AS reviews_n FROM users WHERE id=$1`, [d.provider_id])).rows[0];
+    if (!u) return res.status(404).json({ message: 'الملصق غير صحيح' });
+    const ss = await _plnRow(d.provider_id); const live = _subLive(ss) && await _subOpen(d.provider_id);
+    const nv = (await pool.query(`SELECT MIN(v.due_at) AS d FROM maint_visits v JOIN maint_plans m ON m.id=v.plan_id WHERE m.status='active' AND m.device_ids @> $1::jsonb AND v.status IN ('upcoming','created')`, [JSON.stringify([d.id])])).rows[0].d;
+    res.json({ live, provider: { id: u.id, name: u.name, image: _safeUrl(u.profile_image) || null, city: u.city, phone: u.phone, verified: !!u.is_verified, rating: Math.round(u.rating * 10) / 10, reviews_n: u.reviews_n },
+      device: { name: d.name, brand: d.brand, place: d.place, qty: d.qty, last_service: d.last_service }, plan_next: nv || null });
+  } catch(e){ console.error('dev-pub:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/d/:t/req', auth, _qreqLimiter, async (req, res, next) => {
+  try { const d = await _devByToken(req.params.t); if (!d) return res.status(404).json({ message: 'الملصق غير صحيح' });
+    const note = _cleanTxt(req.body && req.body.description || '', 600);
+    const dev = d.name + (d.qty > 1 ? ' × ' + d.qty : '') + (d.place ? ' — ' + d.place : '') + (d.brand ? ' (' + d.brand + ')' : '');
+    req.params.id = String(d.provider_id);
+    req.body = { service: ('صيانة: ' + d.name).slice(0, 80), description: (note ? note + '\n' : 'طلب صيانة من ملصق الجهاز.\n') + 'الجهاز: ' + dev, pref_date: req.body && req.body.pref_date, src: 'qr' };
+    return _qreqHandler(req, res);
+  } catch(e){ console.error('dev-req:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
+});
 
 // الإدارة: السماح بالتحويل البنكي لمزوّد معيّن (للمبالغ الكبيرة)
 app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), async (req, res) => {

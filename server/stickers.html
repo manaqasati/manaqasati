@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#172554">
+<title>ملصقات QR — مناقصة</title>
+<link rel="icon" href="/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Tajawal,sans-serif;background:#e2e8f0;color:#1e293b;padding:20px 12px}
+.card{background:#fff;border-radius:14px;padding:16px;max-width:820px;margin:0 auto}
+.h1{font-size:20px;font-weight:900;color:#172554;margin-top:4px}.mu{color:#64748b;font-size:12.5px;font-weight:700}
+.bar{max-width:820px;margin:0 auto 14px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.btn{border:0;border-radius:12px;padding:11px 18px;font-family:inherit;font-weight:800;font-size:14px;background:#1e3a8a;color:#fff;cursor:pointer}
+.sheet{width:210mm;min-height:297mm;margin:0 auto;background:#fff;padding:10mm 7mm;display:grid;grid-template-columns:repeat(3,62mm);grid-auto-rows:66mm;gap:3mm;justify-content:center;box-shadow:0 10px 30px rgba(15,23,42,.12)}
+.stk{border:1px dashed #94a3b8;border-radius:4mm;padding:3mm;display:flex;flex-direction:column;align-items:center;justify-content:space-between;text-align:center;overflow:hidden;break-inside:avoid}
+.hd{display:flex;gap:2mm;align-items:center;max-width:100%}.hd b{font-size:11pt;font-weight:900;color:#172554;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg{width:7mm;height:7mm;border-radius:2mm;background:#1e3a8a;color:#fff;font-weight:900;font-size:9pt;display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden}.lg img{width:100%;height:100%;object-fit:cover}
+.qr{width:34mm;height:34mm}.qr svg,.qr img{width:100%;height:100%;display:block}
+.cta{font-size:10.5pt;font-weight:900;color:#172554}.dv{font-size:8.5pt;font-weight:700;color:#475467;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ft{font-size:7pt;color:#94a3b8;font-weight:700}
+@page{size:A4;margin:0}
+@media print{body{background:#fff;padding:0}.noprint{display:none!important}.sheet{box-shadow:none;margin:0}}
+@media screen and (max-width:820px){.sheet{transform:scale(.45);transform-origin:top right;margin-bottom:-160mm}}
+</style>
+</head>
+<body>
+<div id="app"><div class="mu">جارٍ التحميل…</div></div>
+<script>
+(function(){
+var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
+if(!TOK){ try{localStorage.setItem('_after_login',location.pathname+location.search);}catch(e){} location.href='/auth.html'; return; }
+var P=new URLSearchParams(location.search), A=document.getElementById('app');
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function api(p){ return fetch(p,{headers:{'Authorization':'Bearer '+TOK}}).then(function(r){ if(r.status===401){ location.href='/auth.html'; throw 0; } return r.json().then(function(j){ if(!r.ok) throw new Error(j.message||'حدث خطأ'); return j; }); }); }
+var QL=null;
+function lib(){ if(window.qrcode) return Promise.resolve(); if(QL) return QL; QL=new Promise(function(ok){ var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'; s.onload=ok; s.onerror=ok; document.head.appendChild(s); }); return QL; }
+function qrH(u){ if(window.qrcode){ try{ var q=qrcode(0,'M'); q.addData(u); q.make(); return q.createSvgTag({cellSize:4,margin:1}); }catch(e){} } return '<img alt="QR" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=4&data='+encodeURIComponent(u)+'">'; }
+function go(cid){ api('/api/customers/'+cid+'/qr'+(P.get('ids')?'?ids='+encodeURIComponent(P.get('ids')):'')).then(function(r){ return lib().then(function(){ draw(r,cid); }); }).catch(function(e){ if(e) A.innerHTML='<div class="card"><b>'+esc(e.message)+'</b></div>'; }); }
+function draw(r,cid){
+  var pv=r.provider, lg=/^https:\/\//.test(pv.image||'')?'<img src="'+esc(pv.image)+'" alt="">':esc((pv.name||'م')[0]);
+  var h='<div class="noprint bar"><div><a href="/customers.html?id='+cid+'" style="color:#1e3a8a;font-weight:800;text-decoration:none">‹ '+esc(r.customer)+'</a><div class="h1">ملصقات QR للأجهزة ('+r.items.length+')</div><div class="mu">اطبعها على ورق ملصقات A4 والصقها على كل جهاز عند التسليم · العميل يمسحها ويطلب الصيانة منك مباشرة</div></div><button class="btn" onclick="window.print()">🖨 طباعة</button></div>';
+  if(!r.items.length){ A.innerHTML=h+'<div class="card noprint"><b>ما فيه أجهزة مسجّلة لهذا العميل</b><div class="mu" style="margin-top:6px">أضف أجهزته من ملفه، أو خلي الفني يسجّلها من الموقع.</div></div>'; return; }
+  h+='<div class="sheet">'+r.items.map(function(x){ return '<div class="stk"><div class="hd"><span class="lg">'+lg+'</span><b>'+esc(pv.name)+'</b></div><div class="qr">'+(x.svg&&/^<svg/.test(String(x.svg).trim())?x.svg:qrH(x.url))+'</div><b class="cta">امسح لطلب الصيانة</b><span class="dv">'+esc(x.name)+(x.qty>1?' × '+x.qty:'')+(x.place?' · '+esc(x.place):'')+'</span><span class="ft">عبر مناقصة · manaqasa.com</span></div>'; }).join('')+'</div>';
+  A.innerHTML=h;
+}
+var cid=parseInt(P.get('c')), ph=P.get('ph');
+if(cid) go(cid); else if(ph) api('/api/customers/by-phone/'+encodeURIComponent(ph)).then(function(r){ go(r.id); }).catch(function(e){ if(e) A.innerHTML='<div class="card"><b>'+esc(e.message)+'</b><div class="mu" style="margin-top:6px">أضف العميل لدفترك أول.</div></div>'; });
+else A.innerHTML='<div class="card"><b>الرابط غير صحيح</b></div>';
+})();
+</script>
+</body>
+</html>
