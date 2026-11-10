@@ -136,7 +136,9 @@ function draw(){
   if(!S.live) h+=lockCard();
   if(q.status==='change') h+='<div class="card" style="background:#fffaeb;border-color:#fde68a"><b style="color:#b54708">العميل طلب تعديل:</b><div style="margin-top:4px;font-weight:700;white-space:pre-wrap">'+esc(q.client_note||'')+'</div><div class="mu" style="margin-top:6px">عدّل العرض واضغط «أرسل التحديث» — يوصله إشعار بالنسخة الجديدة.</div></div>';
   if(ex) h+='<div class="card" style="background:#f8fafc"><b>انتهت صلاحية العرض</b><div class="mu" style="margin-top:4px">حدّثه وأرسله من جديد — تبدأ صلاحية جديدة.</div></div>';
-  if(sent&&q.status==='sent') h+='<div class="mu">أي تعديل تحفظه يوصل العميل كنسخة محدّثة (النسخة '+q.version+' الحين).</div>';
+  if(q._reprice) h+='<div class="card" style="background:#fffaeb;border-color:#fde68a"><b style="color:#b54708">تعديل السعر بعد موافقة العميل</b><div class="mu" style="margin-top:4px;line-height:1.8">عدّل وأرسل — يوصل العميل يوافق على الجديد أو يبقى على السابق. لين يرد يبقى السعر الحالي.</div></div>';
+  else if(q.reaccept&&q.status==='sent') h+='<div class="card" style="background:#fffaeb;border-color:#fde68a;padding:12px 16px"><b style="color:#b54708">بانتظار موافقة العميل على السعر المعدّل</b></div>';
+  else if(sent&&q.status==='sent') h+='<div class="mu">أي تعديل تحفظه يوصل العميل كنسخة محدّثة (النسخة '+q.version+' الحين).</div>';
   h+='<div class="ed"><div class="main">';
   h+='<div class="card f" style="display:flex;flex-direction:column;gap:12px"><div class="grid2"><div><label for="q-cn">اسم العميل</label><input id="q-cn" data-k="client_name" maxlength="80" value="'+esc(q.client_name||'')+'" placeholder="مثال: أبو سعد"></div><div><label for="q-cp">جوال العميل</label><input id="q-cp" data-k="client_phone" dir="ltr" inputmode="tel" maxlength="15" value="'+esc(q.client_phone||'')+'" placeholder="05xxxxxxxx" style="text-align:right"></div></div>'
     +'<div><label for="q-t">عنوان العرض</label><input id="q-t" data-k="title" maxlength="120" value="'+esc(q.title||'')+'" placeholder="مثال: صيانة مكيفات فيلا"></div></div>';
@@ -152,7 +154,7 @@ function draw(){
   h+='<div class="card f" style="display:flex;flex-direction:column;gap:12px"><div class="grid2"><div><label for="q-v">صلاحية العرض</label><select id="q-v" data-k="valid_days">'+[7,14,30].map(function(v){return '<option value="'+v+'"'+(parseInt(q.valid_days)===v?' selected':'')+'>'+v+' يوم</option>';}).join('')+'</select></div><div><label for="q-dp">دفعة مقدمة (اختياري)</label><select id="q-dp" data-k="deposit_pct">'+[0,10,20,25,30,50].map(function(v){return '<option value="'+v+'"'+(parseInt(q.deposit_pct)===v?' selected':'')+'>'+(v?v+'%':'بدون')+'</option>';}).join('')+'</select></div></div>'
     +'<div><label for="q-nt">ملاحظات وشروط (اختياري)</label><textarea id="q-nt" data-k="notes" maxlength="1500" placeholder="مثال: السعر يشمل المواد · الموعد بالتنسيق">'+esc(q.notes||'')+'</textarea></div><div class="mu">الدفع بينك وبين العميل مباشرة — المنصة ما تستلم مبالغ العرض.</div></div>';
   h+='</div><div class="side"><div class="card" id="chk"></div><div class="card" id="pv"></div></div></div>';
-  h+='<div class="bar"><div class="in">'+(q.id&&q.status==='draft'?'<button class="btn dan" onclick="_qDel()">حذف</button>':'')+'<span style="flex:1"></span>'+(!sent?'<button class="btn sec" id="b-draft" onclick="_qSave(false)">حفظ مسودة</button>':'')+'<button class="btn pri" id="b-send" onclick="_qSave(true)"'+(S.live?'':' disabled')+'>'+(sent?'أرسل التحديث':'أرسل العرض')+'</button></div></div>';
+  h+='<div class="bar"><div class="in">'+(q.id&&q.status==='draft'?'<button class="btn dan" onclick="_qDel()">حذف</button>':'')+'<span style="flex:1"></span>'+(!sent?'<button class="btn sec" id="b-draft" onclick="_qSave(false)">حفظ مسودة</button>':'')+'<button class="btn pri" id="b-send" onclick="_qSave(true)"'+(S.live?'':' disabled')+'>'+(q._reprice?'أرسل التعديل':(sent?'أرسل التحديث':'أرسل العرض'))+'</button></div></div>';
   A.innerHTML=h; side();
 }
 function side(){
@@ -195,15 +197,16 @@ function shareSheet(q, upd){
   document.body.appendChild(o);
 }
 window._qCopy=function(u){ (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){toast('انسخ الرابط');}).catch(function(){ prompt('انسخ الرابط:',u); }); };
+window._qReprice=function(){ var q=JSON.parse(JSON.stringify(S.items.find(function(x){return x.id===S.cur;})||{})); if(!q.id)return; q._reprice=true; edit(q); };
 // عرض منتهي (وافق/اعتذر)
 function view(q){
-  S.view='view'; setUrl('id='+q.id);
+  S.view='view'; S.cur=q.id; setUrl('id='+q.id);
   var ch=q.status==='accepted'?q.options[q.chosen]:null;
   var h='<div class="row" style="gap:8px"><button class="btn sec" style="padding:7px 11px" onclick="_qBack()">‹ رجوع</button><span class="h1" style="font-size:19px">عرض سعر رقم '+q.no+'</span><span class="pill '+ST[q.status][1]+'">'+ST[q.status][0]+'</span></div>';
   h+='<div class="card" style="display:flex;flex-direction:column;gap:10px'+(ch?';border-color:#a6f4c5;background:#f6fef9':'')+'"><b style="font-size:16px;color:#172554">'+esc(q.title)+'</b><span class="mu">'+esc(q.client_name)+' · <span dir="ltr">'+esc(q.client_phone)+'</span> · '+d(q.decided_at)+'</span>';
   if(ch) h+='<div style="font-size:15px;font-weight:800">اختار: '+esc(ch.n)+' — <span class="amt">'+m(ch.total)+'</span> ر.س</div>'+(q.saai?'<div class="mu" style="color:#b54708">العميل تعامل معك في السوق خلال 90 يوم — انسجّل سعي المنصة في صفحة السعي.</div>':'');
   if(q.client_note) h+='<div style="background:#f8fafc;border-radius:12px;padding:10px 12px;font-weight:700;white-space:pre-wrap">'+(q.status==='declined'?'سبب الاعتذار: ':'ملاحظة العميل: ')+esc(q.client_note)+'</div>';
-  h+='<div class="row">'+(q.client_phone?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+wa(q.client_phone)+'">واتساب العميل</a><a class="btn sec" href="tel:'+esc(q.client_phone)+'">اتصال</a>':'')+'<a class="btn sec" target="_blank" rel="noopener" href="/q/'+esc(q.token)+'">العرض / PDF</a>'+(S.live?'<button class="btn sec" onclick="_qNewFor(\''+esc(q.client_name||'').replace(/'/g,'')+'\',\''+esc(q.client_phone||'')+'\')">عرض جديد لنفس العميل</button>':'')+'</div></div>';
+  h+='<div class="row">'+(q.job_id?'<a class="btn pri" href="/jobs.html?id='+(parseInt(q.job_id)||0)+'">افتح المشروع</a>':'')+(q.status==='accepted'&&S.live?'<button class="btn gold" onclick="_qReprice()">عدّل السعر</button>':'')+(q.client_phone?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+wa(q.client_phone)+'">واتساب العميل</a><a class="btn sec" href="tel:'+esc(q.client_phone)+'">اتصال</a>':'')+'<a class="btn sec" target="_blank" rel="noopener" href="/q/'+esc(q.token)+'">العرض / PDF</a>'+(S.live?'<button class="btn sec" onclick="_qNewFor(\''+esc(q.client_name||'').replace(/'/g,'')+'\',\''+esc(q.client_phone||'')+'\')">عرض جديد لنفس العميل</button>':'')+'</div></div>';
   A.innerHTML=h;
 }
 // البداية

@@ -734,8 +734,10 @@ function _loadToday(){
     isD?Promise.resolve(null):_api('/api/provider/qreqs').catch(function(){return null;}),
     _api('/api/provider/conversations').catch(function(){return null;}),
     isD?Promise.resolve(null):_api('/api/provider/saai').catch(function(){return null;}),
-    isD?Promise.resolve(null):_api('/api/quotes').catch(function(){return null;})
-  ]).then(function(r){ window._tdData={q:(r[0]&&r[0].items)||[],c:Array.isArray(r[1])?r[1]:[],s:r[2]||{},qt:(r[3]&&r[3].items)||[]}; _renderToday(); }).catch(function(){});
+    isD?Promise.resolve(null):_api('/api/quotes').catch(function(){return null;}),
+    isD?Promise.resolve(null):_api('/api/jobs').catch(function(){return null;}),
+    _api('/api/tech/jobs').catch(function(){return null;})
+  ]).then(function(r){ window._tdData={q:(r[0]&&r[0].items)||[],c:Array.isArray(r[1])?r[1]:[],s:r[2]||{},qt:(r[3]&&r[3].items)||[],jb:(r[4]&&r[4].items)||[],tj:(r[5]&&r[5].items)||[]}; _renderToday(); }).catch(function(){});
 }
 function _renderToday(){
   var box=_el('ph-today'), D=window._tdData; if(!box||!D) return;
@@ -745,6 +747,14 @@ function _renderToday(){
   var nq=D.q.filter(function(x){return x.status==='new';});
   nq.slice(0,3).forEach(function(x){ R.push(ic('📝','#eff4ff')+'<div style="flex:1;min-width:0"><b>طلب تسعيرة: '+_esc(x.service||'خدمة')+'</b><span>'+_esc(x.client_name||'عميل')+(x.district?' · '+_esc(x.district):'')+' · '+timeAgoP(x.approved_at||x.created_at)+'</span></div>'+btn('ردّ عليه','location.href=&quot;/mypage.html&quot;',1)); });
   if(nq.length>3) R.push(ic('📝','#eff4ff')+'<div style="flex:1;min-width:0"><b>و'+(nq.length-3)+' طلبات تسعيرة ثانية</b><span>من صفحتك</span></div>'+btn('كلها','location.href=&quot;/mypage.html&quot;'));
+  // المشاريع: عمل إضافي ينتظر · بانتظار الموعد · مواعيد اليوم
+  var _td=new Date().toDateString();
+  (D.jb||[]).forEach(function(j){ var go='location.href=&quot;/jobs.html?id='+(parseInt(j.id)||0)+'&quot;';
+    if(j.extra_wait) R.push(ic('➕','#fef3f2')+'<div style="flex:1;min-width:0"><b>الفني طلب عمل إضافي</b><span>'+_esc(j.title||'')+' — حدّد السعر وأرسله للعميل</span></div>'+btn('افتح',go,1));
+    else if(j.status==='new') R.push(ic('🧰','#eff4ff')+'<div style="flex:1;min-width:0"><b>مشروع جديد: '+_esc(j.title||'')+'</b><span>'+_esc(j.client_name||'')+' · حدّد الموعد والفني</span></div>'+btn('حدّد',go,1));
+    else if(j.status==='scheduled'&&j.sched_at&&new Date(j.sched_at).toDateString()===_td) R.push(ic('🗓','#f2f4f7')+'<div style="flex:1;min-width:0"><b>موعد اليوم: '+_esc(j.title||'')+'</b><span>'+new Date(j.sched_at).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'})+(j.tech_name?' · '+_esc(j.tech_name):'')+'</span></div>'+btn('افتح',go));
+  });
+  (D.tj||[]).filter(function(j){return j.status!=='delivered';}).slice(0,3).forEach(function(j){ R.push(ic('👷','#ecfdf3')+'<div style="flex:1;min-width:0"><b>مهمة كفني: '+_esc(j.title||'')+'</b><span>'+_esc(j.provider_name||'')+'</span></div>'+btn('مهامي','location.href=&quot;/tech.html?id='+(parseInt(j.id)||0)+'&quot;')); });
   // عروض أسعار طلب العميل تعديلها
   (D.qt||[]).filter(function(x){return x.status==='change';}).slice(0,3).forEach(function(x){ R.push(ic('✏️','#fffaeb')+'<div style="flex:1;min-width:0"><b>'+_esc(x.client_name||'العميل')+' يطلب تعديل على عرضك</b><span>«'+_esc(String(x.client_note||x.title||'').slice(0,60))+'»</span></div>'+btn('عدّل العرض','location.href=&quot;/quotes.html?id='+(parseInt(x.id)||0)+'&quot;',1)); });
   // السعي المستحق
@@ -2010,7 +2020,7 @@ function _saaiSubNo(id){ var n=prompt('ما تم الاتفاق مع المقا�
 // الدفع الإلكتروني: هل السداد بالبطاقة فقط لهذا المزوّد؟ (التحويل البنكي يفتحه المشرف للمبالغ الكبيرة)
 window._payCfg=null;
 // «اشتراكي» يظهر لما تفتح الإدارة الاشتراكات (أو للمزوّدين المختارين للتجربة)
-setTimeout(function(){ _api('/api/subs/open').then(function(r){ if(r&&r.open){ window._subsOpen=true; var n=_el('ni-plan'), n2=_el('ni-mypage'), n3=_el('ni-quotes'); if(!(window.DLG&&DLG.isMe&&DLG.isMe())){ if(n)n.style.display=''; if(n2)n2.style.display=''; if(n3)n3.style.display=''; } } }).catch(function(){}); },1200);
+setTimeout(function(){ _api('/api/subs/open').then(function(r){ if(r&&r.open){ window._subsOpen=true; var n=_el('ni-plan'), n2=_el('ni-mypage'), n3=_el('ni-quotes'), n4=_el('ni-jobs'); if(!(window.DLG&&DLG.isMe&&DLG.isMe())){ if(n)n.style.display=''; if(n2)n2.style.display=''; if(n3)n3.style.display=''; if(n4)n4.style.display=''; } } }).catch(function(){}); },1200);
 function _payCfgGet(){ return window._payCfg?Promise.resolve(window._payCfg):_api('/api/pay/config').then(function(c){ window._payCfg=c||{}; return window._payCfg; }).catch(function(){ window._payCfg={online:false,bank_ok:true}; return window._payCfg; }); }
 function _payOnly(){ var c=window._payCfg; return !!(c&&c.online&&!c.bank_ok); }
 function _payGo(body,btn){
@@ -2875,6 +2885,8 @@ function _nfOpenP(id){
   if(t==='message'||t==='admin_message'){ gotoPage('chat'); return; }
   if(t==='saai'){ gotoPage('saai'); return; }
   if(t==='qreq'){ location.href='/mypage.html'; return; }
+  if(t==='job'){ location.href='/jobs.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
+  if(t==='tech'){ location.href='/tech.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='quote'){ location.href='/quotes.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='sub'){ window._subOpen=n.ref_id||0; if(_curPage==='sub'&&window.SubC){ if(n.ref_id)SubC.open(n.ref_id); } else gotoPage('sub'); return; }
   if(t==='review'||t==='review_reply'){ gotoPage('reviews'); return; }

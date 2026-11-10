@@ -3408,7 +3408,7 @@ async function _dlgStateOf(id){
 }
 function _dlgDrop(id){ _dlgState.delete(id); }
 // وش يقدر يسوي المفوّض: الحساس لصاحب الحساب بس، والباقي حسب الصلاحيات، وأي شي ما نعرفه يُرفض
-const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai|subs\/|pay\/|quotes)/;
+const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai|subs\/|pay\/|quotes|jobs|team)/;
 const _DLG_GET_DENY = { chat: /^\/api\/(messages|provider\/conversations)/ };
 const _DLG_FREE = /^\/api\/(me\/dlg(\/|$)|push|push-token|notifications|me\/ping|me\/provider-hint|live\/ping|hit|lk\/event|csp-report|demo\/ev|tour|pro\/\d+\/view|requests\/\d+\/(view|revisit|watch-open)$|saved-requests\/|drafts\/save|upload\/attachment|support\/|reports$|blocks\/|auth\/refresh$)/;
 const _DLG_GROUPS = [
@@ -3995,6 +3995,15 @@ async function setupDatabase() {
       await _mig(`CREATE TABLE IF NOT EXISTS quotes (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, q_no INTEGER, token VARCHAR(40) UNIQUE, client_id INTEGER REFERENCES users(id) ON DELETE SET NULL, client_name VARCHAR(80), client_phone VARCHAR(20), qreq_id INTEGER, title VARCHAR(120), options JSONB DEFAULT '[]'::jsonb, notes TEXT, deposit_pct INTEGER DEFAULT 0, valid_days INTEGER DEFAULT 14, status VARCHAR(12) DEFAULT 'draft', version INTEGER DEFAULT 1, updated_after_send BOOLEAN DEFAULT FALSE, chosen INTEGER, client_note TEXT, saai_id INTEGER, sent_at TIMESTAMPTZ, valid_until TIMESTAMPTZ, viewed_at TIMESTAMPTZ, decided_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig('CREATE INDEX IF NOT EXISTS quotes_prov ON quotes(provider_id, updated_at DESC)');
       await _mig('CREATE INDEX IF NOT EXISTS quotes_client ON quotes(client_id)');
+      await _mig('ALTER TABLE quotes ADD COLUMN IF NOT EXISTS prev_options JSONB');
+      await _mig('ALTER TABLE quotes ADD COLUMN IF NOT EXISTS prev_chosen INTEGER');
+      await _mig('ALTER TABLE quotes ADD COLUMN IF NOT EXISTS reaccept BOOLEAN DEFAULT FALSE');
+      await _mig('ALTER TABLE quotes ADD COLUMN IF NOT EXISTS job_id INTEGER');
+      await _mig(`CREATE TABLE IF NOT EXISTS provider_techs (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, name VARCHAR(80), phone VARCHAR(20), phone9 VARCHAR(12), active BOOLEAN DEFAULT TRUE, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(provider_id, phone9))`);
+      await _mig(`CREATE TABLE IF NOT EXISTS jobs (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, client_id INTEGER REFERENCES users(id) ON DELETE SET NULL, client_name VARCHAR(80), client_phone VARCHAR(20), quote_id INTEGER, title VARCHAR(120), address VARCHAR(200), maps VARCHAR(400), value NUMERIC(12,2) DEFAULT 0, extra_total NUMERIC(12,2) DEFAULT 0, status VARCHAR(12) DEFAULT 'new', sched_at TIMESTAMPTZ, tech_id INTEGER, arrived_at TIMESTAMPTZ, finished_at TIMESTAMPTZ, delivered_at TIMESTAMPTZ, confirmed_at TIMESTAMPTZ, auto_confirmed BOOLEAN DEFAULT FALSE, tasks JSONB DEFAULT '[]'::jsonb, photos JSONB DEFAULT '[]'::jsonb, log JSONB DEFAULT '[]'::jsonb, rating INTEGER, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
+      await _mig('CREATE INDEX IF NOT EXISTS jobs_prov ON jobs(provider_id, updated_at DESC)');
+      await _mig('CREATE INDEX IF NOT EXISTS jobs_tech ON jobs(tech_id)');
+      await _mig(`CREATE TABLE IF NOT EXISTS job_extras (id SERIAL PRIMARY KEY, job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE, descr VARCHAR(200), price NUMERIC(12,2) DEFAULT 0, photo TEXT, status VARCHAR(12) DEFAULT 'tech', by_tech BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW(), sent_at TIMESTAMPTZ, decided_at TIMESTAMPTZ)`);
       await _mig(`CREATE TABLE IF NOT EXISTS provider_customers (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, client_id INTEGER REFERENCES users(id) ON DELETE SET NULL, name VARCHAR(80), phone VARCHAR(20), phone9 VARCHAR(12), quotes_n INTEGER DEFAULT 0, accepted_n INTEGER DEFAULT 0, last_at TIMESTAMPTZ DEFAULT NOW(), created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(provider_id, phone9))`);
       await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_code VARCHAR(16), ADD COLUMN IF NOT EXISTS ref_by INTEGER, ADD COLUMN IF NOT EXISTS ref_credit INTEGER DEFAULT 0, ADD COLUMN IF NOT EXISTS ref_rewarded BOOLEAN DEFAULT FALSE');
       await _mig('CREATE UNIQUE INDEX IF NOT EXISTS users_ref_code ON users(ref_code) WHERE ref_code IS NOT NULL');
@@ -9124,7 +9133,7 @@ function _qOpts(arr){
     return { n: _cleanTxt(o && o.n || '', 30) || (['الخيار الأول', 'الخيار الثاني', 'الخيار الثالث'][i]), items, total, days: _cleanTxt(o && o.days || '', 40), warranty: _cleanTxt(o && o.warranty || '', 60), rec: !!(o && o.rec) };
   }).filter(o => o.items.length);
 }
-function _qState(q){ if (q && ['sent', 'change'].includes(q.status) && q.valid_until && new Date(q.valid_until) < new Date()) return 'expired'; return q ? q.status : null; }
+function _qState(q){ if (q && q.reaccept && q.status === 'sent') return 'sent'; if (q && ['sent', 'change'].includes(q.status) && q.valid_until && new Date(q.valid_until) < new Date()) return 'expired'; return q ? q.status : null; }
 async function _qGate(req, res){
   const ss = await _plnRow(req.user.id);
   if (!_subLive(ss) || !(await _subOpen(req.user.id))) { res.status(403).json({ code: 'sub', message: 'عروض الأسعار من مزايا الاشتراك' }); return false; }
@@ -9137,7 +9146,7 @@ async function _qCustomer(pid, q, accepted){
       [pid, q.client_id || null, q.client_name || '', q.client_phone, p9, accepted ? 0 : 1, accepted ? 1 : 0]); } catch(e){ console.error('qcust:', e.message); }
 }
 function _qOut(q, forClient){
-  const o = { id: q.id, no: q.q_no, title: q.title, options: q.options || [], notes: q.notes || '', deposit_pct: q.deposit_pct || 0, valid_days: q.valid_days, valid_until: q.valid_until, status: _qState(q), version: q.version, updated: !!q.updated_after_send, chosen: q.chosen, client_note: q.client_note || '', sent_at: q.sent_at, viewed_at: q.viewed_at, decided_at: q.decided_at, created_at: q.created_at, updated_at: q.updated_at, provider_id: q.provider_id };
+  const o = { id: q.id, no: q.q_no, title: q.title, options: q.options || [], notes: q.notes || '', deposit_pct: q.deposit_pct || 0, valid_days: q.valid_days, valid_until: q.valid_until, status: _qState(q), version: q.version, updated: !!q.updated_after_send, chosen: q.chosen, reaccept: !!q.reaccept, prev_options: q.reaccept ? (q.prev_options || null) : null, prev_chosen: q.reaccept ? q.prev_chosen : null, job_id: q.job_id || null, client_note: q.client_note || '', sent_at: q.sent_at, viewed_at: q.viewed_at, decided_at: q.decided_at, created_at: q.created_at, updated_at: q.updated_at, provider_id: q.provider_id };
   if (!forClient) Object.assign(o, { token: q.token, client_name: q.client_name, client_phone: q.client_phone, client_id: q.client_id, qreq_id: q.qreq_id, link: SITE_URL + '/q/' + q.token, saai: !!q.saai_id });
   return o;
 }
@@ -9184,15 +9193,20 @@ app.post('/api/quotes', auth, providerOnly, async (req, res) => {
     if (id) {
       const old = (await pool.query('SELECT * FROM quotes WHERE id=$1 AND provider_id=$2', [id, req.user.id])).rows[0];
       if (!old) return res.status(404).json({ message: 'العرض غير موجود' });
-      if (['accepted', 'declined'].includes(old.status)) return res.status(409).json({ message: old.status === 'accepted' ? 'العميل وافق على هذا العرض — ما يتعدّل. سوّ عرضاً جديداً' : 'العميل اعتذر عن هذا العرض — سوّ عرضاً جديداً' });
+      if (old.status === 'declined') return res.status(409).json({ message: 'العميل اعتذر عن هذا العرض — سوّ عرضاً جديداً' });
+      if (old.job_id) { const jb = (await pool.query('SELECT status FROM jobs WHERE id=$1', [old.job_id])).rows[0]; if (jb && ['delivered', 'done'].includes(jb.status)) return res.status(409).json({ message: 'المشروع انسلّم — ما يتعدّل العرض' }); }
+      const wasAcc = old.status === 'accepted';
+      if (wasAcc && !send) return res.status(400).json({ message: 'التعديل بعد الموافقة لازم يوصل العميل — اضغط «أرسل التعديل»' });
       const wasSent = old.status !== 'draft';
       const toSend = wasSent || send;
       q = (await pool.query(`UPDATE quotes SET client_name=$3, client_phone=$4, client_id=COALESCE($5, client_id), title=$6, options=$7::jsonb, notes=$8, deposit_pct=$9, valid_days=$10, updated_at=NOW(),
           status=CASE WHEN $11 THEN 'sent' ELSE status END, sent_at=CASE WHEN $11 AND sent_at IS NULL THEN NOW() ELSE sent_at END,
           valid_until=CASE WHEN $11 THEN NOW() + make_interval(days => $10::int) ELSE valid_until END,
-          version=CASE WHEN $12 THEN version+1 ELSE version END, updated_after_send=CASE WHEN $12 THEN TRUE ELSE updated_after_send END, client_note=CASE WHEN $12 THEN NULL ELSE client_note END
-          WHERE id=$1 AND provider_id=$2 RETURNING *`, [id, req.user.id, cname, cphone, cid, title, JSON.stringify(opts), notes, dep, vd, toSend, wasSent])).rows[0];
-      if (wasSent && q.client_id) try { await notify(q.client_id, 'تحديث على عرض السعر', (q.title || 'عرض سعر') + ' — حدّث المزوّد العرض، اطّلع على النسخة الجديدة', 'quote', q.id, { url: '/quote.html?id=' + q.id }); } catch(e){}
+          version=CASE WHEN $12 THEN version+1 ELSE version END, updated_after_send=CASE WHEN $12 THEN TRUE ELSE updated_after_send END, client_note=CASE WHEN $12 THEN NULL ELSE client_note END,
+          prev_options=CASE WHEN $13 THEN options ELSE prev_options END, prev_chosen=CASE WHEN $13 THEN chosen ELSE prev_chosen END, reaccept=CASE WHEN $13 THEN TRUE ELSE reaccept END
+          WHERE id=$1 AND provider_id=$2 RETURNING *`, [id, req.user.id, cname, cphone, cid, title, JSON.stringify(opts), notes, dep, vd, toSend, wasSent, wasAcc])).rows[0];
+      if (wasSent && q.client_id) try { if (q.reaccept) await notify(q.client_id, '✏️ عدّل المزوّد السعر', (q.title || 'عرض سعر') + ' — راجع السعر الجديد ووافق عليه، أو ابقَ على الاتفاق السابق', 'quote', q.id, { url: '/quote.html?id=' + q.id });
+        else await notify(q.client_id, 'تحديث على عرض السعر', (q.title || 'عرض سعر') + ' — حدّث المزوّد العرض، اطّلع على النسخة الجديدة', 'quote', q.id, { url: '/quote.html?id=' + q.id }); } catch(e){}
       if (!wasSent && send) { await _qAfterSend(req, q, qreq); }
     } else {
       const no = (await pool.query('SELECT COALESCE(MAX(q_no),1000)+1 AS n FROM quotes WHERE provider_id=$1', [req.user.id])).rows[0].n;
@@ -9248,12 +9262,27 @@ app.post('/api/q/:t/act', auth, rateLimiter(20, 600000), async (req, res) => {
     const q = x.q, st = _qState(q), act = String(req.body && req.body.act || '');
     if (st === 'expired') return res.status(409).json({ message: 'انتهت صلاحية العرض — اطلب من المزوّد يحدّثه' });
     if (!['sent', 'change'].includes(st)) return res.status(409).json({ message: st === 'accepted' ? 'وافقت على هذا العرض مسبقاً' : 'العرض مغلق' });
+    if (q.reaccept && !['accept', 'keep'].includes(act)) return res.status(400).json({ message: 'وافق على السعر الجديد أو ابقَ على الاتفاق السابق' });
+    if (act === 'keep') {
+      if (!q.reaccept) return res.status(400).json({ message: 'إجراء غير معروف' });
+      await pool.query("UPDATE quotes SET options=prev_options, chosen=prev_chosen, status='accepted', reaccept=FALSE, prev_options=NULL, prev_chosen=NULL, version=version+1, updated_at=NOW() WHERE id=$1", [q.id]);
+      try { await notify(q.provider_id, (q.client_name || 'العميل') + ' فضّل الاتفاق السابق', '«' + (q.title || 'عرض السعر') + '» — بقي السعر المتفق عليه أولاً', 'quote', q.id, { url: '/quotes.html?id=' + q.id }); } catch(e){}
+      return res.json({ ok: true, status: 'accepted' });
+    }
     if (req.body.version && parseInt(req.body.version) !== q.version) return res.status(409).json({ code: 'version', message: 'المزوّد حدّث العرض للتو — راجع النسخة الجديدة' });
     const pu = (await pool.query("SELECT email, name, COALESCE(NULLIF(business_name,''),name) AS bn FROM users WHERE id=$1", [q.provider_id])).rows[0] || {};
     const cn = q.client_name || 'العميل';
     if (act === 'accept') {
       const i = parseInt(req.body.opt); const o = (q.options || [])[i];
       if (!o) return res.status(400).json({ message: 'اختر خياراً' });
+      if (q.reaccept) {
+        const r2 = await pool.query("UPDATE quotes SET status='accepted', chosen=$2, decided_at=NOW(), reaccept=FALSE, prev_options=NULL, prev_chosen=NULL WHERE id=$1 AND status='sent' AND reaccept RETURNING *", [q.id, i]);
+        if (!r2.rows.length) return res.status(409).json({ message: 'العرض تغيّر — حدّث الصفحة' });
+        if (q.job_id) { await pool.query('UPDATE jobs SET value=$2, updated_at=NOW() WHERE id=$1', [q.job_id, o.total]); await _jobLog(q.job_id, 'العميل وافق على السعر الجديد: ' + Number(o.total).toLocaleString('en-US') + ' ر.س'); }
+        if (q.saai_id) await _saaiAdjust(q.saai_id, await _jobVal(q), 'عرض سعر رقم ' + q.q_no);
+        try { await notify(q.provider_id, '✅ ' + cn + ' وافق على السعر الجديد', '«' + (q.title || '') + '» — ' + o.n + ' بـ ' + Number(o.total).toLocaleString('en-US') + ' ر.س', 'quote', q.id, { url: '/quotes.html?id=' + q.id }); } catch(e){}
+        return res.json({ ok: true, status: 'accepted' });
+      }
       // السعي: لو العميل تعامل مع المزوّد في السوق خلال 90 يوم
       let saaiId = null;
       const mk = (await pool.query("SELECT 1 FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.provider_id=$1 AND r.client_id=$2 AND b.created_at > NOW()-interval '90 days' LIMIT 1", [q.provider_id, req.user.id])).rows.length;
@@ -9263,6 +9292,14 @@ app.post('/api/q/:t/act', auth, rateLimiter(20, 600000), async (req, res) => {
       const r = await pool.query("UPDATE quotes SET status='accepted', chosen=$2, decided_at=NOW(), client_note=$3, saai_id=$4 WHERE id=$1 AND status IN ('sent','change') RETURNING *", [q.id, i, _cleanML(req.body.note || '', 500) || null, saaiId]);
       if (!r.rows.length) return res.status(409).json({ message: 'العرض تغيّر — حدّث الصفحة' });
       await _qCustomer(q.provider_id, Object.assign({}, q, { client_id: req.user.id }), true);
+      // يتحوّل لمشروع تلقائياً (المهام = بنود الخيار)
+      try { const qr = q.qreq_id ? (await pool.query('SELECT district, city FROM quote_requests WHERE id=$1', [q.qreq_id])).rows[0] : null;
+        const tasks = (o.items || []).map((x, k) => ({ id: 't' + Date.now().toString(36) + k, t: x.t + (x.q > 1 ? ' × ' + x.q : ''), done: false }));
+        const jid = (await pool.query(`INSERT INTO jobs (provider_id, client_id, client_name, client_phone, quote_id, title, address, value, tasks, log) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb) RETURNING id`,
+          [q.provider_id, req.user.id, q.client_name, q.client_phone, q.id, q.title, qr ? [qr.district, qr.city].filter(Boolean).join('، ') : null, o.total, JSON.stringify(tasks), JSON.stringify([{ at: new Date(), t: 'العميل وافق على «' + o.n + '» — بدأ المشروع' }])])).rows[0].id;
+        await pool.query('UPDATE quotes SET job_id=$2 WHERE id=$1', [q.id, jid]);
+        try { await notify(q.provider_id, '🧰 مشروع جديد: ' + (q.title || ''), 'حدّد الموعد والفني', 'job', jid, { url: '/jobs.html?id=' + jid }); } catch(e){}
+      } catch(e){ console.error('job-from-quote:', e.message); }
       const t = '✅ ' + cn + ' وافق على عرضك', bd = '«' + (q.title || 'عرض السعر') + '» — ' + o.n + ' بـ ' + Number(o.total).toLocaleString('en-US') + ' ر.س' + (saaiId ? ' · يُسجّل عليه سعي المنصة (عميل من السوق)' : '');
       try { await notify(q.provider_id, t, bd, 'quote', q.id, { url: '/quotes.html?id=' + q.id }); } catch(e){}
       if (pu.email) sendEmail(pu.email, t, emailTpl(t, `<p>مرحباً${pu.name ? ' ' + eEsc(pu.name) : ''}،</p><p>${eEsc(bd)}</p><p>تواصل مع العميل وحدّد موعد التنفيذ.</p>`, 'افتح العرض', SITE_URL + '/quotes.html?id=' + q.id)).catch(()=>{});
@@ -9285,6 +9322,223 @@ app.get('/api/my/quotes', auth, async (req, res) => {
   try { const r = await pool.query(`SELECT q.*, COALESCE(NULLIF(u.business_name,''),u.name) AS pname FROM quotes q JOIN users u ON u.id=q.provider_id WHERE q.client_id=$1 AND q.status<>'draft' ORDER BY q.updated_at DESC LIMIT 100`, [req.user.id]);
     res.json({ items: r.rows.map(q => Object.assign(_qOut(q, true), { provider_name: q.pname })) }); } catch(e){ res.json({ items: [] }); }
 });
+
+// ═══ المشاريع والفنيين (للمشترك): من عرض سعر موافق عليه أو يدوي · فني بحساب برقم جواله · عمل إضافي بموافقة العميل · تسليم وتأكيد ═══
+const _JST = { new: 'بانتظار الموعد', scheduled: 'موعد محدد', active: 'قيد التنفيذ', delivered: 'بانتظار تأكيد العميل', done: 'مكتمل', cancelled: 'ملغي' };
+async function _jobLog(id, t){ try { await pool.query("UPDATE jobs SET log = (COALESCE(log,'[]'::jsonb) || $2::jsonb), updated_at=NOW() WHERE id=$1", [id, JSON.stringify([{ at: new Date(), t: String(t).slice(0, 200) }])]); } catch(e){} }
+async function _jobVal(q){ if (!q || !q.job_id) { const o = (q && q.options || [])[q && q.chosen]; return o ? o.total : 0; } const j = (await pool.query('SELECT value, extra_total FROM jobs WHERE id=$1', [q.job_id])).rows[0]; return j ? (parseFloat(j.value) || 0) + (parseFloat(j.extra_total) || 0) : 0; }
+// تعديل السعي لما تتغيّر قيمة الاتفاق: لو لسا ما انسدّد نعدّله، ولو انسدّد نضيف الفرق كسعي جديد
+async function _saaiAdjust(saaiId, newVal, title){
+  try { const r = (await pool.query('SELECT * FROM saai_ledger WHERE id=$1', [saaiId])).rows[0]; if (!r) return;
+    const v = Math.round(newVal);
+    if (r.status === 'pending') await pool.query('UPDATE saai_ledger SET contract_value=$2, saai_amount=$3 WHERE id=$1', [saaiId, v, Math.round(v * SAAI_RATE)]);
+    else if (r.status !== 'cancelled' && v > (parseFloat(r.contract_value) || 0)) { const d = v - (parseFloat(r.contract_value) || 0);
+      await pool.query(`INSERT INTO saai_ledger (request_id, provider_id, contract_value, saai_amount, status, source, self_title, self_reason, edits_log) VALUES (NULL,$1,$2,$3,'pending','quote',$4,'فرق قيمة بعد الاتفاق','[]'::jsonb)`, [r.provider_id, d, Math.round(d * SAAI_RATE), title + ' — فرق']); }
+  } catch(e){ console.error('saai-adjust:', e.message); }
+}
+async function _jobGate(req, res){ return _qGate(req, res); }
+function _jobOut(j, who){
+  const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: j.tasks || [], photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, created_at: j.created_at, updated_at: j.updated_at };
+  if (who !== 'tech') Object.assign(o, { value: parseFloat(j.value) || 0, extra_total: parseFloat(j.extra_total) || 0 });
+  if (who === 'prov') Object.assign(o, { client_phone: j.client_phone, client_id: j.client_id, tech_id: j.tech_id, tech_name: j.tech_name || null });
+  if (who === 'tech') Object.assign(o, { client_phone: j.client_phone, provider_name: j.pname });
+  if (who === 'client') Object.assign(o, { provider_id: j.provider_id, provider_name: j.pname, provider_phone: j.pphone, tech_name: j.tech_name || null });
+  return o;
+}
+async function _jobRow(id, cond, args){ return (await pool.query(`SELECT j.*, t.name AS tech_name, t.user_id AS tech_uid, COALESCE(NULLIF(u.business_name,''),u.name) AS pname, u.phone AS pphone FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id JOIN users u ON u.id=j.provider_id WHERE j.id=$1 ${cond}`, [id].concat(args || []))).rows[0]; }
+async function _jobPhoto(data){
+  if (typeof data !== 'string' || !data.startsWith('data:image/')) return null;
+  const u = await uploadToCloud(data, 'manaqasa/jobs').catch(() => null);
+  if (u && /^https?:/.test(u)) return u;
+  if (process.env.NODE_ENV !== 'production' && data.length < 400000) return data;   // بيئة الاختبار بدون تخزين
+  return null;
+}
+// ── الفريق (الفنيين) ──
+app.get('/api/team', auth, providerOnly, async (req, res) => {
+  try { const r = await pool.query(`SELECT t.id, t.name, t.phone, t.user_id, t.active, (SELECT COUNT(*)::int FROM jobs j WHERE j.tech_id=t.id AND j.status IN ('new','scheduled','active')) AS open_n FROM provider_techs t WHERE t.provider_id=$1 AND t.active ORDER BY t.id`, [req.user.id]);
+    const L = await _subLimits(req.user.id); res.json({ items: r.rows, limit: L.limits.tech || 0 }); } catch(e){ res.json({ items: [], limit: 0 }); }
+});
+app.post('/api/team', auth, providerOnly, async (req, res) => {
+  try { if (!(await _jobGate(req, res))) return;
+    const name = _cleanTxt(req.body && req.body.name || '', 80), phone = String(req.body && req.body.phone || '').replace(/[^\d+]/g, '').slice(0, 15), p9 = _ph9(phone);
+    if (name.length < 2 || p9.length !== 9) return res.status(400).json({ message: 'اكتب اسم الفني ورقم جواله' });
+    const L = await _subLimits(req.user.id); const n = (await pool.query('SELECT COUNT(*)::int n FROM provider_techs WHERE provider_id=$1 AND active', [req.user.id])).rows[0].n;
+    const ex = (await pool.query('SELECT id, active FROM provider_techs WHERE provider_id=$1 AND phone9=$2', [req.user.id, p9])).rows[0];
+    if (ex && ex.active) return res.status(409).json({ message: 'هذا الفني مضاف مسبقاً' });
+    if (n >= (L.limits.tech || 0)) return res.status(409).json({ code: 'limit', message: 'وصلت حد الفنيين في باقتك (' + (L.limits.tech || 0) + ') — أضف «5 فنيين» من صفحة اشتراكي' });
+    const u = (await pool.query("SELECT id FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1 ORDER BY id LIMIT 1", [p9])).rows[0];
+    if (u && String(u.id) === String(req.user.id)) return res.status(400).json({ message: 'هذا رقمك أنت' });
+    const t = ex ? (await pool.query('UPDATE provider_techs SET active=TRUE, name=$2, phone=$3, user_id=COALESCE(user_id,$4) WHERE id=$1 RETURNING *', [ex.id, name, phone, u ? u.id : null])).rows[0]
+      : (await pool.query('INSERT INTO provider_techs (provider_id, user_id, name, phone, phone9) VALUES ($1,$2,$3,$4,$5) RETURNING *', [req.user.id, u ? u.id : null, name, phone, p9])).rows[0];
+    const pn = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS n FROM users WHERE id=$1", [req.user.id])).rows[0].n;
+    if (t.user_id) try { await notify(t.user_id, '👷 أضافتك ' + pn + ' كفني', 'مهامك توصلك في «مهامي»', 'tech', null, { url: '/tech.html' }); } catch(e){}
+    res.json({ ok: true, tech: t, linked: !!t.user_id, invite: SITE_URL + '/tech.html', pname: pn });
+  } catch(e){ console.error('team-add:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.delete('/api/team/:id', auth, providerOnly, async (req, res) => {
+  try { const id = parseInt(req.params.id) || 0;
+    const open = (await pool.query("SELECT COUNT(*)::int n FROM jobs WHERE tech_id=$1 AND provider_id=$2 AND status IN ('new','scheduled','active')", [id, req.user.id])).rows[0].n;
+    if (open) return res.status(409).json({ message: 'عنده مشاريع مفتوحة — غيّر الفني فيها أول' });
+    await pool.query('UPDATE provider_techs SET active=FALSE WHERE id=$1 AND provider_id=$2', [id, req.user.id]); res.json({ ok: true }); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ── المشاريع (المزوّد) ──
+app.get('/api/jobs', auth, providerOnly, async (req, res) => {
+  try { const r = await pool.query(`SELECT j.*, t.name AS tech_name, (SELECT COUNT(*)::int FROM job_extras e WHERE e.job_id=j.id AND e.status='tech') AS extra_wait FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id WHERE j.provider_id=$1 ORDER BY CASE j.status WHEN 'active' THEN 0 WHEN 'scheduled' THEN 1 WHEN 'new' THEN 2 WHEN 'delivered' THEN 3 ELSE 4 END, COALESCE(j.sched_at, j.created_at) DESC LIMIT 300`, [req.user.id]);
+    const ss = await _plnRow(req.user.id); const L = await _subLimits(req.user.id);
+    res.json({ live: _subLive(ss) && await _subOpen(req.user.id), limit: L.limits.projects || 0, items: r.rows.map(j => Object.assign(_jobOut(j, 'prov'), { extra_wait: j.extra_wait })) }); } catch(e){ console.error('jobs:', e.message); res.json({ items: [] }); }
+});
+app.get('/api/jobs/:id', auth, providerOnly, async (req, res) => {
+  try { const j = await _jobRow(parseInt(req.params.id) || 0, 'AND j.provider_id=$2', [req.user.id]); if (!j) return res.status(404).json({ message: 'المشروع غير موجود' });
+    const ex = (await pool.query('SELECT * FROM job_extras WHERE job_id=$1 ORDER BY id', [j.id])).rows;
+    const tm = (await pool.query('SELECT id, name, user_id FROM provider_techs WHERE provider_id=$1 AND active ORDER BY id', [req.user.id])).rows;
+    res.json(Object.assign(_jobOut(j, 'prov'), { extras: ex, team: tm })); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/jobs', auth, providerOnly, async (req, res) => {
+  try { if (!(await _jobGate(req, res))) return;
+    const b = req.body || {}; const L = await _subLimits(req.user.id);
+    const act = (await pool.query("SELECT COUNT(*)::int n FROM jobs WHERE provider_id=$1 AND status IN ('new','scheduled','active') AND quote_id IS NULL", [req.user.id])).rows[0].n;
+    if (act >= (L.limits.projects || 0)) return res.status(409).json({ code: 'limit', message: 'وصلت حد المشاريع اليدوية النشطة في باقتك (' + (L.limits.projects || 0) + ') — أضف «5 مشاريع» من صفحة اشتراكي' });
+    const title = _cleanTxt(b.title || '', 120), cn = _cleanTxt(b.client_name || '', 80), cp = String(b.client_phone || '').replace(/[^\d+]/g, '').slice(0, 15);
+    if (!title || !cn) return res.status(400).json({ message: 'اكتب عنوان المشروع واسم العميل' });
+    let cid = null; if (_ph9(cp).length === 9) { const u = (await pool.query("SELECT id FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1 AND id<>$2 ORDER BY id LIMIT 1", [_ph9(cp), req.user.id])).rows[0]; if (u) cid = u.id; }
+    const tasks = (Array.isArray(b.tasks) ? b.tasks : []).slice(0, 40).map((t, k) => ({ id: 't' + Date.now().toString(36) + k, t: _cleanTxt(t, 120), done: false })).filter(x => x.t.length >= 2);
+    const j = (await pool.query(`INSERT INTO jobs (provider_id, client_id, client_name, client_phone, title, address, maps, value, tasks, log) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb) RETURNING *`,
+      [req.user.id, cid, cn, cp, title, _cleanTxt(b.address || '', 200) || null, _safeUrl(b.maps) || null, Math.max(0, parseFloat(b.value) || 0), JSON.stringify(tasks), JSON.stringify([{ at: new Date(), t: 'أُنشئ المشروع' }])])).rows[0];
+    await _qCustomer(req.user.id, { client_id: cid, client_name: cn, client_phone: cp }, false);
+    res.json({ ok: true, job: _jobOut(j, 'prov') });
+  } catch(e){ console.error('job-new:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+async function _jobTechUid(techId){ if (!techId) return null; const t = (await pool.query('SELECT user_id FROM provider_techs WHERE id=$1', [techId])).rows[0]; return t ? t.user_id : null; }
+app.post('/api/jobs/:id', auth, providerOnly, async (req, res) => {
+  try { const id = parseInt(req.params.id) || 0; const b = req.body || {}; const act = String(b.act || '');
+    const j = await _jobRow(id, 'AND j.provider_id=$2', [req.user.id]); if (!j) return res.status(404).json({ message: 'المشروع غير موجود' });
+    if (['done', 'cancelled'].includes(j.status) && act !== 'photo') return res.status(409).json({ message: 'المشروع مغلق' });
+    if (act === 'save') {
+      let tech = b.tech_id === null || b.tech_id === '' ? null : (b.tech_id !== undefined ? parseInt(b.tech_id) || null : j.tech_id);
+      if (tech && !(await pool.query('SELECT 1 FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [tech, req.user.id])).rows.length) return res.status(400).json({ message: 'الفني غير موجود في فريقك' });
+      let sched = b.sched_at !== undefined ? (b.sched_at ? new Date(b.sched_at) : null) : j.sched_at; if (sched && isNaN(sched)) return res.status(400).json({ message: 'الموعد غير صحيح' });
+      const st = ['new', 'scheduled'].includes(j.status) ? (sched && tech ? 'scheduled' : 'new') : j.status;
+      const r = (await pool.query('UPDATE jobs SET title=$2, address=$3, maps=$4, sched_at=$5, tech_id=$6, status=$7, updated_at=NOW() WHERE id=$1 RETURNING *', [id, _cleanTxt(b.title || j.title, 120), b.address !== undefined ? (_cleanTxt(b.address, 200) || null) : j.address, b.maps !== undefined ? (_safeUrl(b.maps) || null) : j.maps, sched, tech, st])).rows[0];
+      const fmt = d => d ? new Date(d).toLocaleString('ar-SA-u-nu-latn-ca-gregory', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' }) : '';
+      if (String(sched || '') !== String(j.sched_at || '') && sched) { await _jobLog(id, 'الموعد: ' + fmt(sched)); if (j.client_id) try { await notify(j.client_id, '🗓 موعد مشروعك: ' + fmt(sched), (j.title || '') + ' — ' + j.pname, 'job', id, { url: '/job.html?id=' + id }); } catch(e){} }
+      if (tech && tech !== j.tech_id) { const tu = await _jobTechUid(tech); const tn = (await pool.query('SELECT name FROM provider_techs WHERE id=$1', [tech])).rows[0].name; await _jobLog(id, 'الفني: ' + tn);
+        if (tu) try { await notify(tu, '🧰 مهمة جديدة: ' + (j.title || ''), (sched ? fmt(sched) + ' · ' : '') + (r.address || ''), 'tech', id, { url: '/tech.html?id=' + id }); } catch(e){} }
+      return res.json({ ok: true });
+    }
+    if (act === 'task_add') { const t = _cleanTxt(b.t || '', 120); if (t.length < 2) return res.status(400).json({ message: 'اكتب المهمة' }); const tasks = (j.tasks || []).concat([{ id: 't' + Date.now().toString(36), t, done: false }]).slice(0, 60); await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(tasks)]); return res.json({ ok: true, tasks }); }
+    if (act === 'task_del') { const tasks = (j.tasks || []).filter(x => x.id !== b.tid); await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(tasks)]); return res.json({ ok: true, tasks }); }
+    if (act === 'task') { const tasks = (j.tasks || []).map(x => x.id === b.tid ? Object.assign({}, x, { done: !x.done, by: x.done ? null : 'المؤسسة', at: x.done ? null : new Date() }) : x); await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(tasks)]); return res.json({ ok: true, tasks }); }
+    if (act === 'photo') { const u = await _jobPhoto(b.data); if (!u) return res.status(400).json({ message: 'تعذّر رفع الصورة' }); const ph = (j.photos || []).concat([{ url: u, kind: b.kind === 'before' ? 'before' : 'after', by: 'المؤسسة', at: new Date() }]).slice(-30); await pool.query('UPDATE jobs SET photos=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(ph)]); return res.json({ ok: true, photos: ph }); }
+    if (act === 'deliver') {
+      if (!['scheduled', 'active', 'new'].includes(j.status)) return res.status(409).json({ message: 'المشروع مسلّم مسبقاً' });
+      if (j.client_id) { await pool.query("UPDATE jobs SET status='delivered', delivered_at=NOW(), updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, 'سلّمت المؤسسة المشروع — بانتظار تأكيد العميل');
+        try { await notify(j.client_id, '✅ سلّمك ' + j.pname + ' المشروع', (j.title || '') + ' — أكّد الاستلام وقيّم الخدمة', 'job', id, { url: '/job.html?id=' + id }); } catch(e){} }
+      else { await pool.query("UPDATE jobs SET status='done', delivered_at=NOW(), confirmed_at=NOW(), updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, 'انسلّم المشروع'); }
+      return res.json({ ok: true });
+    }
+    if (act === 'cancel') { await pool.query("UPDATE jobs SET status='cancelled', updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, 'أُلغي المشروع'); return res.json({ ok: true }); }
+    res.status(400).json({ message: 'إجراء غير معروف' });
+  } catch(e){ console.error('job-act:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// العمل الإضافي (المزوّد): يرسل طلب الفني للعميل (مع تعديل السعر) أو يرفضه، أو يضيف عمل إضافي بنفسه
+app.post('/api/jobs/:id/extras', auth, providerOnly, async (req, res) => {
+  try { const id = parseInt(req.params.id) || 0; const b = req.body || {};
+    const j = await _jobRow(id, 'AND j.provider_id=$2', [req.user.id]); if (!j) return res.status(404).json({ message: 'المشروع غير موجود' });
+    if (!['new', 'scheduled', 'active'].includes(j.status)) return res.status(409).json({ message: 'المشروع مسلّم أو مغلق' });
+    const d = _cleanTxt(b.descr || '', 200), p = Math.round(Math.max(0, parseFloat(b.price) || 0) * 100) / 100;
+    let e;
+    if (b.eid) { e = (await pool.query("SELECT * FROM job_extras WHERE id=$1 AND job_id=$2", [parseInt(b.eid) || 0, id])).rows[0]; if (!e || !['tech', 'sent'].includes(e.status)) return res.status(404).json({ message: 'الطلب غير موجود' });
+      if (b.act === 'reject') { await pool.query("UPDATE job_extras SET status='dropped', decided_at=NOW() WHERE id=$1", [e.id]); await _jobLog(id, 'أُلغي عمل إضافي: ' + e.descr); return res.json({ ok: true }); } }
+    if ((d || (e && e.descr)).length < 2 || !(p > 0)) return res.status(400).json({ message: 'اكتب وصف العمل الإضافي وسعره' });
+    if (!j.client_id) return res.status(400).json({ message: 'العميل ما عنده حساب — اتفق معه مباشرة' });
+    if (e) e = (await pool.query("UPDATE job_extras SET descr=$2, price=$3, status='sent', sent_at=NOW() WHERE id=$1 RETURNING *", [e.id, d || e.descr, p])).rows[0];
+    else e = (await pool.query("INSERT INTO job_extras (job_id, descr, price, status, sent_at) VALUES ($1,$2,$3,'sent',NOW()) RETURNING *", [id, d, p])).rows[0];
+    await _jobLog(id, 'أُرسل للعميل عمل إضافي: ' + e.descr + ' — ' + p + ' ر.س');
+    try { await notify(j.client_id, '➕ عمل إضافي يحتاج موافقتك', e.descr + ' — ' + Number(p).toLocaleString('en-US') + ' ر.س', 'job', id, { url: '/job.html?id=' + id }); } catch(x){}
+    res.json({ ok: true, extra: e });
+  } catch(x){ console.error('job-extra:', x.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ── الفني ──
+async function _techIds(uid){
+  const me = (await pool.query('SELECT phone FROM users WHERE id=$1', [uid])).rows[0] || {}; const p9 = _ph9(me.phone);
+  if (p9.length === 9) await pool.query('UPDATE provider_techs SET user_id=$1 WHERE phone9=$2 AND user_id IS NULL AND provider_id<>$1', [uid, p9]).catch(()=>{});
+  return (await pool.query('SELECT id FROM provider_techs WHERE user_id=$1 AND active', [uid])).rows.map(r => r.id);
+}
+app.get('/api/tech/jobs', auth, async (req, res) => {
+  try { const ids = await _techIds(req.user.id); if (!ids.length) return res.json({ tech: false, items: [] });
+    const r = await pool.query(`SELECT j.*, COALESCE(NULLIF(u.business_name,''),u.name) AS pname FROM jobs j JOIN users u ON u.id=j.provider_id WHERE j.tech_id = ANY($1) AND j.status IN ('new','scheduled','active','delivered') ORDER BY j.sched_at NULLS LAST, j.id DESC LIMIT 100`, [ids]);
+    res.json({ tech: true, items: r.rows.map(j => _jobOut(j, 'tech')) }); } catch(e){ console.error('tech-jobs:', e.message); res.json({ tech: false, items: [] }); }
+});
+async function _techJob(req){ const ids = await _techIds(req.user.id); if (!ids.length) return null; return _jobRow(parseInt(req.params.id) || 0, 'AND j.tech_id = ANY($2)', [ids]); }
+app.get('/api/tech/jobs/:id', auth, async (req, res) => {
+  try { const j = await _techJob(req); if (!j) return res.status(404).json({ message: 'المهمة غير موجودة' });
+    const ex = (await pool.query("SELECT id, descr, status, created_at FROM job_extras WHERE job_id=$1 AND by_tech ORDER BY id", [j.id])).rows;
+    res.json(Object.assign(_jobOut(j, 'tech'), { extras: ex })); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/tech/jobs/:id', auth, rateLimiter(120, 600000), async (req, res) => {
+  try { const j = await _techJob(req); if (!j) return res.status(404).json({ message: 'المهمة غير موجودة' });
+    const b = req.body || {}, act = String(b.act || ''), id = j.id, tn = j.tech_name || 'الفني';
+    if (!['new', 'scheduled', 'active'].includes(j.status)) return res.status(409).json({ message: 'المشروع انسلّم' });
+    if (act === 'arrive') { if (j.arrived_at) return res.json({ ok: true });
+      await pool.query("UPDATE jobs SET arrived_at=NOW(), status='active', updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, tn + ' وصل الموقع');
+      try { await notify(j.provider_id, '📍 ' + tn + ' وصل الموقع', j.title || '', 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
+      if (j.client_id) try { await notify(j.client_id, '📍 الفني ' + tn + ' وصل', (j.title || '') + ' — ' + j.pname, 'job', id, { url: '/job.html?id=' + id }); } catch(e){}
+      return res.json({ ok: true }); }
+    if (act === 'task') { let nm = ''; const tasks = (j.tasks || []).map(x => { if (x.id !== b.tid) return x; nm = x.t; return Object.assign({}, x, { done: !x.done, by: x.done ? null : tn, at: x.done ? null : new Date() }); });
+      await pool.query("UPDATE jobs SET tasks=$2::jsonb, status=CASE WHEN status IN ('new','scheduled') THEN 'active' ELSE status END, updated_at=NOW() WHERE id=$1", [id, JSON.stringify(tasks)]);
+      const t = tasks.find(x => x.id === b.tid); if (t && t.done) await _jobLog(id, tn + ' أنهى «' + nm + '»'); return res.json({ ok: true, tasks }); }
+    if (act === 'photo') { const u = await _jobPhoto(b.data); if (!u) return res.status(400).json({ message: 'تعذّر رفع الصورة' }); const ph = (j.photos || []).concat([{ url: u, kind: b.kind === 'before' ? 'before' : 'after', by: tn, at: new Date() }]).slice(-30); await pool.query('UPDATE jobs SET photos=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(ph)]); return res.json({ ok: true, photos: ph }); }
+    if (act === 'extra') { const d = _cleanTxt(b.descr || '', 200); if (d.length < 3) return res.status(400).json({ message: 'اكتب وش العمل الإضافي' });
+      const ph = b.photo ? await _jobPhoto(b.photo) : null;
+      await pool.query("INSERT INTO job_extras (job_id, descr, photo, status, by_tech) VALUES ($1,$2,$3,'tech',TRUE)", [id, d, ph]); await _jobLog(id, tn + ' طلب عمل إضافي: ' + d);
+      try { await notify(j.provider_id, '➕ ' + tn + ' يطلب عمل إضافي', d + ' — حدّد السعر وأرسله للعميل', 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
+      return res.json({ ok: true }); }
+    if (act === 'finish') { await pool.query('UPDATE jobs SET finished_at=NOW(), updated_at=NOW() WHERE id=$1', [id]); await _jobLog(id, tn + ' خلّص الشغل');
+      try { await notify(j.provider_id, '🏁 ' + tn + ' خلّص الشغل', (j.title || '') + ' — راجع وسلّم المشروع للعميل', 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
+      return res.json({ ok: true }); }
+    res.status(400).json({ message: 'إجراء غير معروف' });
+  } catch(e){ console.error('tech-act:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ── العميل ──
+app.get('/api/my/jobs', auth, async (req, res) => {
+  try { const r = await pool.query(`SELECT j.*, t.name AS tech_name, COALESCE(NULLIF(u.business_name,''),u.name) AS pname, u.phone AS pphone FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id JOIN users u ON u.id=j.provider_id WHERE j.client_id=$1 AND j.status<>'cancelled' ORDER BY j.updated_at DESC LIMIT 100`, [req.user.id]);
+    res.json({ items: r.rows.map(j => _jobOut(j, 'client')) }); } catch(e){ res.json({ items: [] }); }
+});
+app.get('/api/cjobs/:id', auth, async (req, res) => {
+  try { const j = await _jobRow(parseInt(req.params.id) || 0, 'AND j.client_id=$2', [req.user.id]); if (!j) return res.status(404).json({ message: 'المشروع غير موجود' });
+    const ex = (await pool.query("SELECT id, descr, price, photo, status, sent_at, decided_at FROM job_extras WHERE job_id=$1 AND status IN ('sent','approved','declined') ORDER BY id", [j.id])).rows;
+    res.json(Object.assign(_jobOut(j, 'client'), { extras: ex })); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/cjobs/:id', auth, rateLimiter(30, 600000), async (req, res) => {
+  try { const j = await _jobRow(parseInt(req.params.id) || 0, 'AND j.client_id=$2', [req.user.id]); if (!j) return res.status(404).json({ message: 'المشروع غير موجود' });
+    const b = req.body || {}, act = String(b.act || ''), id = j.id, cn = j.client_name || 'العميل';
+    if (act === 'extra') { const e = (await pool.query("SELECT * FROM job_extras WHERE id=$1 AND job_id=$2 AND status='sent'", [parseInt(b.eid) || 0, id])).rows[0]; if (!e) return res.status(404).json({ message: 'الطلب غير موجود أو تم الرد عليه' });
+      const okk = b.ok === true;
+      await pool.query('UPDATE job_extras SET status=$2, decided_at=NOW() WHERE id=$1', [e.id, okk ? 'approved' : 'declined']);
+      if (okk) { await pool.query('UPDATE jobs SET extra_total=extra_total+$2, updated_at=NOW() WHERE id=$1', [id, e.price]);
+        const q = j.quote_id ? (await pool.query('SELECT * FROM quotes WHERE id=$1', [j.quote_id])).rows[0] : null;
+        if (q && q.saai_id) await _saaiAdjust(q.saai_id, (parseFloat(j.value) || 0) + (parseFloat(j.extra_total) || 0) + parseFloat(e.price), 'عرض سعر رقم ' + q.q_no); }
+      await _jobLog(id, cn + (okk ? ' وافق على' : ' رفض') + ' العمل الإضافي: ' + e.descr);
+      try { await notify(j.provider_id, (okk ? '✅ ' : '') + cn + (okk ? ' وافق على العمل الإضافي' : ' رفض العمل الإضافي'), e.descr + ' — ' + Number(e.price).toLocaleString('en-US') + ' ر.س', 'job', id, { url: '/jobs.html?id=' + id }); } catch(x){}
+      if (j.tech_uid) try { await notify(j.tech_uid, cn + (okk ? ' وافق على العمل الإضافي' : ' رفض العمل الإضافي'), e.descr, 'tech', id, { url: '/tech.html?id=' + id }); } catch(x){}
+      return res.json({ ok: true }); }
+    if (act === 'confirm') { if (j.status !== 'delivered') return res.status(409).json({ message: j.status === 'done' ? 'أكّدت الاستلام مسبقاً' : 'المزوّد ما سلّم المشروع للحين' });
+      const rt = Math.max(0, Math.min(5, parseInt(b.rating) || 0));
+      await pool.query("UPDATE jobs SET status='done', confirmed_at=NOW(), rating=$2, updated_at=NOW() WHERE id=$1", [id, rt || null]); await _jobLog(id, cn + ' أكّد الاستلام' + (rt ? ' وقيّم ' + rt + '/5' : ''));
+      if (rt) try { await pool.query("INSERT INTO reviews (request_id, reviewer_id, reviewed_id, rating, comment, type, created_at) VALUES (NULL,$1,$2,$3,$4,'job',NOW())", [req.user.id, j.provider_id, rt, _cleanML(b.comment || '', 600) || null]); } catch(e){ console.error('job-review:', e.message); }
+      try { await notify(j.provider_id, '🎉 ' + cn + ' أكّد استلام المشروع', (j.title || '') + (rt ? ' — قيّمك ' + rt + ' من 5' : ''), 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
+      return res.json({ ok: true }); }
+    res.status(400).json({ message: 'إجراء غير معروف' });
+  } catch(e){ console.error('cjob-act:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// التأكيد التلقائي بعد 3 أيام من التسليم
+async function _jobTick(){
+  const r = (await pool.query("UPDATE jobs SET status='done', confirmed_at=NOW(), auto_confirmed=TRUE, updated_at=NOW() WHERE status='delivered' AND delivered_at < NOW() - interval '3 days' RETURNING id, provider_id, title")).rows;
+  for (const j of r) { await _jobLog(j.id, 'تأكّد الاستلام تلقائياً بعد 3 أيام'); try { await notify(j.provider_id, 'اكتمل المشروع', (j.title || '') + ' — تأكّد الاستلام تلقائياً', 'job', j.id, { url: '/jobs.html?id=' + j.id }); } catch(e){} }
+  return r.length;
+}
+setInterval(() => _jobLock('jobs', _jobTick), 60 * 60 * 1000);
+app.post('/api/admin/jobs/tick', requirePermission('settings.manage'), async (req, res) => { try { res.json({ ok: true, n: await _jobTick() }); } catch(e){ res.status(500).json({ message: e.message }); } });
 
 // الإدارة: السماح بالتحويل البنكي لمزوّد معيّن (للمبالغ الكبيرة)
 app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), async (req, res) => {
