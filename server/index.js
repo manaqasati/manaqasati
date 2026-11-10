@@ -8424,6 +8424,17 @@ app.post('/api/pay/saai/:ref/verify', auth, rateLimiter(40, 600000), async (req,
     res.json({ ok: false, message: msg });
   } catch(e){ console.error('pay-verify:', e.message); res.status(500).json({ message: 'تعذّر التحقق، يُرجى المحاولة مجدداً' }); }
 });
+// تسجيل سبب فشل الدفع من جهة الجهاز (Apple Pay) — يظهر للإدارة في سجل عمليات الدفع
+app.post('/api/pay/saai/:ref/log', auth, rateLimiter(20, 600000), async (req, res) => {
+  try { const p = await _payRow(req.params.ref, req.user.id); if (!p || p.status === 'paid') return res.json({ ok: true });
+    const m = _cleanTxt(req.body && req.body.m || '', 250); if (m) { await pool.query("UPDATE saai_payments SET err=$2 WHERE id=$1", [p.id, m]); console.warn('pay-client-err', p.ref, m); }
+    res.json({ ok: true }); } catch(e){ res.json({ ok: true }); }
+});
+// الإدارة: آخر عمليات الدفع الإلكتروني (للمتابعة وأسباب الفشل)
+app.get('/api/admin/pay/recent', requirePermission('settings.manage'), async (req, res) => {
+  try { const r = await pool.query(`SELECT p.ref, p.amount, p.status, p.method, p.card_last4, p.moyasar_id, p.err, p.created_at, p.paid_at, p.self_title, COALESCE(NULLIF(u.business_name,''),u.name) AS provider_name
+      FROM saai_payments p LEFT JOIN users u ON u.id=p.provider_id ORDER BY p.created_at DESC LIMIT 30`); res.json(r.rows); } catch(e){ res.json([]); }
+});
 // الإدارة: السماح بالتحويل البنكي لمزوّد معيّن (للمبالغ الكبيرة)
 app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), async (req, res) => {
   try {

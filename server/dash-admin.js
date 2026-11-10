@@ -409,7 +409,12 @@ function _saPayBox(){
       +(p.online?'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px"><b style="font-size:12.5px">Apple Pay:</b><span class="pl" style="background:'+(p.applepay?'#e3f5e9;color:#166534':'#f1f5f9;color:#64748b')+'">'+(p.applepay?'ظاهر للمزوّدين':'مخفي')+'</span>'
         +'<button class="act-btn ab-default" onclick="_saPaySet({applepay:'+(!p.applepay)+'})">'+(p.applepay?'إخفاء':'إظهار')+'</button>'
         +'<button class="act-btn ab-default" onclick="_saPayAssoc()">'+(p.has_assoc?'✓ ملف التحقق مرفوع — تحديث':'رفع ملف تحقق الدومين')+'</button></div>'
-        +'<div style="font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.7">أظهر Apple Pay بعد ما ترفع ملف التحقق وتسجّل الدومين في لوحة ميسّر.</div>':'');
+        +'<div style="font-size:11.5px;color:var(--muted);margin-top:6px;line-height:1.7">أظهر Apple Pay بعد ما ترفع ملف التحقق وتسجّل الدومين في لوحة ميسّر.</div><div id="sa-payrec" style="margin-top:10px"></div>':'');
+    if(p.online) fetch(API+'/api/admin/pay/recent',hdr()).then(function(r){return r.json();}).then(function(l){ var el=document.getElementById('sa-payrec'); if(!el||!Array.isArray(l)||!l.length)return;
+      var st={paid:['#e3f5e9','#166534','مدفوع'],failed:['#fef2f2','#b91c1c','فشل'],initiated:['#fffbeb','#b45309','بانتظار البنك'],'new':['#f1f5f9','#64748b','لم يكتمل']};
+      el.innerHTML='<b style="font-size:12.5px">آخر عمليات الدفع</b>'+l.slice(0,8).map(function(x){ var s=st[x.status]||st['new'];
+        return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px"><span class="pl" style="background:'+s[0]+';color:'+s[1]+'">'+s[2]+'</span><b>'+fmtNum(x.amount)+' ر.س</b><span style="color:var(--muted)">'+esc(x.provider_name||'')+(x.method?' · '+(x.method==='applepay'?'Apple Pay':'بطاقة'):'')+' · '+_saDT(x.created_at)+'</span>'+(x.err&&x.status!=='paid'?'<div style="width:100%;color:#b91c1c;font-size:11px;direction:ltr;text-align:left;word-break:break-word">'+esc(x.err)+'</div>':'')+'</div>'; }).join('');
+    }).catch(function(){});
   }).catch(function(){});
 }
 function _saPaySet(b){ fetch(API+'/api/admin/pay/settings',Object.assign({method:'PUT',body:JSON.stringify(b)},hdr())).then(function(r){return r.json();}).then(function(d){ toast(d&&d.ok?'تم الحفظ':'تعذّر', d&&d.ok?'success':'error'); _saPayBox(); }); }

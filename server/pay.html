@@ -192,7 +192,10 @@ function mountApple(){
      publishable_api_key:P.pk, callback_url:P.callback, methods:['applepay'], metadata:{ref:REF,kind:'saai'},
      apple_pay:{country:'SA',label:'منصة مناقصة',validate_merchant_url:'https://api.moyasar.com/v1/applepay/initiate'},
      on_completed:function(p){ return verify(p&&p.id,true); },
-     on_failure:function(e){ showErr('لم تكتمل عملية الدفع عبر Apple Pay'+(e&&e.message?'':'')+'. لم يُخصم أي مبلغ، ويمكنك المحاولة مجدداً أو اختيار الدفع بالبطاقة.'); } });
+     on_failure:function(e){ var d=''; try{ d=typeof e==='string'?e:(e&&(e.message||e.error||(e.source&&e.source.message)))||JSON.stringify(e); }catch(_){ d=String(e); } d=String(d||'').slice(0,200);
+       showErr('لم تكتمل عملية الدفع عبر Apple Pay. لم يُخصم أي مبلغ، ويمكنك المحاولة مجدداً أو اختيار الدفع بالبطاقة.');
+       var er=g('err'); if(er&&d){ var sm=document.createElement('div'); sm.style.cssText='font-size:11px;font-weight:700;opacity:.7;margin-top:6px;direction:ltr;text-align:left;word-break:break-word'; sm.textContent='رمز: '+d; er.appendChild(sm); }
+       api('/api/pay/saai/'+REF+'/log',{method:'POST',body:JSON.stringify({m:'applepay: '+d})}).catch(function(){}); } });
    _hideGw();
  }).catch(function(){ showErr('تعذّر تحميل Apple Pay، يُرجى اختيار الدفع بالبطاقة'); });
 }
