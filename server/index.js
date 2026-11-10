@@ -3396,8 +3396,8 @@ function auth(req, res, next) {
   }).catch(() => { if (payload.role === 'admin') return res.status(503).json({ message: 'تعذّر التحقق من الحساب — حاول بعد لحظة' }); next(); });
 }
 // ═══ المفوّض ═══
-const DLG_PERMS = { bids: 'العروض', chat: 'المحادثات', awarded: 'المشاريع المرسّاة', profile: 'الملف الشخصي', proofs: 'وثّق أعمالك', sub: 'مقاول باطن', quotes: 'طلبات التسعيرة وعروض الأسعار', jobs: 'مشاريع العملاء والفريق', customers: 'دفتر العملاء وخطط الصيانة' };
-const DLG_ROLES = { sales: { name: 'مندوب مبيعات', perms: ['bids', 'chat', 'quotes'] }, super: { name: 'مشرف مشاريع', perms: ['awarded', 'jobs', 'customers', 'chat'] }, manager: { name: 'مدير الحساب', perms: ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers'] } };
+const DLG_PERMS = { bids: 'العروض', chat: 'المحادثات', awarded: 'المشاريع المرسّاة', profile: 'الملف الشخصي', proofs: 'وثّق أعمالك', sub: 'مقاول باطن', quotes: 'طلبات التسعيرة وعروض الأسعار', jobs: 'مشاريع العملاء والفريق', customers: 'دفتر العملاء وخطط الصيانة', stats: 'الأرقام والتقارير' };
+const DLG_ROLES = { sales: { name: 'مندوب مبيعات', perms: ['bids', 'chat', 'quotes'] }, super: { name: 'مشرف مشاريع', perms: ['awarded', 'jobs', 'customers', 'chat'] }, manager: { name: 'مدير الحساب', perms: ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers', 'stats'] } };
 const _dlgState = new Map();
 async function _dlgStateOf(id){
   const hit = _dlgState.get(id); if (hit && Date.now() < hit.exp) return hit.d;
@@ -3410,7 +3410,7 @@ async function _dlgStateOf(id){
 function _dlgDrop(id){ _dlgState.delete(id); }
 // وش يقدر يسوي المفوّض: الحساس لصاحب الحساب بس، والباقي حسب الصلاحيات، وأي شي ما نعرفه يُرفض
 const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai|subs\/(?!open$)|pay\/)/;
-const _DLG_GET_DENY = { chat: /^\/api\/(messages|provider\/conversations)/, quotes: /^\/api\/(quotes|provider\/qreqs)(\/|$)/, jobs: /^\/api\/(jobs|team)(\/|$)/, customers: /^\/api\/(customers|plans)(\/|$)/ };
+const _DLG_GET_DENY = { chat: /^\/api\/(messages|provider\/conversations)/, quotes: /^\/api\/(quotes|provider\/qreqs)(\/|$)/, jobs: /^\/api\/(jobs|team)(\/|$)/, customers: /^\/api\/(customers|plans)(\/|$)/, stats: /^\/api\/provider\/stats(\/|$)/ };
 const _DLG_FREE = /^\/api\/(me\/dlg(\/|$)|push|push-token|notifications|me\/ping|me\/provider-hint|live\/ping|hit|lk\/event|csp-report|demo\/ev|tour|pro\/\d+\/view|requests\/\d+\/(view|revisit|watch-open)$|saved-requests\/|drafts\/save|upload\/attachment|support\/|reports$|blocks\/|auth\/refresh$)/;
 const _DLG_GROUPS = [
   ['bids', /^\/api\/(requests\/\d+\/(bids|questions)$|bids\/\d+$|accept-asks\/\d+\/respond$|provider\/bump$)/],
@@ -3745,6 +3745,7 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE provider_delegates DROP CONSTRAINT IF EXISTS provider_delegates_owner_id_key`);
       await _mig(`CREATE INDEX IF NOT EXISTS provider_delegates_owner ON provider_delegates (owner_id)`);
       await _mig(`ALTER TABLE provider_delegates ADD COLUMN IF NOT EXISTS role VARCHAR(12)`);
+      await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS stats_report_for VARCHAR(7)`);
       // سجل نشاط المفوّض (اللي سواه المفوّض + تغييرات صاحب الحساب والإدارة عليه)
       await _mig(`CREATE TABLE IF NOT EXISTS dlg_log (id SERIAL PRIMARY KEY, owner_id INTEGER NOT NULL, dlg_id INTEGER, actor VARCHAR(8) NOT NULL DEFAULT 'dlg', name VARCHAR(60), action VARCHAR(60) NOT NULL, detail VARCHAR(200), ref_id INTEGER, created_at TIMESTAMP DEFAULT NOW())`);
       await _mig(`CREATE INDEX IF NOT EXISTS dlg_log_owner ON dlg_log (owner_id, created_at DESC)`);
@@ -9883,6 +9884,90 @@ app.post('/api/d/:t/req', auth, _qreqLimiter, async (req, res, next) => {
     return _qreqHandler(req, res);
   } catch(e){ console.error('dev-req:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
+
+// ═══ «أرقامي»: لوحة أرقام المزوّد + التقرير الشهري ═══
+// كل المزوّدين: أرقام السوق (العروض، الفوز، الصفقات، السعي، التقييم). المشترك: + عروض الأسعار والمشاريع والفريق والصيانة. أرقامه هو بس (بدون مقارنة بالمنافسين)
+const _RYD = 3 * 3600000;   // توقيت الرياض
+function _statsRange(period){
+  const now = new Date(Date.now() + _RYD); const y = now.getUTCFullYear(), m = now.getUTCMonth();
+  const mk = (yy, mm) => new Date(Date.UTC(yy, mm, 1) - _RYD);
+  let from, to, label;
+  if (period === 'prev') { from = mk(y, m - 1); to = mk(y, m); }
+  else if (period === '3m') { from = mk(y, m - 2); to = mk(y, m + 1); }
+  else if (period === 'year') { from = mk(y, m - 11); to = mk(y, m + 1); }
+  else { from = mk(y, m); to = mk(y, m + 1); period = 'month'; }
+  const len = to - from; const pfrom = new Date(from - len), pto = from;
+  if (period === 'month') { const n = new Date(); if (to > n) to = n; }   // هذا الشهر: لين الحين
+  return { period, from, to, pfrom, pto: period === 'month' ? new Date(pfrom.getTime() + (to - from)) : pto };
+}
+async function _statsCore(pid, from, to, live){
+  const q = async (sql, a) => (await pool.query(sql, [pid, from, to].concat(a || []))).rows[0];
+  const o = {};
+  const b = await q("SELECT COUNT(*)::int n, COUNT(*) FILTER (WHERE status='accepted')::int won FROM bids WHERE provider_id=$1 AND created_at >= $2 AND created_at < $3");
+  o.bids = b.n; o.won = b.won; o.win_rate = b.n ? Math.round(b.won / b.n * 100) : null;
+  const m = await q("SELECT COUNT(*)::int n, COALESCE(SUM(contract_value),0)::float v FROM saai_ledger WHERE provider_id=$1 AND COALESCE(source,'')<>'quote' AND created_at >= $2 AND created_at < $3 AND status<>'cancelled'");
+  o.market_deals = m.n; o.market_value = m.v;
+  const sp = await q("SELECT COALESCE(SUM(saai_amount) FILTER (WHERE status='approved' AND approved_at >= $2 AND approved_at < $3),0)::float paid FROM saai_ledger WHERE provider_id=$1");
+  o.saai_paid = sp.paid;
+  const rv = await q("SELECT COUNT(*)::int n, COALESCE(AVG(rating),0)::float a FROM reviews WHERE reviewed_id=$1 AND created_at >= $2 AND created_at < $3");
+  o.reviews_n = rv.n; o.reviews_avg = rv.n ? Math.round(rv.a * 10) / 10 : null;
+  if (live) {
+    const qr = await q("SELECT COUNT(*)::int n FROM quote_requests WHERE provider_id=$1 AND status IN ('new','seen','declined') AND COALESCE(approved_at, created_at) >= $2 AND COALESCE(approved_at, created_at) < $3");
+    const qs = await q("SELECT COUNT(*) FILTER (WHERE sent_at >= $2 AND sent_at < $3)::int sent, COUNT(*) FILTER (WHERE status='accepted' AND decided_at >= $2 AND decided_at < $3)::int acc FROM quotes WHERE provider_id=$1");
+    const jd = await q("SELECT COUNT(*)::int n, COALESCE(SUM(value+extra_total),0)::float v FROM jobs WHERE provider_id=$1 AND status='done' AND confirmed_at >= $2 AND confirmed_at < $3");
+    Object.assign(o, { qreqs: qr.n, quotes_sent: qs.sent, quotes_ok: qs.acc, quote_rate: qs.sent ? Math.round(qs.acc / qs.sent * 100) : null, jobs_done: jd.n, jobs_value: jd.v });
+  }
+  return o;
+}
+async function _statsFull(pid, period){
+  const r = _statsRange(period); const ss = await _plnRow(pid); const live = _subLive(ss) && await _subOpen(pid);
+  const cur = await _statsCore(pid, r.from, r.to, live), prev = await _statsCore(pid, r.pfrom, r.pto, live);
+  const all = (await pool.query("SELECT COUNT(*)::int n, COALESCE(AVG(rating),0)::float a FROM reviews WHERE reviewed_id=$1", [pid])).rows[0];
+  const due = (await pool.query("SELECT COALESCE(SUM(saai_amount),0)::float v FROM saai_ledger WHERE provider_id=$1 AND status='pending'", [pid])).rows[0].v;
+  // آخر 6 شهور (ميلادي)
+  const now = new Date(Date.now() + _RYD), series = [];
+  for (let k = 5; k >= 0; k--) { const y = now.getUTCFullYear(), mm = now.getUTCMonth() - k; const f = new Date(Date.UTC(y, mm, 1) - _RYD), t = new Date(Date.UTC(y, mm + 1, 1) - _RYD);
+    const row = live ? (await pool.query("SELECT COALESCE(SUM(value+extra_total),0)::float v FROM jobs WHERE provider_id=$1 AND status='done' AND confirmed_at >= $2 AND confirmed_at < $3", [pid, f, t])).rows[0].v
+      + (await pool.query("SELECT COALESCE(SUM(contract_value),0)::float v FROM saai_ledger WHERE provider_id=$1 AND COALESCE(source,'')<>'quote' AND created_at >= $2 AND created_at < $3 AND status<>'cancelled'", [pid, f, t])).rows[0].v
+      : (await pool.query("SELECT COUNT(*) FILTER (WHERE status='accepted')::int v FROM bids WHERE provider_id=$1 AND created_at >= $2 AND created_at < $3", [pid, f, t])).rows[0].v;
+    series.push({ m: new Date(f.getTime() + _RYD).getUTCMonth(), y: new Date(f.getTime() + _RYD).getUTCFullYear(), v: row }); }
+  const out = { period: r.period, from: r.from, to: r.to, live, cur, prev, rating: { avg: all.n ? Math.round(all.a * 10) / 10 : null, n: all.n }, saai_due: due, series, series_kind: live ? 'value' : 'won' };
+  if (live) {
+    out.team = (await pool.query(`SELECT t.name, COUNT(j.id)::int done, ROUND(AVG(j.rating) FILTER (WHERE j.rating>0)::numeric,1)::float rating, COUNT(j.id) FILTER (WHERE j.arrived_at > j.sched_at + interval '30 minutes')::int late
+      FROM provider_techs t JOIN jobs j ON j.tech_id=t.id AND j.status='done' AND j.confirmed_at >= $2 AND j.confirmed_at < $3 WHERE t.provider_id=$1 GROUP BY t.id, t.name ORDER BY done DESC LIMIT 20`, [pid, r.from, r.to])).rows;
+    out.top = (await pool.query(`SELECT regexp_replace(title, ' \\(زيارة \\d+\\)$', '') AS t, COUNT(*)::int n, COALESCE(SUM(value+extra_total),0)::float v FROM jobs WHERE provider_id=$1 AND status='done' AND confirmed_at >= $2 AND confirmed_at < $3 GROUP BY 1 ORDER BY v DESC LIMIT 5`, [pid, r.from, r.to])).rows;
+    out.plans = (await pool.query(`SELECT COUNT(*) FILTER (WHERE status='active')::int active, (SELECT COUNT(*)::int FROM maint_visits v JOIN maint_plans m2 ON m2.id=v.plan_id WHERE m2.provider_id=$1 AND v.due_at >= $2::date AND v.due_at < $3::date) visits, COUNT(*) FILTER (WHERE status='active' AND end_at <= CURRENT_DATE + 30 AND renewed_to IS NULL)::int renew FROM maint_plans WHERE provider_id=$1`, [pid, r.from, r.to])).rows[0];
+  }
+  return out;
+}
+app.get('/api/provider/stats', auth, providerOnly, async (req, res) => {
+  try { res.json(await _statsFull(req.user.id, String(req.query.period || 'month'))); }
+  catch(e){ console.error('stats:', e.message); res.status(500).json({ message: 'تعذّر تحميل الأرقام' }); }
+});
+// التقرير الشهري: أول الشهر (بعد 8 الصبح بتوقيت الرياض) — لمن كان له نشاط الشهر الماضي، مرة وحدة
+async function _statsMonthly(force){
+  const now = new Date(Date.now() + _RYD); if (!force && (now.getUTCDate() !== 1 || now.getUTCHours() < 8)) return 0;
+  const key = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)).toISOString().slice(0, 7);
+  const r = _statsRange('prev');
+  const L = (await pool.query(`SELECT u.id, u.email, u.name, COALESCE(NULLIF(u.business_name,''),u.name) bn FROM users u WHERE u.role='provider' AND COALESCE(u.stats_report_for,'')<>$1 AND (
+      EXISTS (SELECT 1 FROM bids b WHERE b.provider_id=u.id AND b.created_at >= $2 AND b.created_at < $3) OR EXISTS (SELECT 1 FROM jobs j WHERE j.provider_id=u.id AND j.updated_at >= $2 AND j.updated_at < $3)
+      OR EXISTS (SELECT 1 FROM quotes q WHERE q.provider_id=u.id AND q.updated_at >= $2 AND q.updated_at < $3)) LIMIT 2000`, [key, r.from, r.to])).rows;
+  const MN = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'], mn = MN[parseInt(key.slice(5)) - 1];
+  let n = 0;
+  for (const u of L) {
+    try { await pool.query('UPDATE users SET stats_report_for=$2 WHERE id=$1', [u.id, key]);
+      const s = await _statsFull(u.id, 'prev'), c = s.cur, f = v => Number(v || 0).toLocaleString('en-US');
+      const lines = [['عروض قدّمتها في السوق', f(c.bids) + (c.won ? ' (فزت بـ ' + f(c.won) + ')' : '')], s.live ? ['عروض أسعار أرسلتها', f(c.quotes_sent) + (c.quotes_ok ? ' (وافق ' + f(c.quotes_ok) + ')' : '')] : null, s.live ? ['مشاريع مكتملة', f(c.jobs_done) + ' بقيمة ' + f(c.jobs_value) + ' ر.س'] : null, ['تقييمات جديدة', c.reviews_n ? f(c.reviews_n) + ' (متوسط ' + c.reviews_avg + ' ★)' : '—']].filter(Boolean);
+      const t = '📊 تقريرك لشهر ' + mn;
+      try { await notify(u.id, t, lines.slice(0, 3).map(x => x[0] + ': ' + x[1]).join(' · '), 'stats', null, { url: '/stats.html?period=prev' }); } catch(e){}
+      if (u.email) sendEmail(u.email, t + ' — مناقصة', emailTpl(t, `<p>مرحباً ${eEsc(u.name || '')}،</p><p>ملخص شهر ${mn} لـ <strong>${eEsc(u.bn || '')}</strong>:</p><table style="width:100%;border-collapse:collapse">${lines.map(x => `<tr><td style="padding:8px;border-bottom:1px solid #eee">${eEsc(x[0])}</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold">${eEsc(x[1])}</td></tr>`).join('')}</table>`, 'التقرير الكامل', SITE_URL + '/stats.html?period=prev')).catch(()=>{});
+      n++;
+    } catch(e){ console.error('stats-monthly:', e.message); }
+  }
+  return n;
+}
+setInterval(() => _jobLock('stats_monthly', () => _statsMonthly(false)), 60 * 60 * 1000);
+app.post('/api/admin/stats/monthly', requirePermission('settings.manage'), async (req, res) => { try { res.json({ ok: true, n: await _statsMonthly(true) }); } catch(e){ res.status(500).json({ message: e.message }); } });
 
 // الإدارة: السماح بالتحويل البنكي لمزوّد معيّن (للمبالغ الكبيرة)
 app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), async (req, res) => {

@@ -3,9 +3,9 @@
   var W = window, D = document;
   var LBL = { bids: ['العروض', 'تصفّح المشاريع وتقديم عروض وتعديلها'], chat: ['المحادثات', 'الرد على العملاء'], awarded: ['المشاريع المرسّاة', 'متابعة التنفيذ وتأكيد الإنجاز'],
     profile: ['الملف الشخصي', 'النبذة والتخصصات والصور'], proofs: ['وثّق أعمالك', 'رفع مشاريع وطلب تقييمها'], sub: ['مقاول باطن', 'طلب مقاولين ومتابعتهم'],
-    quotes: ['طلبات التسعيرة وعروض الأسعار', 'الرد على طلبات صفحتك وإرسال عروض الأسعار'], jobs: ['مشاريع العملاء والفريق', 'المواعيد والفنيين والتسليم'], customers: ['دفتر العملاء وخطط الصيانة', 'ملفات العملاء والأجهزة والخطط'] };
+    quotes: ['طلبات التسعيرة وعروض الأسعار', 'الرد على طلبات صفحتك وإرسال عروض الأسعار'], jobs: ['مشاريع العملاء والفريق', 'المواعيد والفنيين والتسليم'], customers: ['دفتر العملاء وخطط الصيانة', 'ملفات العملاء والأجهزة والخطط'], stats: ['الأرقام والتقارير', 'لوحة «أرقامي» والتقرير الشهري'] };
   var ORDER0 = ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub'], ORDER = ORDER0;
-  var ROLES = { sales: ['مندوب مبيعات', ['bids', 'chat', 'quotes']], super: ['مشرف مشاريع', ['awarded', 'jobs', 'customers', 'chat']], manager: ['مدير الحساب', ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers']], custom: ['مخصّص', null] };
+  var ROLES = { sales: ['مندوب مبيعات', ['bids', 'chat', 'quotes']], super: ['مشرف مشاريع', ['awarded', 'jobs', 'customers', 'chat']], manager: ['مدير الحساب', ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers', 'stats']], custom: ['مخصّص', null] };
   var LOCKED = ['حذف الحساب', 'تغيير الجوال والإيميل', 'كلمة السر', 'السعي والمدفوعات', 'إضافة مفوّض'];
   var S = { me: null, d: null, busy: false };
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
@@ -35,7 +35,7 @@
   function hide(id){ var e = D.getElementById(id); if (e) e.style.display = 'none'; }
   function applyMe(){
     css(); var m = S.me;
-    hide('ni-dlg'); hide('ni-saai'); hide('ni-plan'); if (m.perms.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (m.perms.indexOf('jobs') < 0) hide('ni-jobs'); if (m.perms.indexOf('customers') < 0) hide('ni-cust'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
+    hide('ni-dlg'); hide('ni-saai'); hide('ni-plan'); if (m.perms.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (m.perms.indexOf('jobs') < 0) hide('ni-jobs'); if (m.perms.indexOf('customers') < 0) hide('ni-cust'); if (m.perms.indexOf('stats') < 0) hide('ni-stats'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
     // bn-profile هو زر «المزيد» بالجوال (فيه الإشعارات والخروج) — ما نخفيه
     ['browse', 'works', 'profile', 'proof', 'sub'].forEach(function(p){ if (!okPage(p)) { hide('ni-' + p); if (p !== 'profile') hide('bn-' + p); } });
     if (!okPage('chat')) { hide('ni-chat'); hide('bn-chat'); }
@@ -173,7 +173,7 @@
     var pg = D.getElementById('page-dlg'); if (!pg) return;
     if (S.me) { pg.innerHTML = '<div class="dl-c" style="text-align:center">هذي الصفحة لصاحب الحساب فقط</div>'; return; }
     pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
-    ORDER = W._subsOpen ? ORDER0.concat(['quotes', 'jobs', 'customers']) : ORDER0;
+    ORDER = W._subsOpen ? ORDER0.concat(['quotes', 'jobs', 'customers', 'stats']) : ORDER0;
     api('/api/provider/delegates').then(function(r){ if (!r || r.message || !Array.isArray(r.items)) { pg.innerHTML = '<div class="dl-c" style="text-align:center">تعذّر التحميل — حاول مرة ثانية</div>'; return; }
       S.multi = r.limit > 1 || r.items.length > 1; S.L = r;
       if (S.multi) { S.view = 'list'; M.list(); } else { S.d = r.items[0] || null; render(); } });

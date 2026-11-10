@@ -2888,6 +2888,7 @@ function _nfOpenP(id){
   if(t==='message'||t==='admin_message'){ gotoPage('chat'); return; }
   if(t==='saai'){ gotoPage('saai'); return; }
   if(t==='qreq'){ location.href='/mypage.html'; return; }
+  if(t==='stats'){ location.href='/stats.html?period=prev'; return; }
   if(t==='plan'){ location.href='/customers.html'+(n.ref_id?'?plan='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='job'){ location.href='/jobs.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='tech'){ location.href='/tech.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
