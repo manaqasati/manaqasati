@@ -8444,12 +8444,16 @@ const MOYASAR_WH = process.env.MOYASAR_WEBHOOK_SECRET || '';
 app.post('/api/pay/webhook', rateLimiter(120, 60000), async (req, res) => {
   try {
     const b = req.body || {};
+    // تفعيل الرابط في لوحة البوابة: ترسل رمز من 6 أرقام — نحفظه ونعرضه للإدارة عشان ينكتب في لوحتهم
+    if (String(b.type || '') === 'webhook_verification') {
+      const code = String((b.data && (b.data.verification_code || b.data.code)) || '').replace(/[^0-9]/g, '').slice(0, 10);
+      if (code) { await setSetting('mysr_wh_code', JSON.stringify({ code, at: new Date().toISOString() })); console.log('pay-webhook verification code:', code); }
+      return res.json({ ok: true });
+    }
     const tok = String(b.secret_token || '');
     const okTok = MOYASAR_WH && tok.length === MOYASAR_WH.length && crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(MOYASAR_WH));
     if (!okTok) { console.warn('pay-webhook: bad secret'); return res.status(401).json({ ok: false }); }
     const d = b.data || {}, type = String(b.type || '');
-    // رمز تحقق ميسّر للـ webhook (يُطلب مرة وحدة عند الإضافة) — نحفظه عشان يظهر في لوحة الإدارة
-    if (type === 'webhook_verification') { const vc = String(d.verification_code || '').slice(0, 12); console.log('pay-webhook: verification code', vc); await setSetting('wh_verify_code', vc).catch(() => {}); return res.json({ ok: true }); }
     const ref = String((d.metadata && d.metadata.ref) || ((String(d.description || '').match(/#([a-f0-9]{24})\b/) || [])[1]) || '').slice(0, 40);
     res.json({ ok: true });   // نرد بسرعة ونكمل
     if (!ref || !d.id || !_payOn()) return;
@@ -8505,7 +8509,8 @@ app.post('/api/admin/users/:id/bank-ok', requirePermission('settings.manage'), a
   } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/pay/settings', requirePermission('settings.manage'), async (req, res) => {
-  try { res.json({ online: _payOn(), applepay: (await getSetting('applepay_on', '0')) === '1', has_assoc: !!(await getSetting('applepay_assoc', '')), webhook: !!MOYASAR_WH, wh_verify_code: await getSetting('wh_verify_code', '') }); } catch(e){ res.json({}); }
+  try { let whc = null; try { const v = JSON.parse(await getSetting('mysr_wh_code', '') || 'null'); if (v && Date.now() - Date.parse(v.at) < 30 * 60000) whc = v; } catch(e){}
+    res.json({ online: _payOn(), applepay: (await getSetting('applepay_on', '0')) === '1', has_assoc: !!(await getSetting('applepay_assoc', '')), webhook: !!MOYASAR_WH, wh_code: whc }); } catch(e){ res.json({}); }
 });
 app.put('/api/admin/pay/settings', requirePermission('settings.manage'), async (req, res) => {
   try {
