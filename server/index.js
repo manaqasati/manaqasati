@@ -8401,28 +8401,55 @@ app.post('/api/pay/saai/:ref/card', auth, rateLimiter(15, 600000), async (req, r
   } catch(e){ console.error('pay-card:', e.message); res.status(500).json({ message: 'تعذّر الاتصال ببوابة الدفع، يُرجى المحاولة مجدداً' }); }
 });
 // التحقق بعد الرجوع من البنك أو بعد Apple Pay — نسأل البوابة مباشرة
+// التحقق من عملية عند البوابة واعتمادها — مشترك بين صفحة الدفع والإدارة
+async function _payCheck(p, id){
+  if (p.status === 'paid') return { paid: true };
+  id = String(id || p.moyasar_id || '').trim();
+  if (!/^[A-Za-z0-9_\-]{6,80}$/.test(id)) { await pool.query("UPDATE saai_payments SET err=$2 WHERE id=$1", [p.id, 'verify: no payment id']); return { code: 400, message: 'لم نتمكن من التحقق من العملية' }; }
+  const used = (await pool.query('SELECT 1 FROM saai_payments WHERE moyasar_id=$1 AND id<>$2', [id, p.id])).rows[0];
+  if (used) return { code: 400, message: 'هذه العملية مستخدمة مسبقاً' };
+  // نحفظ رقم العملية من أول محاولة — عشان الإدارة تقدر تعيد التحقق لو صار خلل
+  await pool.query('UPDATE saai_payments SET moyasar_id=$2 WHERE id=$1 AND moyasar_id IS NULL', [p.id, id]).catch(()=>{});
+  const r = await _mysr('GET', '/payments/' + encodeURIComponent(id));
+  const d = r.data || {};
+  if (!r.ok || !d.id) {
+    const why = 'verify ' + r.status + (r.status === 401 ? ' (MOYASAR_SK غير صحيح)' : (r.status === 404 ? ' (العملية غير موجودة بهذا المفتاح — تأكد إن MOYASAR_SK و MOYASAR_PK من نفس البيئة الفعلية)' : '')) + (d.message ? ' · ' + d.message : '');
+    console.error('pay-verify-gw:', p.ref, id, why);
+    await pool.query("UPDATE saai_payments SET err=$2 WHERE id=$1", [p.id, why.slice(0, 300)]);
+    return { code: 400, message: 'لم نتمكن من التحقق من العملية', id };
+  }
+  if (d.status === 'paid') {
+    if (!_payMatches(p, d)) { const why = 'mismatch: amount ' + d.amount + ' ' + d.currency + ' · ' + String(d.description || '').slice(0, 80); await pool.query("UPDATE saai_payments SET err=$2 WHERE id=$1", [p.id, why]); console.error('pay-mismatch', p.ref, why); return { code: 400, message: 'بيانات العملية غير مطابقة — تواصل مع الدعم', id }; }
+    await _payFinalize(p, d); return { paid: true };
+  }
+  if (d.status === 'initiated') return { pending: true, message: 'العملية قيد التحقق' };
+  await pool.query("UPDATE saai_payments SET status='failed', err=$2 WHERE id=$1", [p.id, String((d.source || {}).message || d.status || '').slice(0, 300)]);
+  return { failed: true, message: _payErr((d.source || {}).message) };
+}
 app.post('/api/pay/saai/:ref/verify', auth, rateLimiter(40, 600000), async (req, res) => {
   try {
     if (!_payOn()) return res.status(503).json({ message: 'الدفع الإلكتروني غير متاح حالياً' });
     const p = await _payRow(req.params.ref, req.user.id);
     if (!p) return res.status(404).json({ message: 'عملية السداد غير موجودة' });
-    if (p.status === 'paid') return res.json({ ok: true, paid: true });
-    const id = String(req.body.id || p.moyasar_id || '').trim();
-    if (!/^[A-Za-z0-9_\-]{6,80}$/.test(id)) return res.status(400).json({ message: 'لم نتمكن من التحقق من العملية' });
-    const used = (await pool.query('SELECT 1 FROM saai_payments WHERE moyasar_id=$1 AND id<>$2', [id, p.id])).rows[0];
-    if (used) return res.status(400).json({ message: 'هذه العملية مستخدمة مسبقاً' });
-    const r = await _mysr('GET', '/payments/' + encodeURIComponent(id));
-    const d = r.data || {};
-    if (!r.ok || !d.id) return res.status(400).json({ message: 'لم نتمكن من التحقق من العملية' });
-    if (d.status === 'paid') {
-      if (!_payMatches(p, d)) { await pool.query("UPDATE saai_payments SET err='mismatch' WHERE id=$1", [p.id]); return res.status(400).json({ message: 'بيانات العملية غير مطابقة — تواصل مع الدعم' }); }
-      await _payFinalize(p, d); return res.json({ ok: true, paid: true });
-    }
-    if (d.status === 'initiated') return res.json({ ok: false, pending: true, message: 'العملية قيد التحقق' });
-    const msg = _payErr((d.source || {}).message);
-    await pool.query("UPDATE saai_payments SET status='failed', moyasar_id=COALESCE(moyasar_id,$3), err=$2 WHERE id=$1", [p.id, String((d.source || {}).message || d.status || '').slice(0, 300), (await pool.query('SELECT 1 FROM saai_payments WHERE moyasar_id=$1', [id])).rows[0] ? null : id]);
-    res.json({ ok: false, message: msg });
+    const x = await _payCheck(p, req.body.id);
+    if (x.paid) return res.json({ ok: true, paid: true });
+    if (x.pending) return res.json({ ok: false, pending: true, message: x.message });
+    if (x.failed) return res.json({ ok: false, message: x.message });
+    res.status(x.code || 400).json({ message: x.message, id: x.id || null });
   } catch(e){ console.error('pay-verify:', e.message); res.status(500).json({ message: 'تعذّر التحقق، يُرجى المحاولة مجدداً' }); }
+});
+// الإدارة: إعادة التحقق من عملية (مثلاً بعد تصحيح المفتاح) — تُعتمد لو البوابة تقول مدفوعة
+app.post('/api/admin/pay/:ref/recheck', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    if (!_payOn()) return res.status(503).json({ message: 'الدفع الإلكتروني غير مفعّل' });
+    const p = (await pool.query('SELECT * FROM saai_payments WHERE ref=$1', [String(req.params.ref || '').slice(0, 40)])).rows[0];
+    if (!p) return res.status(404).json({ message: 'غير موجود' });
+    const x = await _payCheck(p, String(req.body && req.body.id || '').trim() || p.moyasar_id);
+    logAdmin(req, 'pay_recheck', 'saai', p.ledger_id, p.ref + ' → ' + (x.paid ? 'paid' : (x.message || ''))).catch(()=>{});
+    if (x.paid) return res.json({ ok: true, paid: true });
+    const row = (await pool.query('SELECT err FROM saai_payments WHERE id=$1', [p.id])).rows[0] || {};
+    res.status(400).json({ message: (x.message || 'لم تُعتمد') + (row.err ? ' — ' + row.err : '') });
+  } catch(e){ console.error('pay-recheck:', e.message); res.status(500).json({ message: 'تعذّر التحقق' }); }
 });
 // تسجيل سبب فشل الدفع من جهة الجهاز (Apple Pay) — يظهر للإدارة في سجل عمليات الدفع
 app.post('/api/pay/saai/:ref/log', auth, rateLimiter(20, 600000), async (req, res) => {

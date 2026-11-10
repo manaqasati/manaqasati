@@ -413,9 +413,14 @@ function _saPayBox(){
     if(p.online) fetch(API+'/api/admin/pay/recent',hdr()).then(function(r){return r.json();}).then(function(l){ var el=document.getElementById('sa-payrec'); if(!el||!Array.isArray(l)||!l.length)return;
       var st={paid:['#e3f5e9','#166534','مدفوع'],failed:['#fef2f2','#b91c1c','فشل'],initiated:['#fffbeb','#b45309','بانتظار البنك'],'new':['#f1f5f9','#64748b','لم يكتمل']};
       el.innerHTML='<b style="font-size:12.5px">آخر عمليات الدفع</b>'+l.slice(0,8).map(function(x){ var s=st[x.status]||st['new'];
-        return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px"><span class="pl" style="background:'+s[0]+';color:'+s[1]+'">'+s[2]+'</span><b>'+fmtNum(x.amount)+' ر.س</b><span style="color:var(--muted)">'+esc(x.provider_name||'')+(x.method?' · '+(x.method==='applepay'?'Apple Pay':'بطاقة'):'')+' · '+_saDT(x.created_at)+'</span>'+(x.err&&x.status!=='paid'?'<div style="width:100%;color:#b91c1c;font-size:11px;direction:ltr;text-align:left;word-break:break-word">'+esc(x.err)+'</div>':'')+'</div>'; }).join('');
+        return '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px"><span class="pl" style="background:'+s[0]+';color:'+s[1]+'">'+s[2]+'</span><b>'+fmtNum(x.amount)+' ر.س</b><span style="color:var(--muted)">'+esc(x.provider_name||'')+(x.method?' · '+(x.method==='applepay'?'Apple Pay':'بطاقة'):'')+' · '+_saDT(x.created_at)+'</span>'+(x.status!=='paid'?'<button class="act-btn ab-default" style="margin-right:auto;padding:4px 10px;font-size:11.5px" onclick="_saPayRe(\''+esc(x.ref)+'\')">إعادة التحقق</button>':'')+(x.err&&x.status!=='paid'?'<div style="width:100%;color:#b91c1c;font-size:11px;direction:ltr;text-align:left;word-break:break-word">'+esc(x.err)+'</div>':'')+'</div>'; }).join('');
     }).catch(function(){});
   }).catch(function(){});
+}
+function _saPayRe(ref){
+  var id=prompt('رقم العملية من لوحة ميسّر (اتركه فاضي لو محفوظ):','');
+  if(id===null)return;
+  fetch(API+'/api/admin/pay/'+ref+'/recheck',Object.assign({method:'POST',body:JSON.stringify({id:id.trim()})},hdr())).then(function(r){return r.json();}).then(function(x){ if(x&&x.paid){ toast('تم التحقق واعتُمد السداد ✓','success'); loadSaaiAdmin(); } else toast((x&&x.message)||'لم تُعتمد','error'); _saPayBox(); }).catch(function(){toast('تعذّر الاتصال','error');});
 }
 function _saPaySet(b){ fetch(API+'/api/admin/pay/settings',Object.assign({method:'PUT',body:JSON.stringify(b)},hdr())).then(function(r){return r.json();}).then(function(d){ toast(d&&d.ok?'تم الحفظ':'تعذّر', d&&d.ok?'success':'error'); _saPayBox(); }); }
 function _saPayAssoc(){
