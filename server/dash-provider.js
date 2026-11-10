@@ -733,8 +733,9 @@ function _loadToday(){
   Promise.all([
     isD?Promise.resolve(null):_api('/api/provider/qreqs').catch(function(){return null;}),
     _api('/api/provider/conversations').catch(function(){return null;}),
-    isD?Promise.resolve(null):_api('/api/provider/saai').catch(function(){return null;})
-  ]).then(function(r){ window._tdData={q:(r[0]&&r[0].items)||[],c:Array.isArray(r[1])?r[1]:[],s:r[2]||{}}; _renderToday(); }).catch(function(){});
+    isD?Promise.resolve(null):_api('/api/provider/saai').catch(function(){return null;}),
+    isD?Promise.resolve(null):_api('/api/quotes').catch(function(){return null;})
+  ]).then(function(r){ window._tdData={q:(r[0]&&r[0].items)||[],c:Array.isArray(r[1])?r[1]:[],s:r[2]||{},qt:(r[3]&&r[3].items)||[]}; _renderToday(); }).catch(function(){});
 }
 function _renderToday(){
   var box=_el('ph-today'), D=window._tdData; if(!box||!D) return;
@@ -744,6 +745,8 @@ function _renderToday(){
   var nq=D.q.filter(function(x){return x.status==='new';});
   nq.slice(0,3).forEach(function(x){ R.push(ic('📝','#eff4ff')+'<div style="flex:1;min-width:0"><b>طلب تسعيرة: '+_esc(x.service||'خدمة')+'</b><span>'+_esc(x.client_name||'عميل')+(x.district?' · '+_esc(x.district):'')+' · '+timeAgoP(x.approved_at||x.created_at)+'</span></div>'+btn('ردّ عليه','location.href=&quot;/mypage.html&quot;',1)); });
   if(nq.length>3) R.push(ic('📝','#eff4ff')+'<div style="flex:1;min-width:0"><b>و'+(nq.length-3)+' طلبات تسعيرة ثانية</b><span>من صفحتك</span></div>'+btn('كلها','location.href=&quot;/mypage.html&quot;'));
+  // عروض أسعار طلب العميل تعديلها
+  (D.qt||[]).filter(function(x){return x.status==='change';}).slice(0,3).forEach(function(x){ R.push(ic('✏️','#fffaeb')+'<div style="flex:1;min-width:0"><b>'+_esc(x.client_name||'العميل')+' يطلب تعديل على عرضك</b><span>«'+_esc(String(x.client_note||x.title||'').slice(0,60))+'»</span></div>'+btn('عدّل العرض','location.href=&quot;/quotes.html?id='+(parseInt(x.id)||0)+'&quot;',1)); });
   // السعي المستحق
   var due=(D.s.items||[]).filter(function(x){return x.status==='pending';});
   if(due.length){ var tot=due.reduce(function(a,x){return a+(parseFloat(x.saai_amount)||0);},0);
@@ -2007,7 +2010,7 @@ function _saaiSubNo(id){ var n=prompt('ما تم الاتفاق مع المقا�
 // الدفع الإلكتروني: هل السداد بالبطاقة فقط لهذا المزوّد؟ (التحويل البنكي يفتحه المشرف للمبالغ الكبيرة)
 window._payCfg=null;
 // «اشتراكي» يظهر لما تفتح الإدارة الاشتراكات (أو للمزوّدين المختارين للتجربة)
-setTimeout(function(){ _api('/api/subs/open').then(function(r){ if(r&&r.open){ window._subsOpen=true; var n=_el('ni-plan'), n2=_el('ni-mypage'); if(!(window.DLG&&DLG.isMe&&DLG.isMe())){ if(n)n.style.display=''; if(n2)n2.style.display=''; } } }).catch(function(){}); },1200);
+setTimeout(function(){ _api('/api/subs/open').then(function(r){ if(r&&r.open){ window._subsOpen=true; var n=_el('ni-plan'), n2=_el('ni-mypage'), n3=_el('ni-quotes'); if(!(window.DLG&&DLG.isMe&&DLG.isMe())){ if(n)n.style.display=''; if(n2)n2.style.display=''; if(n3)n3.style.display=''; } } }).catch(function(){}); },1200);
 function _payCfgGet(){ return window._payCfg?Promise.resolve(window._payCfg):_api('/api/pay/config').then(function(c){ window._payCfg=c||{}; return window._payCfg; }).catch(function(){ window._payCfg={online:false,bank_ok:true}; return window._payCfg; }); }
 function _payOnly(){ var c=window._payCfg; return !!(c&&c.online&&!c.bank_ok); }
 function _payGo(body,btn){
@@ -2871,6 +2874,8 @@ function _nfOpenP(id){
   if(t==='support'){ if(window.supOpen)supOpen(); else location.href='/chat?support=1'; return; }
   if(t==='message'||t==='admin_message'){ gotoPage('chat'); return; }
   if(t==='saai'){ gotoPage('saai'); return; }
+  if(t==='qreq'){ location.href='/mypage.html'; return; }
+  if(t==='quote'){ location.href='/quotes.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='sub'){ window._subOpen=n.ref_id||0; if(_curPage==='sub'&&window.SubC){ if(n.ref_id)SubC.open(n.ref_id); } else gotoPage('sub'); return; }
   if(t==='review'||t==='review_reply'){ gotoPage('reviews'); return; }
   if(k==='offers'||t==='accept_ask'||t==='pause'||t==='pause_chosen'||t==='req_updated'){ gotoPage('works'); return; }

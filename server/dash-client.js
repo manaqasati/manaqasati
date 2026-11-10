@@ -3241,6 +3241,7 @@ function _nfOpenC(id){
   if(n.type==='draft'&&n.ref_id){ location.href='/new.html?did_id='+encodeURIComponent(n.ref_id); return; }
   if((n.type==='pause_ask'||n.type==='req_dup')&&n.ref_id){ openDetail(n.ref_id,null); return; }
   if(n.type==='verify_email'){ try{_vbShow();}catch(e){} return; }
+  if(n.type==='quote'&&n.ref_id){ location.href='/quote.html?id='+(parseInt(n.ref_id)||0); return; }
   if(n.type==='support'){ if(window.supOpen)supOpen(); else location.href='/chat?support=1'; return; }
   if(n.type==='message'){ show('chat',null,'chat'); try{loadChatPage();}catch(e){} return; }
   if(n.ref_id&&(k==='offers'||k==='projects'||n.type==='accept_ask')){ openDetail(n.ref_id,null); show('detail',null,'detail'); }

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#172554">
+<title>عرض سعر — مناقصة</title>
+<link rel="icon" href="/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;min-height:100vh;-webkit-font-smoothing:antialiased}
+button,textarea{font-family:inherit}
+.top{height:58px;background:#172554;border-bottom:3px solid #0ea5e9;display:flex;align-items:center;justify-content:space-between;padding:0 16px;color:#fff}
+.top b{font-size:20px;font-weight:900}.top b i{color:#38bdf8;font-style:normal}.top a{color:#fff;text-decoration:none;font-size:13px;font-weight:800;opacity:.85}
+.wrap{max-width:640px;margin:0 auto;padding:16px 14px 40px;display:flex;flex-direction:column;gap:12px}
+.card{background:#fff;border:1px solid #e6eefb;border-radius:18px;box-shadow:0 2px 10px rgba(30,58,138,.05);padding:16px}
+.mu{color:#64748b;font-size:12.5px;font-weight:700}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sb{justify-content:space-between}
+.pill{display:inline-flex;align-items:center;gap:4px;height:23px;border-radius:99px;padding:0 10px;font-size:11.5px;font-weight:800;white-space:nowrap}
+.p-b{background:#eff4ff;color:#1e3a8a}.p-g{background:#ecfdf3;color:#067647}.p-y{background:#fffaeb;color:#b54708}.p-gr{background:#f2f4f7;color:#475467}.p-r{background:#fef3f2;color:#b42318}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:13px;padding:12px 16px;font-weight:800;font-size:14px;border:0;cursor:pointer;text-decoration:none;white-space:nowrap}
+.pri{background:#1e3a8a;color:#fff}.sec{background:#fff;border:1.5px solid #e2e8f0;color:#1e293b}.wa{background:#16a34a;color:#fff}
+.btn:disabled{opacity:.55}
+.logo{width:50px;height:50px;border-radius:14px;background:#1e3a8a;color:#fff;font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none}
+.logo img{width:100%;height:100%;object-fit:cover}
+.opt{display:flex;flex-direction:column;gap:9px}
+.opt.rec{border:2px solid #1e3a8a;box-shadow:0 8px 24px rgba(29,63,170,.12)}
+.opt.ch{border:2px solid #16a34a;background:#f6fef9}
+.amt{font-family:Cairo,sans-serif;font-weight:900;color:#172554}
+.li{display:flex;gap:8px;font-size:13.5px;font-weight:700;align-items:flex-start;line-height:1.6}
+.li .v{margin-right:auto;white-space:nowrap;color:#475467;font-size:12.5px}
+.ov{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:700px){.ov{align-items:center}}
+.sh{background:#fff;width:min(480px,100%);border-radius:22px 22px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
+@media(min-width:700px){.sh{border-radius:20px}}
+.sh textarea{width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:11px 13px;font-size:15px;min-height:80px}
+.err{padding:10px 12px;border-radius:12px;background:#fef3f2;color:#b42318;font-size:13px;font-weight:800;display:none}
+@media print{body{background:#fff}.top,.noprint{display:none!important}.card{box-shadow:none;break-inside:avoid}.wrap{max-width:none;padding:0}}
+</style>
+</head>
+<body>
+<div class="top"><b>مناقصة <i>•</i></b><a href="/" class="noprint">الرئيسية</a></div>
+<div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
+<script>
+(function(){
+var A=document.getElementById('app'), TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
+var key=(location.pathname.match(/^\/q\/([a-f0-9]{8,40})/)||[])[1]||String(new URLSearchParams(location.search).get('id')||'').replace(/\D/g,'');
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function m(v){ return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
+function d(x){ if(!x)return ''; x=new Date(x); return x.getDate()+'/'+(x.getMonth()+1)+'/'+x.getFullYear(); }
+function wa(ph){ ph=String(ph||'').replace(/\D/g,''); if(ph.indexOf('05')===0)ph='966'+ph.slice(1); else if(ph.length===9&&ph[0]==='5')ph='966'+ph; return ph; }
+function safe(u){ u=String(u||''); return /^https:\/\//.test(u)?u:''; }
+function login(){ try{localStorage.setItem('_after_login',location.pathname+location.search);}catch(e){} location.href='/auth.html'; }
+if(!key){ A.innerHTML='<div class="card"><b>الرابط غير صحيح</b></div>'; return; }
+if(!TOK){ A.innerHTML='<div class="card" style="text-align:center;padding:28px 18px"><div style="font-size:42px">📄</div><b style="font-size:18px;color:#172554;display:block;margin-top:6px">وصلك عرض سعر</b><div class="mu" style="margin-top:8px;line-height:1.9">سجّل دخولك أو أنشئ حساباً بنفس رقم جوالك عشان تفتح العرض وتختار الخيار المناسب لك.</div><button class="btn pri" style="width:100%;margin-top:14px" id="lg">تسجيل الدخول</button><div class="mu" style="margin-top:10px">التسجيل مجاني ويأخذ أقل من دقيقة</div></div>'; document.getElementById('lg').onclick=login; return; }
+var Q=null;
+function api(p,o){ o=o||{}; o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},o.headers||{});
+  return fetch(p,o).then(function(r){ if(r.status===401){ login(); throw 0; } return r.json().then(function(j){ if(!r.ok){ var e=new Error(j.message||'حدث خطأ'); e.j=j; throw e; } return j; }); }); }
+function load(){ api('/api/q/'+key).then(function(q){ Q=q; draw(); }).catch(function(e){ if(e===0)return; A.innerHTML='<div class="card" style="text-align:center;padding:26px 18px"><b style="font-size:16px">'+esc(e.message)+'</b><div style="margin-top:12px"><button class="btn sec" onclick="localStorage.removeItem(\'token\');location.reload()">الدخول بحساب آخر</button></div></div>'; }); }
+function draw(){
+  var q=Q, p=q.provider||{}, st=q.status, open=(st==='sent'||st==='change')&&!q.own;
+  var lg=safe(p.image)?'<img src="'+esc(safe(p.image))+'" alt="">':esc((p.name||'م')[0]);
+  var h='<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="row" style="flex-wrap:nowrap;gap:12px"><span class="logo">'+lg+'</span><div style="flex:1;min-width:0"><b style="font-size:16px;color:#172554">'+esc(p.name||'')+'</b><div class="mu">'+(p.rating>0?'★ '+Number(p.rating).toFixed(1)+' ('+p.reviews_n+' تقييم) · ':'')+esc(p.city||'')+'</div></div><a class="mu noprint" href="/pro/'+(parseInt(p.id)||0)+'" style="color:#1e3a8a">صفحته</a></div>'
+    +'<div class="row sb" style="background:#f8fafc;border-radius:12px;padding:10px 12px"><div><span class="mu">عرض سعر رقم '+q.no+(q.version>1?' · النسخة '+q.version:'')+'</span><b style="display:block;font-size:15px">'+esc(q.title)+'</b><span class="mu">إلى: '+esc(q.client_name||'')+' · '+d(q.sent_at)+'</span></div>'
+    +(st==='expired'?'<span class="pill p-gr">انتهت صلاحيته</span>':(open?'<span class="pill p-y">صالح حتى '+d(q.valid_until)+'</span>':''))+'</div></div>';
+  if(q.own) h+='<div class="card noprint" style="background:#eff4ff;border-color:#bfd3fe"><b style="color:#1e3a8a">معاينة: هذا عرضك كما يشوفه العميل</b></div>';
+  if(q.updated&&open) h+='<div class="card" style="background:#eff4ff;border-color:#bfd3fe;padding:12px 16px"><b style="color:#1e3a8a">🔄 حدّث المزوّد العرض</b><div class="mu">هذي النسخة الأحدث.</div></div>';
+  if(st==='accepted'){ var c=q.options[q.chosen]; h+='<div class="card" style="background:#f6fef9;border-color:#a6f4c5"><b style="color:#067647;font-size:16px">✅ وافقت على «'+esc(c?c.n:'')+'»'+(c?' بـ '+m(c.total)+' ر.س':'')+'</b><div class="mu" style="margin-top:4px">'+d(q.decided_at)+' — المزوّد بيتواصل معك لتحديد الموعد.</div></div>'; }
+  if(st==='change'&&!q.own) h+='<div class="card" style="background:#fffaeb;border-color:#fde68a"><b style="color:#b54708">طلبت تعديل — بانتظار المزوّد</b><div class="mu" style="margin-top:4px">«'+esc(q.client_note||'')+'»</div></div>';
+  if(st==='declined') h+='<div class="card" style="background:#f8fafc"><b>اعتذرت عن هذا العرض</b></div>';
+  if(open&&q.options.length>1) h+='<b style="font-size:15.5px;color:#172554;padding:0 2px">اختر الخيار اللي يناسبك</b>';
+  q.options.forEach(function(o,i){ var isCh=st==='accepted'&&q.chosen===i;
+    h+='<div class="card opt'+(isCh?' ch':(o.rec&&st!=='accepted'?' rec':''))+'"><div class="row sb"><div class="row" style="gap:6px"><b style="font-size:16px">'+esc(o.n)+'</b>'+(o.rec&&q.options.length>1?'<span class="pill p-b">ننصح فيه</span>':'')+(isCh?'<span class="pill p-g">اخترته</span>':'')+'</div><span class="amt" style="font-size:21px">'+m(o.total)+' <small class="mu">ر.س</small></span></div>'
+      +o.items.map(function(x){ return '<div class="li"><span style="color:#1e3a8a">✓</span><span>'+esc(x.t)+(x.q>1?' × '+x.q:'')+'</span><span class="v">'+m(x.q*x.p)+' ر.س</span></div>'; }).join('')
+      +((o.days||o.warranty)?'<div class="row mu" style="gap:12px">'+(o.days?'<span>⏱ التنفيذ: '+esc(o.days)+'</span>':'')+(o.warranty?'<span>🛡 الضمان: '+esc(o.warranty)+'</span>':'')+'</div>':'')
+      +(open?'<button class="btn '+(o.rec||q.options.length===1?'pri':'sec')+' noprint" onclick="_cAcc('+i+')">'+(q.options.length>1?'اختر '+esc(o.n):'موافق على العرض')+'</button>':'')+'</div>'; });
+  if(q.notes||q.deposit_pct) h+='<div class="card" style="display:flex;flex-direction:column;gap:6px">'+(q.deposit_pct?'<b style="font-size:14px">دفعة مقدمة: '+q.deposit_pct+'% عند الموافقة</b>':'')+(q.notes?'<div style="font-size:13.5px;font-weight:600;line-height:1.9;white-space:pre-wrap">'+esc(q.notes)+'</div>':'')+'</div>';
+  h+='<div class="mu" style="text-align:center;line-height:1.8">🔒 موافقتك تتوثّق باسم حسابك ووقتها · الدفع بينك وبين المزوّد مباشرة</div>';
+  h+='<div class="row noprint" style="flex-wrap:nowrap">'+(p.phone&&!q.own?'<a class="btn wa" style="flex:1" target="_blank" rel="noopener" href="https://wa.me/'+wa(p.phone)+'?text='+encodeURIComponent('السلام عليكم، بخصوص عرض السعر رقم '+q.no+' «'+q.title+'»')+'">اسأل المزوّد</a>':'')+'<button class="btn sec" style="flex:1" onclick="window.print()">حفظ PDF</button></div>';
+  if(open) h+='<div class="row noprint" style="justify-content:center;gap:18px"><button class="btn" style="background:transparent;color:#1e3a8a;padding:6px" onclick="_cNote(\'change\')">أبي تعديل على العرض</button><button class="btn" style="background:transparent;color:#b42318;padding:6px" onclick="_cNote(\'decline\')">اعتذر عن العرض</button></div>';
+  h+='<div class="mu" style="text-align:center;margin-top:4px">صادر عبر منصة مناقصة · manaqasa.com</div>';
+  A.innerHTML=h;
+}
+function sheet(inner){ var o=document.createElement('div'); o.className='ov'; o.id='ov'; o.onclick=function(e){ if(e.target===o)o.remove(); }; o.innerHTML='<div class="sh">'+inner+'</div>'; document.body.appendChild(o); return o; }
+function act(body,btn,done){ var e=document.getElementById('cerr'); btn.disabled=true; body.version=Q.version;
+  api('/api/q/'+key+'/act',{method:'POST',body:JSON.stringify(body)}).then(function(){ var o=document.getElementById('ov'); if(o)o.remove(); done(); load(); })
+  .catch(function(x){ if(x===0)return; btn.disabled=false; if(e){ e.textContent=x.message; e.style.display='block'; } if(x.j&&x.j.code==='version') setTimeout(function(){ var o=document.getElementById('ov'); if(o)o.remove(); load(); },1600); }); }
+window._cAcc=function(i){ var o=Q.options[i];
+  sheet('<b style="font-size:18px;color:#172554">توافق على «'+esc(o.n)+'»؟</b><div style="font-size:15px;font-weight:700">'+esc(Q.title)+' — <span class="amt">'+m(o.total)+'</span> ر.س'+(Q.deposit_pct?'<div class="mu" style="margin-top:4px">دفعة مقدمة '+Q.deposit_pct+'% عند البدء</div>':'')+'</div><textarea id="cn" maxlength="500" placeholder="ملاحظة للمزوّد (اختياري) — مثال: الموعد المناسب بعد العصر"></textarea><div class="err" id="cerr"></div><button class="btn pri" id="cgo">نعم، أوافق</button><button class="btn" style="background:transparent;color:#64748b" onclick="document.getElementById(\'ov\').remove()">رجوع</button>');
+  document.getElementById('cgo').onclick=function(){ act({act:'accept',opt:i,note:document.getElementById('cn').value},this,function(){ window.scrollTo(0,0); }); };
+};
+window._cNote=function(k){
+  sheet('<b style="font-size:18px;color:#172554">'+(k==='change'?'وش تبي يتعدّل؟':'تعتذر عن العرض؟')+'</b><textarea id="cn" maxlength="500" placeholder="'+(k==='change'?'مثال: أبي الخيار المتوسط بدون تغيير المكثف':'السبب (اختياري) — يوصل للمزوّد')+'"></textarea><div class="err" id="cerr"></div><button class="btn '+(k==='change'?'pri':'sec')+'" id="cgo" style="'+(k==='decline'?'color:#b42318;border-color:#fecdca':'')+'">'+(k==='change'?'أرسل طلب التعديل':'اعتذر عن العرض')+'</button><button class="btn" style="background:transparent;color:#64748b" onclick="document.getElementById(\'ov\').remove()">رجوع</button>');
+  document.getElementById('cgo').onclick=function(){ act({act:k,note:document.getElementById('cn').value},this,function(){}); };
+};
+load();
+})();
+</script>
+</body>
+</html>

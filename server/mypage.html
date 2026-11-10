@@ -93,7 +93,7 @@ function reqs(){
       +'<div class="desc">'+esc(q.description)+'</div>';
     if(q.status==='declined') h+='<div class="mu">سبب الاعتذار: '+esc(q.decline_reason||'')+'</div>';
     else h+='<div class="row">'+(q.client_phone?'<a class="btn wa" href="https://wa.me/'+wa(q.client_phone)+'?text='+encodeURIComponent('السلام عليكم، معك '+(S.pg.name||'')+' — بخصوص طلب التسعيرة «'+(q.service||'')+'» من مناقصة')+'" target="_blank" rel="noopener" onclick="_mpSeen('+q.id+')">واتساب العميل</a><a class="btn sec" href="tel:'+esc(q.client_phone)+'" onclick="_mpSeen('+q.id+')">اتصال</a>':'')
-      +(q.status==='new'?'<button class="btn sec" onclick="_mpSeen('+q.id+',1)">تم الاطّلاع</button>':'')+'<button class="btn dan" onclick="_mpDecl('+q.id+')">اعتذار</button><button class="btn sec" style="color:#b42318;font-size:12.5px;padding:8px 12px" onclick="_mpRep('+q.id+')">إبلاغ: طلب غير جاد</button></div>';
+      +(S.pg.live?'<a class="btn pri" href="/quotes.html?qreq='+q.id+'&n='+encodeURIComponent(q.client_name||'')+'&t='+encodeURIComponent(q.service||'')+'">أرسل عرض سعر</a>':'')+(q.status==='new'?'<button class="btn sec" onclick="_mpSeen('+q.id+',1)">تم الاطّلاع</button>':'')+'<button class="btn dan" onclick="_mpDecl('+q.id+')">اعتذار</button><button class="btn sec" style="color:#b42318;font-size:12.5px;padding:8px 12px" onclick="_mpRep('+q.id+')">إبلاغ: طلب غير جاد</button></div>';
     h+='</div>'; });
   return h;
 }
