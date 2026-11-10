@@ -3396,7 +3396,8 @@ function auth(req, res, next) {
   }).catch(() => { if (payload.role === 'admin') return res.status(503).json({ message: 'تعذّر التحقق من الحساب — حاول بعد لحظة' }); next(); });
 }
 // ═══ المفوّض ═══
-const DLG_PERMS = { bids: 'العروض', chat: 'المحادثات', awarded: 'المشاريع المرسّاة', profile: 'الملف الشخصي', proofs: 'وثّق أعمالك', sub: 'مقاول باطن' };
+const DLG_PERMS = { bids: 'العروض', chat: 'المحادثات', awarded: 'المشاريع المرسّاة', profile: 'الملف الشخصي', proofs: 'وثّق أعمالك', sub: 'مقاول باطن', quotes: 'طلبات التسعيرة وعروض الأسعار', jobs: 'مشاريع العملاء والفريق', customers: 'دفتر العملاء وخطط الصيانة' };
+const DLG_ROLES = { sales: { name: 'مندوب مبيعات', perms: ['bids', 'chat', 'quotes'] }, super: { name: 'مشرف مشاريع', perms: ['awarded', 'jobs', 'customers', 'chat'] }, manager: { name: 'مدير الحساب', perms: ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers'] } };
 const _dlgState = new Map();
 async function _dlgStateOf(id){
   const hit = _dlgState.get(id); if (hit && Date.now() < hit.exp) return hit.d;
@@ -3408,16 +3409,19 @@ async function _dlgStateOf(id){
 }
 function _dlgDrop(id){ _dlgState.delete(id); }
 // وش يقدر يسوي المفوّض: الحساس لصاحب الحساب بس، والباقي حسب الصلاحيات، وأي شي ما نعرفه يُرفض
-const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai|subs\/|pay\/|quotes|jobs|team|customers|plans)/;
-const _DLG_GET_DENY = { chat: /^\/api\/(messages|provider\/conversations)/ };
+const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai|subs\/(?!open$)|pay\/)/;
+const _DLG_GET_DENY = { chat: /^\/api\/(messages|provider\/conversations)/, quotes: /^\/api\/(quotes|provider\/qreqs)(\/|$)/, jobs: /^\/api\/(jobs|team)(\/|$)/, customers: /^\/api\/(customers|plans)(\/|$)/ };
 const _DLG_FREE = /^\/api\/(me\/dlg(\/|$)|push|push-token|notifications|me\/ping|me\/provider-hint|live\/ping|hit|lk\/event|csp-report|demo\/ev|tour|pro\/\d+\/view|requests\/\d+\/(view|revisit|watch-open)$|saved-requests\/|drafts\/save|upload\/attachment|support\/|reports$|blocks\/|auth\/refresh$)/;
 const _DLG_GROUPS = [
   ['bids', /^\/api\/(requests\/\d+\/(bids|questions)$|bids\/\d+$|accept-asks\/\d+\/respond$|provider\/bump$)/],
   ['chat', /^\/api\/(messages(\/\d+)?$|direct-message$)/],
   ['awarded', /^\/api\/(provider\/claims$|requests\/\d+\/(done|complete|not-done)$|reviews(\/\d+\/reply)?$)/],
-  ['profile', /^\/api\/(provider\/profile(\/portfolio(\/\d+)?)?$|provider\/service-city$|profile$)/],
+  ['profile', /^\/api\/(provider\/profile(\/portfolio(\/\d+)?)?$|provider\/service-city$|provider\/page$|profile$)/],
   ['proofs', /^\/api\/provider\/proofs(\/|$)/],
   ['sub', /^\/api\/(sub|partners)(\/|$)/],
+  ['quotes', /^\/api\/(quotes|provider\/qreqs)(\/|$)/],
+  ['jobs', /^\/api\/(jobs|team)(\/|$)/],
+  ['customers', /^\/api\/(customers|plans)(\/|$)/],
 ];
 const _DLG_NO = 'هذي العملية لصاحب الحساب فقط';
 function _dlgGuard(req){
@@ -3737,6 +3741,10 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS dlg_name VARCHAR(60)`);
       for (const c of ['paused_at TIMESTAMP', 'paused_by VARCHAR(10)', "devices TEXT[] NOT NULL DEFAULT '{}'"]) await _mig(`ALTER TABLE provider_delegates ADD COLUMN IF NOT EXISTS ${c}`);
       await _mig(`ALTER TABLE push_tokens ADD COLUMN IF NOT EXISTS dlg_id INTEGER`);
+      // أكثر من مفوّض (حسب الباقة) بأدوار
+      await _mig(`ALTER TABLE provider_delegates DROP CONSTRAINT IF EXISTS provider_delegates_owner_id_key`);
+      await _mig(`CREATE INDEX IF NOT EXISTS provider_delegates_owner ON provider_delegates (owner_id)`);
+      await _mig(`ALTER TABLE provider_delegates ADD COLUMN IF NOT EXISTS role VARCHAR(12)`);
       // سجل نشاط المفوّض (اللي سواه المفوّض + تغييرات صاحب الحساب والإدارة عليه)
       await _mig(`CREATE TABLE IF NOT EXISTS dlg_log (id SERIAL PRIMARY KEY, owner_id INTEGER NOT NULL, dlg_id INTEGER, actor VARCHAR(8) NOT NULL DEFAULT 'dlg', name VARCHAR(60), action VARCHAR(60) NOT NULL, detail VARCHAR(200), ref_id INTEGER, created_at TIMESTAMP DEFAULT NOW())`);
       await _mig(`CREATE INDEX IF NOT EXISTS dlg_log_owner ON dlg_log (owner_id, created_at DESC)`);
@@ -5494,10 +5502,10 @@ async function _wpLevel(pid){ try { return (await pool.query('SELECT wp_level($1
 async function _wpVerified(pid){ try { return (await pool.query("SELECT COUNT(*)::int n FROM work_proofs WHERE provider_id=$1 AND status='reviewed' AND NOT hidden", [pid])).rows[0].n; } catch(e) { return 0; } }
 // ═══ المفوّض: صاحب الحساب يضيف مفوّض واحد (إيميل + صلاحيات) ═══
 function _dlgPermsIn(a){ return Array.isArray(a) ? [...new Set(a.map(String).filter(k => DLG_PERMS[k]))] : []; }
-function _dlgOut(d){ return d ? { id: d.id, name: d.name, email: d.email, perms: _dlgPermsIn(d.perms), status: d.status, paused: !!d.paused_at, paused_by: d.paused_at ? d.paused_by : null, last_login: d.last_login, invite_exp: d.invite_exp, created_at: d.created_at } : null; }
+function _dlgOut(d){ return d ? { id: d.id, name: d.name, email: d.email, role: DLG_ROLES[d.role] ? d.role : 'custom', role_name: DLG_ROLES[d.role] ? DLG_ROLES[d.role].name : 'مخصّص', perms: _dlgPermsIn(d.perms), status: d.status, paused: !!d.paused_at, paused_by: d.paused_at ? d.paused_by : null, last_login: d.last_login, invite_exp: d.invite_exp, created_at: d.created_at } : null; }
 // أنواع الإشعارات اللي تخص كل صلاحية — المفوّض ما يشوف/يوصله غيرها (جوال + قائمة الإشعارات)
 const _DLG_NT = { bids: ['request', 'new_request', 'new_project', 'new_project_rem', 'bid', 'bid_rejected', 'req_updated', 'request_closed', 'question_answered', 'negotiate', 'accept_ask', 'pause_ask', 'bidwatch'],
-  chat: ['message'], awarded: ['claim', 'done', 'review', 'review_reply'], proofs: ['proof', 'wp_level', 'wp_announce'], sub: ['sub', 'sub_new'] };
+  chat: ['message'], awarded: ['claim', 'done', 'review', 'review_reply'], proofs: ['proof', 'wp_level', 'wp_announce'], sub: ['sub', 'sub_new'], quotes: ['qreq', 'quote'], jobs: ['job'], customers: ['plan'] };
 function _dlgTypes(perms){ return [].concat(...(perms || []).map(p => _DLG_NT[p] || [])); }
 async function _dlgInvite(d, owner){
   const tok = crypto.randomBytes(24).toString('base64url');
@@ -5509,7 +5517,7 @@ async function _dlgInvite(d, owner){
   return tok;
 }
 app.get('/api/provider/delegate', auth, providerOnly, async (req, res) => {
-  try { const d = (await pool.query('SELECT * FROM provider_delegates WHERE owner_id=$1', [req.user.id])).rows[0]; res.json({ delegate: _dlgOut(d), perms: DLG_PERMS, max: 1 }); }
+  try { const d = (await pool.query('SELECT * FROM provider_delegates WHERE owner_id=$1 ORDER BY id LIMIT 1', [req.user.id])).rows[0]; res.json({ delegate: _dlgOut(d), perms: DLG_PERMS, max: 1 }); }
   catch(e) { console.error('dlg get:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/provider/delegate', rateLimiter(10, 3600000), auth, providerOnly, async (req, res) => {
@@ -5532,7 +5540,7 @@ app.put('/api/provider/delegate', auth, providerOnly, async (req, res) => {
   try {
     const perms = _dlgPermsIn(req.body.perms), name = req.body.name != null ? String(req.body.name).trim().slice(0, 60) : null;
     if (!perms.length) return res.status(400).json({ message: 'اختر صلاحية وحدة على الأقل' });
-    const d = (await pool.query('UPDATE provider_delegates SET perms=$1, name=COALESCE(NULLIF($2,\'\'), name) WHERE owner_id=$3 RETURNING *', [perms, name, req.user.id])).rows[0];
+    const d = (await pool.query('UPDATE provider_delegates SET perms=$1, name=COALESCE(NULLIF($2,\'\'), name) WHERE id=(SELECT id FROM provider_delegates WHERE owner_id=$3 ORDER BY id LIMIT 1) RETURNING *', [perms, name, req.user.id])).rows[0];
     if (!d) return res.status(404).json({ message: 'ما عندك مفوّض' });
     _dlgLog(req.user.id, d.id, 'owner', d.name, 'عدّل الصلاحيات', perms.map(k => DLG_PERMS[k]).join('، '));
     _dlgDrop(d.id); res.json({ ok: true, delegate: _dlgOut(d) });
@@ -5541,26 +5549,27 @@ app.put('/api/provider/delegate', auth, providerOnly, async (req, res) => {
 // إعادة إرسال رابط التفعيل (ولو نسي كلمة سرّه: الرابط يحدد كلمة سر جديدة)
 app.post('/api/provider/delegate/resend', rateLimiter(5, 3600000), auth, providerOnly, async (req, res) => {
   try {
-    const d = (await pool.query('SELECT * FROM provider_delegates WHERE owner_id=$1', [req.user.id])).rows[0];
+    const d = (await pool.query('SELECT * FROM provider_delegates WHERE owner_id=$1 ORDER BY id LIMIT 1', [req.user.id])).rows[0];
     if (!d) return res.status(404).json({ message: 'ما عندك مفوّض' });
     const owner = (await pool.query('SELECT id, name, business_name FROM users WHERE id=$1', [req.user.id])).rows[0];
     await _dlgInvite(d, owner); res.json({ ok: true });
   } catch(e) { console.error('dlg resend:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.delete('/api/provider/delegate', auth, providerOnly, async (req, res) => {
-  try { const d = (await pool.query('DELETE FROM provider_delegates WHERE owner_id=$1 RETURNING id, name', [req.user.id])).rows[0];
+  try { const d = (await pool.query('DELETE FROM provider_delegates WHERE id=(SELECT id FROM provider_delegates WHERE owner_id=$1 ORDER BY id LIMIT 1) RETURNING id, name', [req.user.id])).rows[0];
     if (d) { _dlgDrop(d.id); _dlgLog(req.user.id, d.id, 'owner', d.name, 'شال المفوّض'); await pool.query('DELETE FROM push_tokens WHERE dlg_id=$1', [d.id]).catch(() => {}); }
     res.json({ ok: true }); }
   catch(e) { console.error('dlg del:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 // إيقاف مؤقت / تشغيل (لو أوقفته الإدارة صاحب الحساب ما يقدر يشغّله)
-async function _dlgPause(where, val, paused, by){
-  const cur = (await pool.query(`SELECT * FROM provider_delegates WHERE ${where}=$1`, [val])).rows[0];
+async function _dlgPause(where, val, paused, by, owner){
+  const cur = (await pool.query(`SELECT * FROM provider_delegates WHERE ${where}=$1 ${owner ? 'AND owner_id=' + parseInt(owner) : ''} ORDER BY id LIMIT 1`, [val])).rows[0];
   if (!cur) return { code: 404, message: 'ما فيه مفوّض' };
   if (!paused && cur.paused_at && cur.paused_by === 'admin' && by !== 'admin') return { code: 403, message: 'أوقفته الإدارة — تواصل مع الدعم' };
+  if (!paused && cur.paused_at && cur.paused_by === 'limit' && by !== 'limit') return { code: 403, message: 'متوقف لأنك تجاوزت حد المفوّضين في باقتك — أضف مفوّض من «اشتراكي» أو شيل واحد' };
   const d = (await pool.query(`UPDATE provider_delegates SET paused_at=${paused ? 'NOW()' : 'NULL'}, paused_by=$2 WHERE id=$1 RETURNING *`, [cur.id, paused ? by : null])).rows[0];
   _dlgDrop(d.id);
-  _dlgLog(d.owner_id, d.id, by, d.name, paused ? 'أوقف المفوّض مؤقتاً' : 'رجّع المفوّض', by === 'admin' ? 'من الإدارة' : null);
+  _dlgLog(d.owner_id, d.id, by === 'limit' ? 'sys' : by, d.name, paused ? 'أوقف المفوّض مؤقتاً' : 'رجّع المفوّض', by === 'admin' ? 'من الإدارة' : by === 'limit' ? 'حد الباقة' : null);
   return { d };
 }
 app.post('/api/provider/delegate/pause', auth, providerOnly, async (req, res) => {
@@ -5572,6 +5581,72 @@ app.get('/api/provider/delegate/log', auth, providerOnly, async (req, res) => {
     const r = await pool.query('SELECT actor, name, action, detail, ref_id, created_at FROM dlg_log WHERE owner_id=$1 ORDER BY created_at DESC LIMIT $2', [req.user.id, lim]); res.json(r.rows); }
   catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// ═══ أكثر من مفوّض (حسب الباقة: المجاني 1 · مساعد الفوز 3 · مؤسسة 10 · +1 بإضافة) بأدوار جاهزة ═══
+// لو نزلت الباقة: يبقى الأقدم شغّال والزايدين يتوقفون مؤقتاً (paused_by='limit') ويرجعون تلقائياً لما يرجع الحد
+async function _dlgLimit(owner){ try { const L = await _subLimits(owner); return Math.max(1, L.limits.dlg || 1); } catch(e){ return 1; } }
+async function _dlgEnforce(owner){
+  const lim = await _dlgLimit(owner);
+  const all = (await pool.query("SELECT * FROM provider_delegates WHERE owner_id=$1 AND (paused_at IS NULL OR paused_by='limit') ORDER BY id", [owner])).rows;
+  for (let i = 0; i < all.length; i++) {
+    const d = all[i], over = i >= lim;
+    if (over && !d.paused_at) await _dlgPause('id', d.id, true, 'limit');
+    else if (!over && d.paused_at && d.paused_by === 'limit') await _dlgPause('id', d.id, false, 'limit');
+  }
+  return lim;
+}
+app.get('/api/provider/delegates', auth, providerOnly, async (req, res) => {
+  try { const lim = await _dlgEnforce(req.user.id);
+    const L = (await pool.query('SELECT * FROM provider_delegates WHERE owner_id=$1 ORDER BY id', [req.user.id])).rows;
+    res.json({ items: L.map(_dlgOut), limit: lim, used: L.filter(d => !(d.paused_at && d.paused_by === 'limit')).length, perms: DLG_PERMS, roles: DLG_ROLES }); }
+  catch(e) { console.error('dlgs get:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/provider/delegates', rateLimiter(15, 3600000), auth, providerOnly, async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim().slice(0, 60), email = String(req.body.email || '').trim().toLowerCase(), perms = _dlgPermsIn(req.body.perms), role = DLG_ROLES[req.body.role] ? req.body.role : 'custom';
+    if (name.length < 2) return res.status(400).json({ message: 'اكتب اسم المفوّض' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 160) return res.status(400).json({ message: 'الإيميل غير صحيح' });
+    if (!perms.length) return res.status(400).json({ message: 'اختر صلاحية وحدة على الأقل' });
+    const owner = (await pool.query('SELECT id, name, business_name, email FROM users WHERE id=$1', [req.user.id])).rows[0];
+    if (owner && String(owner.email || '').toLowerCase() === email) return res.status(400).json({ message: 'هذا إيميلك أنت — اكتب إيميل المفوّض' });
+    const lim = await _dlgEnforce(req.user.id);
+    const used = (await pool.query("SELECT COUNT(*)::int n FROM provider_delegates WHERE owner_id=$1 AND NOT (paused_at IS NOT NULL AND paused_by='limit')", [req.user.id])).rows[0].n;
+    if (used >= lim) return res.status(409).json({ code: 'limit', message: lim <= 1 ? 'عندك مفوّض — أكثر من مفوّض مع الاشتراك' : 'وصلت حد المفوّضين في باقتك (' + lim + ') — أضف مفوّض من «اشتراكي»' });
+    if ((await pool.query('SELECT 1 FROM provider_delegates WHERE LOWER(email)=$1', [email])).rows.length) return res.status(409).json({ message: 'هذا الإيميل مفوّض على حساب ثاني' });
+    const d = (await pool.query('INSERT INTO provider_delegates (owner_id, name, email, perms, role) VALUES ($1,$2,$3,$4,$5) RETURNING *', [req.user.id, name, email, perms, role])).rows[0];
+    await _dlgInvite(d, owner);
+    _dlgLog(req.user.id, d.id, 'owner', name, 'أضاف المفوّض', perms.map(k => DLG_PERMS[k]).join('، '));
+    res.json({ ok: true, delegate: _dlgOut((await pool.query('SELECT * FROM provider_delegates WHERE id=$1', [d.id])).rows[0]) });
+  } catch(e) { if (e.code === '23505') return res.status(409).json({ message: 'هذا الإيميل مفوّض على حساب ثاني' }); console.error('dlgs add:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+async function _dlgMine(req){ return (await pool.query('SELECT * FROM provider_delegates WHERE id=$1 AND owner_id=$2', [parseInt(req.params.id) || 0, req.user.id])).rows[0]; }
+app.put('/api/provider/delegates/:id', auth, providerOnly, async (req, res) => {
+  try { const cur = await _dlgMine(req); if (!cur) return res.status(404).json({ message: 'المفوّض غير موجود' });
+    const perms = _dlgPermsIn(req.body.perms), name = req.body.name != null ? String(req.body.name).trim().slice(0, 60) : null, role = DLG_ROLES[req.body.role] ? req.body.role : (req.body.role ? 'custom' : cur.role);
+    if (!perms.length) return res.status(400).json({ message: 'اختر صلاحية وحدة على الأقل' });
+    const d = (await pool.query("UPDATE provider_delegates SET perms=$1, name=COALESCE(NULLIF($2,''), name), role=$3 WHERE id=$4 RETURNING *", [perms, name, role, cur.id])).rows[0];
+    _dlgLog(req.user.id, d.id, 'owner', d.name, 'عدّل الصلاحيات', perms.map(k => DLG_PERMS[k]).join('، '));
+    _dlgDrop(d.id); res.json({ ok: true, delegate: _dlgOut(d) });
+  } catch(e) { console.error('dlgs put:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/provider/delegates/:id/resend', rateLimiter(10, 3600000), auth, providerOnly, async (req, res) => {
+  try { const d = await _dlgMine(req); if (!d) return res.status(404).json({ message: 'المفوّض غير موجود' });
+    const owner = (await pool.query('SELECT id, name, business_name FROM users WHERE id=$1', [req.user.id])).rows[0]; await _dlgInvite(d, owner); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/provider/delegates/:id/pause', auth, providerOnly, async (req, res) => {
+  try { const r = await _dlgPause('id', parseInt(req.params.id) || 0, !!req.body.paused, 'owner', req.user.id); if (r.code) return res.status(r.code).json({ message: r.message }); res.json({ ok: true, delegate: _dlgOut(r.d) }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.delete('/api/provider/delegates/:id', auth, providerOnly, async (req, res) => {
+  try { const d = (await pool.query('DELETE FROM provider_delegates WHERE id=$1 AND owner_id=$2 RETURNING id, name', [parseInt(req.params.id) || 0, req.user.id])).rows[0];
+    if (!d) return res.status(404).json({ message: 'المفوّض غير موجود' });
+    _dlgDrop(d.id); _dlgLog(req.user.id, d.id, 'owner', d.name, 'شال المفوّض'); await pool.query('DELETE FROM push_tokens WHERE dlg_id=$1', [d.id]).catch(() => {});
+    await _dlgEnforce(req.user.id); res.json({ ok: true }); }
+  catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// كل ساعة: طبّق حد الباقة على أصحاب أكثر من مفوّض
+setInterval(() => _jobLock('dlg_limit', async () => { const o = (await pool.query('SELECT owner_id FROM provider_delegates GROUP BY owner_id HAVING COUNT(*) > 1')).rows; for (const r of o) await _dlgEnforce(r.owner_id).catch(() => {}); }), 60 * 60 * 1000);
+
 // المفوّض يغيّر كلمة سرّه هو (ما تمس كلمة سر صاحب الحساب)
 app.post('/api/me/dlg/password', rateLimiter(10, 600000), auth, async (req, res) => {
   try {
@@ -5606,9 +5681,9 @@ app.get('/api/admin/delegates', requirePermission('users.view'), async (req, res
 app.get('/api/admin/delegates/by-owner/:uid', requirePermission('users.view'), async (req, res) => {
   try {
     const uid = parseInt(req.params.uid) || 0;
-    const d = (await pool.query('SELECT * FROM provider_delegates WHERE owner_id=$1', [uid])).rows[0];
+    const all = (await pool.query('SELECT * FROM provider_delegates WHERE owner_id=$1 ORDER BY id', [uid])).rows;
     const log = (await pool.query('SELECT actor, name, action, detail, created_at FROM dlg_log WHERE owner_id=$1 ORDER BY created_at DESC LIMIT 50', [uid])).rows;
-    res.json({ delegate: _dlgOut(d), log, labels: DLG_PERMS });
+    res.json({ delegate: _dlgOut(all[0]), delegates: all.map(_dlgOut), log, labels: DLG_PERMS });
   } catch(e) { res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/admin/delegates/:id/pause', requirePermission('users.edit'), async (req, res) => {

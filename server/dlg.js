@@ -2,8 +2,10 @@
 (function(){
   var W = window, D = document;
   var LBL = { bids: ['العروض', 'تصفّح المشاريع وتقديم عروض وتعديلها'], chat: ['المحادثات', 'الرد على العملاء'], awarded: ['المشاريع المرسّاة', 'متابعة التنفيذ وتأكيد الإنجاز'],
-    profile: ['الملف الشخصي', 'النبذة والتخصصات والصور'], proofs: ['وثّق أعمالك', 'رفع مشاريع وطلب تقييمها'], sub: ['مقاول باطن', 'طلب مقاولين ومتابعتهم'] };
-  var ORDER = ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub'];
+    profile: ['الملف الشخصي', 'النبذة والتخصصات والصور'], proofs: ['وثّق أعمالك', 'رفع مشاريع وطلب تقييمها'], sub: ['مقاول باطن', 'طلب مقاولين ومتابعتهم'],
+    quotes: ['طلبات التسعيرة وعروض الأسعار', 'الرد على طلبات صفحتك وإرسال عروض الأسعار'], jobs: ['مشاريع العملاء والفريق', 'المواعيد والفنيين والتسليم'], customers: ['دفتر العملاء وخطط الصيانة', 'ملفات العملاء والأجهزة والخطط'] };
+  var ORDER0 = ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub'], ORDER = ORDER0;
+  var ROLES = { sales: ['مندوب مبيعات', ['bids', 'chat', 'quotes']], super: ['مشرف مشاريع', ['awarded', 'jobs', 'customers', 'chat']], manager: ['مدير الحساب', ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers']], custom: ['مخصّص', null] };
   var LOCKED = ['حذف الحساب', 'تغيير الجوال والإيميل', 'كلمة السر', 'السعي والمدفوعات', 'إضافة مفوّض'];
   var S = { me: null, d: null, busy: false };
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
@@ -33,7 +35,7 @@
   function hide(id){ var e = D.getElementById(id); if (e) e.style.display = 'none'; }
   function applyMe(){
     css(); var m = S.me;
-    hide('ni-dlg'); hide('ni-saai'); hide('ni-plan'); hide('ni-mypage'); hide('ni-quotes'); hide('ni-jobs'); hide('ni-cust'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
+    hide('ni-dlg'); hide('ni-saai'); hide('ni-plan'); if (m.perms.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (m.perms.indexOf('jobs') < 0) hide('ni-jobs'); if (m.perms.indexOf('customers') < 0) hide('ni-cust'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
     // bn-profile هو زر «المزيد» بالجوال (فيه الإشعارات والخروج) — ما نخفيه
     ['browse', 'works', 'profile', 'proof', 'sub'].forEach(function(p){ if (!okPage(p)) { hide('ni-' + p); if (p !== 'profile') hide('bn-' + p); } });
     if (!okPage('chat')) { hide('ni-chat'); hide('bn-chat'); }
@@ -95,7 +97,7 @@
     api('/api/provider/delegate/log?limit=' + n).then(function(L){
       var b = D.getElementById('dl-log'); if (!b) return;
       if (!Array.isArray(L) || !L.length) { b.innerHTML = '<div class="dl-s">ما فيه نشاط للحين</div>'; return; }
-      b.innerHTML = L.map(function(x){ var who = x.actor === 'owner' ? 'أنت' : x.actor === 'admin' ? 'الإدارة' : (x.name || ''); return '<div class="dl-lg"><span>' + (ICO[x.action] || '•') + '</span><div><b>' + (who ? who + ': ' : '') + esc(x.action) + (x.detail ? ' <i>— ' + esc(x.detail) + '</i>' : '') + '</b><small>' + when(x.created_at) + '</small></div></div>'; }).join('')
+      b.innerHTML = L.map(function(x){ var who = x.actor === 'owner' ? 'أنت' : x.actor === 'admin' ? 'الإدارة' : x.actor === 'sys' ? 'تلقائي' : (x.name || ''), nm = S.multi && x.actor !== 'dlg' && x.name ? ' «' + esc(x.name) + '»' : ''; return '<div class="dl-lg"><span>' + (ICO[x.action] || '•') + '</span><div><b>' + (who ? who + ': ' : '') + esc(x.action) + nm + (x.detail ? ' <i>— ' + esc(x.detail) + '</i>' : '') + '</b><small>' + when(x.created_at) + '</small></div></div>'; }).join('')
         + (L.length >= n && n < 100 ? '<button type="button" class="dl-more" id="dl-lmore">عرض الكل ›</button>' : '');
       var mo = D.getElementById('dl-lmore'); if (mo) mo.addEventListener('click', function(){ loadLog(100); });
     });
@@ -171,8 +173,59 @@
     var pg = D.getElementById('page-dlg'); if (!pg) return;
     if (S.me) { pg.innerHTML = '<div class="dl-c" style="text-align:center">هذي الصفحة لصاحب الحساب فقط</div>'; return; }
     pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
-    api('/api/provider/delegate').then(function(r){ if (!r || r.message) { pg.innerHTML = '<div class="dl-c" style="text-align:center">تعذّر التحميل — حاول مرة ثانية</div>'; return; } S.d = r.delegate; render(); });
+    ORDER = W._subsOpen ? ORDER0.concat(['quotes', 'jobs', 'customers']) : ORDER0;
+    api('/api/provider/delegates').then(function(r){ if (!r || r.message || !Array.isArray(r.items)) { pg.innerHTML = '<div class="dl-c" style="text-align:center">تعذّر التحميل — حاول مرة ثانية</div>'; return; }
+      S.multi = r.limit > 1 || r.items.length > 1; S.L = r;
+      if (S.multi) { S.view = 'list'; M.list(); } else { S.d = r.items[0] || null; render(); } });
   }
+  // ─── أكثر من مفوّض (حسب الباقة) ───
+  var M = {};
+  function roleChips(cur){ return '<div class="dl-chips" id="dl-roles" style="margin-top:10px">' + Object.keys(ROLES).map(function(k){ return '<button type="button" class="dl-chip dl-rl' + (k === cur ? ' on' : '') + '" data-r="' + k + '" style="border:0;cursor:pointer;font:inherit;font-size:12.5px;padding:7px 12px' + (k === cur ? ';background:#172554;color:#fff' : '') + '">' + ROLES[k][0] + '</button>'; }).join('') + '</div>'; }
+  function wireRoles(){ var box = D.getElementById('dl-roles'); if (!box) return; box.querySelectorAll('.dl-rl').forEach(function(b){ b.addEventListener('click', function(){ var k = b.getAttribute('data-r'); S.role = k; box.querySelectorAll('.dl-rl').forEach(function(x){ var on = x === b; x.classList.toggle('on', on); x.style.background = on ? '#172554' : ''; x.style.color = on ? '#fff' : ''; });
+    var ps = ROLES[k][1]; if (ps) D.querySelectorAll('#dl-perms .dl-pr').forEach(function(r){ var t = r.querySelector('.dl-tg'), on = ps.indexOf(r.getAttribute('data-k')) >= 0; t.classList.toggle('on', on); t.setAttribute('aria-checked', on); }); }); });
+    var pr = D.getElementById('dl-perms'); if (pr) pr.addEventListener('click', function(){ if (S.role !== 'custom') { S.role = 'custom'; box.querySelectorAll('.dl-rl').forEach(function(x){ var on = x.getAttribute('data-r') === 'custom'; x.classList.toggle('on', on); x.style.background = on ? '#172554' : ''; x.style.color = on ? '#fff' : ''; }); } }, true); }
+  function stTag(d){ var lim = d.paused && d.paused_by === 'limit', adm = d.paused && d.paused_by === 'admin'; return '<span class="dl-st ' + (d.paused ? 'dl-ps' : d.status === 'active' ? 'dl-ok' : 'dl-wt') + '">' + (lim ? 'متوقف — فوق حد الباقة' : d.paused ? (adm ? 'أوقفته الإدارة' : 'موقوف مؤقتاً') : d.status === 'active' ? 'فعّال' : 'بانتظار التفعيل') + '</span>'; }
+  M.list = function(){
+    var pg = D.getElementById('page-dlg'); if (!pg) return; css(); var r = S.L, full = r.used >= r.limit;
+    var h = '<div class="dl-w"><div class="dl-c dl-in"><div class="dl-h">👥 المفوّضين — فريقك يشتغل معك</div><div class="dl-s">كل واحد يدخل بإيميله وكلمة سرّه هو، ويشتغل باسم مؤسستك حسب دوره وصلاحياته. ' + r.used + ' من ' + r.limit + ' في باقتك.</div></div>';
+    h += r.items.length ? '<div class="dl-c" id="dl-list">' + r.items.map(function(d){ return '<div class="dl-pr dl-it" data-id="' + d.id + '"><div style="display:flex;gap:10px;align-items:center;min-width:0"><span class="dl-av" style="width:38px;height:38px;font-size:15px">' + esc(String(d.name || 'م').charAt(0)) + '</span><div style="min-width:0"><b>' + esc(d.name) + ' — ' + esc(d.role_name) + '</b><small>' + d.perms.map(function(k){ return LBL[k] ? LBL[k][0] : k; }).join(' · ') + '</small></div></div>' + stTag(d) + '</div>'; }).join('') + '</div>' : '';
+    h += full ? '<div class="dl-c" style="background:#fffcf5;border-color:#fde68a"><div class="dl-h" style="font-size:14px;color:#b54708">وصلت حد باقتك (' + r.limit + ')</div><div class="dl-s">أضف مفوّض بـ 19 ر.س شهرياً من <a href="/plan.html" style="color:#1e3a8a">اشتراكي</a></div></div>' : '<button type="button" class="dl-b dl-bp" id="dl-new">+ مفوّض جديد</button>';
+    h += '<div class="dl-c"><div class="dl-h" style="font-size:14px">نشاط المفوّضين</div><div id="dl-log"><div class="dl-s">جاري التحميل...</div></div></div>' + locked() + '</div>';
+    pg.innerHTML = h;
+    pg.querySelectorAll('.dl-it').forEach(function(e){ e.addEventListener('click', function(){ var id = +e.getAttribute('data-id'); S.d = S.L.items.find(function(x){ return x.id === id; }); M.edit(); }); });
+    var n = D.getElementById('dl-new'); if (n) n.addEventListener('click', function(){ S.d = null; M.edit(); });
+    loadLog(10);
+  };
+  M.edit = function(){
+    var pg = D.getElementById('page-dlg'); var d = S.d; S.role = d ? d.role : 'sales';
+    var h = '<div class="dl-w"><button type="button" class="dl-b dl-bo" id="dl-back" style="width:auto;align-self:flex-start;padding:9px 14px">‹ المفوّضين</button>';
+    if (!d) h += '<div class="dl-c" id="dl-form"><div class="dl-h">مفوّض جديد</div><input class="dl-f" id="dl-name" maxlength="60" placeholder="اسمه — مثل: محمد" autocomplete="off"><input class="dl-f" id="dl-email" type="email" dir="ltr" style="text-align:right" placeholder="إيميله" autocomplete="off">';
+    else { var act = d.status === 'active', adm = d.paused && d.paused_by === 'admin', lim = d.paused && d.paused_by === 'limit';
+      h += '<div class="dl-c"><div class="dl-me"><span class="dl-av">' + esc(String(d.name || 'م').charAt(0)) + '</span><div style="flex:1;min-width:0"><div class="dl-h" style="margin:0">' + esc(d.name) + '</div><div class="dl-s" dir="ltr" style="text-align:right">' + esc(d.email) + '</div></div>' + stTag(d) + '</div>'
+        + '<div class="dl-s" style="margin-top:8px;font-size:12px">' + (lim ? 'متوقف لأن عدد المفوّضين فوق حد باقتك — يرجع تلقائياً لما تزيد الحد' : act ? (d.last_login ? 'آخر دخول: ' + fmtD(d.last_login) : 'ما دخل للحين') : 'أرسلنا له رابط التفعيل على إيميله — صالح 3 أيام') + '</div>'; }
+    h += '<div class="dl-h" style="font-size:14px;margin-top:14px">الدور</div>' + roleChips(S.role) + '<div class="dl-h" style="font-size:14px;margin-top:14px">الصلاحيات</div><div id="dl-perms">' + permRows(d ? d.perms : ROLES.sales[1]) + '</div>';
+    if (!d) h += '<button type="button" class="dl-b dl-bp" id="dl-madd" style="margin-top:12px">إرسال الدعوة</button><div class="dl-s" style="text-align:center;margin-top:8px;font-size:12px">يوصله إيميل يحدد منه كلمة سرّه</div></div>';
+    else h += '<button type="button" class="dl-b dl-bp" id="dl-msave" style="margin-top:12px">حفظ</button><div class="dl-row" style="margin-top:10px"><button type="button" class="dl-b dl-bo" id="dl-mpause"' + (adm || lim ? ' disabled' : '') + '>' + (d.paused ? '▶ رجّعه' : '⏸ إيقاف مؤقت') + '</button><button type="button" class="dl-b dl-bo" id="dl-mresend">' + (d.status === 'active' ? 'رابط كلمة سر جديدة' : 'إعادة إرسال التفعيل') + '</button></div></div><button type="button" class="dl-b dl-bd" id="dl-mdel">إزالة المفوّض</button>';
+    pg.innerHTML = h + '</div>';
+    var pr = D.getElementById('dl-perms'); if (pr) wire(pr); wireRoles();
+    var on = function(id, f){ var e = D.getElementById(id); if (e) e.addEventListener('click', f); };
+    on('dl-back', function(){ load(); });
+    on('dl-madd', function(){ if (S.busy) return; var name = (D.getElementById('dl-name').value || '').trim(), email = (D.getElementById('dl-email').value || '').trim(), perms = selPerms(D.getElementById('dl-perms'));
+      if (name.length < 2) return toast('اكتب اسم المفوّض', 'error'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return toast('الإيميل غير صحيح', 'error'); if (!perms.length) return toast('اختر صلاحية وحدة على الأقل', 'error');
+      S.busy = true; busy('dl-madd', 1, 'جاري الإرسال...');
+      api('/api/provider/delegates', { method: 'POST', body: JSON.stringify({ name: name, email: email, perms: perms, role: S.role }) }).then(function(r){ S.busy = false; busy('dl-madd', 0);
+        if (!r || !r.ok) return toast((r && r.message) || 'تعذّر الإرسال — حاول مرة ثانية', 'error'); toast('✓ أرسلنا الدعوة على إيميله', 'success'); load(); }); });
+    on('dl-msave', function(){ if (S.busy) return; var perms = selPerms(D.getElementById('dl-perms')); if (!perms.length) return toast('اختر صلاحية وحدة على الأقل', 'error');
+      S.busy = true; busy('dl-msave', 1, 'جاري الحفظ...');
+      api('/api/provider/delegates/' + d.id, { method: 'PUT', body: JSON.stringify({ perms: perms, role: S.role }) }).then(function(r){ S.busy = false; busy('dl-msave', 0);
+        if (!r || !r.ok) return toast((r && r.message) || 'تعذّر الحفظ', 'error'); toast('✓ انحفظ', 'success'); load(); }); });
+    on('dl-mpause', function(){ if (S.busy) return; var p = !d.paused; if (p && !confirm('توقف ' + (d.name || 'المفوّض') + ' مؤقتاً؟')) return; S.busy = true;
+      api('/api/provider/delegates/' + d.id + '/pause', { method: 'POST', body: JSON.stringify({ paused: p }) }).then(function(r){ S.busy = false; if (!r || !r.ok) return toast((r && r.message) || 'تعذّر', 'error'); toast(p ? '⏸ أوقفته مؤقتاً' : '▶ رجّع يشتغل', 'success'); load(); }); });
+    on('dl-mresend', function(){ if (S.busy) return; S.busy = true; busy('dl-mresend', 1, 'جاري الإرسال...');
+      api('/api/provider/delegates/' + d.id + '/resend', { method: 'POST' }).then(function(r){ S.busy = false; busy('dl-mresend', 0); if (!r || !r.ok) return toast((r && r.message) || 'تعذّر الإرسال', 'error'); toast('✓ أرسلنا الرابط على إيميله', 'success'); }); });
+    on('dl-mdel', function(){ if (S.busy || !confirm('تشيل ' + (d.name || 'المفوّض') + '؟ يطلع من الحساب على طول.')) return; S.busy = true;
+      api('/api/provider/delegates/' + d.id, { method: 'DELETE' }).then(function(r){ S.busy = false; if (!r || !r.ok) return toast('تعذّر — حاول مرة ثانية', 'error'); toast('✓ انشال المفوّض', 'success'); load(); }); });
+  };
   function init(){
     var u = null; try { u = JSON.parse(localStorage.getItem('user') || 'null'); } catch(e) {}
     if (u && u.delegate) { S.me = { name: u.delegate.name, perms: u.delegate.perms || [], owner_name: u.business_name || u.name }; applyMe(); }
@@ -182,6 +235,6 @@
       else { S.me = null; var n = D.getElementById('ni-dlg'); if (n) n.style.display = ''; }
     });
   }
-  W.DLG = { load: load, loadMe: loadMe, okPage: okPage, filter: filterTiles, isMe: function(){ return !!S.me; } };
+  W.DLG = { load: load, loadMe: loadMe, okPage: okPage, filter: filterTiles, isMe: function(){ return !!S.me; }, has: function(k){ return !S.me || (S.me.perms || []).indexOf(k) >= 0; } };
   if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', init); else setTimeout(init, 0);
 })();
