@@ -208,7 +208,7 @@ function mountApple(){
    var el=document.querySelector('.mysr-form'); if(!el||el.getAttribute('data-on'))return; el.setAttribute('data-on','1');
    Moyasar.init({ element:'.mysr-form', amount:Math.round(P.amount*100), currency:'SAR', description:(SUB?'اشتراك منصة مناقصة — ':'سعي منصة مناقصة — ')+String(P.title||'').slice(0,60)+' #'+REF,
      publishable_api_key:P.pk, callback_url:P.callback, methods:['applepay'], metadata:{ref:REF,kind:SUB?'sub':'saai'},
-     apple_pay:{country:'SA',label:'Manaqasa',validate_merchant_url:'https://api.moyasar.com/v1/applepay/initiate'},
+     apple_pay:{country:'SA',label:'Manaqasa',validate_merchant_url:'https://api.moyasar.com/v1/applepay/initiate',save_card:!!SUB},
      on_completed:function(p){ return verify(p&&p.id,true); },
      on_failure:function(e){ var d=''; try{ d=typeof e==='string'?e:(e&&(e.message||e.error||(e.source&&e.source.message)))||''; if(!d&&e){ d=[e.name,e.type,e.code,String(e)].filter(function(v){return v&&v!=='[object Object]';}).join(' | ')||JSON.stringify(e); } }catch(_){ d=String(e); } d=String(d||'').slice(0,200);
        showErr('لم تكتمل عملية الدفع عبر Apple Pay. لم يُخصم أي مبلغ، ويمكنك المحاولة مجدداً أو اختيار الدفع بالبطاقة.');
