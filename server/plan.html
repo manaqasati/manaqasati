@@ -34,7 +34,7 @@ button{font-family:inherit}
 .plan{flex:1;border:2px solid #e2e8f0;border-radius:16px;padding:18px;background:#fff;cursor:pointer;text-align:right;color:inherit;display:flex;flex-direction:column;gap:8px}
 .plan.on{border-color:#1e3a8a;background:#f5f9ff;box-shadow:0 6px 18px rgba(30,58,138,.1)}
 .plan h4{font-size:17px;font-weight:900;color:#172554;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.plan ul{list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:4px}.plan li{font-size:13px;font-weight:700;display:flex;gap:7px}.plan li:before{content:'✓';color:#16a34a;font-weight:900}
+.fl{list-style:none;display:flex;flex-direction:column;gap:7px;margin-top:10px;padding:0}.fl li{font-size:13.5px;font-weight:700}.fl li:before{content:'✓  ';color:#16a34a;font-weight:900}.plan ul{list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:4px}.plan li{font-size:13px;font-weight:700;display:flex;gap:7px}.plan li:before{content:'✓';color:#16a34a;font-weight:900}
 .plan li.no{color:#94a3b8}.plan li.no:before{content:'—';color:#cbd5e1}
 .price{font-family:Cairo,sans-serif;font-size:28px;font-weight:900;color:#172554}.price small{font-size:13px;color:#64748b;font-family:Tajawal}
 .trial{display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:14px;background:#f0fdf4;border:1.5px solid #bbf7d0;flex-wrap:wrap}
@@ -68,6 +68,7 @@ button{font-family:inherit}
 var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
 var Q=new URLSearchParams(location.search), app=document.getElementById('app'), D=null, CY='m', TIER='pro', CP='', QT=null;
 var IOSAPP=!!(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||''));
+if(IOSAPP){ try{ var _st=document.createElement('style'); _st.textContent='#upb,#yrb,#renb,#udnb{display:none!important}'; document.head.appendChild(_st); }catch(e){} }
 var rq=String(Q.get('ref')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,16); if(rq){ try{localStorage.setItem('mnq_ref',rq);}catch(e){} }
 if(!TOK){ location.href='/auth.html?redirect=plan'; return; }
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
@@ -77,23 +78,27 @@ function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/j
  return fetch(p,o).then(function(r){ if(r.status===401){ try{localStorage.removeItem('token');}catch(e){} location.href='/auth.html?redirect=plan'; throw new Error('auth'); } return r.json().catch(function(){return {};}).then(function(j){ j.__s=r.status; return j; }); });}
 function toast(m){ var t=document.createElement('div'); t.className='toast'; t.textContent=m; document.body.appendChild(t); setTimeout(function(){t.remove();},3500); }
 var TN={free:'المجانية',pro:'مساعد الفوز',ent:'مؤسسة'};
-function feats(t){ var L=D.cfg.limits[t]||{}; var f=[]; f.push(L.projects?L.projects+' مشاريع نشطة':'مشاريع السوق والعروض'); f.push(L.dlg+(L.dlg===1?' مشرف أو مندوب':' مشرفين ومندوبين')); if(L.tech)f.push(L.tech+' فنياً'); if(t!=='free')f.push(L.branch>1?'فروع متعددة':'فرع واحد');
+function mo(n){ n=+n||1; return n===1?'شهر مجاني':(n===2?'شهران مجانيان':(n<=10?n+' أشهر مجانية':n+' شهراً مجانياً')); }
+function dy(n){ n=+n||0; return n===1?'يوماً واحداً':(n===2?'يومين':(n<=10?n+' أيام':n+' يوماً')); }
+function brn(b){ b=String(b||'').toLowerCase(); return ({mada:'مدى',visa:'Visa',master:'Mastercard',mastercard:'Mastercard',amex:'American Express',applepay:'Apple Pay'})[b]||(b?b:'بطاقة'); }
+function nn(n,one,pl,acc){ n=+n||0; return n===1?one:(n>=3&&n<=10?n+' '+pl:n+' '+acc); }
+function feats(t){ var L=D.cfg.limits[t]||{}; var f=[]; f.push(L.projects?nn(L.projects,'مشروع نشط واحد','مشاريع نشطة','مشروعاً نشطاً'):'مشاريع السوق والعروض'); f.push(nn(L.dlg,'مشرف أو مندوب واحد','مشرفين ومندوبين','مشرفاً ومندوباً')); if(L.tech)f.push(nn(L.tech,'فني واحد','فنيين','فنياً')); if(t!=='free')f.push(L.branch>1?'فروع متعددة':'فرع واحد');
  var li=f.map(function(x){return '<li>'+esc(x)+'</li>';}).join('');
- if(t!=='free'){ li+='<li>عروض أسعار باسمك وشعارك</li><li>دفتر العملاء وخطط الصيانة</li>'; li+=L.map?'<li>الخريطة اللايف لفريقك</li><li>لوحة الأرقام ودعم أولوية</li>':'<li class="no">الخريطة اللايف</li>'; }
+ if(t!=='free'){ li+='<li>عروض أسعار باسمك وشعارك</li><li>دفتر العملاء وخطط الصيانة</li>'; li+=L.map?'<li>الخريطة اللايف لفريقك</li><li>الأرقام والتقارير ودعم بأولوية</li>':'<li class="no">الخريطة اللايف</li>'; }
  return li; }
-function buyBlock(html){ if(D&&D.open===false&&!(D.sub&&['active','grace'].indexOf(D.sub.status)>-1)) return '<div class="note">الاشتراكات تُفتح قريباً — سنبلغك فور إتاحتها.</div>'; return IOSAPP?'<div class="note">إدارة الاشتراك والدفع متاحة عبر موقع منصة مناقصة.</div>':html; }
+function buyBlock(html){ if(D&&D.open===false&&!(D.sub&&['active','grace'].indexOf(D.sub.status)>-1)) return '<div class="note">الاشتراكات تُفتح قريباً — سنبلغك فور إتاحتها.</div>'; return IOSAPP?'':html; }
 function chooser(inTrial){
  var C=D.cfg, off=D.offer;
  var h='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div class="h3" style="margin:0">'+(inTrial?'اشترك الآن واحتفظ بمزاياك':'اختر باقتك')+'</div><div class="mu">ألغِ في أي وقت · بدون التزام</div></div>'
   +'<div class="seg"><button type="button" data-cy="m" class="'+(CY==='m'?'on':'')+'">شهري</button><button type="button" data-cy="y" class="'+(CY==='y'?'on':'')+'">سنوي <span class="pill p-g" style="height:19px">شهران مجاناً</span></button></div></div>';
  h+='<div class="plans">'+['pro','ent'].map(function(t){ var p=C.tiers[t][CY];
    return '<button type="button" class="plan'+(TIER===t?' on':'')+'" data-t="'+t+'"><h4>'+esc(C.tiers[t].name)+(t==='pro'?' <span class="pill p-g">الأكثر اختياراً</span>':'')+'</h4><div class="price">'+money(p)+' <small>ر.س / '+(CY==='y'?'سنة':'شهر')+'</small></div>'+(CY==='y'?'<div class="mu">يعادل '+money(Math.round(p/12))+' ر.س شهرياً</div>':'')+'<ul>'+feats(t)+'</ul></button>'; }).join('')+'</div>';
- h+='<div class="mu" style="margin-top:10px">الباقة المجانية مستمرة لك دائماً: سوق المشاريع والعروض بسعي 3%، ومشرف أو مندوب واحد.</div>';
- if(D.trial_ok&&!inTrial) h+=buyBlock('<div class="trial" style="margin-top:14px"><span style="font-size:22px">🎉</span><div style="flex:1;min-width:200px"><b style="color:#15803d;font-size:14px">جرّب مساعد الفوز '+C.trial_days+' يوماً مجاناً</b><div style="font-size:12px;color:#166534;font-weight:700">دون الحاجة إلى بطاقة، وتتوقف تلقائياً بنهاية التجربة.</div></div><button type="button" class="btn sec" id="trialb">ابدأ التجربة</button></div>');
+ h+='<div class="mu" style="margin-top:10px">الباقة المجانية مستمرة لك دائماً: مشاريع السوق والعروض، ومشرف أو مندوب واحد.</div>';
+ if(D.trial_ok&&!inTrial) h+=buyBlock('<div class="trial" style="margin-top:14px"><span style="font-size:22px">🎉</span><div style="flex:1;min-width:200px"><b style="color:#15803d;font-size:14px">جرّب مساعد الفوز '+dy(C.trial_days)+' مجاناً</b><div style="font-size:12px;color:#166534;font-weight:700">دون الحاجة إلى بطاقة، وتتوقف تلقائياً بنهاية التجربة.</div></div><button type="button" class="btn sec" id="trialb">ابدأ التجربة</button></div>');
  if(off) h+='<div class="offer" style="margin-top:14px">📣 عرض: خصم '+(off.kind==='fixed'?money(off.value)+' ر.س':off.value+'%')+(off.ends_at?' حتى '+dt(off.ends_at):'')+' — يُطبَّق تلقائياً</div>';
  h+='</div>';
  h+=buyBlock('<div class="card sum"><div class="h3">ملخص الطلب</div><div id="qlines"><div class="mu">…</div></div>'
-  +'<div id="cpw" style="margin-top:8px">'+(CP?'':'<button type="button" class="btn sec" id="cpo" style="padding:8px 12px;font-size:12.5px">عندك رمز خصم؟</button>')+'</div>'
+  +'<div id="cpw" style="margin-top:8px">'+(CP?'':'<button type="button" class="btn sec" id="cpo" style="padding:8px 12px;font-size:12.5px">هل لديك رمز خصم؟</button>')+'</div>'
   +'<button type="button" class="btn pri" id="buyb" style="width:100%;padding:15px;font-size:16px;margin-top:14px">🔒 متابعة إلى الدفع</button>'
   +'<div class="mu" style="text-align:center;margin-top:8px;font-size:11.5px">الدفع آمن · Apple Pay أو بطاقة · يتجدد تلقائياً ويمكنك إيقافه في أي وقت</div></div>');
  return h;
@@ -149,31 +154,31 @@ function manage(){
  var h='';
  if(S.status==='grace') h+='<div class="warn"><b style="font-size:15px">⚠️ تعذّر تجديد الاشتراك</b><div style="font-size:13px;font-weight:700;line-height:1.8;margin-top:6px">تبقى جميع الميزات متاحة حتى '+dt(S.grace_until)+'. يُرجى السداد قبل هذا التاريخ لتجنّب إيقاف الاشتراك.</div>'+buyBlock('<button type="button" class="btn" id="renb" style="background:#b42318;color:#fff;margin-top:10px">السداد الآن ('+money(S.renew_h/100)+' ر.س)</button>')+'</div>';
  h+='<div class="card hero"><div style="flex:1;min-width:220px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:21px">باقة '+esc(C.tiers[S.tier]?C.tiers[S.tier].name:TN[S.tier])+'</b>'+(S.status!=='trial'?'<span class="pill" style="background:#fbbf24;color:#172554">'+(S.cycle==='y'?'سنوي':'شهري')+'</span>':'')+st+'</div>'
-  +'<div style="font-size:13px;opacity:.85;font-weight:700;margin-top:6px">'+esc(ren)+(S.card?' · '+esc(S.card.brand||'بطاقة')+' ···· '+esc(S.card.last4):'')+'</div>'
+  +'<div style="font-size:13px;opacity:.85;font-weight:700;margin-top:6px">'+esc(ren)+(S.card?' · '+esc(brn(S.card.brand))+' ···· '+esc(S.card.last4):'')+'</div>'
   +(S.next_tier?'<div style="font-size:12.5px;margin-top:6px;color:#fde68a;font-weight:800">ستنتقل إلى '+esc(TN[S.next_tier])+' من التجديد القادم</div>':'')+(S.next_cycle&&S.next_cycle!==S.cycle?'<div style="font-size:12.5px;margin-top:6px;color:#fde68a;font-weight:800">سيتحول إلى '+(S.next_cycle==='y'?'سنوي':'شهري')+' من التجديد القادم</div>':'')
   +buyBlock('<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'
-   +(S.status==='trial'?'':(S.tier==='pro'?'<button type="button" class="btn gold" id="upb">⬆ الترقية إلى مؤسسة</button>':''))
-   +(S.status!=='trial'&&S.cycle==='m'&&S.next_cycle!=='y'?'<button type="button" class="btn ghost" id="yrb">التحويل إلى سنوي (شهران مجاناً)</button>':'')
-   +(S.status!=='trial'&&S.tier==='ent'&&!S.next_tier?'<button type="button" class="btn ghost" id="dnb">الانتقال إلى مساعد الفوز</button>':'')
+   +(S.status==='trial'||S.status==='grace'?'':(S.tier==='pro'?'<button type="button" class="btn gold" id="upb">⬆ الترقية إلى مؤسسة</button>':''))
+   +(S.status!=='trial'&&S.status!=='grace'&&S.cycle==='m'&&S.next_cycle!=='y'?'<button type="button" class="btn ghost" id="yrb">التحويل إلى سنوي (شهران مجاناً)</button>':'')
+   +(S.status!=='trial'&&S.status!=='grace'&&!S.cancel_at_end&&S.tier==='ent'&&!S.next_tier?'<button type="button" class="btn ghost" id="dnb">الانتقال إلى مساعد الفوز</button>':'')
    +(S.next_tier?'<button type="button" class="btn ghost" id="udnb">البقاء على مؤسسة</button>':'')
    +(S.status==='trial'?'':(S.cancel_at_end?'<button type="button" class="btn ghost" id="resb">استئناف التجديد</button>':'<button type="button" class="btn ghost" id="canb" style="background:transparent;opacity:.75">إيقاف التجديد</button>'))
    +'</div>')+'</div>'
-  +(S.status!=='trial'?'<div style="text-align:left"><div style="font-size:12px;opacity:.75;font-weight:700">'+(S.cancel_at_end?'لن يُجدَّد':'التجديد القادم')+'</div><div class="big" style="font-size:32px">'+money(S.renew_h/100)+' <small style="font-size:14px">ر.س</small></div></div>':'')+'</div>';
+  +(S.status!=='trial'&&S.status!=='grace'?(S.cancel_at_end?'':'<div style="text-align:left"><div style="font-size:12px;opacity:.75;font-weight:700">التجديد القادم</div><div class="big" style="font-size:32px">'+money(S.renew_h/100)+' <small style="font-size:14px">ر.س</small></div></div>'):'')+'</div>';
  // الحدود
  var L=D.limits, U=D.usage||{};
  h+='<div class="card"><div class="h3">حدود باقتك</div>'
   +'<div class="lim"><span>مشرفون ومندوبون</span><b>'+(U.dlg||0)+' من '+L.dlg+'</b></div>'
-  +'<div class="lim"><span>مشاريع نشطة</span><b>'+L.projects+'</b></div><div class="lim"><span>فنيون</span><b>'+L.tech+'</b></div>'
+  +'<div class="lim"><span>مشاريع نشطة</span><b>'+(U.projects||0)+' من '+L.projects+'</b></div><div class="lim"><span>فنيون</span><b>'+(U.tech||0)+' من '+L.tech+'</b></div>'
   +'<div class="lim"><span>الفروع</span><b>'+(L.branch>=99?'متعددة':L.branch)+'</b></div><div class="lim"><span>الخريطة اللايف</span><b>'+(L.map?'✓':'—')+'</b></div></div>';
  // الإضافات
- if(S.status!=='trial'){
+ if(S.status!=='trial'&&S.status!=='grace'&&!IOSAPP){
   var na=S.next_addons||S.addons||{}, ah='', totA=0;
   Object.keys(C.addons).forEach(function(k){ var a=C.addons[k]; if(!a.on)return; var ok=a.tiers.indexOf(S.tier)>-1, q=parseInt((S.addons||{})[k])||0, nq=parseInt(na[k]); if(isNaN(nq))nq=q; totA+=q*a.p;
     ah+='<div class="row" style="'+(ok?'':'opacity:.55')+'"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':'👥'))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+money(a.p)+' ر.س شهرياً'+(nq<q?' · '+(q-nq)+' تنتهي بنهاية الفترة':'')+'</div></div>'
-     +(ok?buyBlock('<div class="step"><button type="button" data-less="'+k+'"'+(nq<=0?' disabled':'')+'>−</button><b>'+q+'</b><button type="button" class="add" data-add="'+k+'">+</button></div>'):'<span class="pill p-gr">متاحة لباقة مؤسسة</span>')+'</div>'; });
+     +(ok&&S.status!=='grace'?buyBlock('<div class="step"><button type="button" data-less="'+k+'"'+(nq<=0?' disabled':'')+'>−</button><b>'+q+'</b><button type="button" class="add" data-add="'+k+'">+</button></div>'):(ok?(q?'<b style="font-size:14px">'+q+'</b>':''):'<span class="pill p-gr">متاحة لباقة مؤسسة</span>'))+'</div>'; });
   var diff=(C.tiers.ent.m-C.tiers.pro.m);
   h+='<div class="card"><div class="h3" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">الإضافات <span class="mu">تُضاف إلى اشتراكك وتتجدد معه، ويمكنك إلغاؤها في أي وقت</span></div>'+ah
-   +(S.tier==='pro'&&totA>=diff*0.6?'<div class="note" style="margin-top:10px">💡 الترقية أوفر لك: بزيادة '+money(Math.max(0,diff-totA))+' ر.س شهرياً تنتقل إلى مؤسسة وتحصل على '+C.limits.ent.dlg+' مندوبين و'+C.limits.ent.tech+' فنياً و'+C.limits.ent.projects+' مشروعاً والخريطة اللايف.</div>':'')+'</div>';
+   +(S.tier==='pro'&&totA>=diff*0.6?'<div class="note" style="margin-top:10px">💡 الترقية أوفر لك: بزيادة '+money(Math.max(0,diff-totA))+' ر.س شهرياً تنتقل إلى مؤسسة وتحصل على '+nn(C.limits.ent.dlg,'مشرف أو مندوب واحد','مشرفين ومندوبين','مشرفاً ومندوباً')+' و'+nn(C.limits.ent.tech,'فني واحد','فنيين','فنياً')+' و'+nn(C.limits.ent.projects,'مشروع نشط واحد','مشاريع نشطة','مشروعاً نشطاً')+'، والخريطة اللايف.</div>':'')+'</div>';
  }
  return h;
 }
@@ -181,22 +186,23 @@ function side(){
  var h='';
  var inv=D.invoices||[];
  h+='<div class="card"><div class="h3">الفواتير</div>'+(inv.length?inv.map(function(x){ return '<a class="row" style="text-decoration:none;color:inherit" href="/invoice.html?no='+encodeURIComponent(x.no)+'"><div style="flex:1;min-width:0"><b style="font-size:13px;direction:ltr;display:block;text-align:right">'+esc(x.no)+'</b><span class="mu" style="font-size:11.5px">'+dt(x.at)+' · '+({new:'اشتراك',renew:'تجديد',upgrade:'ترقية',addon:'إضافة'}[x.kind]||'')+(x.coupon?' · '+esc(x.coupon):'')+'</span></div><b style="font-family:Cairo">'+money(x.amount)+' ر.س</b><span class="pill p-g">مدفوعة</span></a>'; }).join(''):'<div class="mu">لا توجد فواتير بعد</div>')+'</div>';
- var R=D.ref||{};
- h+='<div class="card" style="background:linear-gradient(180deg,#f0fdf4,#fff)"><div class="h3">🎁 ادعُ مزوداً واحصلا على شهر مجاني</div><div class="mu" style="line-height:1.8">عندما يشترك مزود عن طريق رابطك، يحصل كل منكما على '+(D.cfg.ref_months||1)+' شهر مجاني.</div>'
+ var R=D.ref||{}; if(IOSAPP) return h;
+ h+='<div class="card" style="background:linear-gradient(180deg,#f0fdf4,#fff)"><div class="h3">🎁 ادعُ مزوّداً وتحصلان معاً على '+mo(D.cfg.ref_months)+'</div><div class="mu" style="line-height:1.8">عندما يشترك مزوّد عن طريق رابطك، يحصل كل منكما على '+mo(D.cfg.ref_months)+'.</div>'
   +'<div style="display:flex;gap:8px;margin-top:10px"><b style="flex:1;direction:ltr;text-align:center;padding:11px;border-radius:12px;border:1.5px dashed #86efac;background:#fff;font-size:16px;letter-spacing:2px;color:#15803d">'+esc(R.code||'')+'</b><button type="button" class="btn pri" id="refc">نسخ الرابط</button></div>'
-  +'<div class="mu" style="margin-top:8px">دعوات مقبولة: <b>'+(R.rewarded||0)+'</b>'+(R.credit?' · رصيدك: '+R.credit+' شهر يُضاف عند اشتراكك':'')+'</div></div>';
+  +'<div class="mu" style="margin-top:8px">دعوات مقبولة: <b>'+(R.rewarded||0)+'</b>'+(R.credit?' · رصيدك: '+mo(R.credit).replace(/ مجاني(ة|ان|اً)?$/,'')+' تُضاف عند اشتراكك':'')+'</div></div>';
  return h;
 }
 function render(){
  var S=D.sub, live=S&&['active','trial','grace'].indexOf(S.status)>-1;
  var main='', sd=side();
- if(live){ main=manage(); if(S.status==='trial') main+=chooser(true); }
+ if(live){ main=manage(); if(S.status==='trial'&&!IOSAPP) main+=chooser(true); }
+ else if(IOSAPP){ main='<div class="card"><div class="h3">باقتك الحالية: المجانية</div><ul class="fl">'+feats('free')+'</ul></div>'; }
  else { main=(S&&S.status==='expired'&&S.tier!=='free'?'<div class="note">انتهى اشتراكك السابق، وحسابك الآن على الباقة المجانية. بياناتك وعملاؤك محفوظون، ويعود كل شيء فور الاشتراك.</div>':'')+chooser(false); }
- app.innerHTML='<div style="margin-bottom:16px"><div class="h1">الاشتراك والباقة</div><div class="mu">'+(live?'باقتك وإضافاتك وفواتيرك':'اختر الباقة المناسبة لعملك')+'</div></div><div class="grid"><div class="main">'+main+'</div><div class="side">'+sd+'</div></div>';
- if(!live||S.status==='trial') wireChooser();
+ app.innerHTML='<div style="margin-bottom:16px"><div class="h1">الاشتراك والباقة</div><div class="mu">'+(live?'باقتك وإضافاتك وفواتيرك':(IOSAPP?'باقتك الحالية وحدودها':'اختر الباقة المناسبة لعملك'))+'</div></div><div class="grid"><div class="main">'+main+'</div><div class="side">'+sd+'</div></div>';
+ if(!IOSAPP&&(!live||S.status==='trial')) wireChooser();
  var on=function(id,f){ var e=document.getElementById(id); if(e)e.onclick=f; };
  on('renb',function(){ sheet('تجديد الاشتراك','',{kind:'renew'}); });
- on('upb',function(){ sheet('الترقية إلى باقة مؤسسة','25 مشروعاً · 10 مندوبين · 50 فنياً · الخريطة اللايف · إضافاتك الحالية مشمولة',{kind:'upgrade'}); });
+ on('upb',function(){ sheet('الترقية إلى باقة مؤسسة','25 مشروعاً نشطاً · 10 مشرفين ومندوبين · 50 فنياً · الخريطة اللايف · إضافاتك الحالية مشمولة',{kind:'upgrade'}); });
  on('yrb',function(){ change('yearly',null,'سيتحول اشتراكك إلى سنوي من التجديد القادم، بخصم يعادل شهرين. متابعة؟'); });
  on('dnb',function(){ change('downgrade',null,'ستنتقل إلى باقة مساعد الفوز من التجديد القادم، وتبقى مزايا مؤسسة حتى نهاية الفترة. متابعة؟'); });
  on('udnb',function(){ change('undowngrade'); });
@@ -215,7 +221,7 @@ function load(){
  });
 }
 var rf=''; try{ rf=localStorage.getItem('mnq_ref')||''; }catch(e){}
-(rf?api('/api/subs/ref',{method:'POST',body:JSON.stringify({code:rf})}).then(function(r){ try{localStorage.removeItem('mnq_ref');}catch(e){} if(r.ok)toast('تم ربط رمز الدعوة ✓ — شهر مجاني عند أول اشتراك'); }).catch(function(){}):Promise.resolve()).then(load).catch(function(e){ if(e&&e.message!=='auth')app.innerHTML='<div class="card">تعذّر التحميل، يُرجى تحديث الصفحة</div>'; });
+(rf?api('/api/subs/ref',{method:'POST',body:JSON.stringify({code:rf})}).then(function(r){ try{localStorage.removeItem('mnq_ref');}catch(e){} if(r.ok)toast('تم ربط رمز الدعوة ✓ — تحصل على مكافأة الدعوة عند أول اشتراك'); }).catch(function(){}):Promise.resolve()).then(load).catch(function(e){ if(e&&e.message!=='auth')app.innerHTML='<div class="card">تعذّر التحميل، يُرجى تحديث الصفحة</div>'; });
 })();
 </script>
 </body>

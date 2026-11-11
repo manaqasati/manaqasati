@@ -8645,6 +8645,10 @@ const SUB_DEF = {
   },
   trial_days: 14, grace_days: 7, remind_days: 3, ref_months: 1
 };
+// العدد والمعدود في نصوص الاشتراكات
+const _arDays = n => { n = +n || 0; return n === 1 ? 'يوم واحد' : n === 2 ? 'يومان' : n <= 10 ? n + ' أيام' : n + ' يوماً'; };
+const _arDaysAcc = n => { n = +n || 0; return n === 1 ? 'يوماً واحداً' : n === 2 ? 'يومين' : n <= 10 ? n + ' أيام' : n + ' يوماً'; };
+const _arMonthsFree = n => { n = +n || 1; return n === 1 ? 'شهر مجاني' : n === 2 ? 'شهران مجانيان' : n <= 10 ? n + ' أشهر مجانية' : n + ' شهراً مجانياً'; };
 const SUB_TN = { free: 'المجانية', pro: 'مساعد الفوز', ent: 'مؤسسة' };
 let _subCfgC = null;
 async function _subCfg(){
@@ -8698,7 +8702,7 @@ async function _subQuote(uid, body){
   const lines = []; let amount = 0, coupon = null, discount = 0, tier, cycle, addons = null, msg = null;
   if (kind === 'new') {
     tier = body.tier === 'ent' ? 'ent' : 'pro'; cycle = body.cycle === 'y' ? 'y' : 'm';
-    if (live && s.status !== 'trial') return { error: 'عندك اشتراك فعّال — استخدم الترقية أو التجديد' };
+    if (live && s.status !== 'trial') return { error: 'لديك اشتراك فعّال، يُرجى استخدام الترقية أو التجديد' };
     const base = _subPrice(cfg, tier, cycle);
     lines.push({ t: 'باقة ' + cfg.tiers[tier].name + ' — ' + (cycle === 'y' ? 'سنوي' : 'شهري'), h: base });
     if (body.coupon) { const cc = await _couponCheck(body.coupon, uid, tier, cycle); if (!cc.ok) return { error: cc.message || 'رمز الخصم غير صحيح', coupon_error: true }; coupon = cc.c.code; discount = _couponOff(cc.c, base); lines.push({ t: 'خصم ' + coupon, h: -discount }); }
@@ -8717,7 +8721,7 @@ async function _subQuote(uid, body){
     const f = _subFrac(s); const days = Math.max(1, Math.round((new Date(s.period_end) - Date.now()) / 864e5));
     const diff = Math.round((_subPrice(cfg, 'ent', cycle) - _subPrice(cfg, 'pro', cycle)) * f);
     const credit = Math.round(_subAddonsH(cfg, s.addons, cycle) * f);
-    lines.push({ t: 'فرق الباقة عن ' + days + ' يوماً متبقية', h: diff });
+    lines.push({ t: 'فرق الباقة عن المدة المتبقية (' + _arDays(days) + ')', h: diff });
     if (credit) lines.push({ t: 'رصيد الإضافات غير المستخدم', h: -credit });
     amount = Math.max(0, diff - credit);
     msg = 'ابتداءً من ' + new Date(s.period_end).toISOString().slice(0, 10) + ' يُجدَّد الاشتراك بمبلغ ' + cfg.tiers.ent[cycle] + ' ر.س';
@@ -8729,7 +8733,7 @@ async function _subQuote(uid, body){
     tier = s.tier; cycle = s.cycle; addons = { [a]: q };
     const f = _subFrac(s); const days = Math.max(1, Math.round((new Date(s.period_end) - Date.now()) / 864e5));
     const full = _H(d.p) * q * (cycle === 'y' ? 12 : 1);
-    lines.push({ t: d.name + (q > 1 ? ' × ' + q : '') + ' — عن ' + days + ' يوماً متبقية', h: Math.round(full * f) });
+    lines.push({ t: d.name + (q > 1 ? ' × ' + q : '') + ' — عن المدة المتبقية (' + _arDays(days) + ')', h: Math.round(full * f) });
     amount = Math.max(100, Math.round(full * f));
     msg = 'ثم تُضاف ' + _SAR(_H(d.p) * q) + ' ر.س شهرياً إلى تجديدك';
   } else return { error: 'نوع غير معروف' };
@@ -8793,13 +8797,13 @@ async function _subFinalize(sp, pay){
     await _subApply(c, cur, pay);
     await c.query('COMMIT');
     const cfg = await _subCfg();
-    const K = { new: 'تم تفعيل اشتراكك ✅', renew: 'تم تجديد اشتراكك ✅', upgrade: 'تمت ترقية اشتراكك إلى مؤسسة ✅', addon: 'تمت إضافة الإضافة إلى اشتراكك ✅' };
+    const K = { new: 'تم تفعيل اشتراكك ✅', renew: 'تم تجديد اشتراكك ✅', upgrade: 'تمت ترقية اشتراكك إلى مؤسسة ✅', addon: 'تم تفعيل الإضافة في اشتراكك ✅' };
     const body = (cur.kind === 'addon' ? 'الإضافة مفعّلة الآن.' : 'باقة ' + (cfg.tiers[cur.tier] ? cfg.tiers[cur.tier].name : '') + ' فعّالة حتى ' + new Date(cur._end || Date.now()).toISOString().slice(0, 10) + '.') + (cur._note || '');
     _subLog(cur.user_id, 'paid_' + cur.kind, _SAR(cur.amount_h) + ' ر.س' + (cur._inv ? ' · ' + cur._inv : '') + (cur._note || ''));
     try { await notify(cur.user_id, K[cur.kind] || 'تم', body, 'sub'); } catch(e){}
     try { const u = (await pool.query('SELECT email, name FROM users WHERE id=$1', [cur.user_id])).rows[0];
       if (u && u.email && cur.amount_h > 0) sendEmail(u.email, (K[cur.kind] || 'تم') + ' — فاتورة ' + (cur._inv || ''), emailTpl(K[cur.kind] || 'تم', `<p>مرحباً${u.name ? ' ' + eEsc(u.name) : ''}،</p><p>${eEsc(body)}</p><p>المبلغ المدفوع: <b>${_SAR(cur.amount_h)} ر.س</b><br>رقم الفاتورة: <b dir="ltr">${eEsc(cur._inv || '')}</b></p>`, 'عرض الفاتورة', SITE_URL + '/invoice.html?no=' + encodeURIComponent(cur._inv || ''))).catch(()=>{}); } catch(e){}
-    if (cur._refReward) { try { await notify(cur._refReward, '🎁 ربحت شهراً مجانياً', 'اشترك مزوّد عن طريق رمز دعوتك — أُضيف شهر مجاني إلى اشتراكك.', 'sub'); } catch(e){} }
+    if (cur._refReward) { try { await notify(cur._refReward, '🎁 مكافأة الدعوة', 'اشترك مزوّد عن طريق رمز دعوتك، وأُضيف ' + _arMonthsFree((await _subCfg()).ref_months) + ' إلى اشتراكك.', 'sub'); } catch(e){} }
     _notifyAdmins('💳 اشتراك: ' + (K[cur.kind] || cur.kind).replace(' ✅', ''), _SAR(cur.amount_h) + ' ر.س', 'sub', cur.user_id).catch(()=>{});
     return { ok: true };
   } catch(e){ try { await c.query('ROLLBACK'); } catch(_){} throw e; } finally { c.release(); }
@@ -8821,7 +8825,7 @@ async function _subCheck(p, id){
 }
 // فتح الاشتراكات للمزوّدين: مقفلة افتراضياً لين تكتمل مزايا الباقات — وتقدر الإدارة تفتحها لمزوّدين معيّنين للتجربة
 async function _subOpen(uid){ try { if ((await getSetting('subs_open', '0')) === '1') return true; const t = String(await getSetting('subs_testers', '') || '').split(/[\s,،]+/).map(x => parseInt(x)).filter(Boolean); return t.includes(parseInt(uid)); } catch(e){ return false; } }
-app.get('/api/subs/open', auth, async (req, res) => { res.json({ open: req.user.role === 'provider' && await _subOpen(req.user.id) }); });
+app.get('/api/subs/open', auth, async (req, res) => { const pv = req.user.role === 'provider'; let live = false; try { if (pv) live = _subLive(await _plnRow(req.user.id)); } catch(e){} res.json({ open: pv && await _subOpen(req.user.id), live }); });
 // ── واجهات المزوّد ──
 const _subOwner = async (req, res, next) => { if (!req.user || req.user.role !== 'provider') return res.status(403).json({ message: 'الاشتراكات لحسابات المزوّدين' }); next(); };
 app.get('/api/subs/me', auth, _subOwner, async (req, res) => {
@@ -8837,7 +8841,7 @@ app.get('/api/subs/me', auth, _subOwner, async (req, res) => {
     res.json({ open: await _subOpen(req.user.id),
       cfg: { tiers: cfg.tiers, limits: cfg.limits, addons: cfg.addons, trial_days: cfg.trial_days, grace_days: cfg.grace_days, ref_months: cfg.ref_months },
       sub: s ? { tier: s.tier, cycle: s.cycle, status: live ? s.status : (s.status === 'cancelled' ? 'cancelled' : 'expired'), period_start: s.period_start, period_end: s.period_end, grace_until: s.grace_until, auto_renew: s.auto_renew, cancel_at_end: s.cancel_at_end, next_tier: s.next_tier, next_cycle: s.next_cycle, addons: s.addons || {}, next_addons: s.next_addons, card: s.card_last4 ? { brand: s.card_brand, last4: s.card_last4, saved: !!s.card_token } : null, pay_method: s.pay_method, renew_h: renewH } : null,
-      tier: L.tier, limits: L.limits, usage: { dlg: dlgN },
+      tier: L.tier, limits: L.limits, usage: { dlg: dlgN, projects: ((await pool.query("SELECT COUNT(*)::int n FROM jobs WHERE provider_id=$1 AND status NOT IN ('done','cancelled')", [req.user.id]).catch(() => ({ rows: [{ n: 0 }] }))).rows[0] || {}).n || 0, tech: ((await pool.query('SELECT COUNT(*)::int n FROM provider_techs WHERE provider_id=$1 AND COALESCE(active,TRUE)', [req.user.id]).catch(() => ({ rows: [{ n: 0 }] }))).rows[0] || {}).n || 0 },
       trial_ok: !(s && s.trial_used) && !(await _subEverPaid(req.user.id)),
       ref: { code: u.ref_code, link: SITE_URL + '/plan.html?ref=' + u.ref_code, rewarded: refN, credit: u.ref_credit || 0 },
       invoices: inv.map(x => ({ no: x.invoice_no, kind: x.kind, tier: x.tier, cycle: x.cycle, amount: _SAR(x.amount_h), coupon: x.coupon, at: x.paid_at })),
@@ -8860,7 +8864,7 @@ app.post('/api/subs/trial', auth, _subOwner, rateLimiter(5, 3600000), async (req
     await pool.query(`INSERT INTO subs (user_id, tier, cycle, status, period_start, period_end, trial_used, addons) VALUES ($1,'pro','m','trial',NOW(),$2,TRUE,'{}'::jsonb)
       ON CONFLICT (user_id) DO UPDATE SET tier='pro', cycle='m', status='trial', period_start=NOW(), period_end=$2, trial_used=TRUE, addons='{}'::jsonb, cancel_at_end=FALSE, updated_at=NOW()`, [req.user.id, end]);
     _subLog(req.user.id, 'trial', cfg.trial_days + ' يوم');
-    try { await notify(req.user.id, 'بدأت تجربتك المجانية ✅', 'باقة مساعد الفوز متاحة لك ' + cfg.trial_days + ' يوماً مجاناً، وتتوقف تلقائياً بنهايتها.', 'sub'); } catch(e){}
+    try { await notify(req.user.id, 'بدأت تجربتك المجانية ✅', 'باقة مساعد الفوز متاحة لك ' + _arDaysAcc(cfg.trial_days) + ' مجاناً، وتتوقف تلقائياً بنهايتها.', 'sub'); } catch(e){}
     res.json({ ok: true, until: end });
   } catch(e){ console.error('subs-trial:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -8978,7 +8982,7 @@ async function _subTick(){
     const gu = new Date(new Date(s.period_end).getTime() + cfg.grace_days * 864e5);
     await pool.query("UPDATE subs SET status='grace', grace_until=$2, grace_reminded=FALSE, updated_at=NOW() WHERE user_id=$1", [s.user_id, gu]);
     _subLog(s.user_id, 'grace', String(x.why || ''));
-    await _subMail(s.user_id, 'تعذّر تجديد الاشتراك', (s.card_token ? 'رُفضت عملية الخصم من البطاقة المحفوظة. ' : 'حان موعد تجديد اشتراكك. ') + 'تبقى جميع الميزات متاحة لمدة ' + cfg.grace_days + ' أيام، ويُرجى السداد قبل ' + fmtD(gu) + ' لتجنّب إيقاف الاشتراك.', 'تحديث وسيلة الدفع والسداد');
+    await _subMail(s.user_id, 'تعذّر تجديد الاشتراك', (s.card_token ? 'رُفضت عملية الخصم من البطاقة المحفوظة. ' : 'حان موعد تجديد اشتراكك. ') + 'تبقى جميع الميزات متاحة لمدة ' + _arDays(cfg.grace_days) + '، ويُرجى السداد قبل ' + fmtD(gu) + ' لتجنّب إيقاف الاشتراك.', 'تحديث وسيلة الدفع والسداد');
   }
   // تذكير قبل انتهاء المهلة بيومين + الإيقاف
   const g2 = (await pool.query(`SELECT * FROM subs WHERE status='grace' AND NOT grace_reminded AND grace_until > NOW() AND grace_until <= NOW() + interval '2 days'`)).rows;
