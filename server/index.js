@@ -4034,6 +4034,9 @@ async function setupDatabase() {
     try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS pay_method VARCHAR(10)'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS pay_ref VARCHAR(80)'); await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ok BOOLEAN DEFAULT FALSE');
       await _mig(`CREATE TABLE IF NOT EXISTS saai_payments (id SERIAL PRIMARY KEY, ref VARCHAR(40) UNIQUE NOT NULL, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, ledger_id INTEGER, request_id INTEGER, self_title TEXT, contract_value NUMERIC(14,2), amount INTEGER NOT NULL, reason VARCHAR(60), status VARCHAR(12) DEFAULT 'new', method VARCHAR(12), moyasar_id VARCHAR(80) UNIQUE, card_brand VARCHAR(20), card_last4 VARCHAR(8), err TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), paid_at TIMESTAMPTZ)`);
       await _mig('CREATE INDEX IF NOT EXISTS saai_payments_prov ON saai_payments(provider_id, created_at DESC)'); } catch(e){ console.error('pay mig:', e.message); }
+    // تصحيح: سعي اعتُمد بسداد إلكتروني ثم استُرجع/أُلغي من البوابة قبل تحديث الاسترجاع → يرجع «مستحق»
+    try { await _mig(`UPDATE saai_ledger l SET status='pending', submitted_at=NULL, approved_at=NULL, decided_at=NOW(), pay_method=NULL, pay_ref=NULL
+      FROM saai_payments p WHERE p.ledger_id=l.id AND l.status='approved' AND l.pay_ref=p.moyasar_id AND (p.err LIKE 'مسترجع%' OR p.err LIKE 'ملغي%')`); } catch(e){ console.error('refund fix:', e.message); }
     try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS source VARCHAR(10)'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS self_title TEXT'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS self_reason TEXT'); } catch(e){}
     try { await _mig("DELETE FROM saai_ledger WHERE provider_id IS NULL OR (request_id IS NULL AND self_title IS NULL)"); } catch(e){}
     // التحقق برمز من 6 أرقام (بديل الرابط لو ما اشتغل عند بعض تطبيقات البريد)
@@ -8592,10 +8595,12 @@ app.post('/api/pay/webhook', rateLimiter(120, 60000), async (req, res) => {
       if (p.ledger_id) {
         const row = (await pool.query('SELECT edits_log FROM saai_ledger WHERE id=$1', [p.ledger_id])).rows[0];
         const log = Array.isArray(row && row.edits_log) ? row.edits_log : [];
-        log.push({ by: 'gateway', at: new Date().toISOString(), note: type === 'payment_refunded' ? 'استُرجع المبلغ من بوابة الدفع' : 'أُلغيت العملية في بوابة الدفع' });
+        log.push({ by: 'gateway', at: new Date().toISOString(), note: (type === 'payment_refunded' ? 'استُرجع المبلغ من بوابة الدفع' : 'أُلغيت العملية في بوابة الدفع') + ' — رجع السعي «مستحق»' });
         await pool.query('UPDATE saai_ledger SET edits_log=$2::jsonb WHERE id=$1', [p.ledger_id, JSON.stringify(log.slice(-30))]);
+        // المبلغ رجع للمزوّد: السعي يرجع «مستحق» (بس لو هذي العملية هي اللي اعتمدته)
+        await pool.query("UPDATE saai_ledger SET status='pending', submitted_at=NULL, approved_at=NULL, decided_at=NOW(), pay_method=NULL, pay_ref=NULL WHERE id=$1 AND status='approved' AND pay_ref=$2", [p.ledger_id, String(d.id)]);
       }
-      _notifyAdmins('↩️ استرجاع سداد سعي', `${p.amount} ر.س على «${p.self_title || 'مشروع'}» — راجع حالة السعي`, 'saai', p.ledger_id).catch(()=>{});
+      _notifyAdmins('↩️ استرجاع سداد سعي', `${p.amount} ر.س على «${p.self_title || 'مشروع'}» — رجع السعي «مستحق» على المزوّد`, 'saai', p.ledger_id).catch(()=>{});
     }
   } catch(e){ console.error('pay-webhook:', e.message); if (!res.headersSent) res.status(500).json({ ok: false }); }
 });
