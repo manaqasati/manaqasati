@@ -8989,8 +8989,8 @@ async function _subTick(){
 setInterval(() => _jobLock('subs', _subTick), 60 * 60 * 1000);
 setTimeout(() => _jobLock('subs', _subTick), 90 * 1000);
 // ── الإدارة ──
-app.get('/api/admin/subs', requirePermission('settings.manage'), async (req, res) => {
-  try {
+async function _subsAdminData(){
+  {
     const cfg = await _subCfg();
     const rows = (await pool.query(`SELECT s.*, COALESCE(NULLIF(u.business_name,''),u.name) AS uname, u.city, u.phone, u.email,
         (SELECT coupon FROM sub_pay p WHERE p.user_id=s.user_id AND p.status='paid' ORDER BY paid_at DESC LIMIT 1) AS last_coupon,
@@ -9006,10 +9006,76 @@ app.get('/api/admin/subs', requirePermission('settings.manage'), async (req, res
       if (['cancelled', 'expired'].includes(s.status) && new Date(s.updated_at) >= m0) st.cancelled_m++; });
     const tr = (await pool.query(`SELECT COUNT(*)::int n, COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM sub_pay p WHERE p.user_id=s.user_id AND p.status='paid' AND p.amount_h>0))::int c FROM subs s WHERE trial_used`)).rows[0];
     const newM = (await pool.query(`SELECT COUNT(DISTINCT user_id)::int n FROM sub_pay WHERE status='paid' AND kind='new' AND paid_at >= $1`, [m0])).rows[0].n;
-    const revM = (await pool.query(`SELECT COALESCE(SUM(amount_h),0)::bigint h FROM sub_pay WHERE status='paid' AND paid_at >= $1`, [m0])).rows[0].h;
-    res.json({ items: rows.map(s => ({ user_id: s.user_id, name: s.uname, city: s.city, phone: s.phone, tier: s.tier, cycle: s.cycle, status: s.live ? s.status : (s.status === 'cancelled' ? 'cancelled' : 'expired'), period_end: s.period_end, grace_until: s.grace_until, addons: s.addons, cancel_at_end: s.cancel_at_end, card_last4: s.card_last4, auto: !!s.card_token && s.auto_renew, coupon: s.last_coupon, paid_n: s.paid_n, last_ref: s.last_ref, renew: _SAR(_subPrice(cfg, s.next_tier || s.tier, s.next_cycle || s.cycle) + _subAddonsH(cfg, s.next_addons || s.addons, s.next_cycle || s.cycle)), since: s.created_at })),
-      stats: { mrr: _SAR(mrr), pro: st.pro, pro_y: st.pro_y, ent: st.ent, ent_y: st.ent_y, trial: st.trial, grace: st.grace, cancelled_m: st.cancelled_m, trial_conv: tr.n ? Math.round(tr.c * 100 / tr.n) : 0, new_m: newM, revenue_m: _SAR(Number(revM)) } });
-  } catch(e){ console.error('admin-subs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+    const revM = (await pool.query(`SELECT COALESCE(SUM(amount_h),0)::bigint h FROM sub_pay WHERE status='paid' AND COALESCE(err,'') NOT LIKE 'مسترجع%' AND paid_at >= $1`, [m0])).rows[0].h;
+    return { items: rows.map(s => ({ user_id: s.user_id, name: s.uname, city: s.city, phone: s.phone, tier: s.tier, cycle: s.cycle, status: s.live ? s.status : (s.status === 'cancelled' ? 'cancelled' : 'expired'), period_end: s.period_end, grace_until: s.grace_until, addons: s.addons, cancel_at_end: s.cancel_at_end, card_last4: s.card_last4, auto: !!s.card_token && s.auto_renew, coupon: s.last_coupon, paid_n: s.paid_n, last_ref: s.last_ref, renew: _SAR(_subPrice(cfg, s.next_tier || s.tier, s.next_cycle || s.cycle) + _subAddonsH(cfg, s.next_addons || s.addons, s.next_cycle || s.cycle)), since: s.created_at })),
+      stats: { mrr: _SAR(mrr), pro: st.pro, pro_y: st.pro_y, ent: st.ent, ent_y: st.ent_y, trial: st.trial, grace: st.grace, cancelled_m: st.cancelled_m, trial_conv: tr.n ? Math.round(tr.c * 100 / tr.n) : 0, new_m: newM, revenue_m: _SAR(Number(revM)) } };
+  }
+}
+app.get('/api/admin/subs', requirePermission('settings.manage'), async (req, res) => {
+  try { res.json(await _subsAdminData()); } catch(e){ console.error('admin-subs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ الاشتراكات — نظرة عامة للإدارة: الأرقام + يحتاج قرارك + الدخل 6 أشهر + آخر العمليات ═══
+app.get('/api/admin/subs/overview', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const d = await _subsAdminData(), now = Date.now();
+    const live = d.items.filter(x => ['active', 'trial', 'grace'].includes(x.status));
+    const trialEnd3 = live.filter(x => x.status === 'trial' && new Date(x.period_end).getTime() - now < 3 * 864e5).length;
+    const q1 = async (sql, a) => (await pool.query(sql, a || [])).rows[0] || {};
+    const qr = await q1("SELECT COUNT(*)::int n, MIN(created_at) oldest FROM quote_requests WHERE status='review'");
+    const dl = await q1("SELECT COUNT(*)::int n FROM provider_delegates WHERE paused_by='limit'");
+    const fail = await q1("SELECT COUNT(*)::int n FROM sub_pay WHERE status='failed' AND created_at > NOW() - INTERVAL '14 days'");
+    const rev = (await pool.query(`SELECT to_char(date_trunc('month', paid_at AT TIME ZONE 'Asia/Riyadh'),'YYYY-MM') m, COALESCE(SUM(amount_h - COALESCE(refunded_h,0)),0)::bigint h
+      FROM sub_pay WHERE status='paid' AND COALESCE(err,'') NOT LIKE 'مسترجع%' AND paid_at > NOW() - INTERVAL '7 months' GROUP BY 1 ORDER BY 1`)).rows;
+    const months = []; const t = new Date(now + 3 * 3600e3);
+    for (let i = 5; i >= 0; i--) { const x = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() - i, 1)); const k = x.toISOString().slice(0, 7); const r = rev.find(z => z.m === k); months.push({ m: k, v: r ? _SAR(Number(r.h)) : 0 }); }
+    const recent = (await pool.query(`SELECT p.invoice_no, p.ref, p.kind, p.tier, p.cycle, p.amount_h, p.status, p.method, p.card_brand, p.card_last4, p.err, COALESCE(p.paid_at, p.created_at) at,
+        COALESCE(NULLIF(u.business_name,''),u.name) uname FROM sub_pay p JOIN users u ON u.id=p.user_id
+      WHERE p.status IN ('paid','failed') ORDER BY COALESCE(p.paid_at, p.created_at) DESC LIMIT 8`)).rows
+      .map(r => ({ inv: r.invoice_no, kind: r.kind, tier: r.tier, cycle: r.cycle, amount: _SAR(r.amount_h), status: r.status, refunded: /^مسترجع/.test(r.err || ''), method: r.method, card: r.card_last4 ? (r.card_brand || '') + ' ' + r.card_last4 : '', at: r.at, name: r.uname }));
+    res.json({ stats: d.stats, live: live.length, trial_end3: trialEnd3, qreq_review: qr.n || 0, qreq_oldest: qr.oldest || null, dlg_paused: dl.n || 0, failed14: fail.n || 0,
+      open: (await getSetting('subs_open', '0')) === '1', months, recent });
+  } catch(e){ console.error('subs-overview:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ الفواتير والمدفوعات: كل عمليات دفع الاشتراكات ═══
+app.get('/api/admin/sub-pay', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const f = String(req.query.f || 'all');
+    const w = f === 'paid' ? "p.status='paid' AND COALESCE(p.err,'') NOT LIKE 'مسترجع%'" : f === 'failed' ? "p.status='failed'" : f === 'refunded' ? "p.status='paid' AND p.err LIKE 'مسترجع%'" : "(p.status IN ('paid','failed') OR p.err IS NOT NULL)";
+    const rows = (await pool.query(`SELECT p.id, p.user_id, p.invoice_no, p.kind, p.tier, p.cycle, p.amount_h, p.discount_h, p.coupon, p.status, p.method, p.card_brand, p.card_last4, p.err, p.created_at, p.paid_at,
+        COALESCE(NULLIF(u.business_name,''),u.name) uname, u.phone FROM sub_pay p JOIN users u ON u.id=p.user_id WHERE ${w} ORDER BY COALESCE(p.paid_at, p.created_at) DESC LIMIT 300`)).rows;
+    const m0 = new Date(); m0.setUTCDate(1); m0.setUTCHours(0, 0, 0, 0);
+    const tot = (await pool.query(`SELECT COALESCE(SUM(amount_h) FILTER (WHERE status='paid' AND COALESCE(err,'') NOT LIKE 'مسترجع%'),0)::bigint paid, COUNT(*) FILTER (WHERE status='paid' AND COALESCE(err,'') NOT LIKE 'مسترجع%')::int paid_n,
+        COUNT(*) FILTER (WHERE status='failed')::int failed_n, COUNT(*) FILTER (WHERE status='paid' AND err LIKE 'مسترجع%')::int ref_n FROM sub_pay WHERE COALESCE(paid_at, created_at) >= $1`, [m0])).rows[0];
+    res.json({ items: rows.map(r => ({ id: r.id, user_id: r.user_id, inv: r.invoice_no, kind: r.kind, tier: r.tier, cycle: r.cycle, amount: _SAR(r.amount_h), discount: _SAR(r.discount_h || 0), coupon: r.coupon, status: r.status === 'paid' && /^مسترجع/.test(r.err || '') ? 'refunded' : r.status,
+        method: r.method, card: r.card_last4 ? (r.card_brand || '') + ' ' + r.card_last4 : '', err: r.status === 'failed' ? String(r.err || '').slice(0, 120) : '', at: r.paid_at || r.created_at, name: r.uname, phone: r.phone })),
+      month: { paid: _SAR(Number(tot.paid)), paid_n: tot.paid_n, failed_n: tot.failed_n, ref_n: tot.ref_n } });
+  } catch(e){ console.error('sub-pay:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ═══ الاستخدام والمزايا: وش يستخدم المشتركين من الباقة ═══
+app.get('/api/admin/subs/usage', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const d = await _subsAdminData();
+    const live = d.items.filter(x => ['active', 'trial', 'grace'].includes(x.status)); const ids = live.map(x => x.user_id);
+    const per = {}; ids.forEach(i => per[i] = { quotes: 0, quotes_ok: 0, jobs_open: 0, jobs_done: 0, techs: 0, customers: 0, plans: 0, stickers: 0, dlgs: 0, qreqs: 0 });
+    const add = (rows, k) => rows.forEach(r => { if (per[r.id]) per[r.id][k] = r.n; });
+    if (ids.length) {
+      const Q = async (sql, k) => add((await pool.query(sql, [ids])).rows, k);
+      await Q("SELECT provider_id id, COUNT(*)::int n FROM quotes WHERE provider_id=ANY($1) AND sent_at > NOW() - INTERVAL '30 days' GROUP BY 1", 'quotes');
+      await Q("SELECT provider_id id, COUNT(*)::int n FROM quotes WHERE provider_id=ANY($1) AND status='accepted' AND decided_at > NOW() - INTERVAL '30 days' GROUP BY 1", 'quotes_ok');
+      await Q("SELECT provider_id id, COUNT(*)::int n FROM jobs WHERE provider_id=ANY($1) AND status NOT IN ('done','cancelled') GROUP BY 1", 'jobs_open');
+      await Q("SELECT provider_id id, COUNT(*)::int n FROM jobs WHERE provider_id=ANY($1) AND status='done' AND COALESCE(confirmed_at, updated_at) > NOW() - INTERVAL '30 days' GROUP BY 1", 'jobs_done');
+      await Q("SELECT provider_id id, COUNT(*)::int n FROM provider_techs WHERE provider_id=ANY($1) AND COALESCE(active,TRUE) GROUP BY 1", 'techs');
+      await Q("SELECT provider_id id, COUNT(*)::int n FROM provider_customers WHERE provider_id=ANY($1) GROUP BY 1", 'customers');
+      await Q("SELECT provider_id id, COUNT(*)::int n FROM maint_plans WHERE provider_id=ANY($1) AND status='active' GROUP BY 1", 'plans');
+      await Q("SELECT provider_id id, COUNT(*)::int n FROM customer_devices WHERE provider_id=ANY($1) AND qr_token IS NOT NULL GROUP BY 1", 'stickers');
+      await Q("SELECT owner_id id, COUNT(*)::int n FROM provider_delegates WHERE owner_id=ANY($1) AND status='active' GROUP BY 1", 'dlgs');
+      await Q("SELECT provider_id id, COUNT(*)::int n FROM quote_requests WHERE provider_id=ANY($1) AND created_at > NOW() - INTERVAL '30 days' GROUP BY 1", 'qreqs');
+    }
+    const T = {}; Object.keys(per[ids[0]] || { quotes: 0, quotes_ok: 0, jobs_open: 0, jobs_done: 0, techs: 0, customers: 0, plans: 0, stickers: 0, dlgs: 0, qreqs: 0 }).forEach(k => T[k] = ids.reduce((a, i) => a + per[i][k], 0));
+    const items = live.map(x => { const u = per[x.user_id]; const score = u.quotes + u.jobs_open + u.jobs_done + u.customers + u.plans; return Object.assign({ user_id: x.user_id, name: x.name, tier: x.tier, status: x.status, idle: score === 0 }, u); })
+      .sort((a, b) => (a.idle - b.idle) || (b.quotes + b.jobs_done - a.quotes - a.jobs_done));
+    res.json({ totals: T, n: live.length, idle: items.filter(x => x.idle).length, items });
+  } catch(e){ console.error('subs-usage:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/admin/subs/:uid/log', requirePermission('settings.manage'), async (req, res) => {
   try { const uid = parseInt(req.params.uid);
