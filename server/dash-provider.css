@@ -442,7 +442,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .fmt-text .fx-n{display:flex;gap:8px;margin:3px 0}
 .fmt-text .fx-num{font-weight:900;opacity:.7;flex-shrink:0}
 
-/* ═══ حسابي 2026 ═══ */
+/* ═══ إعدادات الحساب 2026 ═══ */
 .pf-hero{background:#1e3a8a;border-radius:22px;padding:20px;color:#fff;margin-bottom:12px;display:flex;flex-direction:column;gap:16px;box-shadow:0 10px 26px rgba(30,58,138,.18)}
 .pf-top{display:flex;align-items:center;gap:15px}
 .pf-avw{position:relative;flex-shrink:0}
@@ -608,7 +608,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 [data-theme="dark"] .sd-box,[data-theme="dark"] .sd-opt,[data-theme="dark"] .sd-ch,[data-theme="dark"] #sd-note{background:#111827;color:#e5e7eb;border-color:rgba(148,163,184,.25)}
 [data-theme="dark"] .sd-t,[data-theme="dark"] .sd-opt b{color:#e5e7eb}[data-theme="dark"] .sd-opt.on{background:rgba(59,130,246,.15)}[data-theme="dark"] .sd-info{background:rgba(148,163,184,.08);color:#cbd5e1;border-color:rgba(148,163,184,.2)}
 
-/* ===== زر «صفحتي» ===== */
+/* ===== زر «الصفحة التعريفية» ===== */
 .my-page-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#fcd34d,#f59e0b);color:#422006;text-decoration:none;font-family:'Tajawal',sans-serif;font-size:12.5px;font-weight:900;padding:7px 12px;border-radius:999px;box-shadow:0 4px 14px -4px rgba(245,158,11,.7),inset 0 1px 0 rgba(255,255,255,.45);white-space:nowrap;transition:transform .15s,box-shadow .15s;line-height:1}
 .my-page-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px -4px rgba(245,158,11,.8),inset 0 1px 0 rgba(255,255,255,.45);color:#422006}
 .mob-right .my-page-btn{padding:7px 10px;font-size:12px}
@@ -632,7 +632,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 }
 .vb-st{margin-top:8px;font-size:12.5px;font-weight:700;line-height:1.7}.vb-st a{font-weight:900;text-decoration:underline}.vb-warn{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:10px;padding:7px 10px}.vb-ok{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;border-radius:10px;padding:7px 10px}.vb-tip{color:#64748b}
 
-/* ═══ تصميم موحّد (النموذج 1): بطاقات المشاريع + عروضي + الرئيسية ═══ */
+/* ═══ تصميم موحّد (النموذج 1): بطاقات المشاريع + العروض المقدّمة + الرئيسية ═══ */
 .rp-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
 .rp-tabs::-webkit-scrollbar{display:none}
 .rp-tb{flex-shrink:0;border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:999px;padding:8px 13px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px;min-height:38px;cursor:pointer}
@@ -650,7 +650,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .rp-bt.red{background:#dc2626;color:#fff}.rp-bt.wa{background:#16a34a;color:#fff}.rp-bt.ghost{background:var(--white);border:1.5px solid var(--border);color:var(--p)}
 .rp-lk{border:0;background:none;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;color:var(--muted);cursor:pointer;padding:6px 2px;min-height:34px;text-decoration:none;display:inline-flex;align-items:center}
 .rp-lk.pri{color:var(--p)}
-/* عروضي */
+/* العروض المقدّمة */
 .wk-tip{display:flex;align-items:center;gap:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:10px 12px;font-size:12.5px;font-weight:800;color:#9a3412;margin-bottom:12px;cursor:pointer}
 .wk-tip span{flex:1;line-height:1.6}.wk-tip b{white-space:nowrap;color:#c2410c}
 .wk-cd{background:var(--white);border:1px solid var(--border);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-bottom:12px}

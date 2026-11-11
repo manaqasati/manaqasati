@@ -3,7 +3,7 @@
   var W = window, D = document;
   var LBL = { bids: ['العروض', 'تصفّح المشاريع وتقديم عروض وتعديلها'], chat: ['المحادثات', 'الرد على العملاء'], awarded: ['المشاريع المرسّاة', 'متابعة التنفيذ وتأكيد الإنجاز'],
     profile: ['الملف الشخصي', 'النبذة والتخصصات والصور'], proofs: ['وثّق أعمالك', 'رفع مشاريع وطلب تقييمها'], sub: ['مقاول باطن', 'طلب مقاولين ومتابعتهم'],
-    quotes: ['طلبات التسعيرة وعروض الأسعار', 'الرد على طلبات صفحتك وإرسال عروض الأسعار'], jobs: ['مشاريع العملاء والفريق', 'المواعيد والفنيين والتسليم'], customers: ['دفتر العملاء وخطط الصيانة', 'ملفات العملاء والأجهزة والخطط'], stats: ['الأرقام والتقارير', 'لوحة «أرقامي» والتقرير الشهري'] };
+    quotes: ['طلبات التسعيرة وعروض الأسعار', 'الرد على طلبات صفحتك وإرسال عروض الأسعار'], jobs: ['مشاريع العملاء والفريق', 'المواعيد والفنيين والتسليم'], customers: ['دفتر العملاء وخطط الصيانة', 'ملفات العملاء والأجهزة والخطط'], stats: ['الأرقام والتقارير', 'لوحة «الأرقام والتقارير» والتقرير الشهري'] };
   var ORDER0 = ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub'], ORDER = ORDER0;
   var ROLES = { sales: ['مندوب مبيعات', ['bids', 'chat', 'quotes']], super: ['مشرف مشاريع', ['awarded', 'jobs', 'customers', 'chat']], manager: ['مدير الحساب', ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers', 'stats']], custom: ['مخصّص', null] };
   var LOCKED = ['حذف الحساب', 'تغيير الجوال والإيميل', 'كلمة السر', 'السعي والمدفوعات', 'إضافة مفوّض'];
@@ -110,7 +110,7 @@
       if (!r || !r.ok) { busy('dl-pause', 0); return toast((r && r.message) || 'تعذّر — حاول مرة ثانية', 'error'); }
       S.d = r.delegate; render(); toast(p ? '⏸ أوقفته مؤقتاً' : '▶ رجّع يشتغل', 'success'); });
   }
-  // ─── «حسابي» للمفوّض ───
+  // ─── «إعدادات الحساب» للمفوّض ───
   function loadMe(){
     var pg = D.getElementById('page-dlgme'); if (!pg) return; css();
     if (!S.me) { pg.innerHTML = '<div class="dl-c" style="text-align:center">هذي الصفحة للمفوّض فقط</div>'; return; }
@@ -189,7 +189,7 @@
     var pg = D.getElementById('page-dlg'); if (!pg) return; css(); var r = S.L, full = r.used >= r.limit;
     var h = '<div class="dl-w"><div class="dl-c dl-in"><div class="dl-h">👥 المفوّضين — فريقك يشتغل معك</div><div class="dl-s">كل واحد يدخل بإيميله وكلمة سرّه هو، ويشتغل باسم مؤسستك حسب دوره وصلاحياته. ' + r.used + ' من ' + r.limit + ' في باقتك.</div></div>';
     h += r.items.length ? '<div class="dl-c" id="dl-list">' + r.items.map(function(d){ return '<div class="dl-pr dl-it" data-id="' + d.id + '"><div style="display:flex;gap:10px;align-items:center;min-width:0"><span class="dl-av" style="width:38px;height:38px;font-size:15px">' + esc(String(d.name || 'م').charAt(0)) + '</span><div style="min-width:0"><b>' + esc(d.name) + ' — ' + esc(d.role_name) + '</b><small>' + d.perms.map(function(k){ return LBL[k] ? LBL[k][0] : k; }).join(' · ') + '</small></div></div>' + stTag(d) + '</div>'; }).join('') + '</div>' : '';
-    h += full ? '<div class="dl-c" style="background:#fffcf5;border-color:#fde68a"><div class="dl-h" style="font-size:14px;color:#b54708">وصلت حد باقتك (' + r.limit + ')</div><div class="dl-s">أضف مفوّض بـ 19 ر.س شهرياً من <a href="/plan.html" style="color:#1e3a8a">اشتراكي</a></div></div>' : '<button type="button" class="dl-b dl-bp" id="dl-new">+ مفوّض جديد</button>';
+    h += full ? '<div class="dl-c" style="background:#fffcf5;border-color:#fde68a"><div class="dl-h" style="font-size:14px;color:#b54708">وصلت حد باقتك (' + r.limit + ')</div><div class="dl-s">أضف مفوّض بـ 19 ر.س شهرياً من <a href="/plan.html" style="color:#1e3a8a">الاشتراك والباقة</a></div></div>' : '<button type="button" class="dl-b dl-bp" id="dl-new">+ مفوّض جديد</button>';
     h += '<div class="dl-c"><div class="dl-h" style="font-size:14px">نشاط المفوّضين</div><div id="dl-log"><div class="dl-s">جاري التحميل...</div></div></div>' + locked() + '</div>';
     pg.innerHTML = h;
     pg.querySelectorAll('.dl-it').forEach(function(e){ e.addEventListener('click', function(){ var id = +e.getAttribute('data-id'); S.d = S.L.items.find(function(x){ return x.id === id; }); M.edit(); }); });

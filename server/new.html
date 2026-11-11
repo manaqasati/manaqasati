@@ -241,7 +241,7 @@ textarea.inp{min-height:140px;resize:vertical;line-height:1.8}
       </div>
       <div id="pledge-4"></div>
       <div class="msg" id="msg-4"></div>
-      <button type="button" class="bp" id="btn-pub">انشر مشروعي الآن</button>
+      <button type="button" class="bp" id="btn-pub">انشر المشروع الآن</button>
       <button type="button" class="lnk" id="btn-login">عندي حساب — تسجيل الدخول</button>
     </div>
   </section>
@@ -642,7 +642,7 @@ var _busy=false;
 function setBusy(b){
   _busy=b;
   var p=$('btn-pub'), n=$('btn-next');
-  if(p){ p.disabled=b; p.textContent=b?'جاري النشر...':'انشر مشروعي الآن'; }
+  if(p){ p.disabled=b; p.textContent=b?'جاري النشر...':'انشر المشروع الآن'; }
   if(n&&CUR===3){ n.disabled=b; n.textContent=b?'جاري النشر...':nextLabel(); }
 }
 function submitAll(){
@@ -694,7 +694,7 @@ function _dupAsk(d,cb){
     +'<div style="font-size:34px;text-align:center">📂</div>'
     +'<div class="dupask-h">عندك مشروع مشابه '+(open?'مفتوح':'تحت المراجعة')+'</div>'
     +'<div class="dupask-p">«'+String(d.title||'').replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];})+'»<br>نشرته '+ago+(nb?' وفيه <b style="color:#16a34a">'+nb+' '+(nb>10?'عرض':(nb>2?'عروض':(nb===2?'عرضين':'عرض')))+'</b> ينتظرونك':'')+'</div>'
-    +'<button type="button" class="dupask-b g" data-c="view">'+(nb?'شوف العروض':'افتح مشروعي')+'</button>'
+    +'<button type="button" class="dupask-b g" data-c="view">'+(nb?'شوف العروض':'افتح المشروع')+'</button>'
     +(d.can_update?'<button type="button" class="dupask-b o" data-c="update">حدّث المشروع القديم بالتفاصيل الجديدة</button>':'')
     +'<button type="button" class="dupask-l" data-c="new">لا، هذا مشروع ثاني مختلف</button></div>';
   if(!document.getElementById('dupask-css')){ var st=document.createElement('style'); st.id='dupask-css';

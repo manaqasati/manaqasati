@@ -1175,8 +1175,8 @@ function supLinkSheet(){
   var L=sup.links||{}, s=document.getElementById('sheet'), cur=sup.thread||{};
   var row=function(k,x,ic){ var on=cur.link_kind===k&&String(cur.link_id)===String(x.id); return '<button class="sheet-btn" onclick="supLink(\''+k+'\','+x.id+')"><span style="font-size:17px">'+ic+'</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(String(x.title||'').slice(0,50))+'</span>'+(on?'<span style="color:var(--green);font-weight:900;font-size:12px">مربوطة ✓</span>':'')+'</button>'; };
   var h='<div class="sheet-card" style="max-height:80vh;overflow-y:auto"><div class="sheet-grip"></div><div class="sup-sh-t">اربط المحادثة بـ</div>';
-  if((L.req||[]).length)h+='<div class="sup-sh-h">مشاريعي</div>'+L.req.map(function(x){return row('req',x,'📁');}).join('');
-  if((L.bid||[]).length)h+='<div class="sup-sh-h">عروضي</div>'+L.bid.map(function(x){return row('bid',x,'💼');}).join('');
+  if((L.req||[]).length)h+='<div class="sup-sh-h">المشاريع</div>'+L.req.map(function(x){return row('req',x,'📁');}).join('');
+  if((L.bid||[]).length)h+='<div class="sup-sh-h">العروض المقدّمة</div>'+L.bid.map(function(x){return row('bid',x,'💼');}).join('');
   if((L.sub||[]).length)h+='<div class="sup-sh-h">طلبات «مقاول باطن»</div>'+L.sub.map(function(x){return row('sub',x,'🤝');}).join('');
   s.innerHTML=h+'<button class="sheet-btn cancel" onclick="closeSheet()">إلغاء</button></div>'; s.classList.add('on');
 }

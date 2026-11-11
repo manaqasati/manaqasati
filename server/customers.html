@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#172554">
-<title>عملائي — مناقصة</title>
+<title>دفتر العملاء — مناقصة</title>
 <link rel="icon" href="/favicon.ico">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
 <style>
@@ -63,7 +63,7 @@ button,input,textarea,select{font-family:inherit}
 </style>
 </head>
 <body>
-<div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحتي</a></div>
+<div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحة التحكم</a></div>
 <div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -81,7 +81,7 @@ function wa(ph){ ph=String(ph||'').replace(/\D/g,''); if(ph.indexOf('05')===0)ph
 function setUrl(q){ try{ history.replaceState(null,'',q?'?'+q:location.pathname); }catch(e){} }
 var COL=['#1e3a8a','#0e9384','#6941c6','#c4320a','#475467'];
 function av(n,i,sz){ sz=sz||38; return '<span style="width:'+sz+'px;height:'+sz+'px;border-radius:'+Math.round(sz/3.2)+'px;background:'+COL[i%5]+';color:#fff;font-weight:900;font-size:'+Math.round(sz/2.4)+'px;display:flex;align-items:center;justify-content:center;flex:none">'+esc((n||'ع')[0])+'</span>'; }
-function ro(){ return S.live?'':'<div class="card" style="background:#fffaeb;border-color:#fde68a;padding:12px 16px"><b style="color:#b54708">دفترك محفوظ — للعرض فقط</b><div class="mu" style="margin-top:3px">الإضافة والتعديل مع الاشتراك. <a href="/plan.html" style="color:#1e3a8a">اشتراكي</a></div></div>'; }
+function ro(){ return S.live?'':'<div class="card" style="background:#fffaeb;border-color:#fde68a;padding:12px 16px"><b style="color:#b54708">دفترك محفوظ — للعرض فقط</b><div class="mu" style="margin-top:3px">الإضافة والتعديل مع الاشتراك. <a href="/plan.html" style="color:#1e3a8a">الاشتراك والباقة</a></div></div>'; }
 // ───── القائمة ─────
 function list(){
   setUrl(''); S.c=null;
@@ -89,7 +89,7 @@ function list(){
   api('/api/customers'+qs).then(function(r){ S.items=r.items||[]; S.live=!!r.live; S.total=r.total||0; draw(); }).catch(function(e){ if(e) A.innerHTML='<div class="card empty"><b>'+esc(e.message)+'</b></div>'; });
 }
 function draw(){
-  var h='<div class="row sb"><div class="h1">عملائي <span class="mu">('+S.total+')</span></div>'+(S.live?'<button class="btn pri" onclick="_cAdd()">+ عميل</button>':'')+'</div>'+ro();
+  var h='<div class="row sb"><div class="h1">دفتر العملاء <span class="mu">('+S.total+')</span></div>'+(S.live?'<button class="btn pri" onclick="_cAdd()">+ عميل</button>':'')+'</div>'+ro();
   h+='<input id="cq" type="search" maxlength="40" placeholder="🔍 بحث بالاسم أو الجوال" value="'+esc(S.q)+'" style="width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:11px 13px;font-size:15px;font-family:inherit;background:#fff">';
   h+='<div class="tabs">'+[['','الكل'],['repeat','متكررين'],['open','عندهم مشروع مفتوح'],['idle','ما تعاملوا من 6 شهور']].map(function(t){ return '<button class="'+(S.f===t[0]?'on':'')+'" onclick="_cF(\''+t[0]+'\')">'+t[1]+'</button>'; }).join('')+'</div>';
   if(!S.items.length) h+='<div class="card empty"><div style="font-size:38px">👥</div><b style="display:block;margin-top:6px">'+(S.total?'ما فيه نتائج':'دفترك فاضي')+'</b><div class="mu" style="margin-top:6px">كل عميل ترسل له عرض سعر أو تسوي له مشروع ينضاف تلقائياً.</div></div>';
@@ -108,7 +108,7 @@ window._cOpen=function(id){ setUrl('id='+id); api('/api/customers/'+id).then(fun
 var QST={sent:['بانتظار العميل','p-b'],change:['طلب تعديل','p-y'],accepted:['وافق','p-g'],declined:['اعتذر','p-r'],expired:['انتهى','p-gr']};
 function prof(){
   var R=S.c, c=R.customer, st=R.stats;
-  var h='<div class="row" style="gap:8px"><button class="btn sec" style="padding:7px 11px" onclick="_cBack()">‹ عملائي</button></div>'+ro();
+  var h='<div class="row" style="gap:8px"><button class="btn sec" style="padding:7px 11px" onclick="_cBack()">‹ دفتر العملاء</button></div>'+ro();
   h+='<div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">'+av(c.name,c.id,60)+'<div style="flex:1;min-width:180px"><div class="h1">'+esc(c.name)+'</div><div class="mu" style="margin-top:3px"><span dir="ltr">'+esc(c.phone)+'</span>'+(c.email?' · <a href="mailto:'+esc(c.email)+'" dir="ltr" style="color:#1e3a8a">'+esc(c.email)+'</a>':'')+(c.address?' · '+esc(c.address):'')+' · عميل من '+d(c.created_at)+'</div><div class="row" style="gap:6px;margin-top:6px">'+(st.jobs_n>=2?'<span class="pill p-g">عميل متكرر</span>':'')+(c.client_id?'<span class="pill p-b">له حساب في مناقصة</span>':'')+'</div></div><div class="row"><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+wa(c.phone)+'">واتساب</a><a class="btn sec" href="tel:'+esc(c.phone)+'">اتصال</a>'+(S.live?'<a class="btn pri" href="/quotes.html?new=1&n='+encodeURIComponent(c.name)+'&p='+encodeURIComponent(c.phone)+'">+ عرض سعر</a>':'')+'</div></div>';
   h+='<div class="kp">'+[['إجمالي التعامل',m(st.total),'ر.س (مشاريع مكتملة)'],['المشاريع',st.jobs_n,st.done_n+' مكتملة'+(st.open_n?' · '+st.open_n+' مفتوحة':'')],['عروض الأسعار',st.quotes_n,st.quotes_ok+' موافقة'],['تقييمه لك',st.rating?st.rating+' ★':'—',st.rating_n?'من '+st.rating_n+' تقييم':'ما قيّم للحين']].map(function(k){ return '<div class="card k"><span class="mu">'+k[0]+'</span><div class="v">'+k[1]+'</div><span class="mu">'+k[2]+'</span></div>'; }).join('')+'</div>';
   h+='<div class="ed"><div class="main">';

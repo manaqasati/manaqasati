@@ -339,7 +339,7 @@ function applyAvatar(img){
 // ═══════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════
-var _pageTitles={home:'الرئيسية',requests:'مشاريعي',new:'مشروع جديد',notifs:'الإشعارات',detail:'تفاصيل المشروع',profile:'حسابي',chat:'المحادثات'};
+var _pageTitles={home:'الرئيسية',requests:'المشاريع',new:'مشروع جديد',notifs:'الإشعارات',detail:'تفاصيل المشروع',profile:'إعدادات الحساب',chat:'المحادثات'};
 var curRequestId=null;
 function show(pg,el,key){
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
@@ -748,7 +748,7 @@ function _clPriv(){
     Q.filter(function(q){return q.status==='sent';}).slice(0,3).forEach(function(q){ R.push(row('📄',(q.reaccept?'عدّل السعر: ':'عرض سعر: ')+e(q.title),e(q.provider_name),'/quote.html?id='+(parseInt(q.id)||0),'افتح')); });
     J.filter(function(j){return ['new','scheduled','active','delivered'].indexOf(j.status)>=0;}).slice(0,3).forEach(function(j){ R.push(row('🧰',e(j.title),e(j.provider_name)+' · '+e(j.status_t),'/job.html?id='+(parseInt(j.id)||0),j.status==='delivered'?'أكّد الاستلام':'تابع')); });
     PL.filter(function(p){return p.status==='offered';}).forEach(function(p){ R.push(row('🛠','خطة صيانة: '+e(p.title),e(p.provider_name)+' · بانتظار موافقتك','/mplan.html?id='+(parseInt(p.id)||0),'افتح')); });
-    if(T.tech&&(T.items||[]).length) R.push(row('👷','مهامي كفني ('+T.items.length+')','مهام من المؤسسة اللي أضافتك','/tech.html','افتح'));
+    if(T.tech&&(T.items||[]).length) R.push(row('👷','مهام الفني ('+T.items.length+')','مهام من المؤسسة اللي أضافتك','/tech.html','افتح'));
     box.innerHTML=R.length?'<div style="background:#fff;border:1px solid #e1e9f6;border-radius:18px;padding:4px 16px;margin:0 0 14px;box-shadow:0 2px 10px rgba(30,58,138,.05)">'+R.join('')+'</div>':'';
   }).catch(function(){});
 }
@@ -832,7 +832,7 @@ function _paintHome(all){
   if(cta){
     var tgt=(unseen[0]||withBids[0]);
     if(tgt){cta.textContent='شاهد العروض';cta.onclick=function(e){_markOffersSeen(window._allMyReqs||[]);openDetail(tgt.id,e);};}
-    else{cta.textContent='مشاريعي';cta.onclick=function(){show('requests',null,'requests');};}
+    else{cta.textContent='المشاريع';cta.onclick=function(){show('requests',null,'requests');};}
   }
   var _homeList=all.filter(_cnActive).concat(all.filter(function(r){return !_cnActive(r);}));
   if(el)el.innerHTML=all.length?_homeList.slice(0,3).map(_hhCard).join(''):emptyReqsH(); var _hs=document.querySelector('.hh-sec .ch-link'); if(_hs)_hs.textContent=all.length>3?'عرض الكل ('+all.length+')':'عرض الكل';
@@ -950,7 +950,7 @@ function renderBestOffer(all){
 // ═══════════════════════════════════
 // LOAD REQUESTS
 // ═══════════════════════════════════
-// ═══ صفحة «مشاريعي»: تبويبات + بطاقة بمراحل والخطوة الجاية ═══
+// ═══ صفحة «المشاريع»: تبويبات + بطاقة بمراحل والخطوة الجاية ═══
 var _rpTab='all', _rpAll=[];
 var _RP_PLAN=['بناء','تشطيبات ومقاولات عامة','تصاميم داخلي وخارجي','مكاتب هندسية','ترميم مبانٍ'];
 function _rpGrp(s){
@@ -2087,7 +2087,7 @@ function _dupAsk(d,cb){
     +'<div style="font-size:34px;text-align:center">📂</div>'
     +'<div class="dupask-h">عندك مشروع مشابه '+(open?'مفتوح':'تحت المراجعة')+'</div>'
     +'<div class="dupask-p">«'+String(d.title||'').replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];})+'»<br>نشرته '+ago+(nb?' وفيه <b style="color:#16a34a">'+nb+' '+(nb>10?'عرض':(nb>2?'عروض':(nb===2?'عرضين':'عرض')))+'</b> ينتظرونك':'')+'</div>'
-    +'<button type="button" class="dupask-b g" data-c="view">'+(nb?'شوف العروض':'افتح مشروعي')+'</button>'
+    +'<button type="button" class="dupask-b g" data-c="view">'+(nb?'شوف العروض':'افتح المشروع')+'</button>'
     +(d.can_update?'<button type="button" class="dupask-b o" data-c="update">حدّث المشروع القديم بالتفاصيل الجديدة</button>':'')
     +'<button type="button" class="dupask-l" data-c="new">لا، هذا مشروع ثاني مختلف</button></div>';
   if(!document.getElementById('dupask-css')){ var st=document.createElement('style'); st.id='dupask-css';
@@ -3093,7 +3093,7 @@ function _phTopPaint(){
   if(_phHint){
     h+='<div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:11px">'
       +'<div><b style="font-size:15.5px;display:block;margin-bottom:4px">أنت مزوّد خدمة؟</b><span style="font-size:13px;font-weight:700;color:#7c2d12;line-height:1.85">حسابك مسجّل كـ «عميل». لو تبي تستقبل مشاريع وتقدّم عروض، حوّله لمزوّد بدقيقة — بنفس الإيميل وكلمة المرور.</span></div>'
-      +'<button onclick="openBecomeProv()" style="border:0;background:#c2410c;color:#fff;border-radius:13px;padding:12px;font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer">نعم، حوّل حسابي لمزوّد</button>'
+      +'<button onclick="openBecomeProv()" style="border:0;background:#c2410c;color:#fff;border-radius:13px;padding:12px;font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer">نعم، حوّل الحساب إلى مزوّد</button>'
       +'<button onclick="_provHintNo()" style="border:0;background:none;font-family:inherit;font-size:13px;font-weight:800;color:#9a3412;cursor:pointer">لا، أنا أطلب خدمات</button></div>';
   }
   el.innerHTML=h; el.style.marginBottom=h?'12px':'0';
@@ -3159,7 +3159,7 @@ function _closePickBid(reqId, stepEl, token, done){
   }).catch(function(){ box.innerHTML='<div style="font-size:13px;color:#b91c1c;padding:10px">تعذّر تحميل العروض</div>'; });
 }
 
-// ═══ حسابي: أرقام البطاقة + فتح/إغلاق الأقسام + حالة الإشعارات ═══
+// ═══ إعدادات الحساب: أرقام البطاقة + فتح/إغلاق الأقسام + حالة الإشعارات ═══
 function _prTog(id){ var e=document.getElementById(id); if(e)e.style.display=e.style.display==='none'?'block':'none'; }
 function _prFill(p){
   try{
@@ -3237,7 +3237,7 @@ function _nfHTML(filters,openFn){
   return h;
 }
 
-var _NF_FILTERS_C=[['all','الكل'],['offers','العروض'],['messages','الرسائل'],['projects','مشاريعي']];
+var _NF_FILTERS_C=[['all','الكل'],['offers','العروض'],['messages','الرسائل'],['projects','المشاريع']];
 function _nfPaintC(){ var el=document.getElementById('notifs-list'); if(!el)return; el.innerHTML=_nfHTML(_NF_FILTERS_C,'_nfOpenC');
   var u=_nfList.filter(function(n){return !n.is_read;}).length, b=document.getElementById('nf-unread'); if(b){ b.style.display=u?'inline-block':'none'; b.textContent=u+' جديدة'; } }
 function _nfSet(k){ _nfFilter=k; _nfPaintC(); }

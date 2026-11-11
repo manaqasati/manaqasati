@@ -1934,7 +1934,7 @@ function demoPublish(){
   fetch(API+'/api/requests',{method:'POST',headers:_authHdr(),body:JSON.stringify(body)})
     .then(function(r){return r.ok?r.json():Promise.reject();})
     .then(function(){
-      demoMsg('تم نشر مشروعك بنجاح ✓ تابع العروض في «مشاريعي»','ok');
+      demoMsg('تم نشر مشروعك بنجاح ✓ تابع العروض في «المشاريع»','ok');
       var tt=document.getElementById('d-title'); if(tt)tt.value='';
       var dd=document.getElementById('d-desc'); if(dd)dd.value='';
       var ll=document.getElementById('d-loc'); if(ll)ll.value='';

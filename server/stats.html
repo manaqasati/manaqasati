@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#172554">
-<title>أرقامي — مناقصة</title>
+<title>الأرقام والتقارير — مناقصة</title>
 <link rel="icon" href="/favicon.ico">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
 <style>
@@ -38,7 +38,7 @@ button{font-family:inherit}
 </style>
 </head>
 <body>
-<div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحتي</a></div>
+<div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحة التحكم</a></div>
 <div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
 <script>
 (function(){
@@ -57,7 +57,7 @@ function load(){ A.innerHTML='<div class="mu">جارٍ التحميل…</div>';
 window._sP=function(p){ PER=p; try{history.replaceState(null,'','?period='+p);}catch(e){} load(); };
 function draw(s){
   var c=s.cur, p=s.prev, L=s.live, fr=new Date(s.from), to=new Date(s.to);
-  var h='<div class="hd"><div><div class="h1">أرقامي</div><div class="mu" style="margin-top:4px">'+PL[s.period]+' · '+fr.getDate()+' '+MN[fr.getMonth()]+' – '+to.getDate()+' '+MN[to.getMonth()]+' '+to.getFullYear()+' · مقارنة بالفترة السابقة</div></div><div class="row noprint">'+Object.keys(PL).map(function(x){ return '<button class="chip'+(x===s.period?' on':'')+'" onclick="_sP(\''+x+'\')">'+PL[x]+'</button>'; }).join('')+'<button class="btn sec" onclick="window.print()">⬇ التقرير PDF</button></div></div>';
+  var h='<div class="hd"><div><div class="h1">الأرقام والتقارير</div><div class="mu" style="margin-top:4px">'+PL[s.period]+' · '+fr.getDate()+' '+MN[fr.getMonth()]+' – '+to.getDate()+' '+MN[to.getMonth()]+' '+to.getFullYear()+' · مقارنة بالفترة السابقة</div></div><div class="row noprint">'+Object.keys(PL).map(function(x){ return '<button class="chip'+(x===s.period?' on':'')+'" onclick="_sP(\''+x+'\')">'+PL[x]+'</button>'; }).join('')+'<button class="btn sec" onclick="window.print()">⬇ التقرير PDF</button></div></div>';
   var K=L?[['قيمة المشاريع المكتملة',f(c.jobs_value+c.market_value),'ر.س (عملاؤك + السوق)',delta(c.jobs_value+c.market_value,p.jobs_value+p.market_value)],['عروض الأسعار',f(c.quotes_sent),c.quote_rate!=null?'وافق '+c.quotes_ok+' ('+c.quote_rate+'%)':'ما أرسلت عروض',delta(c.quote_rate,p.quote_rate,1)],['عروضك في السوق',f(c.bids),c.win_rate!=null?'فزت بـ '+c.won+' ('+c.win_rate+'%)':'ما قدّمت عروض',delta(c.win_rate,p.win_rate,1)],['تقييمك',s.rating.avg!=null?s.rating.avg+' ★':'—','من '+s.rating.n+' تقييم'+(c.reviews_n?' · '+c.reviews_n+' جديد':''),'']]
     :[['عروضك في السوق',f(c.bids),'هذي الفترة',delta(c.bids,p.bids)],['فزت بها',f(c.won),c.win_rate!=null?'نسبة الفوز '+c.win_rate+'%':'—',delta(c.win_rate,p.win_rate,1)],['قيمة صفقاتك',f(c.market_value),'ر.س · '+c.market_deals+' صفقة',delta(c.market_value,p.market_value)],['تقييمك',s.rating.avg!=null?s.rating.avg+' ★':'—','من '+s.rating.n+' تقييم','']];
   h+='<div class="kp">'+K.map(function(x){ return '<div class="card k"><span class="mu">'+x[0]+'</span><div class="v">'+x[1]+'</div><span class="mu">'+x[2]+'</span>'+x[3]+'</div>'; }).join('')+'</div>';

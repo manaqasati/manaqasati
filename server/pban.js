@@ -18,7 +18,7 @@
       + '<div style="font-size:15px;line-height:1.9;color:' + (dark ? '#94a3b8' : '#475467') + '">حسابك مزوّد — مكانك تقدّم عروضك على المشاريع المناسبة لك، والتعريف بشغلك في صفحتك العامة.</div>'
       + (b.reason ? '<div style="width:100%;box-sizing:border-box;text-align:right;padding:12px 14px;border-radius:12px;background:' + (dark ? '#111827' : '#f9fafb') + ';border:1px solid ' + (dark ? '#334155' : '#eef0f3') + '"><div style="font-size:12px;font-weight:800;color:#64748b">سبب من الإدارة:</div><div style="font-size:13.5px;margin-top:2px">' + esc(b.reason) + '</div></div>' : '')
       + '<a id="pbGo" href="/dashboard-provider.html#browse" style="width:100%;box-sizing:border-box;display:block;padding:14px;border-radius:12px;background:#1d3faa;color:#fff;font-weight:800;font-size:15px;text-decoration:none">تصفّح المشاريع المناسبة لك</a>'
-      + (me ? '<a href="/pro/' + encodeURIComponent(me) + '" style="width:100%;box-sizing:border-box;display:block;padding:13px;border-radius:12px;border:1px solid ' + (dark ? '#334155' : '#d9dee6') + ';color:inherit;font-weight:700;font-size:14px;text-decoration:none">صفحتي العامة</a>' : '')
+      + (me ? '<a href="/pro/' + encodeURIComponent(me) + '" style="width:100%;box-sizing:border-box;display:block;padding:13px;border-radius:12px;border:1px solid ' + (dark ? '#334155' : '#d9dee6') + ';color:inherit;font-weight:700;font-size:14px;text-decoration:none">الصفحة العامة</a>' : '')
       + '<div style="font-size:12.5px;color:#64748b">عندك مشروع حقيقي؟ <a href="/chat?support=1&topic=' + encodeURIComponent('منع نشر المشاريع') + '" style="color:#1d3faa;font-weight:800">تواصل مع الإدارة</a></div></div>';
     document.body.appendChild(o);
     try { localStorage.setItem('activeMode', 'provider'); } catch(e) {}

@@ -1519,7 +1519,7 @@ function rbWa(pid){
   var p=(_rbList||[]).find(function(x){return x.provider_id===pid;});
   var ph=_waNorm(p&&p.provider_phone);
   if(!ph){toast('لا يوجد رقم واتساب صالح','error');return;}
-  var msg='🎉 خبر يهمك من منصة مناقصة: عروضك الحقيقية صارت تتيح لك التواصل المباشر (اتصال + واتساب) مع أصحاب المشاريع! افتح المشروع أو «مشاريعي وعروضي» وبتلقى أزرار التواصل مفتوحة.';
+  var msg='🎉 خبر يهمك من منصة مناقصة: عروضك الحقيقية صارت تتيح لك التواصل المباشر (اتصال + واتساب) مع أصحاب المشاريع! افتح المشروع أو «المشاريع والعروض» وبتلقى أزرار التواصل مفتوحة.';
   window.open('https://wa.me/'+ph+'?text='+encodeURIComponent(msg),'_blank');
 }
 function notifyAllBidders(){
@@ -4499,7 +4499,7 @@ function loadClaims(days){
       +k('أكّدها العملاء',fmtNum(t.confirmed||0),(t.outside?'منها '+fmtNum(t.outside)+' كانت برا المنصة':'—'),'g')
       +k('سعي جديد من التوثيق',fmtNum(t.new_saai||0)+' <small style="font-size:14px">ر.س</small>',(t.new_saai?'كان بيضيع':'—'),'a')
       +k('العميل قال «ما تعاملت معه»',fmtNum(t.denied||0),(t.denied?'راجعها تحت':'—'),t.denied?'r':'')+'</div>';
-    if(!L.length){h+='<div class="ad-card" style="padding:34px;text-align:center;color:var(--muted);font-weight:700">ما فيه طلبات توثيق في هالفترة.<div style="font-size:12.5px;margin-top:6px">المزوّد يطلبها من «عروضي» لما يخلّص المشروع، أو إذا تعامل مع العميل برا المنصة.</div></div></div>';b.innerHTML=h;return;}
+    if(!L.length){h+='<div class="ad-card" style="padding:34px;text-align:center;color:var(--muted);font-weight:700">ما فيه طلبات توثيق في هالفترة.<div style="font-size:12.5px;margin-top:6px">المزوّد يطلبها من «العروض المقدّمة» لما يخلّص المشروع، أو إذا تعامل مع العميل برا المنصة.</div></div></div>';b.innerHTML=h;return;}
     h+='<div class="ad-card" style="padding:0"><div class="tbl-wrap" style="overflow-x:auto"><table class="br-t"><thead><tr><th>المشروع</th><th>المزوّد</th><th>العميل</th><th>القيمة</th><th>السعي 3%</th><th>الحالة</th><th></th></tr></thead><tbody>'
       +L.map(function(c){
         var st=_CL_ST[c.status]||[c.status,'#f1f5f9','#475569'];
@@ -6675,7 +6675,7 @@ function _vsKpis(d){
   if(d.pfunnel) _adFunnel(d.pfunnel,R.lbl);
 }
 // ═══ بطاقة «التطبيق»: كم عندهم التطبيق + ضغطات «حمّل من المتجر» حسب المكان ═══
-var _APP_SRC={direct:'روابط مختصرة (واتساب/سناب)',email:'الإيميلات',banner:'شريط «حمّل التطبيق» في اللوحة',qr:'رمز QR',moment_posted:'بعد نشر مشروع',moment_bid:'بعد تقديم عرض',outreach:'رسائل الاستقطاب',contracts:'مكتبة العقود (للتحميل من التطبيق)',mnav:'قائمة الجوال في الرئيسية',mnav_card:'بطاقة التطبيق في قائمة الجوال',more:'زر «المزيد» في اللوحة',nav:'القائمة العلوية',home:'قسم التطبيق في الرئيسية',footer:'أسفل الموقع',profile:'«تطبيق الجوال» في حسابي',app:'صفحة التطبيق نفسها'};
+var _APP_SRC={direct:'روابط مختصرة (واتساب/سناب)',email:'الإيميلات',banner:'شريط «حمّل التطبيق» في اللوحة',qr:'رمز QR',moment_posted:'بعد نشر مشروع',moment_bid:'بعد تقديم عرض',outreach:'رسائل الاستقطاب',contracts:'مكتبة العقود (للتحميل من التطبيق)',mnav:'قائمة الجوال في الرئيسية',mnav_card:'بطاقة التطبيق في قائمة الجوال',more:'زر «المزيد» في اللوحة',nav:'القائمة العلوية',home:'قسم التطبيق في الرئيسية',footer:'أسفل الموقع',profile:'«تطبيق الجوال» في إعدادات الحساب',app:'صفحة التطبيق نفسها'};
 function _nClk(n){return n===1?'ضغطة وحدة':(n===2?'ضغطتين':(n>=3&&n<=10?fmtNum(n)+' ضغطات':fmtNum(n)+' ضغطة'));}
 function _loadAppStats(){
   var box=document.getElementById('dash-app'); if(!box)return; var R=_perRange();
@@ -8765,7 +8765,7 @@ function _sbCfg(){
    +Object.keys(C.addons).map(function(k){ var a=C.addons[k]; return '<div style="display:flex;align-items:center;padding:9px 16px;border-top:1px solid var(--border);font-size:13px"><b style="flex:1.6">'+esc(a.name)+'</b><span style="flex:1;text-align:center">'+n('ad-'+k,a.p)+'</span><span style="flex:1;text-align:center;font-weight:700">'+a.tiers.map(function(t){return _SBT[t];}).join(' و')+'</span><span style="width:70px;text-align:center"><input type="checkbox" id="ado-'+k+'"'+(a.on?' checked':'')+'></span></div>'; }).join('')+'</div></div>'
    +'<div style="flex:1;min-width:260px;display:flex;flex-direction:column;gap:10px">'
    +[['trial_days','مدة التجربة المجانية (يوم)','لباقة مساعد الفوز فقط · بدون بطاقة'],['grace_days','مهلة فشل الدفع (يوم)','قبل الرجوع إلى المجاني'],['remind_days','التذكير قبل التجديد (يوم)','بريد وإشعار'],['ref_months','مكافأة الدعوة (شهر)','للداعي والمدعو']].map(function(r){ return '<div class="ad-card" style="display:flex;align-items:center;gap:10px"><div style="flex:1"><b style="font-size:13px">'+r[1]+'</b><div style="font-size:11.5px;color:var(--muted);font-weight:700">'+r[2]+'</div></div>'+n('rl-'+r[0],C[r[0]],70)+'</div>'; }).join('')
-   +'<div class="ad-card" style="border:2px solid '+(C.open?'#86efac':'#fde68a')+'"><label style="display:flex;gap:10px;align-items:center;font-size:13.5px;font-weight:900;cursor:pointer"><input type="checkbox" id="sb-open"'+(C.open?' checked':'')+' style="width:18px;height:18px"> فتح الاشتراكات لكل المزوّدين</label><div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-top:6px;line-height:1.7">'+(C.open?'✓ مفتوحة — يظهر «اشتراكي» لكل المزوّدين':'مقفلة — لا تفتحها إلا بعد اكتمال مزايا الباقات')+'</div><div style="font-size:12px;font-weight:800;margin-top:10px">مزوّدون للتجربة (أرقامهم، بينها فاصلة)</div><input id="sb-testers" value="'+esc(C.testers||'')+'" placeholder="23, 45" style="width:100%;box-sizing:border-box;margin-top:5px;border:1.5px solid var(--border);border-radius:9px;padding:8px 10px;font-family:inherit;font-weight:700;direction:ltr"></div>'
+   +'<div class="ad-card" style="border:2px solid '+(C.open?'#86efac':'#fde68a')+'"><label style="display:flex;gap:10px;align-items:center;font-size:13.5px;font-weight:900;cursor:pointer"><input type="checkbox" id="sb-open"'+(C.open?' checked':'')+' style="width:18px;height:18px"> فتح الاشتراكات لكل المزوّدين</label><div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-top:6px;line-height:1.7">'+(C.open?'✓ مفتوحة — يظهر «الاشتراك والباقة» لكل المزوّدين':'مقفلة — لا تفتحها إلا بعد اكتمال مزايا الباقات')+'</div><div style="font-size:12px;font-weight:800;margin-top:10px">مزوّدون للتجربة (أرقامهم، بينها فاصلة)</div><input id="sb-testers" value="'+esc(C.testers||'')+'" placeholder="23, 45" style="width:100%;box-sizing:border-box;margin-top:5px;border:1.5px solid var(--border);border-radius:9px;padding:8px 10px;font-family:inherit;font-weight:700;direction:ltr"></div>'
    +'<div style="padding:12px 14px;border-radius:12px;background:#fffaeb;color:#92400e;font-size:12.5px;font-weight:700;line-height:1.7">⚠️ تغيير السعر يُطبَّق على المشتركين الجدد فوراً، وعلى الحاليين من تجديدهم القادم. أبلغهم قبلها بمدة كافية.</div></div></div>';
   b.innerHTML=h;
 }

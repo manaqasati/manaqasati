@@ -5,7 +5,7 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#172554">
-<title>مهامي — مناقصة</title>
+<title>مهام الفني — مناقصة</title>
 <link rel="icon" href="/favicon.ico">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
 <style>
@@ -74,7 +74,7 @@ var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
 var A=document.getElementById('app'), P=new URLSearchParams(location.search), S={items:[],j:null};
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function login(){ try{localStorage.setItem('_after_login',location.pathname+location.search);}catch(e){} location.href='/auth.html'; }
-if(!TOK){ A.innerHTML='<div class="card empty"><div style="font-size:40px">👷</div><b style="display:block;font-size:17px;margin-top:6px;color:#172554">مهامي — للفنيين</b><div class="mu" style="margin-top:8px;line-height:1.9">سجّل دخولك أو أنشئ حساباً <b>بنفس رقم جوالك</b> اللي أضافته المؤسسة، وتطلع لك مهامك هنا.</div><button class="btn pri" style="width:100%;margin-top:14px" id="lg">تسجيل الدخول</button></div>'; document.getElementById('lg').onclick=login; return; }
+if(!TOK){ A.innerHTML='<div class="card empty"><div style="font-size:40px">👷</div><b style="display:block;font-size:17px;margin-top:6px;color:#172554">مهام الفني</b><div class="mu" style="margin-top:8px;line-height:1.9">سجّل دخولك أو أنشئ حساباً <b>بنفس رقم جوالك</b> اللي أضافته المؤسسة، وتطلع لك مهامك هنا.</div><button class="btn pri" style="width:100%;margin-top:14px" id="lg">تسجيل الدخول</button></div>'; document.getElementById('lg').onclick=login; return; }
 function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},o.headers||{});
   return fetch(p,o).then(function(r){ if(r.status===401){ login(); throw 0; } return r.json().then(function(j){ if(!r.ok){ var e=new Error(j.message||'حدث خطأ'); throw e; } return j; }); });}
 function toast(t){ var e=document.getElementById('toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){e.style.display='none';},2600); }
@@ -92,7 +92,7 @@ function list(){
   setUrl(''); S.j=null;
   api('/api/tech/jobs').then(function(r){ S.items=r.items||[];
     if(!r.tech){ A.innerHTML='<div class="card empty"><div style="font-size:40px">👷</div><b style="display:block;font-size:17px;margin-top:6px;color:#172554">ما فيه مؤسسة أضافتك كفني</b><div class="mu" style="margin-top:8px;line-height:1.9">اطلب من المؤسسة تضيف رقم جوالك في «الفريق». لازم يكون نفس الرقم المسجّل في حسابك.</div></div>'; return; }
-    var h='<div><div class="h1">مهامي</div><div class="mu" style="margin-top:3px">'+(S.items.length?S.items.length+' مهمة':'ما فيه مهام الحين')+'</div></div>';
+    var h='<div><div class="h1">مهام الفني</div><div class="mu" style="margin-top:3px">'+(S.items.length?S.items.length+' مهمة':'ما فيه مهام الحين')+'</div></div>';
     if(!S.items.length) h+='<div class="card empty"><div style="font-size:38px">✅</div><b style="display:block;margin-top:6px">ما عندك مهام الحين</b><div class="mu" style="margin-top:6px">يوصلك إشعار لما تنضاف لك مهمة.</div></div>';
     else h+='<div class="ql">'+S.items.map(function(j){ var dn=j.tasks.filter(function(t){return t.done;}).length;
       return '<button class="qi" onclick="_tOpen('+j.id+')"><div class="c"><div class="row" style="gap:6px"><b>'+esc(j.title)+'</b>'+(j.status==='active'?'<span class="pill p-g">قيد التنفيذ</span>':(j.status==='delivered'?'<span class="pill p-gr">انسلّم</span>':''))+'</div><span class="mu">'+esc(j.provider_name)+(j.sched_at?' · 🗓 '+dt(j.sched_at):'')+'</span><span class="mu">'+esc(j.address||'')+' · المهام '+dn+' من '+j.tasks.length+'</span></div><span style="font-size:20px;color:#94a3b8">‹</span></button>'; }).join('')+'</div>';
@@ -102,7 +102,7 @@ function list(){
 window._tOpen=function(id){ setUrl('id='+id); api('/api/tech/jobs/'+id).then(function(j){ S.j=j; draw(); }).catch(function(e){ if(e){ toast(e.message); list(); } }); };
 function draw(){
   var j=S.j, open=['new','scheduled','active'].indexOf(j.status)>=0, dn=j.tasks.filter(function(t){return t.done;}).length;
-  var h='<div class="row" style="gap:8px"><button class="btn sec" style="padding:7px 11px" onclick="_tBack()">‹ مهامي</button></div><div><div class="mu">'+esc(j.provider_name)+(j.sched_at?' · '+dt(j.sched_at):'')+'</div><div class="h1" style="font-size:20px">'+esc(j.title)+'</div><div class="mu">'+esc(j.client_name||'')+(j.address?' · '+esc(j.address):'')+'</div></div>';
+  var h='<div class="row" style="gap:8px"><button class="btn sec" style="padding:7px 11px" onclick="_tBack()">‹ المهام</button></div><div><div class="mu">'+esc(j.provider_name)+(j.sched_at?' · '+dt(j.sched_at):'')+'</div><div class="h1" style="font-size:20px">'+esc(j.title)+'</div><div class="mu">'+esc(j.client_name||'')+(j.address?' · '+esc(j.address):'')+'</div></div>';
   h+='<div class="row" style="flex-wrap:nowrap">'+(j.maps?'<a class="btn sec" style="flex:1" target="_blank" rel="noopener" href="'+esc(j.maps)+'">📍 الموقع</a>':'')+(j.client_phone?'<a class="btn sec" style="flex:1" href="tel:'+esc(j.client_phone)+'">📞 اتصال بالعميل</a>':'')+'</div>';
   if(!open) h+='<div class="card" style="background:#f8fafc"><b>انسلّم المشروع — شكراً لك</b></div>';
   else if(!j.arrived_at){ if(!j.enroute_at) h+='<button class="btn sec" style="padding:13px;font-size:15px" id="enr" onclick="_tEnr()">🚗 في الطريق</button>';

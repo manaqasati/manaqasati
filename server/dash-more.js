@@ -66,40 +66,40 @@
     var p = W._prof || {}, rat = parseFloat(p.avg_rating) || 0;
     var due = state.saai && state.saai.pending_total > 0 ? state.saai.pending_total : 0;
     return tile('c1', 'search', 'تصفح المشاريع', nOpen ? nOpen + ' مشروع يناسبك' : 'مشاريع تناسب تخصصك', nOpen, 'pg:browse')
-      + tile('c2', 'doc', 'عروضي ومشاريعي', 'عروضك وحالة كل واحد', 0, 'pg:works')
-      + tile('c6', 'team', 'مقاول باطن', 'اطلب أو قدّم · شركائي', (W._subCount > 0 ? W._subCount : ((W._subIsNew && W._subIsNew()) ? 'جديد' : 0)), 'pg:sub')
-      + tile('c7', 'medal', 'أعمالي الموثّقة', 'وثّق شغلك — عروضك تطلع أول', ((W.WP && W.WP.isNew && W.WP.isNew()) ? 'جديد' : 0), 'pg:proof')
-      + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c1', 'star', 'اشتراكي', 'مساعد الفوز · مؤسسة', 0, 'url:/plan.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c2', 'doc', 'صفحتي وطلبات التسعيرة', 'خدماتك · QR · الطلبات الخاصة', 0, 'url:/mypage.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c3', 'doc', 'عروض الأسعار', 'عرض باسمك بـ3 خيارات · عملائي', 0, 'url:/quotes.html'))
+      + tile('c2', 'doc', 'العروض والمشاريع', 'عروضك وحالة كل واحد', 0, 'pg:works')
+      + tile('c6', 'team', 'مقاول باطن', 'اطلب أو قدّم · الشركاء', (W._subCount > 0 ? W._subCount : ((W._subIsNew && W._subIsNew()) ? 'جديد' : 0)), 'pg:sub')
+      + tile('c7', 'medal', 'الأعمال الموثّقة', 'وثّق شغلك — عروضك تطلع أول', ((W.WP && W.WP.isNew && W.WP.isNew()) ? 'جديد' : 0), 'pg:proof')
+      + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c1', 'star', 'الاشتراك والباقة', 'مساعد الفوز · مؤسسة', 0, 'url:/plan.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c2', 'doc', 'الصفحة التعريفية وطلبات التسعيرة', 'خدماتك · QR · الطلبات الخاصة', 0, 'url:/mypage.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c3', 'doc', 'عروض الأسعار', 'عرض باسمك بـ3 خيارات · دفتر العملاء', 0, 'url:/quotes.html'))
       + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'مشاريع العملاء والفريق', 'مواعيد · فنيين · تسليم', 0, 'url:/jobs.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('customers'))) || !W._subsOpen ? '' : tile('c5', 'team', 'عملائي', 'دفتر العملاء · الأجهزة · الملاحظات', 0, 'url:/customers.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('stats'))) ? '' : tile('c6', 'star', 'أرقامي', 'لوحة الأرقام · التقرير الشهري', 0, 'url:/stats.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('customers'))) || !W._subsOpen ? '' : tile('c5', 'team', 'دفتر العملاء', 'العملاء · الأجهزة · الملاحظات', 0, 'url:/customers.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('stats'))) ? '' : tile('c6', 'star', 'الأرقام والتقارير', 'لوحة الأرقام · التقرير الشهري', 0, 'url:/stats.html'))
       + tile('c3', 'money', 'محفظة السعي', due ? 'عليك ' + fmt(due) + ' ريال — سدّد' : 'ما عليك شي ✓', due ? '!' : 0, 'pg:saai', !!due)
-      + tile('c4', 'star', 'تقييماتي', rat ? '★ ' + rat.toFixed(1) + ' من عملائك' : 'تقييمات عملائك', 0, 'pg:reviews')
+      + tile('c4', 'star', 'التقييمات', rat ? '★ ' + rat.toFixed(1) + ' من عملائك' : 'تقييمات عملائك', 0, 'pg:reviews')
       + tile('c5', 'bell', 'الإشعارات', nNot ? nNot + ' جديدة' : 'كل التنبيهات', nNot, 'pg:notifs')
-      + tile('c6', 'eye', 'صفحتي العامة', 'شاركها واكسب عملاء', 0, 'pub')
+      + tile('c6', 'eye', 'الصفحة العامة', 'شاركها واكسب عملاء', 0, 'pub')
       + tile('c7', 'contract', 'عقود المقاولات', '36 عقد جاهز مجاناً', 0, 'url:/contracts?src=more')
-      + tile('c8', 'user', 'ملفي والإعدادات', 'تخصصك ومدينتك وبياناتك', 0, 'pg:profile')
-      + ((W.DLG && W.DLG.isMe()) ? tile('c2', 'user', 'حسابي كمفوّض', 'كلمة سرّي وصلاحياتي', 0, 'pg:dlgme') : tile('c2', 'team', 'المفوّض', 'خلّ موظفك يشتغل معك', 0, 'pg:dlg'))
+      + tile('c8', 'user', 'الملف والإعدادات', 'تخصصك ومدينتك وبياناتك', 0, 'pg:profile')
+      + ((W.DLG && W.DLG.isMe()) ? tile('c2', 'user', 'حساب المفوّض', 'كلمة سرّي وصلاحياتي', 0, 'pg:dlgme') : tile('c2', 'team', 'المفوّض', 'خلّ موظفك يشتغل معك', 0, 'pg:dlg'))
       + tile('c6', 'help', 'الدعم الفني', 'واتساب مباشر', 0, 'wa');
   }
   function tilesCli(){
     var nNot = badgeOf(['notifBadge', 'mob-notif-badge']), nChat = badgeOf(['bn-chat-badge']);
-    return tile('c1', 'doc', 'مشاريعي', 'مشاريعك وعروضها', 0, 'sh:requests')
+    return tile('c1', 'doc', 'المشاريع', 'مشاريعك وعروضها', 0, 'sh:requests')
       + tile('c6', 'chat', 'المحادثات', nChat ? nChat + ' رسالة ما قريتها' : 'محادثاتك مع المزوّدين', nChat, 'url:/chat')
       + tile('c5', 'bell', 'الإشعارات', nNot ? nNot + ' جديدة' : 'كل التنبيهات', nNot, 'sh:notifs')
       + tile('c7', 'contract', 'عقود المقاولات', '36 عقد جاهز مجاناً', 0, 'url:/contracts?src=more')
       + tile('c2', 'map', 'مزوّدين قريبين', 'تصفّح المزوّدين', 0, 'url:/#providers')
-      + tile('c8', 'user', 'حسابي', 'بياناتك وإعداداتك', 0, 'sh:profile');
+      + tile('c8', 'user', 'إعدادات الحساب', 'بياناتك وإعداداتك', 0, 'sh:profile');
   }
   function head(){
-    var u = me(), p = W._prof || {}, nm = p.name || u.name || 'حسابي', img = p.profile_image || u.profile_image || '';
+    var u = me(), p = W._prof || {}, nm = p.name || u.name || 'الحساب', img = p.profile_image || u.profile_image || '';
     var ch = esc(String(nm).trim().charAt(0) || 'م');
     var av = img && /^(https?:|\/)/.test(img) ? '<img src="' + esc(img) + '" alt="" onerror="this.parentNode.textContent=this.parentNode.getAttribute(\'data-ch\')">' : ch;
     if (PROV) {
       var lvl = (p.badge === 'verified' || u.badge === 'verified') ? 'موثّق ✓' : 'مزوّد';
-      return '<div class="mm-me"><div class="mm-av" data-ch="' + ch + '">' + av + '</div><div class="mm-nm"><b>' + esc(nm) + '</b><small>' + lvl + (p.city || u.city ? ' · ' + esc(p.city || u.city) : '') + '</small></div><button type="button" class="mm-share" data-act="share">شارك صفحتي</button></div>';
+      return '<div class="mm-me"><div class="mm-av" data-ch="' + ch + '">' + av + '</div><div class="mm-nm"><b>' + esc(nm) + '</b><small>' + lvl + (p.city || u.city ? ' · ' + esc(p.city || u.city) : '') + '</small></div><button type="button" class="mm-share" data-act="share">شارك الصفحة</button></div>';
     }
     return '<div class="mm-me"><div class="mm-av" data-ch="' + ch + '">' + av + '</div><div class="mm-nm"><b>' + esc(nm) + '</b><small>عميل' + (u.city ? ' · ' + esc(u.city) : '') + '</small></div></div>'
       + '<button type="button" class="mm-new" data-act="sh:new">+ انشر مشروع جديد</button>';
@@ -174,11 +174,11 @@
       if (a === 'pub') { close(true); location.href = u; return; }
       var txt = 'شوف أعمالنا وتقييمات عملائنا على منصة مناقصة 👇';
       if (navigator.share) { navigator.share({ title: 'صفحتي على مناقصة', text: txt + '\n' + u }).catch(function(){}); return; }
-      try { navigator.clipboard.writeText(txt + '\n' + u).then(function(){ var b = box.querySelector('.mm-share'); if (b) { b.textContent = '✓ نسخت الرابط'; setTimeout(function(){ b.textContent = 'شارك صفحتي'; }, 2000); } }); } catch(e){ prompt('انسخ الرابط:', u); }
+      try { navigator.clipboard.writeText(txt + '\n' + u).then(function(){ var b = box.querySelector('.mm-share'); if (b) { b.textContent = '✓ نسخت الرابط'; setTimeout(function(){ b.textContent = 'شارك الصفحة'; }, 2000); } }); } catch(e){ prompt('انسخ الرابط:', u); }
     }
   }
 
-  // زر «حسابي» في الشريط السفلي يصير «المزيد»
+  // زر «إعدادات الحساب» في الشريط السفلي يصير «المزيد»
   function wire(){
     var b = D.getElementById('bn-profile'); if (!b || b.getAttribute('data-more')) return;
     b.setAttribute('data-more', '1'); b.removeAttribute('onclick');

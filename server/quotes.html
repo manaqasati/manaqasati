@@ -60,7 +60,7 @@ button,input,textarea,select{font-family:inherit}
 </style>
 </head>
 <body>
-<div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحتي</a></div>
+<div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحة التحكم</a></div>
 <div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
 <div class="toast" id="toast"></div>
 <script>
@@ -83,14 +83,14 @@ function setUrl(q){ try{ history.replaceState(null,'',q?'?'+q:location.pathname)
 function load(){
   return api('/api/quotes').then(function(r){ S.items=r.items||[]; S.live=!!r.live; }).catch(function(e){ if(e===0)throw e; S.err=e.message; });
 }
-function lockCard(){ return '<div class="card" style="background:linear-gradient(135deg,#172554,#1e3a8a);color:#fff;border:0"><div style="font-size:17px;font-weight:900">عروض الأسعار من مزايا الاشتراك</div><div style="font-size:13.5px;opacity:.85;font-weight:700;line-height:1.9;margin-top:6px">سوّ عرض سعر باسمك وشعارك، فيه حتى 3 خيارات، وأرسله لعميلك برابط — يختار ويوافق من جواله.</div><a class="btn" style="background:#fbbf24;color:#172554;margin-top:12px" href="/plan.html">اشتراكي</a></div>'; }
+function lockCard(){ return '<div class="card" style="background:linear-gradient(135deg,#172554,#1e3a8a);color:#fff;border:0"><div style="font-size:17px;font-weight:900">عروض الأسعار من مزايا الاشتراك</div><div style="font-size:13.5px;opacity:.85;font-weight:700;line-height:1.9;margin-top:6px">سوّ عرض سعر باسمك وشعارك، فيه حتى 3 خيارات، وأرسله لعميلك برابط — يختار ويوافق من جواله.</div><a class="btn" style="background:#fbbf24;color:#172554;margin-top:12px" href="/plan.html">الاشتراك والباقة</a></div>'; }
 
 // ───── القائمة ─────
 function rng(q){ var t=(q.options||[]).map(function(o){return o.total;}); if(!t.length)return '—'; var a=Math.min.apply(null,t), b=Math.max.apply(null,t); return a===b?m(a):m(a)+' – '+m(b); }
 function list(){
   S.view='list'; setUrl(S.tab==='cust'?'tab=cust':'');
   var cnt={all:S.items.length}; S.items.forEach(function(q){ cnt[q.status]=(cnt[q.status]||0)+1; });
-  var tabs=[['all','الكل'],['sent','بانتظار العميل'],['change','طلب تعديل'],['accepted','وافق العميل'],['draft','مسودات'],['cust','عملائي']];
+  var tabs=[['all','الكل'],['sent','بانتظار العميل'],['change','طلب تعديل'],['accepted','وافق العميل'],['draft','مسودات'],['cust','العملاء']];
   var h='<div class="row sb"><div><div class="h1">عروض الأسعار</div><div class="mu" style="margin-top:3px">عرض باسمك فيه حتى 3 خيارات — العميل يختار ويوافق من جواله</div></div>'+(S.live?'<button class="btn pri" onclick="_qNew()">+ عرض سعر جديد</button>':'')+'</div>';
   if(!S.live) h+=lockCard();
   h+='<div class="tabs">'+tabs.map(function(t){ var n=t[0]==='cust'?'':(cnt[t[0]]?' ('+cnt[t[0]]+')':''); return '<button class="'+(S.tab===t[0]?'on':'')+'" onclick="_qTab(\''+t[0]+'\')">'+t[1]+n+'</button>'; }).join('')+'</div>';

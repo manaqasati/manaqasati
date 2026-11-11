@@ -490,7 +490,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .fmt-text .fx-n{display:flex;gap:8px;margin:3px 0}
 .fmt-text .fx-num{font-weight:900;opacity:.7;flex-shrink:0}
 
-/* ═══ حسابي (تصميم جديد) ═══ */
+/* ═══ إعدادات الحساب (تصميم جديد) ═══ */
 .pr-hero{background:linear-gradient(160deg,#1e3a8a,#1d4ed8);color:#fff;border-radius:20px;padding:18px;margin-bottom:16px;display:flex;flex-direction:column;gap:14px}
 .pr-top{display:flex;align-items:center;gap:14px}
 .pr-avw{position:relative;flex-shrink:0}
@@ -577,7 +577,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .mq-ask .li small{display:block;font-size:12.5px;line-height:1.7;color:var(--muted)}
 .mq-ask .bt button.ghost{background:transparent;border-color:transparent;color:var(--muted);font-weight:700}
 
-/* صفحة «مشاريعي» */
+/* صفحة «المشاريع» */
 .rp-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0 12px;scrollbar-width:none}
 .rp-tabs::-webkit-scrollbar{display:none}
 .rp-tb{flex-shrink:0;border:1.5px solid var(--border);background:var(--white);color:var(--text2);border-radius:999px;padding:8px 13px;font-family:'Tajawal',sans-serif;font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px;min-height:38px;cursor:pointer}
@@ -605,7 +605,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{margin-inline-start:0;marg
 .rp-bt.ghost{background:var(--white);border:1.5px solid var(--border);color:var(--p)}
 [data-theme="dark"] .rp-nx.bad{background:rgba(220,38,38,.1);border-color:rgba(220,38,38,.35);color:#fca5a5}
 [data-theme="dark"] .rp-th.g-rev{background:rgba(245,158,11,.15)}[data-theme="dark"] .rp-th.g-open{background:rgba(22,163,74,.15)}[data-theme="dark"] .rp-th.g-prog{background:rgba(37,99,235,.18)}[data-theme="dark"] .rp-th.g-done{background:rgba(148,163,184,.12)}
-/* مشاريعي: التبويبات بعرض كامل، والبطاقات عمودين في الكمبيوتر */
+/* المشاريع: التبويبات بعرض كامل، والبطاقات عمودين في الكمبيوتر */
 #all-reqs>.rp-tabs,#all-reqs>.rp-list{grid-column:1/-1}
 @media(min-width:900px){.rp-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}}
 

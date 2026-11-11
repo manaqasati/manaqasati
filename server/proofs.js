@@ -1,6 +1,6 @@
 /* ═══ ⭐ «وثّق أعمالك» — لوحة المزوّد ═══
    المزوّد يرفع صور مشروع سواه + اسم وجوال صاحبه ← يرسل له رابط بالواتساب ← صاحب المشروع يأكّد بدخول حسابه ويقيّم
-   WP.homeCard() بطاقة الرئيسية · WP.load() صفحة #proof · WP.reviewsCard() بطاقة في «تقييماتي» */
+   WP.homeCard() بطاقة الرئيسية · WP.load() صفحة #proof · WP.reviewsCard() بطاقة في «التقييمات» */
 (function(){
   'use strict';
   var W = window, D = document;
@@ -154,7 +154,7 @@
       + '<button type="button" class="wp-bgo" onclick="WP.go(1)"><span class="wp-bs-m">جرّب</span><span class="wp-bs-d">وثّق أول مشروع</span></button>'
       + '<button type="button" class="wp-bx" aria-label="إخفاء" onclick="WP.hideBanner()">✕</button></div>';
   }
-  // ─── بطاقة «تقييماتي» ───
+  // ─── بطاقة «التقييمات» ───
   function reviewsCard(){
     css(); var pg = D.getElementById('page-reviews'); if (!pg || D.getElementById('wp-rv')) return;
     var c = D.createElement('div'); c.id = 'wp-rv';
@@ -187,7 +187,7 @@
       + (n ? '' : '<div class="wp-s" style="margin-top:10px">ارفع صور مشروع سويته، صاحبه يأكّده بتقييم — العميل لما يشوف شغل مشابه يثق فيك أكثر ويختار عرضك.</div>')
       + '<div class="wp-pvl">كذا يشوف العميل عرضك:</div>' + pvHtml(d)
       + (d.month_left > 0 ? '<button type="button" class="wp-b wp-y" onclick="WP.form()">＋ وثّق مشروع</button>' : '<div class="wp-s" style="margin-top:10px">وصلت حد هالشهر (' + d.month_max + ' مشاريع) — تقدر تضيف بعدين</div>') + '</div>';
-    h += '<div><div class="wp-card"><div class="wp-h">أعمالي الموثّقة' + (d.items.length ? '<span class="wp-pl wp-ok">' + n + ' موثّق</span>' : '') + '</div>';
+    h += '<div><div class="wp-card"><div class="wp-h">الأعمال الموثّقة' + (d.items.length ? '<span class="wp-pl wp-ok">' + n + ' موثّق</span>' : '') + '</div>';
     if (d.items.length) h += d.items.map(item).join('');
     else h += '<div class="wp-m" style="padding:14px 0;text-align:center">ما وثّقت أي مشروع للحين — ابدأ بمشروع واحد سويته وصاحبه راضي عنه</div>';
     h += '</div><div class="wp-note">💡 اختار مشاريع أصحابها راضين — التقييم يظهر في صفحتك وما ينحذف بعد ما ينكتب.</div></div></div>';

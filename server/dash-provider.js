@@ -137,14 +137,14 @@ function _pvWarnRender(){
 async function _pvWarnEdit(bid){
   try{ if(!(_myBids||[]).some(function(x){return String(x.id)===String(bid);})){ var bs=await _api('/api/provider/bids'); if(Array.isArray(bs))_myBids=bs; } }catch(e){}
   if((_myBids||[]).some(function(x){return String(x.id)===String(bid);})) _editBidById(bid);
-  else { gotoPage('works'); showToast('افتح العرض من «مشاريعي وعروضي» وعدّله','info'); }
+  else { gotoPage('works'); showToast('افتح العرض من «المشاريع والعروض» وعدّله','info'); }
 }
 function _pvWarnAck(id){
   _pvWarns=_pvWarns.filter(function(x){return x.id!==id;}); _pvWarnRender();
   _api('/api/provider/warnings/'+id+'/ack',{method:'POST',body:'{}'}).catch(function(){});
 }
 window.addEventListener('load',function(){ setTimeout(function(){ try{ if(localStorage.getItem('token'))_pvWarnLoad(); }catch(e){} },600); });
-// زر «صفحتي» — يفتح الصفحة العامة للمزوّد في تبويب جديد
+// زر «الصفحة التعريفية» — يفتح الصفحة العامة للمزوّد في تبويب جديد
 (function(){ try{ var u=JSON.parse(localStorage.getItem('user')||'{}'); if(u&&u.id)document.querySelectorAll('a.my-page-btn').forEach(function(a){a.href='/pro/'+u.id;}); }catch(e){} })();
 
 if(!_token){location.replace('/auth.html');}else if(_me.role&&_me.role!=='provider'&&!(_me.role==='client'&&_me.can_provide)){location.replace(_me.role==='admin'?'/dashboard-admin.html':_me.role==='client'?'/dashboard-client.html':'/auth.html');}
@@ -349,7 +349,7 @@ function _setAvatar(img){
   });
 })();
 
-var _pages={sub:'🤝 مقاول باطن',home:'الرئيسية',browse:'تصفح المشاريع',works:'مشاريعي وعروضي',reviews:'تقييماتي',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي',proof:'⭐ أعمالي الموثّقة',dlg:'👥 المفوّض',dlgme:'👤 حسابي كمفوّض'};
+var _pages={sub:'🤝 مقاول باطن',home:'الرئيسية',browse:'تصفح المشاريع',works:'المشاريع والعروض',reviews:'التقييمات',notifs:'الإشعارات',profile:'الملف الشخصي',chat:'المحادثات',saai:'محفظة السعي',proof:'⭐ الأعمال الموثّقة',dlg:'👥 المفوّض',dlgme:'👤 حساب المفوّض'};
 
 var _prefetchTimer={};
 function prefetchPage(page){
@@ -504,7 +504,7 @@ function _renderHome(data){
   // صفحتك: المشاهدات + شارك صفحتك
   html+='<div class="pa-share"><div class="pa-sh1"><span class="pa-eye"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg></span><div class="pa-sht"><b id="pa-vt">صفحتك العامة</b><small class="pa-shs">شاركها مع عملائك تجيك عروض أكثر</small></div></div>'
     +'<p>العملاء يثقون بالصفحة اللي فيها تقييماتك وأعمالك. شاركها مع عملائك — كل زيارة تقرّبك من عرض جديد.</p>'
-    +'<div class="pa-sh2"><button type="button" class="pa-wa" onclick="_paShareTo(&quot;wa&quot;)" aria-label="واتساب">'+_PA_IC.wa+'<span class="pa-wat"> واتساب</span></button><button type="button" class="pa-sb" onclick="_paShare()">شارك<span class="pa-sbx"> صفحتي ↗</span></button></div>'
+    +'<div class="pa-sh2"><button type="button" class="pa-wa" onclick="_paShareTo(&quot;wa&quot;)" aria-label="واتساب">'+_PA_IC.wa+'<span class="pa-wat"> واتساب</span></button><button type="button" class="pa-sb" onclick="_paShare()">شارك<span class="pa-sbx"> الصفحة ↗</span></button></div>'
     +'<button type="button" class="pa-why" onclick="_paShare(1)">كيف يفيدني؟ اضغط للشرح</button></div>';
   html+='<div id="ph-qa-nudge"></div>';
   html+='<div class="nudges" id="ph-nudges"></div>';
@@ -560,7 +560,7 @@ function _paExtras(){
 
 var _pnudgeTimer=null;
 function _renderShareCard(profile){
-  // مختصرة: سطر «رفع ترتيبك» فقط — المشاركة والـQR موجودة في الزر الذهبي «صفحتي» وصفحته العامة
+  // مختصرة: سطر «رفع ترتيبك» فقط — المشاركة والـQR موجودة في الزر الذهبي «الصفحة التعريفية» وصفحته العامة
   try{
     var slot=document.getElementById('ph-sharecard');if(!slot)return;
     var lastBump=profile&&profile.last_bumped_at;
@@ -647,7 +647,7 @@ function _showPnudge(pct,miss,snoozeDays){
     +'<div style="font-size:13px;color:#64748b;line-height:1.7;margin-bottom:16px">المزوّدون بملفات مكتملة يحصلون على <b style="color:#0ea5e9">فرص وعروض أكثر</b>. ملفك مكتمل '+pct+'% فقط.</div>'
     +'<div style="background:#e5edff;border-radius:100px;height:10px;overflow:hidden;margin-bottom:8px"><div style="width:'+pct+'%;height:100%;background:linear-gradient(90deg,#2563eb,#0ea5e9)"></div></div>'
     +'<div style="font-size:12px;color:#64748b;margin-bottom:18px">ينقصك: '+_esc(miss)+'</div>'
-    +'<button id="pnudge-go" style="width:100%;background:linear-gradient(135deg,#2563eb,#1e3a8a);color:#fff;border:none;padding:13px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;margin-bottom:8px">أكمل ملفي الآن</button>'
+    +'<button id="pnudge-go" style="width:100%;background:linear-gradient(135deg,#2563eb,#1e3a8a);color:#fff;border:none;padding:13px;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:Tajawal,sans-serif;margin-bottom:8px">أكمل الملف الآن</button>'
     +'<button id="pnudge-later" style="width:100%;background:transparent;border:none;color:#94a3b8;font-size:12.5px;font-weight:700;cursor:pointer;font-family:Tajawal,sans-serif;padding:4px">لاحقاً</button>'
     +'</div>';
   document.body.appendChild(ov);
@@ -670,11 +670,11 @@ function _renderProvNudges(bids,pool,matchedBySpec){
   if(_pendN>0) reqItems.push('<div class="nudge" style="border-right-color:#f59e0b" onclick="gotoPage(\'works\')">'
       +'<div class="nudge-ic" style="background:#fef3c7;color:#b45309"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>'
       +'<div class="nudge-body"><div class="nudge-t">'+(_pendN===1?'عرض ينتظر':(_pendN===2?'عرضين ينتظرون':_pendN+' عروض تنتظر'))+' قرار العميل</div><div class="nudge-s">كلّم العميل واتساب — يرفع فرصتك</div></div>'
-      +'<div class="nudge-cta">عروضي '+chev+'</div></div>');
+      +'<div class="nudge-cta">العروض المقدّمة '+chev+'</div></div>');
   if(!matchedBySpec) reqItems.push('<div class="nudge" style="border-right-color:#6366f1" onclick="gotoPage(\'profile\')">'
       +'<div class="nudge-ic" style="background:#e0e7ff;color:#3730a3"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></div>'
       +'<div class="nudge-body"><div class="nudge-t">حدّد تخصصاتك والمدن اللي تخدمها</div><div class="nudge-s">يطلع لك المشاريع اللي تناسبك أول</div></div>'
-      +'<div class="nudge-cta">حسابي '+chev+'</div></div>');
+      +'<div class="nudge-cta">إعدادات الحساب '+chev+'</div></div>');
   accepted.slice(0,2).forEach(function(b){
     reqItems.push('<div class="nudge" style="border-right-color:var(--green)" onclick="_viewProj('+b.request_id+')">'
       +'<div class="nudge-ic" style="background:var(--green-l);color:var(--green)"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>'
@@ -757,7 +757,7 @@ function _renderToday(){
     else if(j.status==='new') R.push(ic('🧰','#eff4ff')+'<div style="flex:1;min-width:0"><b>مشروع جديد: '+_esc(j.title||'')+'</b><span>'+_esc(j.client_name||'')+' · حدّد الموعد والفني</span></div>'+btn('حدّد',go,1));
     else if(j.status==='scheduled'&&j.sched_at&&new Date(j.sched_at).toDateString()===_td) R.push(ic('🗓','#f2f4f7')+'<div style="flex:1;min-width:0"><b>موعد اليوم: '+_esc(j.title||'')+'</b><span>'+new Date(j.sched_at).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'})+(j.tech_name?' · '+_esc(j.tech_name):'')+'</span></div>'+btn('افتح',go));
   });
-  (D.tj||[]).filter(function(j){return j.status!=='delivered';}).slice(0,3).forEach(function(j){ R.push(ic('👷','#ecfdf3')+'<div style="flex:1;min-width:0"><b>مهمة كفني: '+_esc(j.title||'')+'</b><span>'+_esc(j.provider_name||'')+'</span></div>'+btn('مهامي','location.href=&quot;/tech.html?id='+(parseInt(j.id)||0)+'&quot;')); });
+  (D.tj||[]).filter(function(j){return j.status!=='delivered';}).slice(0,3).forEach(function(j){ R.push(ic('👷','#ecfdf3')+'<div style="flex:1;min-width:0"><b>مهمة كفني: '+_esc(j.title||'')+'</b><span>'+_esc(j.provider_name||'')+'</span></div>'+btn('مهام الفني','location.href=&quot;/tech.html?id='+(parseInt(j.id)||0)+'&quot;')); });
   // عروض أسعار طلب العميل تعديلها
   (D.qt||[]).filter(function(x){return x.status==='change';}).slice(0,3).forEach(function(x){ R.push(ic('✏️','#fffaeb')+'<div style="flex:1;min-width:0"><b>'+_esc(x.client_name||'العميل')+' يطلب تعديل على عرضك</b><span>«'+_esc(String(x.client_note||x.title||'').slice(0,60))+'»</span></div>'+btn('عدّل العرض','location.href=&quot;/quotes.html?id='+(parseInt(x.id)||0)+'&quot;',1)); });
   // السعي المستحق
@@ -927,7 +927,7 @@ function catSvg(cat,size){
 // بطاقة «أمر عمل» (النموذج 4) — للتصفّح والرئيسية
 function _tkDesc(s){ s=String(s||'').replace(/https?:\/\/\S+/g,'').replace(/[#*_`>|]+/g,' ').replace(/^\s*[-•]\s*/gm,'').replace(/\s+/g,' ').trim(); return s.length>130?s.slice(0,130)+'…':s; }
 
-// ═══ مشروع محجوز لمزوّد طلبه العميل بالاسم: يطلع مقفول + عدّاد + «نبّهني» + «انسخ رابط صفحتي» ═══
+// ═══ مشروع محجوز لمزوّد طلبه العميل بالاسم: يطلع مقفول + عدّاد + «نبّهني» + «انسخ رابط الصفحة» ═══
 var _AS='https://apps.apple.com/us/app/manaqasa-%D9%85%D9%86%D8%A7%D9%82%D8%B5%D8%A9/id6764307611', _GP='https://play.google.com/store/apps/details?id=com.manaqasa.app';
 function _lkFmt(sec){ sec=Math.max(0,Math.floor(sec)); var h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),x=sec%60; return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(x<10?'0':'')+x; }
 function _lkTick(){ var now=Date.now(); [].forEach.call(document.querySelectorAll('[data-lk-end]'),function(el){ var left=(parseInt(el.getAttribute('data-lk-end'))-now)/1000; el.textContent=left>0?_lkFmt(left):'خلال دقائق'; }); }
@@ -941,7 +941,7 @@ function _lkCard(r,compact){
     +(end?'<div style="display:flex;align-items:center;gap:8px;background:rgba(255,237,213,.7);border:1px dashed #fdba74;border-radius:12px;padding:8px 10px;margin:8px 12px 0;font-size:12.5px;font-weight:800;color:#9a3412">⏳ ينفتح لباقي المزوّدين إذا ما قدّموا خلال <b data-lk-end="'+end+'" style="font-family:Inter,sans-serif;font-size:14.5px;color:#c2410c;direction:ltr">'+_lkFmt(r.invite_left_sec)+'</b></div>':'<div style="margin:8px 12px 0;font-size:12.5px;font-weight:800;color:#9a3412">⏳ قدّموا عرضهم — ينفتح إذا العميل ما اختارهم</div>')
     +'<div style="padding:10px 12px 12px;display:flex;flex-direction:column;gap:8px">'
       +'<button type="button" id="lkw-'+r.id+'" onclick="event.stopPropagation();_lkWatch('+r.id+',this)" style="border:1.5px solid #fcd34d;background:#fff;color:#92400e;border-radius:12px;padding:11px;font-family:inherit;font-weight:900;font-size:14px;cursor:pointer"'+(w?' disabled':'')+'>'+(w?'✓ بننبّهك أول ما ينفتح':'🔔 نبّهني إذا انفتح')+'</button>'
-      +'<div onclick="event.stopPropagation()" style="background:rgba(238,243,255,.9);border:1.5px solid #bfdbfe;border-radius:13px;padding:10px 11px;font-size:12.5px;font-weight:800;color:#1e3a8a;line-height:1.8">💡 تبي العملاء يطلبونك بالاسم؟ شارك رابط صفحتك — أي عميل يجي منه، مشروعه يوصلك أنت أول.<button type="button" onclick="_lkCopy('+r.id+')" style="display:block;width:100%;margin-top:7px;border:0;background:#1d4ed8;color:#fff;border-radius:11px;padding:9px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer">🔗 انسخ رابط صفحتي</button></div>'
+      +'<div onclick="event.stopPropagation()" style="background:rgba(238,243,255,.9);border:1.5px solid #bfdbfe;border-radius:13px;padding:10px 11px;font-size:12.5px;font-weight:800;color:#1e3a8a;line-height:1.8">💡 تبي العملاء يطلبونك بالاسم؟ شارك رابط صفحتك — أي عميل يجي منه، مشروعه يوصلك أنت أول.<button type="button" onclick="_lkCopy('+r.id+')" style="display:block;width:100%;margin-top:7px;border:0;background:#1d4ed8;color:#fff;border-radius:11px;padding:9px;font-family:inherit;font-weight:900;font-size:13.5px;cursor:pointer">🔗 انسخ رابط الصفحة</button></div>'
     +'</div></div>';
   return h;
 }
@@ -1138,7 +1138,7 @@ async function _reallySubmitBid(){
     if(r&&r.code==='bid_ban'){ _closeBidConfirm();closeModal(); if(window.mnqBanSheet)mnqBanSheet(r.ban); else showToast(r.message,'error'); return; }
     if(r&&r.code==='email_unverified'&&window._evOpen){ if(_bb.length<4000000)_evSavePending('/api/requests/'+d.projId+'/bids',_bb); _closeBidConfirm();closeModal(); _evOpen({saved:_bb.length<4000000,onChange:_vbChange}); return; }
     if(r&&(r.id||r.request_id)){window._bidAttach=null;window._pendingBid=null;_closeBidConfirm();closeModal();showToast('تم إرسال عرضك بنجاح','success');try{ if(window.mnqAppMoment) setTimeout(function(){ mnqAppMoment('bid'); },900); }catch(e){}loadBrowse();}
-    else{showToast((r&&r.message)||'الاتصال بطيء أو انقطع — يمكن عرضك وصل، شيك على «عروضي» قبل ما تعيد','error');if(btn){btn.disabled=false;btn.textContent='✅ تأكيد وإرسال';}}
+    else{showToast((r&&r.message)||'الاتصال بطيء أو انقطع — يمكن عرضك وصل، شيك على «العروض المقدّمة» قبل ما تعيد','error');if(btn){btn.disabled=false;btn.textContent='✅ تأكيد وإرسال';}}
   }catch(e){showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');if(btn){btn.disabled=false;btn.textContent='✅ تأكيد وإرسال';}}
 }
 
@@ -1221,7 +1221,7 @@ async function loadWorks(){
   else{pg.innerHTML=_skList(4);}
   try{
     var r=await Promise.all([_api('/api/provider/bids'),_api('/api/provider/projects'),_api('/api/provider/bid-standing').catch(function(){return null;})]);
-    if(!Array.isArray(r[0])){ if(!cached){ _loadFail(pg,'loadWorks','عروضي'); return; } }   // فشل: نخلي المحفوظ
+    if(!Array.isArray(r[0])){ if(!cached){ _loadFail(pg,'loadWorks','العروض المقدّمة'); return; } }   // فشل: نخلي المحفوظ
     else { _myBids=r[0]; _myProjs=Array.isArray(r[1])?r[1]:_myProjs;
     window._bidStanding=r[2]||null;
     var hc=_cacheGet('home_data')||{profile:{}};_cacheSet('home_data',{profile:hc.profile,bids:_myBids,projs:_myProjs}); }
@@ -1230,13 +1230,13 @@ async function loadWorks(){
   var pend=_myBids.filter(function(b){return b.status==='pending';}).length;
   var prog=_myProjs.filter(function(p){return p.status==='in_progress';}).length;
   var done=_myProjs.filter(function(p){return p.status==='completed';}).length;
-  var html='<div class="pghd"><div class="pg-t">عروضي</div><div class="pg-s">'+_myBids.length+' عرض · '+_myProjs.length+' مشروع</div></div>';
+  var html='<div class="pghd"><div class="pg-t">العروض المقدّمة</div><div class="pg-s">'+_myBids.length+' عرض · '+_myProjs.length+' مشروع</div></div>';
   // تنبيه واحد مختصر بدل البطاقات الكثيرة (التفاصيل تنفتح عند الضغط)
   var _sb=_bidStandingBanner();
   var _bb=_bidBanBanner(); if(_bb){ html+=_bb; _sb=''; }
   if(_sb) html+='<div class="wk-tip" onclick="var d=document.getElementById(&quot;wk-tip-full&quot;);if(d)d.style.display=d.style.display===&quot;none&quot;?&quot;&quot;:&quot;none&quot;"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg><span>'+((window._bidStanding||{}).review?'عروضك الجديدة تحت المراجعة':'عروضك تحتاج تحسين')+' — اكتب تفاصيل من وصف المشروع نفسه</span><b>التفاصيل ‹</b></div><div id="wk-tip-full" style="display:none">'+_sb+'</div>';
   var C=_wkCounts();
-  var T=[['all','الكل',C.all],['wait','بانتظار العميل',C.wait],['acc','مقبولة',C.acc],['rej','منتهية',C.rej],['projs','مشاريعي',_myProjs.length]];
+  var T=[['all','الكل',C.all],['wait','بانتظار العميل',C.wait],['acc','مقبولة',C.acc],['rej','منتهية',C.rej],['projs','المشاريع',_myProjs.length]];
   if(_wkTabSel!=='all'&&!(T.filter(function(x){return x[0]===_wkTabSel;})[0]||[])[2])_wkTabSel='all';
   html+='<div class="rp-tabs wk-tabs" role="tablist">'+T.filter(function(x){return x[0]==='all'||x[2];}).map(function(x){return '<button type="button" role="tab" class="rp-tb'+(_wkTabSel===x[0]?' on':'')+'" data-wk="'+x[0]+'" onclick="_wkTab(&quot;'+x[0]+'&quot;)">'+x[1]+' <i>'+x[2]+'</i></button>';}).join('')+'</div>';
   html+='<div id="wtab-bids-wrap"></div>';
@@ -1323,7 +1323,7 @@ async function _saveBidEdit(id){
   }
 }
 // تنبيه جودة العروض (بعد بلاغات من أصحاب مشاريع) — بدون اسم المبلّغ ولا المشروع
-// الإيقاف/المراجعة اليدوية: بطاقة واضحة فوق «عروضي» (السبب + المدة + التقدّم)
+// الإيقاف/المراجعة اليدوية: بطاقة واضحة فوق «العروض المقدّمة» (السبب + المدة + التقدّم)
 function _bidBanBanner(){
   var st=window._bidStanding||{}, b=st.ban;
   var chat='<a href="/chat?support=1&topic='+encodeURIComponent('اعتراض على إيقاف')+'" style="display:block;text-align:center;margin-top:10px;background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:9px;font-weight:900;font-size:13px;color:#1d4ed8;text-decoration:none">💬 تواصل مع الإدارة</a>';
@@ -1450,9 +1450,9 @@ function _renderProjs(list){
 async function loadReviews(){
   var pg=_el('page-reviews');if(!pg)return;pg.innerHTML=_skList(4);
   var list=null;try{list=await _api('/api/provider/reviews');}catch(e){}
-  if(!Array.isArray(list)){ _loadFail(pg,'loadReviews','تقييماتي'); return; }
+  if(!Array.isArray(list)){ _loadFail(pg,'loadReviews','التقييمات'); return; }
   var avg=list.length?(list.reduce(function(s,r){return s+(r.rating||0);},0)/list.length).toFixed(1):'—';
-  var html='<div class="pghd"><div class="pg-t">تقييماتي</div><div class="pg-s">'+list.length+' تقييم</div></div>';
+  var html='<div class="pghd"><div class="pg-t">التقييمات</div><div class="pg-s">'+list.length+' تقييم</div></div>';
   if(list.length){
     var fullStars=Math.round(parseFloat(avg)||0);
     var starsHtml='';for(var si=1;si<=5;si++){starsHtml+='<span style="color:'+(si<=fullStars?'var(--gold)':'var(--border2)')+'">&#9733;</span>';}
@@ -1545,7 +1545,7 @@ async function loadProfile(){
   var pg=_el('page-profile');if(!pg)return;
   pg.innerHTML=_skList(3);
   var p=await _api('/api/provider/profile');
-  if(!p||!p.id){ _loadFail(pg,'loadProfile','صفحتي'); return; }   // لا نعرض نموذج فاضي — لو حفظه ينمسح ملفه
+  if(!p||!p.id){ _loadFail(pg,'loadProfile','الصفحة التعريفية'); return; }   // لا نعرض نموذج فاضي — لو حفظه ينمسح ملفه
   var reviews=await _api('/api/provider/reviews')||[];
   var projs=await _api('/api/provider/projects')||[];
   var totalBids=_myBids.length||0;
@@ -1575,7 +1575,7 @@ async function loadProfile(){
   pg.appendChild(hdr);
   try{if(window.WP&&WP.fillLevel)WP.fillLevel();}catch(e){}
 
-  // بطاقة «صفحتك العامة» انشالت — يكفي الزر الذهبي «صفحتي» فوق (العنصر يبقى مخفي كنقطة ربط لترتيب المحفظة)
+  // بطاقة «صفحتك العامة» انشالت — يكفي الزر الذهبي «الصفحة التعريفية» فوق (العنصر يبقى مخفي كنقطة ربط لترتيب المحفظة)
   var previewCard=document.createElement('div');previewCard.className='pf-pub';previewCard.style.display='none';
   pg.appendChild(previewCard);
 
@@ -1675,7 +1675,7 @@ async function loadProfile(){
 }
 
 
-// ═══ «حسابي» — تنظيم الأقسام + شريط حفظ ثابت ═══
+// ═══ «إعدادات الحساب» — تنظيم الأقسام + شريط حفظ ثابت ═══
 function _pfSection(key,title,sub,icon,node,open){
   var d=document.createElement('details');d.className='pf-sec';d.id='pf-sec-'+key;if(open)d.open=true;
   d.innerHTML='<summary><span class="pf-sec-ic">'+icon+'</span><span class="pf-sec-tx"><b>'+title+'</b><small>'+sub+'</small></span><svg class="pf-chev" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></summary><div class="pf-sec-b"></div>';
@@ -1731,7 +1731,7 @@ function _pfGo(t){
   if(t==='av'){ var i=document.getElementById('av-inp'); if(i)i.click(); return; }
   var d=document.getElementById('pf-sec-'+t); if(!d)return; d.open=true; d.scrollIntoView({behavior:'smooth',block:'start'});
 }
-// ═══ رابط صفحتي: نسخ + مشاركة + وين يحطه ═══
+// ═══ رابط الصفحة: نسخ + مشاركة + وين يحطه ═══
 function _pfLinkUrl(){ var id=(_me&&_me.id)||(window._prof&&window._prof.id); return location.origin+'/pro/'+id; }
 function _pfLinkHtml(){
   var u=_pfLinkUrl(), shown=u.replace(/^https?:\/\//,'').replace(/^www\./,'');
@@ -2022,7 +2022,7 @@ function _openNewChatSearch(){
 function _saaiSubNo(id){ var n=prompt('ما تم الاتفاق مع المقاول؟ اكتب السبب باختصار (يوصل المقاول يأكّد):'); if(n===null)return; _api('/api/sub/saai/'+id+'/nodeal',{method:'POST',body:JSON.stringify({note:n})}).then(function(r){ if(r&&r.ok){ showToast('وصل المقاول — ننتظر تأكيده','success'); loadSaai(); } else showToast((r&&r.message)||'تعذّر','error'); }); }
 // الدفع الإلكتروني: هل السداد بالبطاقة فقط لهذا المزوّد؟ (التحويل البنكي يفتحه المشرف للمبالغ الكبيرة)
 window._payCfg=null;
-// «اشتراكي» يظهر لما تفتح الإدارة الاشتراكات (أو للمزوّدين المختارين للتجربة)
+// «الاشتراك والباقة» يظهر لما تفتح الإدارة الاشتراكات (أو للمزوّدين المختارين للتجربة)
 setTimeout(function(){ _api('/api/subs/open').then(function(r){ if(r&&r.open){ window._subsOpen=true; var n=_el('ni-plan'), n2=_el('ni-mypage'), n3=_el('ni-quotes'), n4=_el('ni-jobs'), n5=_el('ni-cust'); var _me=!!(window.DLG&&DLG.isMe&&DLG.isMe()), _h=function(k){ return !_me||(DLG.has&&DLG.has(k)); }; if(!_me&&n)n.style.display=''; if(_h('quotes')){ if(n2)n2.style.display=''; if(n3)n3.style.display=''; } if(_h('jobs')&&n4)n4.style.display=''; if(_h('customers')&&n5)n5.style.display=''; } }).catch(function(){}); },1200);
 function _payCfgGet(){ return window._payCfg?Promise.resolve(window._payCfg):_api('/api/pay/config').then(function(c){ window._payCfg=c||{}; return window._payCfg; }).catch(function(){ window._payCfg={online:false,bank_ok:true}; return window._payCfg; }); }
 function _payOnly(){ var c=window._payCfg; return !!(c&&c.online&&!c.bank_ok); }
@@ -2863,7 +2863,7 @@ function _nfHTML(filters,openFn){
   return h;
 }
 
-var _NF_FILTERS_P=[['all','الكل'],['projects','مشاريع'],['offers','عروضي'],['messages','الرسائل'],['system','تنبيهات']];
+var _NF_FILTERS_P=[['all','الكل'],['projects','مشاريع'],['offers','العروض المقدّمة'],['messages','الرسائل'],['system','تنبيهات']];
 function _nfSet(k){ _nfFilter=k; _nfPaintP(); }
 function _nfPaintP(){
   var pg=_el('page-notifs'); if(!pg)return;

@@ -118,7 +118,7 @@
         if (s.seen.indexOf('vbid') >= 0) { ls('mnq_tour_vbid', '1'); return orig.apply(self, a); }
         mark('vbid');
         var go = function(){ window._gvSkip = 1; try { orig.apply(self, a); } finally { window._gvSkip = 0; } };
-        show('bid', { primary: ['يلا أقدّم عرضي ←', go], secondary: ['تخطي', go], onClose: go });
+        show('bid', { primary: ['قدّم العرض ←', go], secondary: ['تخطي', go], onClose: go });
       });
     };
   }

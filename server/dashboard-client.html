@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     </button>
     <button class="ni" onclick="show('requests',this,'requests')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-      مشاريعي
+      المشاريع
     </button>
     <button class="ni" onclick="location.href='/chat'">
       <div class="ni-ic" style="position:relative"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="ni-badge" id="chatBadge" style="display:none">0</span></div>
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     </button>
     <button class="ni" onclick="show('profile',this,'profile')">
       <div class="ni-ic"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
-      حسابي
+      إعدادات الحساب
     </button>
   </div>
   <div class="side-foot">
@@ -149,7 +149,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         </div>
         <div class="hh-hl" id="phHl">ابدأ بنشر أول مشروع واستقبل العروض</div>
         <div class="hh-acts">
-          <button class="hh-b1" id="hhCta" onclick="show('requests',null,'requests')">مشاريعي</button>
+          <button class="hh-b1" id="hhCta" onclick="show('requests',null,'requests')">المشاريع</button>
           <button class="hh-b2" onclick="show('new',null,'new')">+ مشروع جديد</button>
         </div>
       </div>
@@ -162,14 +162,14 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <button onclick="show('new',null,'new')" style="--qb:#dbeafe"><span>➕</span><b>مشروع جديد</b><small>انشره خلال دقيقتين</small></button>
         <button onclick="location.href='/contracts'" style="--qb:#fef3c7"><span>📄</span><b>عقود المقاولات</b><small>36 عقد مجاناً</small></button>
         <button onclick="location.href='/chat'" style="--qb:#dcfce7"><span>💬</span><b>المحادثات</b><small>تواصل مع المزوّدين</small></button>
-        <button onclick="show('profile',null,'profile')" style="--qb:#f1f5f9"><span>👤</span><b>حسابي</b><small>بياناتك وبريدك</small></button>
+        <button onclick="show('profile',null,'profile')" style="--qb:#f1f5f9"><span>👤</span><b>إعدادات الحساب</b><small>بياناتك وبريدك</small></button>
       </div>
       <div id="ph-decide"><div class="nudges-h" id="ph-dh" style="display:none"></div><div id="ph-top" style="display:flex;flex-direction:column;gap:12px"></div><div id="ph-claims"></div></div>
       <div id="ph-role-slot"></div>
       <div id="ph-q-nudge"></div>
       <div class="nudges" id="ph-nudges"></div>
       <div id="ph-feat-slot"></div>
-      <div class="hh-sec"><h3>مشاريعي</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل</button></div>
+      <div class="hh-sec"><h3>المشاريع</h3><button class="ch-link" onclick="show('requests',null,'requests')">عرض الكل</button></div>
       <div id="home-reqs"></div>
     </div>
 
@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
     <div class="page" id="page-requests">
       <div class="card card-accent">
         <div class="ch">
-          <h3>مشاريعي</h3>
+          <h3>المشاريع</h3>
           <button class="btn-new" onclick="show('new',null,'new')" style="font-size:12px;padding:8px 14px">+ جديد</button>
         </div>
         <div id="all-reqs"></div>
@@ -322,7 +322,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
         <div class="pr-stats"><div><b id="pr-st-req">—</b><small>مشاريع</small></div><div><b id="pr-st-off">—</b><small>عروض وصلتك</small></div><div><b id="pr-st-done">—</b><small>مكتملة</small></div></div>
       </div>
       <input type="file" id="clientAvInput" accept="image/*" style="display:none" onchange="uploadClientAvatar(this)">
-      <div class="pr-sec">بياناتي</div>
+      <div class="pr-sec">البيانات الشخصية</div>
       <div class="pr-card">
         <div class="form-grid">
           <div class="fg"><label for="prof-name">الاسم الكامل</label><input type="text" id="prof-name" placeholder="اسمك الكامل"></div>
@@ -373,10 +373,10 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
 <div class="bnav">
   <div class="bnav-inner">
     <button class="bni on" id="bn-home" onclick="show('home',null,'home')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg></div><span class="bt">الرئيسية</span></button>
-    <button class="bni" id="bn-requests" onclick="show('requests',null,'requests')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="bt">مشاريعي</span></button>
+    <button class="bni" id="bn-requests" onclick="show('requests',null,'requests')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span class="bt">المشاريع</span></button>
     <button class="bni-fab" onclick="show('new',null,'new')"><div class="fab-circle"><svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div><span class="fab-label">جديد</span></button>
     <button class="bni" id="bn-chat" onclick="location.href='/chat'"><div class="bic" style="position:relative"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg><span class="bni-badge" id="bn-chat-badge">0</span></div><span class="bt">محادثات</span></button>
-    <button class="bni" id="bn-profile" onclick="show('profile',null,'profile')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><span class="bt">حسابي</span></button>
+    <button class="bni" id="bn-profile" onclick="show('profile',null,'profile')"><div class="bic"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><span class="bt">الحساب</span></button>
   </div>
 </div>
 
@@ -495,7 +495,7 @@ document.addEventListener('DOMContentLoaded',_themeIcon);</script>
       </label>
     </div>
     <div class="agree-foot">
-      <button class="btn-agree" id="agreeBtn" disabled onclick="acceptAgree()">أوافق وأنشر مشروعي</button>
+      <button class="btn-agree" id="agreeBtn" disabled onclick="acceptAgree()">أوافق وأنشر المشروع</button>
       <button class="btn-back" onclick="closeAgree()">رجوع</button>
     </div>
   </div>

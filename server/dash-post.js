@@ -178,7 +178,7 @@ function applyAvatar(img){
 // ═══════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════
-var _pageTitles={home:'الرئيسية',requests:'طلباتي',new:'طلب جديد',notifs:'الإشعارات',detail:'تفاصيل الطلب',profile:'حسابي',chat:'المحادثات'};
+var _pageTitles={home:'الرئيسية',requests:'الطلبات',new:'طلب جديد',notifs:'الإشعارات',detail:'تفاصيل الطلب',profile:'إعدادات الحساب',chat:'المحادثات'};
 var curRequestId=null;
 function show(pg,el,key){
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
@@ -613,7 +613,7 @@ function renderBestOffer(all){
 // ═══════════════════════════════════
 // LOAD REQUESTS
 // ═══════════════════════════════════
-// ═══ صفحة «مشاريعي»: تبويبات + بطاقة بمراحل والخطوة الجاية ═══
+// ═══ صفحة «المشاريع»: تبويبات + بطاقة بمراحل والخطوة الجاية ═══
 var _rpTab='all', _rpAll=[];
 var _RP_PLAN=['بناء','تشطيبات ومقاولات عامة','تصاميم داخلي وخارجي','مكاتب هندسية','ترميم مبانٍ'];
 function _rpGrp(s){
@@ -2173,7 +2173,7 @@ function _phTopPaint(){
   if(_phHint){
     h+='<div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:11px">'
       +'<div><b style="font-size:15.5px;display:block;margin-bottom:4px">أنت مزوّد خدمة؟</b><span style="font-size:13px;font-weight:700;color:#7c2d12;line-height:1.85">حسابك مسجّل كـ «عميل». لو تبي تستقبل مشاريع وتقدّم عروض، حوّله لمزوّد بدقيقة — بنفس الإيميل وكلمة المرور.</span></div>'
-      +'<button onclick="openBecomeProv()" style="border:0;background:#c2410c;color:#fff;border-radius:13px;padding:12px;font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer">نعم، حوّل حسابي لمزوّد</button>'
+      +'<button onclick="openBecomeProv()" style="border:0;background:#c2410c;color:#fff;border-radius:13px;padding:12px;font-family:inherit;font-weight:800;font-size:14.5px;cursor:pointer">نعم، حوّل الحساب إلى مزوّد</button>'
       +'<button onclick="_provHintNo()" style="border:0;background:none;font-family:inherit;font-size:13px;font-weight:800;color:#9a3412;cursor:pointer">لا، أنا أطلب خدمات</button></div>';
   }
   el.innerHTML=h; el.style.marginBottom=h?'14px':'0';
@@ -2196,7 +2196,7 @@ function _askRespond(id,act){
 }
 function _provHintNo(){ _phHint=false; _phTopPaint(); jFetch('/api/me/provider-hint/dismiss',{method:'POST'}).catch(function(){}); }
 
-// ═══ حسابي: أرقام البطاقة + فتح/إغلاق الأقسام + حالة الإشعارات ═══
+// ═══ إعدادات الحساب: أرقام البطاقة + فتح/إغلاق الأقسام + حالة الإشعارات ═══
 function _prTog(id){ var e=document.getElementById(id); if(e)e.style.display=e.style.display==='none'?'block':'none'; }
 function _prFill(p){
   try{
@@ -2273,7 +2273,7 @@ function _nfHTML(filters,openFn){
   return h;
 }
 
-var _NF_FILTERS_C=[['all','الكل'],['offers','العروض'],['messages','الرسائل'],['projects','مشاريعي']];
+var _NF_FILTERS_C=[['all','الكل'],['offers','العروض'],['messages','الرسائل'],['projects','المشاريع']];
 function _nfPaintC(){ var el=document.getElementById('notifs-list'); if(!el)return; el.innerHTML=_nfHTML(_NF_FILTERS_C,'_nfOpenC');
   var u=_nfList.filter(function(n){return !n.is_read;}).length, b=document.getElementById('nf-unread'); if(b){ b.style.display=u?'inline-block':'none'; b.textContent=u+' جديدة'; } }
 function _nfSet(k){ _nfFilter=k; _nfPaintC(); }

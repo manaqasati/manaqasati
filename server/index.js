@@ -417,7 +417,7 @@ ${rel.length ? `<section class="card"><h2>عقود مشابهة</h2><div class="
 ${(function(){ const cat = Object.keys(_SEO_CT).find(k => _SEO_CT[k] === slug); if (!cat) return ''; const who = _SEO_WHO[cat] || cat; return `<section class="card"><h2>تبحث عن ${E(who)}؟</h2><div class="grid">${['الرياض','جدة','الدمام','مكة المكرمة','المدينة المنورة','الخبر','الطائف','بريدة','أبها','حائل'].map(ci => `<a href="/dalil/${seoSlug(cat)}/${seoSlug(ci)}">${E(who)} في ${E(ci)}</a>`).join('')}</div></section>`; })()}
 <p class="note">هذا العقد نموذج استرشادي جاهز، وليس عقدًا موحدًا يناسب جميع المشاريع. راجعه قبل التوقيع، ويُفضّل مراجعته من مختص قانوني. ولا يُعدّ استشارة قانونية.</p>
 </main><div class="foot"><a href="/">الرئيسية</a><a href="/contracts">عقود المقاولات</a><a href="/terms.html">الشروط والأحكام</a></div>
-<script> function _bk(){var r=document.referrer||'',same=r&&r.indexOf(location.origin)===0&&r!==location.href;if(same&&history.length>1){history.back();return;}location.href=same?r:'/';} (function(){var l=document.getElementById('bkL');if(!l)return;var r=document.referrer||'';  if(r.indexOf(location.origin)!==0){l.textContent='الرئيسية';return;}  if(/dashboard-provider/.test(r))l.textContent='لوحتي';else if(/dashboard-client/.test(r))l.textContent='لوحتي';else if(/\\/contracts(\\?|$|#)/.test(r))l.textContent='العقود';else if(/\\/project\\//.test(r))l.textContent='المشروع';else if(/\\/dalil\\//.test(r))l.textContent='الدليل';  var u={};try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}  var a=document.getElementById('topAct');if(a&&localStorage.getItem('token')&&u.role){    if(u.role==='provider'){a.textContent='لوحتي';a.href='/dashboard-provider.html';}    else if(u.role==='admin'){a.textContent='لوحة الإدارة';a.href='/dashboard-admin.html';}    else {a.textContent='+ مشروع جديد';a.href='/dashboard-client.html#new';}  }})(); </script><script src="/track.js?v=3" defer></script></body></html>`;
+<script> function _bk(){var r=document.referrer||'',same=r&&r.indexOf(location.origin)===0&&r!==location.href;if(same&&history.length>1){history.back();return;}location.href=same?r:'/';} (function(){var l=document.getElementById('bkL');if(!l)return;var r=document.referrer||'';  if(r.indexOf(location.origin)!==0){l.textContent='الرئيسية';return;}  if(/dashboard-provider/.test(r))l.textContent='لوحة التحكم';else if(/dashboard-client/.test(r))l.textContent='لوحة التحكم';else if(/\\/contracts(\\?|$|#)/.test(r))l.textContent='العقود';else if(/\\/project\\//.test(r))l.textContent='المشروع';else if(/\\/dalil\\//.test(r))l.textContent='الدليل';  var u={};try{u=JSON.parse(localStorage.getItem('user')||'{}')||{};}catch(e){}  var a=document.getElementById('topAct');if(a&&localStorage.getItem('token')&&u.role){    if(u.role==='provider'){a.textContent='لوحة التحكم';a.href='/dashboard-provider.html';}    else if(u.role==='admin'){a.textContent='لوحة الإدارة';a.href='/dashboard-admin.html';}    else {a.textContent='+ مشروع جديد';a.href='/dashboard-client.html#new';}  }})(); </script><script src="/track.js?v=3" defer></script></body></html>`;
   res.setHeader('Cache-Control', 'public, max-age=600');
   res.type('html').send(html);
 });
@@ -2121,7 +2121,7 @@ async function remindClosedContacts(requestId, title){
     for (const x of r.rows) {
       const cn = (x.client_name || 'صاحب المشروع').split(' ')[0];
       const t = '⭐ تعاملت مع «' + cn + '»؟ لا يضيع تقييمك';
-      const b = 'انقفل مشروع' + (title ? (' «' + title + '»') : '') + '. إذا اتفقت مع صاحبه ونفّذت الشغل، وثّق المشروع من «مشاريعي وعروضي» — تقييمه يطلع في صفحتك ويجيب لك عملاء جدد.';
+      const b = 'انقفل مشروع' + (title ? (' «' + title + '»') : '') + '. إذا اتفقت مع صاحبه ونفّذت الشغل، وثّق المشروع من «المشاريع والعروض» — تقييمه يطلع في صفحتك ويجيب لك عملاء جدد.';
       try {
         await notify(x.provider_id, t, b, 'claim', requestId);
         if (x.email) sendEmail(x.email, t, emailTpl(t, `<p>مرحباً${x.name?' '+eEsc(x.name):''}،</p><p>${eEsc(b)}</p>`, 'وثّق المشروع', SITE_URL+'/dashboard-provider.html#works')).catch(()=>{});
@@ -2884,7 +2884,7 @@ async function _runRemindersAll(){
       await _remindOnce(x.id, 'complete_profile', 0,
         'أكمل ملفك التعريفي 🚀', 'الملف المكتمل يجذب فرصاً أكثر — أضف نبذتك وأعمالك وتخصصاتك',
         'أكمل ملفك لتحصل على فرص أكثر', `<p>المزوّدون بملفات مكتملة يحصلون على <strong>عروض وفرص أكثر بكثير</strong>.</p><p>أضف صورتك، نبذتك، تخصصاتك، ومعرض أعمالك الآن لتبرز أمام العملاء.</p>`,
-        'أكمل ملفي', SITE_URL+'/dashboard-provider.html');
+        'أكمل الملف', SITE_URL+'/dashboard-provider.html');
     }}
 
     /* ═══ دورة حياة المشروع (أتمتة) ═══ */
@@ -3089,7 +3089,7 @@ async function _runRemindersAll(){
         await _remindOnce(x.id, 'low_rating_'+Math.floor(Date.now()/(30*86400000)), x.id,
           'لنرتقِ بخدمتك ⭐', 'تقييمك الحالي أقل من المتوسط — تحسين التواصل والالتزام يرفع تقييمك وفرصك',
           'نصائح لرفع تقييمك', `<p>تقييمك الحالي أقل من المتوسط. لا تقلق — يمكن تحسينه بسرعة:</p><p>التزم بالمواعيد، تواصل بوضوح، واحرص على جودة التنفيذ. تقييم أعلى = عملاء أكثر.</p>`,
-          'تحسين ملفي', SITE_URL+'/dashboard-provider.html');
+          'تحسين الملف', SITE_URL+'/dashboard-provider.html');
       }
     }
 
@@ -4932,7 +4932,7 @@ async function _draftSend(d, stage){
     const why = d.category ? `<p><strong>${eEsc(catTxt)}</strong>${d.city ? ' في ' + eEsc(d.city) : ''} يوصلهم مشروعك أول ما ينزل، ويقدّمون لك عروضهم وتختار الأنسب.</p>` : `<p>حفظنا لك كل اللي كتبته — كمّله بضغطة، وتبدأ توصلك عروض الأسعار من المزوّدين.</p>`;
     const stop = `<p style="font-size:11.5px;color:#94a3b8;text-align:center;margin-top:16px">وصلك هالإيميل لأنك بديت طلب في مناقصة · <a href="${SITE_URL}/api/drafts/stop/${d.token}" style="color:#94a3b8">لا تذكّرني</a></p>`;
     const url = d.user_id ? await _magicUrl(d.user_id, resumePath) : SITE_URL + resumePath;
-    const ok = await sendEmail(to, subj, emailTpl(h, box + why, 'كمّل مشروعي', url, { after: stop }), { uid: d.user_id || null, kind: 'draft_reminder' }).catch(() => false);
+    const ok = await sendEmail(to, subj, emailTpl(h, box + why, 'كمّل المشروع', url, { after: stop }), { uid: d.user_id || null, kind: 'draft_reminder' }).catch(() => false);
     if (ok) ch.push('email');
   }
   // الإشعار (لصاحب الحساب)
@@ -5516,7 +5516,7 @@ async function _dlgInvite(d, owner){
   const on = owner.business_name || owner.name || 'مزوّد';
   const t = 'تمت إضافتك مفوّضاً على حساب ' + on + ' في منصة مناقصة';
   const perms = _dlgPermsIn(d.perms).map(k => DLG_PERMS[k]).join('، ') || '—';
-  sendEmail(d.email, t, emailTpl(t, `<p>مرحباً ${eEsc(d.name || '')}،</p><p><strong>${eEsc(on)}</strong> أضافك مفوّضاً على حسابه في مناقصة — تقدر تشتغل باسم المؤسسة بإيميلك وكلمة سرّك أنت.</p><p>صلاحياتك: ${eEsc(perms)}</p><p>اضغط الزر وحدد كلمة سرّك (الرابط صالح 3 أيام). بعدها حمّل التطبيق وادخل بإيميلك عشان توصلك الإشعارات:</p><p><a href="${APP_STORE_URL}">آيفون</a> · <a href="${PLAY_STORE_URL}">أندرويد</a></p>`, 'تفعيل حسابي كمفوّض', SITE_URL + '/dlg/' + tok)).catch(() => {});
+  sendEmail(d.email, t, emailTpl(t, `<p>مرحباً ${eEsc(d.name || '')}،</p><p><strong>${eEsc(on)}</strong> أضافك مفوّضاً على حسابه في مناقصة — تقدر تشتغل باسم المؤسسة بإيميلك وكلمة سرّك أنت.</p><p>صلاحياتك: ${eEsc(perms)}</p><p>اضغط الزر وحدد كلمة سرّك (الرابط صالح 3 أيام). بعدها حمّل التطبيق وادخل بإيميلك عشان توصلك الإشعارات:</p><p><a href="${APP_STORE_URL}">آيفون</a> · <a href="${PLAY_STORE_URL}">أندرويد</a></p>`, 'تفعيل حساب المفوّض', SITE_URL + '/dlg/' + tok)).catch(() => {});
   return tok;
 }
 app.get('/api/provider/delegate', auth, providerOnly, async (req, res) => {
@@ -5569,7 +5569,7 @@ async function _dlgPause(where, val, paused, by, owner){
   const cur = (await pool.query(`SELECT * FROM provider_delegates WHERE ${where}=$1 ${owner ? 'AND owner_id=' + parseInt(owner) : ''} ORDER BY id LIMIT 1`, [val])).rows[0];
   if (!cur) return { code: 404, message: 'ما فيه مفوّض' };
   if (!paused && cur.paused_at && cur.paused_by === 'admin' && by !== 'admin') return { code: 403, message: 'أوقفته الإدارة — تواصل مع الدعم' };
-  if (!paused && cur.paused_at && cur.paused_by === 'limit' && by !== 'limit') return { code: 403, message: 'متوقف لأنك تجاوزت حد المفوّضين في باقتك — أضف مفوّض من «اشتراكي» أو شيل واحد' };
+  if (!paused && cur.paused_at && cur.paused_by === 'limit' && by !== 'limit') return { code: 403, message: 'متوقف لأنك تجاوزت حد المفوّضين في باقتك — أضف مفوّض من «الاشتراك والباقة» أو شيل واحد' };
   const d = (await pool.query(`UPDATE provider_delegates SET paused_at=${paused ? 'NOW()' : 'NULL'}, paused_by=$2 WHERE id=$1 RETURNING *`, [cur.id, paused ? by : null])).rows[0];
   _dlgDrop(d.id);
   _dlgLog(d.owner_id, d.id, by === 'limit' ? 'sys' : by, d.name, paused ? 'أوقف المفوّض مؤقتاً' : 'رجّع المفوّض', by === 'admin' ? 'من الإدارة' : by === 'limit' ? 'حد الباقة' : null);
@@ -5613,7 +5613,7 @@ app.post('/api/provider/delegates', rateLimiter(15, 3600000), auth, providerOnly
     if (owner && String(owner.email || '').toLowerCase() === email) return res.status(400).json({ message: 'هذا إيميلك أنت — اكتب إيميل المفوّض' });
     const lim = await _dlgEnforce(req.user.id);
     const used = (await pool.query("SELECT COUNT(*)::int n FROM provider_delegates WHERE owner_id=$1 AND NOT (paused_at IS NOT NULL AND paused_by='limit')", [req.user.id])).rows[0].n;
-    if (used >= lim) return res.status(409).json({ code: 'limit', message: lim <= 1 ? 'عندك مفوّض — أكثر من مفوّض مع الاشتراك' : 'وصلت حد المفوّضين في باقتك (' + lim + ') — أضف مفوّض من «اشتراكي»' });
+    if (used >= lim) return res.status(409).json({ code: 'limit', message: lim <= 1 ? 'عندك مفوّض — أكثر من مفوّض مع الاشتراك' : 'وصلت حد المفوّضين في باقتك (' + lim + ') — أضف مفوّض من «الاشتراك والباقة»' });
     if ((await pool.query('SELECT 1 FROM provider_delegates WHERE LOWER(email)=$1', [email])).rows.length) return res.status(409).json({ message: 'هذا الإيميل مفوّض على حساب ثاني' });
     const d = (await pool.query('INSERT INTO provider_delegates (owner_id, name, email, perms, role) VALUES ($1,$2,$3,$4,$5) RETURNING *', [req.user.id, name, email, perms, role])).rows[0];
     await _dlgInvite(d, owner);
@@ -7270,7 +7270,7 @@ app.post('/api/bids/:id/ask-accept', rateLimiter(20, 600000), auth, async (req, 
     await notify(x.client_id, t, body, 'accept_ask', x.request_id);
     // رسالة من المزوّد داخل المحادثة (هو اللي ضغط الزر)
     try {
-      const msgTxt = 'طلبت منك اعتماد عرضي على «' + (x.title||'المشروع') + '» — ' + priceTxt + (x.days ? ' · ' + x.days + ' يوم' : '') + '.\nإذا اتفقنا تقدر تعتمده من لوحتك (الرئيسية أو مشاريعي). شكراً لك.';
+      const msgTxt = 'طلبت منك اعتماد عرضي على «' + (x.title||'المشروع') + '» — ' + priceTxt + (x.days ? ' · ' + x.days + ' يوم' : '') + '.\nإذا اتفقنا تقدر تعتمده من لوحتك (الرئيسية أو المشاريع). شكراً لك.';
       const m = await pool.query(`INSERT INTO messages (request_id, sender_id, receiver_id, content, created_at) VALUES ($1,$2,$3,$4,NOW()) RETURNING *`, [x.request_id, x.provider_id, x.client_id, msgTxt]);
       wsBroadcast(x.client_id, { type:'new_message', message:{ ...m.rows[0], sender_name:pName }, request_id:x.request_id, sender_id:x.provider_id, sender_name:pName });
     } catch(e){}
@@ -7330,7 +7330,7 @@ async function nudgeAcceptAsks(){
   for (const x of r.rows) {
     try {
       await pool.query('UPDATE bids SET ask_nudged=TRUE WHERE id=$1', [x.id]);
-      await notify(x.provider_id, '⭐ تقييمك = عملاؤك الجايين', 'العملاء يختارون المزوّد اللي عنده تقييمات أول. اتفقت على «' + (x.title||'المشروع') + '»؟ اطلب من العميل يعتمد عرضك من «مشاريعي وعروضي» — وبعد التنفيذ يقيّمك، وعرضك الجاي يطلع فوق المنافسين.', 'accept_ask', x.request_id);
+      await notify(x.provider_id, '⭐ تقييمك = عملاؤك الجايين', 'العملاء يختارون المزوّد اللي عنده تقييمات أول. اتفقت على «' + (x.title||'المشروع') + '»؟ اطلب من العميل يعتمد عرضك من «المشاريع والعروض» — وبعد التنفيذ يقيّمك، وعرضك الجاي يطلع فوق المنافسين.', 'accept_ask', x.request_id);
     } catch(e){}
   }
 }
@@ -7569,7 +7569,7 @@ app.put('/api/admin/bids/:id/request-edit', requirePermission('bids.delete'), as
     const reason = String(req.body.reason||'').trim();
     const b = await pool.query('SELECT b.provider_id, r.title FROM bids b JOIN requests r ON r.id=b.request_id WHERE b.id=$1', [bidId]);
     if (!b.rows.length) return res.status(404).json({ message: 'غير موجود' });
-    await notify(b.rows[0].provider_id, '📝 عرضك يحتاج تعديلاً', `عرضك على "${eEsc(b.rows[0].title)}" يحتاج تعديلاً${reason?': '+eEsc(reason):' — يرجى مراجعته وتحديثه'}. ادخل «عروضي» وعدّله.`, 'bid', null);
+    await notify(b.rows[0].provider_id, '📝 عرضك يحتاج تعديلاً', `عرضك على "${eEsc(b.rows[0].title)}" يحتاج تعديلاً${reason?': '+eEsc(reason):' — يرجى مراجعته وتحديثه'}. ادخل «العروض المقدّمة» وعدّله.`, 'bid', null);
     try { await pool.query('INSERT INTO bid_warnings (bid_id, provider_id, request_id, kind, reason, admin_id) SELECT $1, provider_id, request_id, $2, $3, $4 FROM bids WHERE id=$1', [bidId, 'edit', (reason||'يحتاج تعديلاً — راجع عرضك وحدّثه').slice(0,1000), req.user && req.user.id || null]); } catch(we){}
     await logAdmin(req, 'request_edit_bid', 'bid', bidId, 'طلب تعديل عرض');
     res.json({ ok: true });
@@ -7588,12 +7588,12 @@ app.put('/api/admin/bids/:id/warn', requirePermission('bids.delete'), async (req
     const body = `تنبيه من إدارة المنصة على عرضك في «${eEsc(p.title)}»: ${eEsc(reason)}\nيرجى تعديل العرض — تكرار المخالفة قد يؤدي لحظر الحساب.`;
     await notify(p.provider_id, title, body, 'bid', null);
     if (p.email) {
-      const eb = `<p>عزيزي <strong>${eEsc(p.name||'')}</strong>،</p><p>لدينا تنبيه بخصوص عرضك على "<strong>${eEsc(p.title)}</strong>":</p><p style="background:#fef2f2;border:1px solid #fecaca;border-right:4px solid #dc2626;border-radius:8px;padding:11px 13px;color:#7f1d1d;margin:12px 0">⚠️ ${eEsc(reason)}</p><p style="color:#64748b;font-size:13px">يرجى تعديل عرضك من «عروضي». تكرار المخالفة قد يؤدي لحظر الحساب.</p>`;
-      sendEmail(p.email, title, emailTpl(title, eb, 'تعديل عرضي', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+      const eb = `<p>عزيزي <strong>${eEsc(p.name||'')}</strong>،</p><p>لدينا تنبيه بخصوص عرضك على "<strong>${eEsc(p.title)}</strong>":</p><p style="background:#fef2f2;border:1px solid #fecaca;border-right:4px solid #dc2626;border-radius:8px;padding:11px 13px;color:#7f1d1d;margin:12px 0">⚠️ ${eEsc(reason)}</p><p style="color:#64748b;font-size:13px">يرجى تعديل عرضك من «العروض المقدّمة». تكرار المخالفة قد يؤدي لحظر الحساب.</p>`;
+      sendEmail(p.email, title, emailTpl(title, eb, 'تعديل العرض', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
     }
     let wa_link = null;
     const ph = normPhone(p.phone);
-    if (ph) { const wm = `السلام عليكم ${p.name||''}،\n⚠️ تنبيه من منصة مناقصة بخصوص عرضك على «${p.title}»:\n${reason}\n\nيرجى تعديل العرض من «عروضي»:\n${SITE_URL}/dashboard-provider.html`; wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(wm)}`; }
+    if (ph) { const wm = `السلام عليكم ${p.name||''}،\n⚠️ تنبيه من منصة مناقصة بخصوص عرضك على «${p.title}»:\n${reason}\n\nيرجى تعديل العرض من «العروض المقدّمة»:\n${SITE_URL}/dashboard-provider.html`; wa_link = `https://wa.me/${ph}?text=${encodeURIComponent(wm)}`; }
     try { await pool.query('INSERT INTO bid_warnings (bid_id, provider_id, request_id, kind, reason, admin_id) SELECT $1, provider_id, request_id, $2, $3, $4 FROM bids WHERE id=$1', [bidId, 'warn', reason.slice(0,1000), req.user && req.user.id || null]); } catch(we){ console.error('bid_warnings:', we.message); }
     await logAdmin(req, 'warn_bid', 'bid', bidId, 'تحذير المزوّد: '+reason.slice(0,80));
     res.json({ ok: true, wa_link });
@@ -7627,7 +7627,7 @@ app.put('/api/bids/:id/reject', auth, clientOnly, async (req, res) => {
     let nTitle, nBody;
     if (chance) {
       nTitle = 'عرضك ما ناسب العميل — وعندك فرصة ثانية';
-      nBody = `صاحب مشروع «${T}» ما اختار عرضك${rTxt ? ' — السبب: ' + rTxt : ''}${bTxt ? ' (ميزانيته تقريباً ' + bTxt + ')' : ''}. سمح لك تقدّم عرضاً أفضل مرة وحدة خلال ${BID_CHANCE_HOURS} ساعة من «عروضي».`;
+      nBody = `صاحب مشروع «${T}» ما اختار عرضك${rTxt ? ' — السبب: ' + rTxt : ''}${bTxt ? ' (ميزانيته تقريباً ' + bTxt + ')' : ''}. سمح لك تقدّم عرضاً أفضل مرة وحدة خلال ${BID_CHANCE_HOURS} ساعة من «العروض المقدّمة».`;
     } else {
       nTitle = 'صاحب المشروع ما اختار عرضك';
       nBody = `صاحب مشروع «${T}» ما اختار عرضك${rTxt && reason !== 'other' ? ' — السبب: ' + rTxt : ''}. فرص جديدة تنتظرك في «تصفّح المشاريع».`;
@@ -7802,7 +7802,7 @@ async function _unlockReviewNudge(){
       const cn = ((await pool.query('SELECT name FROM users WHERE id=$1', [x.client_id])).rows[0] || {}).name || 'العميل';
       const first = String(cn).split(' ')[0];
       let t, b;
-      if (top > mine) { t = `⭐ منافسك عنده ${top} تقييم، وأنت ${mine}`; b = `كل تقييم موثّق يقرّبك من «مزوّد مميّز» ويطلّع عروضك أول عند العملاء. خلّصت مع «${first}» على «${x.title}»؟ اطلب منه يقيّم شغلك من «مشاريعي وعروضي».`; }
+      if (top > mine) { t = `⭐ منافسك عنده ${top} تقييم، وأنت ${mine}`; b = `كل تقييم موثّق يقرّبك من «مزوّد مميّز» ويطلّع عروضك أول عند العملاء. خلّصت مع «${first}» على «${x.title}»؟ اطلب منه يقيّم شغلك من «المشاريع والعروض».`; }
       else { t = '⭐ تقييمك = عملاؤك الجايين'; b = `العملاء يختارون المزوّد اللي عنده تقييمات أول. خلّصت مع «${first}» على «${x.title}»؟ اطلب منه يقيّمك، وعرضك الجاي يطلع فوق المنافسين.`; }
       await notify(x.provider_id, t, b, 'claim', x.request_id);
     } catch(e){}
@@ -8257,7 +8257,7 @@ app.post('/api/provider/saai/:id/defer', auth, async (req, res) => {
     const t = 'سؤال سريع عن «' + (x.title || 'مشروعك') + '»';
     const b = kind === 'postpone' ? `${x.pname} ذكر إنكم أجّلتم بدء التنفيذ — أكّد لنا بضغطة من لوحتك.` : `${x.pname} ذكر إن الاتفاق بينكم انلغى — أكّد لنا بضغطة من لوحتك.`;
     try { await notify(x.client_id, t, b, 'saai_q', x.request_id); } catch(e){}
-    if (x.cemail) sendEmail(x.cemail, t, emailTpl(t, `<p>مرحباً${x.cname ? ' ' + eEsc(x.cname) : ''}،</p><p>${eEsc(b)}</p>`, 'أكّد من لوحتي', SITE_URL + '/dashboard-client.html')).catch(()=>{});
+    if (x.cemail) sendEmail(x.cemail, t, emailTpl(t, `<p>مرحباً${x.cname ? ' ' + eEsc(x.cname) : ''}،</p><p>${eEsc(b)}</p>`, 'أكّد من لوحة التحكم', SITE_URL + '/dashboard-client.html')).catch(()=>{});
     res.json({ ok: true, days });
   } catch(e) { console.error('saai defer:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -8960,8 +8960,8 @@ async function _subTick(){
   for (const s of rem) {
     await pool.query('UPDATE subs SET reminded_for=period_end WHERE user_id=$1', [s.user_id]);
     const amt = _SAR(_subPrice(cfg, s.next_tier || s.tier, s.next_cycle || s.cycle) + _subAddonsH(cfg, s.next_addons || s.addons, s.next_cycle || s.cycle));
-    if (s.card_token && s.auto_renew) await _subMail(s.user_id, 'تذكير: يتجدد اشتراكك قريباً', 'سيتجدد اشتراكك تلقائياً في ' + fmtD(s.period_end) + ' بمبلغ ' + amt + ' ر.س من البطاقة المحفوظة ···· ' + (s.card_last4 || '') + '. يمكنك إيقاف التجديد في أي وقت من صفحة «اشتراكي».');
-    else await _subMail(s.user_id, 'تذكير: جدّد اشتراكك', 'ينتهي اشتراكك في ' + fmtD(s.period_end) + '. لتجنّب توقف المزايا، جدّد الاشتراك (' + amt + ' ر.س) من صفحة «اشتراكي».', 'جدّد اشتراكك');
+    if (s.card_token && s.auto_renew) await _subMail(s.user_id, 'تذكير: يتجدد اشتراكك قريباً', 'سيتجدد اشتراكك تلقائياً في ' + fmtD(s.period_end) + ' بمبلغ ' + amt + ' ر.س من البطاقة المحفوظة ···· ' + (s.card_last4 || '') + '. يمكنك إيقاف التجديد في أي وقت من صفحة «الاشتراك والباقة».');
+    else await _subMail(s.user_id, 'تذكير: جدّد اشتراكك', 'ينتهي اشتراكك في ' + fmtD(s.period_end) + '. لتجنّب توقف المزايا، جدّد الاشتراك (' + amt + ' ر.س) من صفحة «الاشتراك والباقة».', 'جدّد اشتراكك');
   }
   // انتهاء الفترة
   const due = (await pool.query(`SELECT * FROM subs WHERE status IN ('active','trial') AND period_end <= NOW() LIMIT 200`)).rows;
@@ -8977,7 +8977,7 @@ async function _subTick(){
   }
   // تذكير قبل انتهاء المهلة بيومين + الإيقاف
   const g2 = (await pool.query(`SELECT * FROM subs WHERE status='grace' AND NOT grace_reminded AND grace_until > NOW() AND grace_until <= NOW() + interval '2 days'`)).rows;
-  for (const s of g2) { await pool.query('UPDATE subs SET grace_reminded=TRUE WHERE user_id=$1', [s.user_id]); await _subMail(s.user_id, 'تذكير: يتبقى يومان على انتهاء المهلة', 'يتبقى يومان على إيقاف اشتراكك. جدّد الآن من صفحة «اشتراكي» للحفاظ على المزايا.', 'جدّد اشتراكك'); }
+  for (const s of g2) { await pool.query('UPDATE subs SET grace_reminded=TRUE WHERE user_id=$1', [s.user_id]); await _subMail(s.user_id, 'تذكير: يتبقى يومان على انتهاء المهلة', 'يتبقى يومان على إيقاف اشتراكك. جدّد الآن من صفحة «الاشتراك والباقة» للحفاظ على المزايا.', 'جدّد اشتراكك'); }
   const gx = (await pool.query(`SELECT * FROM subs WHERE status='grace' AND grace_until <= NOW()`)).rows;
   for (const s of gx) { await pool.query("UPDATE subs SET status='expired', updated_at=NOW() WHERE user_id=$1", [s.user_id]); _subLog(s.user_id, 'expired', 'انتهت المهلة'); await _subMail(s.user_id, 'توقف اشتراكك', 'انتهت مهلة السداد وعاد حسابك إلى الباقة المجانية، وتوقفت تذكيرات خطط الصيانة لعملائك. بياناتك محفوظة، ويعود كل شيء فور تجديد الاشتراك.', 'جدّد اشتراكك'); }
 }
@@ -9457,13 +9457,13 @@ app.post('/api/team', auth, providerOnly, async (req, res) => {
     const L = await _subLimits(req.user.id); const n = (await pool.query('SELECT COUNT(*)::int n FROM provider_techs WHERE provider_id=$1 AND active', [req.user.id])).rows[0].n;
     const ex = (await pool.query('SELECT id, active FROM provider_techs WHERE provider_id=$1 AND phone9=$2', [req.user.id, p9])).rows[0];
     if (ex && ex.active) return res.status(409).json({ message: 'هذا الفني مضاف مسبقاً' });
-    if (n >= (L.limits.tech || 0)) return res.status(409).json({ code: 'limit', message: 'وصلت حد الفنيين في باقتك (' + (L.limits.tech || 0) + ') — أضف «5 فنيين» من صفحة اشتراكي' });
+    if (n >= (L.limits.tech || 0)) return res.status(409).json({ code: 'limit', message: 'وصلت حد الفنيين في باقتك (' + (L.limits.tech || 0) + ') — أضف «5 فنيين» من صفحة الاشتراك والباقة' });
     const u = (await pool.query("SELECT id FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1 ORDER BY id LIMIT 1", [p9])).rows[0];
     if (u && String(u.id) === String(req.user.id)) return res.status(400).json({ message: 'هذا رقمك أنت' });
     const t = ex ? (await pool.query('UPDATE provider_techs SET active=TRUE, name=$2, phone=$3, user_id=COALESCE(user_id,$4) WHERE id=$1 RETURNING *', [ex.id, name, phone, u ? u.id : null])).rows[0]
       : (await pool.query('INSERT INTO provider_techs (provider_id, user_id, name, phone, phone9) VALUES ($1,$2,$3,$4,$5) RETURNING *', [req.user.id, u ? u.id : null, name, phone, p9])).rows[0];
     const pn = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS n FROM users WHERE id=$1", [req.user.id])).rows[0].n;
-    if (t.user_id) try { await notify(t.user_id, '👷 أضافتك ' + pn + ' كفني', 'مهامك توصلك في «مهامي»', 'tech', null, { url: '/tech.html' }); } catch(e){}
+    if (t.user_id) try { await notify(t.user_id, '👷 أضافتك ' + pn + ' كفني', 'مهامك توصلك في «مهام الفني»', 'tech', null, { url: '/tech.html' }); } catch(e){}
     res.json({ ok: true, tech: t, linked: !!t.user_id, invite: SITE_URL + '/tech.html', pname: pn });
   } catch(e){ console.error('team-add:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -9496,7 +9496,7 @@ app.post('/api/jobs', auth, providerOnly, async (req, res) => {
   try { if (!(await _jobGate(req, res))) return;
     const b = req.body || {}; const L = await _subLimits(req.user.id);
     const act = (await pool.query("SELECT COUNT(*)::int n FROM jobs WHERE provider_id=$1 AND status IN ('new','scheduled','active') AND quote_id IS NULL AND plan_visit_id IS NULL", [req.user.id])).rows[0].n;
-    if (act >= (L.limits.projects || 0)) return res.status(409).json({ code: 'limit', message: 'وصلت حد المشاريع اليدوية النشطة في باقتك (' + (L.limits.projects || 0) + ') — أضف «5 مشاريع» من صفحة اشتراكي' });
+    if (act >= (L.limits.projects || 0)) return res.status(409).json({ code: 'limit', message: 'وصلت حد المشاريع اليدوية النشطة في باقتك (' + (L.limits.projects || 0) + ') — أضف «5 مشاريع» من صفحة الاشتراك والباقة' });
     const title = _cleanTxt(b.title || '', 120), cn = _cleanTxt(b.client_name || '', 80), cp = String(b.client_phone || '').replace(/[^\d+]/g, '').slice(0, 15);
     if (!title || !cn) return res.status(400).json({ message: 'اكتب عنوان المشروع واسم العميل' });
     let cid = null; if (_ph9(cp).length === 9) { const u = (await pool.query("SELECT id FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1 AND id<>$2 ORDER BY id LIMIT 1", [_ph9(cp), req.user.id])).rows[0]; if (u) cid = u.id; }
@@ -9908,7 +9908,7 @@ app.post('/api/d/:t/req', auth, _qreqLimiter, async (req, res, next) => {
   } catch(e){ console.error('dev-req:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 
-// ═══ «أرقامي»: لوحة أرقام المزوّد + التقرير الشهري ═══
+// ═══ «الأرقام والتقارير»: لوحة أرقام المزوّد + التقرير الشهري ═══
 // كل المزوّدين: أرقام السوق (العروض، الفوز، الصفقات، السعي، التقييم). المشترك: + عروض الأسعار والمشاريع والفريق والصيانة. أرقامه هو بس (بدون مقارنة بالمنافسين)
 const _RYD = 3 * 3600000;   // توقيت الرياض
 function _statsRange(period){
@@ -12211,12 +12211,12 @@ app.post('/api/admin/notify-real-bidders', requirePermission('requests.review'),
         AND COALESCE(u.is_active,TRUE)=TRUE`);
     if (!_bulkClaim('realbidders', [r.rows.map(x => x.provider_id)])) return _bulkDup(res);
     const title = '🎉 صار بإمكانك التواصل مباشرة مع أصحاب مشاريعك';
-    const body = 'خبر يهمك: العروض الحقيقية التي قدّمتها أصبحت تتيح لك التواصل المباشر (اتصال + واتساب) مع أصحاب المشاريع. افتح المشروع أو ادخل «مشاريعي وعروضي» وستجد أزرار التواصل مفتوحة. سرعة تواصلك ترفع فرصك في الفوز.';
+    const body = 'خبر يهمك: العروض الحقيقية التي قدّمتها أصبحت تتيح لك التواصل المباشر (اتصال + واتساب) مع أصحاب المشاريع. افتح المشروع أو ادخل «المشاريع والعروض» وستجد أزرار التواصل مفتوحة. سرعة تواصلك ترفع فرصك في الفوز.';
     let sent = 0;
     for (const p of r.rows) {
       try {
         await notify(p.provider_id, title, body, 'reminder', null);
-        if (p.email) sendEmail(p.email, title, emailTpl(title, `<p>مرحباً${p.name?' '+eEsc(p.name):''}،</p><p>${eEsc(body)}</p>`, 'مشاريعي وعروضي', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
+        if (p.email) sendEmail(p.email, title, emailTpl(title, `<p>مرحباً${p.name?' '+eEsc(p.name):''}،</p><p>${eEsc(body)}</p>`, 'المشاريع والعروض', SITE_URL+'/dashboard-provider.html')).catch(()=>{});
         sent++;
       } catch(e) {}
     }
@@ -12272,7 +12272,7 @@ app.post('/api/admin/contact-unlocks/:rid/remind', requirePermission('requests.v
     const r = await pool.query(`UPDATE contact_unlocks SET commission_reminded=NOW() WHERE request_id=$1 AND (commission_reminded IS NULL OR commission_reminded < NOW() - INTERVAL '24 hours') RETURNING provider_id`, [rid]);
     if (!r.rows.length) return res.status(400).json({ message: 'ذكّرتهم خلال آخر 24 ساعة' });
     for (const x of r.rows) {
-      try { await notify(x.provider_id, '⭐ تعاملت مع صاحب مشروع «' + eEsc(rq.title || '') + '»؟', 'إذا اتفقت معه ونفّذت المشروع، وثّقه من «عروضي» واحصل على تقييمه — كل تقييم يرفع ترتيبك في المنصة.', 'claim', rid); } catch(e){}
+      try { await notify(x.provider_id, '⭐ تعاملت مع صاحب مشروع «' + eEsc(rq.title || '') + '»؟', 'إذا اتفقت معه ونفّذت المشروع، وثّقه من «العروض المقدّمة» واحصل على تقييمه — كل تقييم يرفع ترتيبك في المنصة.', 'claim', rid); } catch(e){}
     }
     await logAdmin(req, 'remind_unlockers', 'request', rid, 'تذكير من فتحوا رقم العميل (' + r.rows.length + ')');
     res.json({ ok: true, sent: r.rows.length });
@@ -13435,7 +13435,7 @@ async function _reviewDup(req, res, id, action){
       b = `لاحظنا إنك نشرت «${nw.title}» مرة ثانية. مشروعك الأول لسا ${cand.status === 'open' ? 'مفتوح' : 'تحت المراجعة'}` + (nb ? ` وفيه ${_nOffers(nb)} — شوفها قبل لا تضيع.` : '.');
       eb = `<p>مرحباً${nm ? ' ' + eEsc(nm) : ''}،</p><p>لاحظنا إنك نشرت «<strong>${eEsc(nw.title)}</strong>» مرة ثانية.</p><p>مشروعك الأول «${eEsc(old.title)}» لسا ${cand.status === 'open' ? 'مفتوح' : 'تحت المراجعة'}` + (nb ? ` وفيه <strong>${_nOffers(nb)}</strong> — شوفها قبل لا تضيع.` : '.') + `</p><p style="color:#64748b;font-size:13px">لو تبي تضيف تفاصيل (مخطط، مساحة…) عدّلها على نفس المشروع.</p>`;
     }
-    await notifyWithEmail(old.client_id, t, b, 'req_dup', dupId, t, eb, nb ? 'شوف العروض' : 'افتح مشروعي', link).catch(()=>{});
+    await notifyWithEmail(old.client_id, t, b, 'req_dup', dupId, t, eb, nb ? 'شوف العروض' : 'افتح المشروع', link).catch(()=>{});
     let sent = 0;
     if (RO) {
       const ttl = nw.title || old.title;
@@ -13733,7 +13733,7 @@ async function _runPauseJob(){
       const b = `خلص وقت الإيقاف المؤقت لمشروعك «${x.title}». اتفقتوا؟ أو نرجّع المشروع يستقبل عروض؟`;
       await notifyWithEmail(x.client_id, t, b, 'pause_ask', x.id, t,
         `<p>خلص وقت الإيقاف المؤقت لمشروعك «<strong>${eEsc(x.title)}</strong>».</p><p>لو اتفقت${x.pnm ? ' مع <strong>' + eEsc(x.pnm) + '</strong>' : ''}، رسّي المشروع عليه من صفحة مشروعك. ولو ما اتفقتوا، رجّع المشروع يستقبل عروض.</p><p style="color:#64748b;font-size:13px">لو ما ردّيت خلال يومين، نرجّع المشروع يستقبل عروض تلقائياً.</p>`,
-        'افتح مشروعي', await _magicUrl(x.client_id, '/dashboard-client.html#detail/' + x.id)).catch(()=>{});
+        'افتح المشروع', await _magicUrl(x.client_id, '/dashboard-client.html#detail/' + x.id)).catch(()=>{});
     }
     // ما ردّ خلال يومين (للإيقاف المحدد بمدة فقط) → يرجع لحاله
     const back = await pool.query(`SELECT id, client_id, title FROM requests WHERE status='open' AND paused_at IS NOT NULL AND paused_until IS NOT NULL AND pause_asked_at <= NOW() - INTERVAL '2 days' LIMIT 50`);
@@ -13776,7 +13776,7 @@ app.post('/api/requests/:id/close-by-owner', auth, async (req, res) => {
         for (const bp of bidders.rows) {
           if (_postponed) {
             await notify(bp.provider_id, '⏸ العميل أجّل المشروع', `العميل أجّل مشروع «${eEsc(_projTitle)}» — وعرضك باقي عنده ويقدر يختاره لما يجهز.`, 'request', id);
-            if (bp.email) sendEmail(bp.email, `العميل أجّل مشروع «${eEsc(_projTitle)}»`, emailTpl('العميل أجّل المشروع', `<p>عزيزي <strong>${eEsc(bp.name||'')}</strong>،</p><p>العميل أجّل مشروع «${eEsc(_projTitle)}» مؤقتاً. <strong>عرضك باقي عنده</strong> ويقدر يختاره لما يجهز — ونبلغك أول ما يتحرك.</p>`, 'شوف عروضي', SITE_URL + '/dashboard-provider.html#works')).catch(()=>{});
+            if (bp.email) sendEmail(bp.email, `العميل أجّل مشروع «${eEsc(_projTitle)}»`, emailTpl('العميل أجّل المشروع', `<p>عزيزي <strong>${eEsc(bp.name||'')}</strong>،</p><p>العميل أجّل مشروع «${eEsc(_projTitle)}» مؤقتاً. <strong>عرضك باقي عنده</strong> ويقدر يختاره لما يجهز — ونبلغك أول ما يتحرك.</p>`, 'شوف العروض المقدّمة', SITE_URL + '/dashboard-provider.html#works')).catch(()=>{});
             continue;
           }
           await notify(bp.provider_id, 'أُغلق المشروع', `أُغلق مشروع «${eEsc(_projTitle)}» ولم يعد يستقبل عروضاً. نشكر لك وقتك وعرضك.`, 'request_closed', id);
@@ -14686,7 +14686,7 @@ app.post('/api/admin/remind-provider/:id', requirePermission('users.edit'), asyn
     const missing = Array.isArray(req.body.missing) ? req.body.missing.slice(0,6).join('، ') : '';
     await notify(id, 'أكمل ملفك ليصلك عملاء 🎯',
       'ملفك الحالي ناقص' + (missing ? ` (${eEsc(missing)})` : '') +
-      ' — المزوّدون بملف مكتمل يحصلون على عروض أكثر بكثير. أكمله الآن من «ملفي الشخصي».',
+      ' — المزوّدون بملف مكتمل يحصلون على عروض أكثر بكثير. أكمله الآن من «الملف الشخصي».',
       'profile_incomplete', null);
     res.json({ ok: true });
   } catch(e) { console.error('remind-provider:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
@@ -15552,7 +15552,7 @@ app.post('/api/sub', auth, providerOnly, rateLimiter(20, 3600000), async (req, r
     res.json({ ok: true, id: r.id, partners_first: r.partners_first, review: true });
   } catch(e) { console.error('sub post:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
-// طلباتي + الطلبات اللي تناسبني + شركائي (صفحة وحدة)
+// الطلبات + الطلبات اللي تناسبني + شركائي (صفحة وحدة)
 app.get('/api/sub/hub', auth, providerOnly, async (req, res) => {
   try {
     const me = req.user.id;
@@ -15737,7 +15737,7 @@ app.post('/api/sub/:id/nodeal-answer', auth, providerOnly, async (req, res) => {
   } catch(e) { console.error('sub nodeal ans:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 
-// عدّاد «مقاول باطن»: رسائل ما انقرت + عروض جديدة على طلباتي + طلبات جديدة تناسبني — من آخر زيارة للصفحة
+// عدّاد «مقاول باطن»: رسائل ما انقرت + عروض جديدة على الطلبات + طلبات جديدة تناسبني — من آخر زيارة للصفحة
 app.get('/api/sub-count', auth, async (req, res) => {
   try {
     const me = req.user.id;
@@ -16295,7 +16295,7 @@ app.put('/api/admin/sub/:id/review', requirePermission('requests.review'), async
         await pool.query("UPDATE sub_requests SET status='rejected', review_note=$1, reject_kind=$2, reviewed_at=NOW() WHERE id=$3", [reason || null, ad ? 'ad' : null, id]);
         const pro = SITE_URL + '/pro/' + s.provider_id;
         if (ad) {
-          tell('ℹ️ طلبك ما انتشر', `«مقاول باطن» مخصص لطلب مزوّد يكمّل معك شغل عندك (كهربائي، سبّاك، نجار…).\nالتعريف بخدماتك وأسعارك مكانه صفحتك العامة — شاركها مع عملائك: ${pro}`, 'صفحتي العامة');
+          tell('ℹ️ طلبك ما انتشر', `«مقاول باطن» مخصص لطلب مزوّد يكمّل معك شغل عندك (كهربائي، سبّاك، نجار…).\nالتعريف بخدماتك وأسعارك مكانه صفحتك العامة — شاركها مع عملائك: ${pro}`, 'الصفحة العامة');
           wa = _subWa(ow.phone, nm, `شفنا طلبك في «مقاول باطن» — وواضح إنه تعريف بخدماتك، والخدمة مخصصة لطلب مزوّد يكمّل معك شغل.\nصفحتك العامة هي المكان المناسب للتعريف بشغلك، شاركها مع عملائك:\n${pro}`);
         } else {
           tell('ℹ️ طلبك ما انتشر', `طلبك «${short}» ما انتشر: ${reason}`);
@@ -16361,7 +16361,7 @@ app.delete('/api/partners/:id', auth, providerOnly, async (req, res) => {
 });
 // ═══════════ محادثة الدعم: «فريق مناقصة» ═══════════
 // محادثة وحدة مستمرة لكل مستخدم (عميل أو مزوّد) مع فريق الإدارة كله. الملاحظات الداخلية ما يشوفها المستخدم.
-const SUP_TOPICS = ['مشكلة في مشروع', 'سؤال عن العروض', 'الدفع والسعي', 'اعتراض على إيقاف', 'حسابي وملفي', 'شي ثاني'];
+const SUP_TOPICS = ['مشكلة في مشروع', 'سؤال عن العروض', 'الدفع والسعي', 'اعتراض على إيقاف', 'الحساب والملف', 'شي ثاني'];
 const SUP_MAX_FILE = 30 * 1024 * 1024;
 const SUP_HOURS_TXT = 'من 9 الصبح لين 11 بالليل';
 function _supOpenNow(){ const h = new Date(Date.now() + 3 * 3600e3).getUTCHours(); return h >= 9 && h < 23; }

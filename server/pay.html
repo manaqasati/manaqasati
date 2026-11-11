@@ -90,7 +90,7 @@ body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;min-height:
 <div class="wrap" id="app"><div class="center"><div class="spin"></div><div class="mu">جارٍ التحميل…</div></div></div>
 <script>
 (function(){
-var Q=new URLSearchParams(location.search), REF=String(Q.get('ref')||'').replace(/[^a-f0-9]/g,'').slice(0,40), SUB=Q.get('t')==='sub', B='/api/pay/'+(SUB?'sub':'saai')+'/'+REF, SELF='/pay.html?'+(SUB?'t=sub&':'')+'ref='+REF, BACK=SUB?'/plan.html':'/dashboard-provider.html#saai', BACKT=SUB?'العودة إلى اشتراكي':'العودة إلى محفظة السعي';
+var Q=new URLSearchParams(location.search), REF=String(Q.get('ref')||'').replace(/[^a-f0-9]/g,'').slice(0,40), SUB=Q.get('t')==='sub', B='/api/pay/'+(SUB?'sub':'saai')+'/'+REF, SELF='/pay.html?'+(SUB?'t=sub&':'')+'ref='+REF, BACK=SUB?'/plan.html':'/dashboard-provider.html#saai', BACKT=SUB?'العودة إلى الاشتراك والباقة':'العودة إلى محفظة السعي';
 if(SUB){ try{ document.querySelector('.top a').setAttribute('href',BACK); document.title='الدفع — مناقصة'; }catch(e){} }
 var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
 var app=document.getElementById('app'), P=null, M='', BUSY=false, VN=0;

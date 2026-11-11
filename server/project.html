@@ -1762,11 +1762,11 @@ function _smartBack(){
   var ref=document.referrer||'';
   if(ref.indexOf(location.origin)===0){
     if(/\/pro\//.test(ref)) lbl.textContent='المزوّد';
-    else if(/dashboard-/.test(ref)) lbl.textContent='لوحتي';
+    else if(/dashboard-/.test(ref)) lbl.textContent='لوحة التحكم';
     else if(/\/chat/.test(ref)) lbl.textContent='المحادثة';
     else if(/\/dalil\//.test(ref)) lbl.textContent='الدليل';
     else lbl.textContent='رجوع';
-  } else { var _li=false; try{ _li=!!(localStorage.getItem('token')&&JSON.parse(localStorage.getItem('user')||'null')); }catch(e){} lbl.textContent=_li?'لوحتي':'الرئيسية'; }
+  } else { var _li=false; try{ _li=!!(localStorage.getItem('token')&&JSON.parse(localStorage.getItem('user')||'null')); }catch(e){} lbl.textContent=_li?'لوحة التحكم':'الرئيسية'; }
 })();
 
 // ── تنسيق النص المعروض (آمن — يهرّب أولاً) ──
