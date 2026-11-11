@@ -34,7 +34,7 @@ button{font-family:inherit}
 .plan{flex:1;border:2px solid #e2e8f0;border-radius:16px;padding:18px;background:#fff;cursor:pointer;text-align:right;color:inherit;display:flex;flex-direction:column;gap:8px}
 .plan.on{border-color:#1e3a8a;background:#f5f9ff;box-shadow:0 6px 18px rgba(30,58,138,.1)}
 .plan h4{font-size:17px;font-weight:900;color:#172554;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.fl{list-style:none;display:flex;flex-direction:column;gap:7px;margin-top:10px;padding:0}.fl li{font-size:13.5px;font-weight:700}.fl li:before{content:'✓  ';color:#16a34a;font-weight:900}.plan ul{list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:4px}.plan li{font-size:13px;font-weight:700;display:flex;gap:7px}.plan li:before{content:'✓';color:#16a34a;font-weight:900}
+.apl #upb,.apl #yrb,.apl #canb,.apl #resb,.apl #dnb,.apl #udnb,.apl #renb,.apl .step{display:none!important}.fl{list-style:none;display:flex;flex-direction:column;gap:7px;margin-top:10px;padding:0}.fl li{font-size:13.5px;font-weight:700}.fl li:before{content:'✓  ';color:#16a34a;font-weight:900}.plan ul{list-style:none;display:flex;flex-direction:column;gap:6px;margin-top:4px}.plan li{font-size:13px;font-weight:700;display:flex;gap:7px}.plan li:before{content:'✓';color:#16a34a;font-weight:900}
 .plan li.no{color:#94a3b8}.plan li.no:before{content:'—';color:#cbd5e1}
 .price{font-family:Cairo,sans-serif;font-size:28px;font-weight:900;color:#172554}.price small{font-size:13px;color:#64748b;font-family:Tajawal}
 .trial{display:flex;gap:12px;align-items:center;padding:14px 16px;border-radius:14px;background:#f0fdf4;border:1.5px solid #bbf7d0;flex-wrap:wrap}
@@ -152,7 +152,8 @@ function manage(){
  var st=S.status==='trial'?'<span class="pill" style="background:rgba(251,191,36,.25);color:#fde68a">تجربة مجانية</span>':(S.status==='grace'?'<span class="pill" style="background:rgba(239,68,68,.25);color:#fecaca">مهلة دفع</span>':'<span class="pill" style="background:rgba(34,197,94,.2);color:#bbf7d0">● فعّال</span>');
  var ren=S.status==='trial'?'تنتهي التجربة في '+dt(S.period_end):(S.cancel_at_end?'ينتهي في '+dt(S.period_end)+' ولن يُجدَّد':(S.status==='grace'?'آخر موعد للسداد '+dt(S.grace_until):'يتجدد '+(S.card&&S.card.saved&&S.auto_renew?'تلقائياً':'')+' في '+dt(S.period_end)));
  var h='';
- if(S.status==='grace') h+='<div class="warn"><b style="font-size:15px">⚠️ تعذّر تجديد الاشتراك</b><div style="font-size:13px;font-weight:700;line-height:1.8;margin-top:6px">تبقى جميع الميزات متاحة حتى '+dt(S.grace_until)+'. يُرجى السداد قبل هذا التاريخ لتجنّب إيقاف الاشتراك.</div>'+buyBlock('<button type="button" class="btn" id="renb" style="background:#b42318;color:#fff;margin-top:10px">السداد الآن ('+money(S.renew_h/100)+' ر.س)</button>')+'</div>';
+ if(S.via==='apple') h+='<div class="note" style="margin-bottom:12px">اشتراكك عن طريق Apple من تطبيق مناقصة على الأيفون — التجديد والإلغاء والإضافات تُدار من التطبيق أو من إعدادات Apple.</div>';
+ if(S.status==='grace'&&S.via!=='apple') h+='<div class="warn"><b style="font-size:15px">⚠️ تعذّر تجديد الاشتراك</b><div style="font-size:13px;font-weight:700;line-height:1.8;margin-top:6px">تبقى جميع الميزات متاحة حتى '+dt(S.grace_until)+'. يُرجى السداد قبل هذا التاريخ لتجنّب إيقاف الاشتراك.</div>'+buyBlock('<button type="button" class="btn" id="renb" style="background:#b42318;color:#fff;margin-top:10px">السداد الآن ('+money(S.renew_h/100)+' ر.س)</button>')+'</div>';
  h+='<div class="card hero"><div style="flex:1;min-width:220px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:21px">باقة '+esc(C.tiers[S.tier]?C.tiers[S.tier].name:TN[S.tier])+'</b>'+(S.status!=='trial'?'<span class="pill" style="background:#fbbf24;color:#172554">'+(S.cycle==='y'?'سنوي':'شهري')+'</span>':'')+st+'</div>'
   +'<div style="font-size:13px;opacity:.85;font-weight:700;margin-top:6px">'+esc(ren)+(S.card?' · '+esc(brn(S.card.brand))+' ···· '+esc(S.card.last4):'')+'</div>'
   +(S.next_tier?'<div style="font-size:12.5px;margin-top:6px;color:#fde68a;font-weight:800">ستنتقل إلى '+esc(TN[S.next_tier])+' من التجديد القادم</div>':'')+(S.next_cycle&&S.next_cycle!==S.cycle?'<div style="font-size:12.5px;margin-top:6px;color:#fde68a;font-weight:800">سيتحول إلى '+(S.next_cycle==='y'?'سنوي':'شهري')+' من التجديد القادم</div>':'')
@@ -193,6 +194,8 @@ function side(){
  return h;
 }
 function render(){
+ if(IAP){ iapRender(); return; }
+ try{ app.classList.toggle('apl',!!(D.sub&&D.sub.via==='apple')); }catch(e){}
  var S=D.sub, live=S&&['active','trial','grace'].indexOf(S.status)>-1;
  var main='', sd=side();
  if(live){ main=manage(); if(S.status==='trial'&&!IOSAPP) main+=chooser(true); }
@@ -211,6 +214,68 @@ function render(){
  on('refc',function(){ var l=(D.ref||{}).link||''; try{ navigator.clipboard.writeText(l).then(function(){ toast('نُسخ رابط الدعوة ✓'); }); }catch(e){ prompt('انسخ الرابط:',l); } });
  [].forEach.call(app.querySelectorAll('[data-add]'),function(b){ b.onclick=function(){ var k=b.getAttribute('data-add'); sheet('إضافة: '+D.cfg.addons[k].name,'تُفعَّل فوراً وتُحتسب عن الأيام المتبقية من فترتك',{kind:'addon',addon:k,qty:1}); }; });
  [].forEach.call(app.querySelectorAll('[data-less]'),function(b){ b.onclick=function(){ change('addon_less',{addon:b.getAttribute('data-less')},'تبقى الإضافة متاحة حتى نهاية الفترة المدفوعة، ولن تُجدَّد. متابعة؟'); }; });
+}
+// ═══ الشراء داخل تطبيق الأيفون عن طريق Apple (النسخة الجديدة من التطبيق) ═══
+var IAP=IOSAPP&&!!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap), AP=null, APR={}, APBUSY=false;
+var SKU={pro:{m:'com.manaqasa.app.pro.m',y:'com.manaqasa.app.pro.y'},ent:{m:'com.manaqasa.app.ent.m',y:'com.manaqasa.app.ent.y'},addon:{dlg:'com.manaqasa.app.addon.dlg',tech:'com.manaqasa.app.addon.tech',proj:'com.manaqasa.app.addon.proj',branch:'com.manaqasa.app.addon.branch'}};
+function nat(o){ try{ window.ReactNativeWebView.postMessage(JSON.stringify(Object.assign({type:'mnq_iap',api:location.origin,token:TOK},o))); }catch(e){} }
+function allSku(){ return [SKU.pro.m,SKU.pro.y,SKU.ent.m,SKU.ent.y,SKU.addon.dlg,SKU.addon.tech,SKU.addon.proj,SKU.addon.branch]; }
+window.addEventListener('mnq-native',function(ev){ var d=ev.detail||{}; if(d.type!=='iap') return;
+  if(d.ev==='products'){ (d.items||[]).forEach(function(p){ APR[p.id]=p; }); if(D&&IAP) render(); }
+  else if(d.ev==='done'){ APBUSY=false; if(d.ok){ toast(d.message||'تم تفعيل اشتراكك ✓'); AP=null; load(); } else { if(d.message) toast(d.message); if(D) render(); } }
+});
+function iapBuy(sku){ if(APBUSY) return; if(!APR[sku]){ toast('تعذّر تحميل الباقات من Apple، يُرجى المحاولة لاحقاً'); return; } APBUSY=true; render(); nat({action:'buy',sku:sku,uuid:AP&&AP.uuid}); }
+function iapLegal(){ return '<div class="mu" style="font-size:11.5px;line-height:1.8;margin-top:12px">يُدفع الاشتراك من حساب Apple عند التأكيد، ويتجدد تلقائياً بنفس المدة والسعر ما لم يُلغَ قبل 24 ساعة على الأقل من نهاية الفترة الحالية. يمكنك إدارة الاشتراك وإلغاؤه من إعدادات حساب Apple. <a href="/terms.html" style="color:#1e3a8a">الشروط والأحكام</a> · <a href="/privacy.html" style="color:#1e3a8a">سياسة الخصوصية</a></div>'; }
+function iapPer(c){ return c==='y'?'سنة':'شهر'; }
+function iapChooser(){
+  var C=D.cfg, sku=SKU[TIER][CY], p=APR[sku];
+  var h='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div class="h3" style="margin:0">اختر باقتك</div><div class="mu">الدفع من حساب Apple</div></div>'
+   +'<div class="seg"><button type="button" data-cy="m" class="'+(CY==='m'?'on':'')+'">شهري</button><button type="button" data-cy="y" class="'+(CY==='y'?'on':'')+'">سنوي <span class="pill p-g" style="height:19px">شهران مجاناً</span></button></div></div>';
+  h+='<div class="plans">'+['pro','ent'].map(function(t){ var q=APR[SKU[t][CY]];
+    return '<button type="button" class="plan'+(TIER===t?' on':'')+'" data-t="'+t+'"><h4>'+esc(C.tiers[t].name)+(t==='pro'?' <span class="pill p-g">الأكثر اختياراً</span>':'')+'</h4><div class="price">'+(q?esc(q.displayPrice):'…')+' <small>/ '+iapPer(CY)+'</small></div><ul>'+feats(t)+'</ul></button>'; }).join('')+'</div>';
+  var trial=AP&&AP.trial_ok&&p&&p.trial;
+  if(trial) h+='<div class="trial" style="margin-top:14px"><span style="font-size:22px">🎉</span><div style="flex:1"><b style="color:#15803d;font-size:14px">تجربة '+dy(C.trial_days)+' مجاناً لأول اشتراك</b><div style="font-size:12px;color:#166534;font-weight:700">بعدها '+esc(p.displayPrice)+' / '+iapPer(CY)+' — ويمكنك الإلغاء قبل نهاية التجربة دون أي رسوم.</div></div></div>';
+  h+='<button type="button" class="btn pri" id="iapb" style="width:100%;margin-top:14px;padding:14px;font-size:15.5px"'+(APBUSY||!p?' disabled':'')+'>'+(APBUSY?'جارٍ إتمام العملية…':(trial?'ابدأ التجربة المجانية':'اشترك في '+esc(C.tiers[TIER].name)+(p?' — '+esc(p.displayPrice):'')))+'</button>'
+   +'<div style="display:flex;justify-content:center;gap:16px;margin-top:10px;flex-wrap:wrap"><button type="button" class="btn sec" id="iapr" style="padding:8px 12px;font-size:12.5px">هل لديك رمز خصم؟</button><button type="button" class="btn sec" id="iaps" style="padding:8px 12px;font-size:12.5px">استعادة المشتريات</button></div>'
+   +iapLegal()+'</div>';
+  return h;
+}
+function iapManage(){
+  var S=D.sub, C=D.cfg, L=D.limits, U=D.usage||{}, own=(AP&&AP.own)||[];
+  var st=S.status==='trial'?'<span class="pill" style="background:rgba(251,191,36,.25);color:#fde68a">تجربة مجانية</span>':(S.status==='grace'?'<span class="pill" style="background:rgba(239,68,68,.25);color:#fecaca">مهلة دفع</span>':'<span class="pill" style="background:rgba(34,197,94,.2);color:#bbf7d0">● فعّال</span>');
+  var ren=S.status==='grace'?'تعذّر التجديد — حدّث وسيلة الدفع في إعدادات Apple':(S.cancel_at_end?'ينتهي في '+dt(S.period_end)+' ولن يُجدَّد':(S.status==='trial'?'تنتهي التجربة في '+dt(S.period_end)+' ثم يتجدد تلقائياً':'يتجدد تلقائياً في '+dt(S.period_end)));
+  var h='<div class="card hero"><div style="flex:1;min-width:220px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:21px">باقة '+esc(C.tiers[S.tier]?C.tiers[S.tier].name:TN[S.tier])+'</b><span class="pill" style="background:#fbbf24;color:#172554">'+(S.cycle==='y'?'سنوي':'شهري')+'</span>'+st+'</div>'
+   +'<div style="font-size:13px;opacity:.85;font-weight:700;margin-top:6px">'+esc(ren)+' · عن طريق Apple</div>'
+   +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+(S.tier==='pro'&&S.status!=='grace'?'<button type="button" class="btn gold" id="iapu"'+(APBUSY?' disabled':'')+'>⬆ الترقية إلى مؤسسة'+(APR[SKU.ent[S.cycle]]?' — '+esc(APR[SKU.ent[S.cycle]].displayPrice):'')+'</button>':'')
+   +'<button type="button" class="btn ghost" id="iapm">إدارة الاشتراك</button></div></div></div>';
+  h+='<div class="card"><div class="h3">حدود باقتك</div>'
+   +'<div class="lim"><span>مشرفون ومندوبون</span><b>'+(U.dlg||0)+' من '+L.dlg+'</b></div><div class="lim"><span>مشاريع نشطة</span><b>'+(U.projects||0)+' من '+L.projects+'</b></div><div class="lim"><span>فنيون</span><b>'+(U.tech||0)+' من '+L.tech+'</b></div>'
+   +'<div class="lim"><span>الفروع</span><b>'+(L.branch>=99?'متعددة':L.branch)+'</b></div><div class="lim"><span>الخريطة اللايف</span><b>'+(L.map?'✓':'—')+'</b></div></div>';
+  if(S.status!=='grace'){ var ah='';
+    Object.keys(C.addons).forEach(function(k){ var a=C.addons[k]; if(!a.on||a.tiers.indexOf(S.tier)<0) return; var sku=SKU.addon[k], q=APR[sku], has=own.indexOf(sku)>-1;
+      ah+='<div class="row"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':'👥'))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+(q?esc(q.displayPrice)+' / شهر':'…')+'</div></div>'
+       +(has?'<span class="pill p-g">✓ مفعّلة</span>':'<button type="button" class="btn sec" data-iapa="'+sku+'" style="padding:8px 14px"'+(APBUSY||!q?' disabled':'')+'>إضافة</button>')+'</div>'; });
+    if(ah) h+='<div class="card"><div class="h3" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">الإضافات <span class="mu">اشتراك شهري يتجدد مع Apple، وإلغاؤه من «إدارة الاشتراك»</span></div>'+ah+iapLegal()+'</div>';
+  }
+  return h;
+}
+function iapRender(){
+  var S=D.sub, live=S&&['active','trial','grace'].indexOf(S.status)>-1;
+  if(!AP){ app.innerHTML='<div class="spin"></div>'; api('/api/apple/me').then(function(a){ AP=a||{}; render(); }).catch(function(){ AP={}; render(); }); nat({action:'products',skus:allSku()}); return; }
+  var main;
+  if(live&&S.via!=='apple'&&S.status!=='trial') main=manage();
+  else if(live&&S.via==='apple') main=iapManage();
+  else main=(AP.open===false?'<div class="note">الاشتراكات تُفتح قريباً.</div>':iapChooser());
+  app.innerHTML='<div style="margin-bottom:16px"><div class="h1">الاشتراك والباقة</div><div class="mu">'+(live?'باقتك وإضافاتك وفواتيرك':'اختر الباقة المناسبة لعملك')+'</div></div><div class="grid"><div class="main">'+main+'</div><div class="side">'+side()+'</div></div>';
+  var on=function(id,f){ var e=document.getElementById(id); if(e) e.onclick=f; };
+  [].forEach.call(document.querySelectorAll('.plan[data-t]'),function(b){ b.onclick=function(){ TIER=b.getAttribute('data-t'); render(); }; });
+  [].forEach.call(document.querySelectorAll('.seg [data-cy]'),function(b){ b.onclick=function(){ CY=b.getAttribute('data-cy'); render(); }; });
+  [].forEach.call(document.querySelectorAll('[data-iapa]'),function(b){ b.onclick=function(){ iapBuy(b.getAttribute('data-iapa')); }; });
+  on('iapb',function(){ iapBuy(SKU[TIER][CY]); });
+  on('iapu',function(){ iapBuy(SKU.ent[D.sub.cycle==='y'?'y':'m']); });
+  on('iapr',function(){ nat({action:'redeem',uuid:AP&&AP.uuid}); });
+  on('iaps',function(){ APBUSY=true; render(); nat({action:'restore'}); });
+  on('iapm',function(){ nat({action:'manage'}); });
 }
 function load(){
  return api('/api/subs/me').then(function(d){

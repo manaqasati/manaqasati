@@ -4030,6 +4030,9 @@ async function setupDatabase() {
       await _mig(`CREATE TABLE IF NOT EXISTS provider_customers (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, client_id INTEGER REFERENCES users(id) ON DELETE SET NULL, name VARCHAR(80), phone VARCHAR(20), phone9 VARCHAR(12), quotes_n INTEGER DEFAULT 0, accepted_n INTEGER DEFAULT 0, last_at TIMESTAMPTZ DEFAULT NOW(), created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(provider_id, phone9))`);
       await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS ref_code VARCHAR(16), ADD COLUMN IF NOT EXISTS ref_by INTEGER, ADD COLUMN IF NOT EXISTS ref_credit INTEGER DEFAULT 0, ADD COLUMN IF NOT EXISTS ref_rewarded BOOLEAN DEFAULT FALSE');
       await _mig('CREATE UNIQUE INDEX IF NOT EXISTS users_ref_code ON users(ref_code) WHERE ref_code IS NOT NULL');
+      await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS apple_uuid VARCHAR(40)');
+      await _mig(`CREATE TABLE IF NOT EXISTS apple_tx (otid VARCHAR(40) PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, product_id VARCHAR(80), kind VARCHAR(8), tier VARCHAR(8), cycle CHAR(1), addon_key VARCHAR(12), expires_at TIMESTAMPTZ, status VARCHAR(10), auto_renew BOOLEAN DEFAULT TRUE, trial BOOLEAN DEFAULT FALSE, grace_until TIMESTAMPTZ, env VARCHAR(16), last_tx VARCHAR(40), created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
+      await _mig('CREATE INDEX IF NOT EXISTS apple_tx_user ON apple_tx(user_id)');
     } catch(e){ console.error('subs mig:', e.message); }
     try { await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS pay_method VARCHAR(10)'); await _mig('ALTER TABLE saai_ledger ADD COLUMN IF NOT EXISTS pay_ref VARCHAR(80)'); await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS bank_ok BOOLEAN DEFAULT FALSE');
       await _mig(`CREATE TABLE IF NOT EXISTS saai_payments (id SERIAL PRIMARY KEY, ref VARCHAR(40) UNIQUE NOT NULL, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, ledger_id INTEGER, request_id INTEGER, self_title TEXT, contract_value NUMERIC(14,2), amount INTEGER NOT NULL, reason VARCHAR(60), status VARCHAR(12) DEFAULT 'new', method VARCHAR(12), moyasar_id VARCHAR(80) UNIQUE, card_brand VARCHAR(20), card_last4 VARCHAR(8), err TEXT, created_at TIMESTAMPTZ DEFAULT NOW(), paid_at TIMESTAMPTZ)`);
@@ -8699,6 +8702,7 @@ function _couponOff(c, baseH){ if (!c) return 0; const v = Number(c.value) || 0;
 async function _subQuote(uid, body){
   const cfg = await _subCfg(); const s = await _plnRow(uid); const live = _subLive(s);
   const kind = String(body.kind || 'new');
+  if (s && s.pay_method === 'apple' && live) return { error: 'اشتراكك عن طريق Apple، ويُدار من تطبيق مناقصة على الأيفون أو من إعدادات Apple' };
   const lines = []; let amount = 0, coupon = null, discount = 0, tier, cycle, addons = null, msg = null;
   if (kind === 'new') {
     tier = body.tier === 'ent' ? 'ent' : 'pro'; cycle = body.cycle === 'y' ? 'y' : 'm';
@@ -8840,7 +8844,7 @@ app.get('/api/subs/me', auth, _subOwner, async (req, res) => {
     const renewH = s && s.tier && s.tier !== 'free' ? _subPrice(cfg, s.next_tier || s.tier, s.next_cycle || s.cycle) + _subAddonsH(cfg, s.next_addons || s.addons, s.next_cycle || s.cycle) : 0;
     res.json({ open: await _subOpen(req.user.id),
       cfg: { tiers: cfg.tiers, limits: cfg.limits, addons: cfg.addons, trial_days: cfg.trial_days, grace_days: cfg.grace_days, ref_months: cfg.ref_months },
-      sub: s ? { tier: s.tier, cycle: s.cycle, status: live ? s.status : (s.status === 'cancelled' ? 'cancelled' : 'expired'), period_start: s.period_start, period_end: s.period_end, grace_until: s.grace_until, auto_renew: s.auto_renew, cancel_at_end: s.cancel_at_end, next_tier: s.next_tier, next_cycle: s.next_cycle, addons: s.addons || {}, next_addons: s.next_addons, card: s.card_last4 ? { brand: s.card_brand, last4: s.card_last4, saved: !!s.card_token } : null, pay_method: s.pay_method, renew_h: renewH } : null,
+      sub: s ? { via: s.pay_method === 'apple' ? 'apple' : 'web', tier: s.tier, cycle: s.cycle, status: live ? s.status : (s.status === 'cancelled' ? 'cancelled' : 'expired'), period_start: s.period_start, period_end: s.period_end, grace_until: s.grace_until, auto_renew: s.auto_renew, cancel_at_end: s.cancel_at_end, next_tier: s.next_tier, next_cycle: s.next_cycle, addons: s.addons || {}, next_addons: s.next_addons, card: s.card_last4 ? { brand: s.card_brand, last4: s.card_last4, saved: !!s.card_token } : null, pay_method: s.pay_method, renew_h: renewH } : null,
       tier: L.tier, limits: L.limits, usage: { dlg: dlgN, projects: ((await pool.query("SELECT COUNT(*)::int n FROM jobs WHERE provider_id=$1 AND status NOT IN ('done','cancelled')", [req.user.id]).catch(() => ({ rows: [{ n: 0 }] }))).rows[0] || {}).n || 0, tech: ((await pool.query('SELECT COUNT(*)::int n FROM provider_techs WHERE provider_id=$1 AND COALESCE(active,TRUE)', [req.user.id]).catch(() => ({ rows: [{ n: 0 }] }))).rows[0] || {}).n || 0 },
       trial_ok: !(s && s.trial_used) && !(await _subEverPaid(req.user.id)),
       ref: { code: u.ref_code, link: SITE_URL + '/plan.html?ref=' + u.ref_code, rewarded: refN, credit: u.ref_credit || 0 },
@@ -8885,6 +8889,7 @@ app.post('/api/subs/change', auth, _subOwner, async (req, res) => {
   try {
     const cfg = await _subCfg(); const s = await _plnRow(req.user.id); const a = String(req.body.act || '');
     if (!s || !_subLive(s)) return res.status(400).json({ message: 'لا يوجد اشتراك فعّال' });
+    if (s.pay_method === 'apple') return res.status(400).json({ message: 'اشتراكك عن طريق Apple — تُدار التغييرات والإلغاء من إعدادات Apple', code: 'apple' });
     if (a === 'cancel') { await pool.query('UPDATE subs SET cancel_at_end=TRUE, updated_at=NOW() WHERE user_id=$1', [req.user.id]); _subLog(req.user.id, 'cancel_at_end', ''); return res.json({ ok: true, message: 'سيتوقف الاشتراك بنهاية الفترة الحالية، وتبقى المزايا متاحة حتى ذلك التاريخ' }); }
     if (a === 'resume') { await pool.query('UPDATE subs SET cancel_at_end=FALSE, updated_at=NOW() WHERE user_id=$1', [req.user.id]); _subLog(req.user.id, 'resume', ''); return res.json({ ok: true, message: 'تم استئناف التجديد التلقائي' }); }
     if (a === 'auto') { const on = !!req.body.on; await pool.query('UPDATE subs SET auto_renew=$2, updated_at=NOW() WHERE user_id=$1', [req.user.id, on]); return res.json({ ok: true }); }
@@ -8965,7 +8970,7 @@ async function _subMail(uid, title, body, btn){
 async function _subTick(){
   const cfg = await _subCfg(); const fmtD = d => new Date(d).toISOString().slice(0, 10);
   // تذكير قبل التجديد
-  const rem = (await pool.query(`SELECT * FROM subs WHERE status='active' AND NOT cancel_at_end AND period_end > NOW() AND period_end <= NOW() + ($1 || ' days')::interval AND (reminded_for IS NULL OR reminded_for <> period_end)`, [String(cfg.remind_days)])).rows;
+  const rem = (await pool.query(`SELECT * FROM subs WHERE status='active' AND NOT cancel_at_end AND COALESCE(pay_method,'')<>'apple' AND period_end > NOW() AND period_end <= NOW() + ($1 || ' days')::interval AND (reminded_for IS NULL OR reminded_for <> period_end)`, [String(cfg.remind_days)])).rows;
   for (const s of rem) {
     await pool.query('UPDATE subs SET reminded_for=period_end WHERE user_id=$1', [s.user_id]);
     const amt = _SAR(_subPrice(cfg, s.next_tier || s.tier, s.next_cycle || s.cycle) + _subAddonsH(cfg, s.next_addons || s.addons, s.next_cycle || s.cycle));
@@ -8973,7 +8978,7 @@ async function _subTick(){
     else await _subMail(s.user_id, 'تذكير: جدّد اشتراكك', 'ينتهي اشتراكك في ' + fmtD(s.period_end) + '. لتجنّب توقف المزايا، جدّد الاشتراك (' + amt + ' ر.س) من صفحة «الاشتراك والباقة».', 'جدّد اشتراكك');
   }
   // انتهاء الفترة
-  const due = (await pool.query(`SELECT * FROM subs WHERE status IN ('active','trial') AND period_end <= NOW() LIMIT 200`)).rows;
+  const due = (await pool.query(`SELECT * FROM subs WHERE status IN ('active','trial') AND COALESCE(pay_method,'')<>'apple' AND period_end <= NOW() LIMIT 200`)).rows;
   for (const s of due) {
     if (s.status === 'trial') { await pool.query("UPDATE subs SET status='expired', updated_at=NOW() WHERE user_id=$1", [s.user_id]); _subLog(s.user_id, 'trial_end', ''); await _subMail(s.user_id, 'انتهت تجربتك المجانية', 'انتهت فترة التجربة المجانية لباقة مساعد الفوز، وعاد حسابك إلى الباقة المجانية. يمكنك الاشتراك في أي وقت لاستعادة المزايا.', 'اشترك الآن'); continue; }
     if (s.cancel_at_end) { await pool.query("UPDATE subs SET status='cancelled', updated_at=NOW() WHERE user_id=$1", [s.user_id]); _subLog(s.user_id, 'ended', 'إلغاء بنهاية الفترة'); await _subMail(s.user_id, 'انتهى اشتراكك', 'انتهى اشتراكك، وعاد حسابك إلى الباقة المجانية. بياناتك وعملاؤك محفوظون، ويعود كل شيء فور الاشتراك من جديد.', 'اشترك من جديد'); continue; }
@@ -8985,13 +8990,161 @@ async function _subTick(){
     await _subMail(s.user_id, 'تعذّر تجديد الاشتراك', (s.card_token ? 'رُفضت عملية الخصم من البطاقة المحفوظة. ' : 'حان موعد تجديد اشتراكك. ') + 'تبقى جميع الميزات متاحة لمدة ' + _arDays(cfg.grace_days) + '، ويُرجى السداد قبل ' + fmtD(gu) + ' لتجنّب إيقاف الاشتراك.', 'تحديث وسيلة الدفع والسداد');
   }
   // تذكير قبل انتهاء المهلة بيومين + الإيقاف
-  const g2 = (await pool.query(`SELECT * FROM subs WHERE status='grace' AND NOT grace_reminded AND grace_until > NOW() AND grace_until <= NOW() + interval '2 days'`)).rows;
+  const g2 = (await pool.query(`SELECT * FROM subs WHERE status='grace' AND NOT grace_reminded AND COALESCE(pay_method,'')<>'apple' AND grace_until > NOW() AND grace_until <= NOW() + interval '2 days'`)).rows;
   for (const s of g2) { await pool.query('UPDATE subs SET grace_reminded=TRUE WHERE user_id=$1', [s.user_id]); await _subMail(s.user_id, 'تذكير: يتبقى يومان على انتهاء المهلة', 'يتبقى يومان على إيقاف اشتراكك. جدّد الآن من صفحة «الاشتراك والباقة» للحفاظ على المزايا.', 'جدّد اشتراكك'); }
-  const gx = (await pool.query(`SELECT * FROM subs WHERE status='grace' AND grace_until <= NOW()`)).rows;
+  const gx = (await pool.query(`SELECT * FROM subs WHERE status='grace' AND COALESCE(pay_method,'')<>'apple' AND grace_until <= NOW()`)).rows;
   for (const s of gx) { await pool.query("UPDATE subs SET status='expired', updated_at=NOW() WHERE user_id=$1", [s.user_id]); _subLog(s.user_id, 'expired', 'انتهت المهلة'); await _subMail(s.user_id, 'توقف اشتراكك', 'انتهت مهلة السداد وعاد حسابك إلى الباقة المجانية، وتوقفت تذكيرات خطط الصيانة لعملائك. بياناتك محفوظة، ويعود كل شيء فور تجديد الاشتراك.', 'جدّد اشتراكك'); }
+  // اشتراكات Apple: Apple تجدد وتبلّغنا — لو مرّ يومين على النهاية بدون تجديد نوقفها
+  try { const ax = (await pool.query("SELECT user_id FROM subs WHERE pay_method='apple' AND status IN ('active','trial','grace') AND COALESCE(grace_until, period_end) < NOW() - interval '2 days'")).rows; for (const s of ax) await _appleSync(s.user_id); } catch(e){ console.error('apple-tick:', e.message); }
 }
 setInterval(() => _jobLock('subs', _subTick), 60 * 60 * 1000);
 setTimeout(() => _jobLock('subs', _subTick), 90 * 1000);
+// ═══════════ الشراء داخل تطبيق الأيفون (Apple In-App Purchase — StoreKit 2) ═══════════
+// التطبيق يرسل إثبات الشراء (JWS موقّع من Apple) → نتحقق من التوقيع بشهادة Apple الجذرية العامة (بدون أي مفتاح سري .p8)
+// وإشعارات Apple (App Store Server Notifications V2) تحدّث التجديد والإلغاء والاسترجاع تلقائياً
+const APPLE_BUNDLE = process.env.APPLE_BUNDLE_ID || 'com.manaqasa.app';
+const APPLE_ROOT_FP = '63:34:3A:BF:B8:9A:6A:03:EB:B5:7E:9B:3F:5F:A7:BE:7C:4F:5C:75:6F:30:17:B3:A8:C4:88:C3:65:3E:91:79'; // Apple Root CA - G3
+const _APPLE_TEST_FP = process.env.APPLE_IAP_TEST === '1' ? (process.env.APPLE_IAP_TEST_ROOT_FP || '') : '';
+const APPLE_PRODUCTS = {
+  'com.manaqasa.app.pro.m': { kind: 'plan', tier: 'pro', cycle: 'm' }, 'com.manaqasa.app.pro.y': { kind: 'plan', tier: 'pro', cycle: 'y' },
+  'com.manaqasa.app.ent.m': { kind: 'plan', tier: 'ent', cycle: 'm' }, 'com.manaqasa.app.ent.y': { kind: 'plan', tier: 'ent', cycle: 'y' },
+  'com.manaqasa.app.addon.dlg': { kind: 'addon', key: 'dlg' }, 'com.manaqasa.app.addon.tech': { kind: 'addon', key: 'tech' },
+  'com.manaqasa.app.addon.proj': { kind: 'addon', key: 'proj' }, 'com.manaqasa.app.addon.branch': { kind: 'addon', key: 'branch' },
+};
+const _OID_LEAF = Buffer.from('060a2a864886f763640b01', 'hex'), _OID_MID = Buffer.from('060a2a864886f76364060201', 'hex');
+function _b64u(s){ return Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64'); }
+function _appleJws(token){
+  const p = String(token || '').split('.'); if (p.length !== 3) throw new Error('jws format');
+  const head = JSON.parse(_b64u(p[0]).toString('utf8'));
+  if (head.alg !== 'ES256' || !Array.isArray(head.x5c) || head.x5c.length < 3) throw new Error('jws header');
+  const certs = head.x5c.map(c => new crypto.X509Certificate(Buffer.from(c, 'base64')));
+  const now = Date.now();
+  if (!certs.every(c => Date.parse(c.validFrom) < now && now < Date.parse(c.validTo))) throw new Error('cert dates');
+  for (let i = 0; i < certs.length - 1; i++) if (!certs[i].checkIssued(certs[i + 1]) || !certs[i].verify(certs[i + 1].publicKey)) throw new Error('cert chain');
+  const root = certs[certs.length - 1].fingerprint256;
+  const testRoot = _APPLE_TEST_FP && root === _APPLE_TEST_FP;
+  if (root !== APPLE_ROOT_FP && !testRoot) throw new Error('cert root');
+  if (!testRoot && (!certs[0].raw.includes(_OID_LEAF) || !certs[1].raw.includes(_OID_MID))) throw new Error('cert oid');
+  const ok = crypto.verify('sha256', Buffer.from(p[0] + '.' + p[1]), { key: certs[0].publicKey, dsaEncoding: 'ieee-p1363' }, _b64u(p[2]));
+  if (!ok) throw new Error('jws signature');
+  return JSON.parse(_b64u(p[1]).toString('utf8'));
+}
+async function _appleUuid(uid){
+  const r = (await pool.query('SELECT apple_uuid FROM users WHERE id=$1', [uid])).rows[0]; if (r && r.apple_uuid) return r.apple_uuid;
+  const u = crypto.randomUUID(); await pool.query('UPDATE users SET apple_uuid=COALESCE(apple_uuid,$2) WHERE id=$1', [uid, u]);
+  return (await pool.query('SELECT apple_uuid FROM users WHERE id=$1', [uid])).rows[0].apple_uuid;
+}
+// يحفظ عملية Apple (اشتراك باقة أو إضافة) ويسجّل الدفعة — مرة وحدة لكل transactionId
+async function _appleTx(uid, tx, renew){
+  const P = APPLE_PRODUCTS[tx.productId]; if (!P) throw new Error('unknown product');
+  if (tx.bundleId !== APPLE_BUNDLE) throw new Error('bundle');
+  const otid = String(tx.originalTransactionId || tx.transactionId), exp = tx.expiresDate ? new Date(Number(tx.expiresDate)) : null;
+  const revoked = !!tx.revocationDate;
+  const trial = Number(tx.offerType) === 1 && (Number(tx.price) === 0 || /FREE/i.test(String(tx.offerDiscountType || '')));
+  const st = revoked ? 'revoked' : (exp && exp.getTime() > Date.now() ? 'active' : 'expired');
+  await pool.query(`INSERT INTO apple_tx (otid, user_id, product_id, kind, tier, cycle, addon_key, expires_at, status, auto_renew, trial, env, last_tx, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($10,TRUE),$11,$12,$13,NOW())
+    ON CONFLICT (otid) DO UPDATE SET user_id=$2, product_id=$3, kind=$4, tier=$5, cycle=$6, addon_key=$7,
+      expires_at=CASE WHEN apple_tx.expires_at IS NULL OR $8 >= apple_tx.expires_at OR $9='revoked' THEN $8 ELSE apple_tx.expires_at END,
+      status=CASE WHEN $9='revoked' THEN 'revoked' WHEN apple_tx.expires_at IS NOT NULL AND $8 < apple_tx.expires_at THEN apple_tx.status ELSE $9 END,
+      auto_renew=COALESCE($10, apple_tx.auto_renew), trial=$11, env=$12, last_tx=$13, updated_at=NOW()`,
+    [otid, uid, tx.productId, P.kind, P.tier || null, P.cycle || null, P.key || null, exp, st, renew == null ? null : !!renew, trial, String(tx.environment || ''), String(tx.transactionId)]);
+  // الدفعة (للفواتير والدخل) — العمليات المدفوعة بس، مرة وحدة
+  const priceH = Math.round(Number(tx.price || 0) / 10); // Apple: السعر بالألف (99990 = 99.99)
+  if (priceH > 0 && !revoked) {
+    const first = String(tx.transactionId) === otid;
+    await pool.query(`INSERT INTO sub_pay (ref, user_id, kind, tier, cycle, addons, amount_h, status, method, paid_at, period_start, period_end, lines)
+        VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,'paid','apple',$8,$8,$9,$10::jsonb) ON CONFLICT (ref) DO NOTHING`,
+      ['apl_' + String(tx.transactionId).slice(0, 34), uid, P.kind === 'addon' ? 'addon' : (first ? 'new' : 'renew'), P.tier || null, P.cycle || 'm', JSON.stringify(P.key ? { [P.key]: 1 } : {}), priceH,
+       new Date(Number(tx.purchaseDate || Date.now())), exp, JSON.stringify([{ t: 'Apple · ' + tx.productId, h: priceH }])]);
+  }
+  if (revoked) await pool.query("UPDATE sub_pay SET err='مسترجع من Apple' WHERE ref=$1", ['apl_' + String(tx.transactionId).slice(0, 34)]);
+  return otid;
+}
+// يبني اشتراك المزوّد من عمليات Apple الفعّالة (الباقة + الإضافات)
+async function _appleSync(uid){
+  const rows = (await pool.query("SELECT * FROM apple_tx WHERE user_id=$1 AND status <> 'revoked' ORDER BY expires_at DESC NULLS LAST", [uid])).rows;
+  const now = Date.now(), live = r => r.expires_at && new Date(r.expires_at).getTime() > now;
+  const plan = rows.find(r => r.kind === 'plan' && live(r)) || null;
+  const s = (await pool.query('SELECT * FROM subs WHERE user_id=$1', [uid])).rows[0];
+  if (!plan) {
+    if (s && s.pay_method === 'apple' && ['active', 'trial', 'grace'].includes(s.status)) {
+      const gr = rows.find(r => r.kind === 'plan' && r.status === 'grace' && r.grace_until && new Date(r.grace_until).getTime() > now);
+      if (gr) await pool.query("UPDATE subs SET status='grace', grace_until=$2, updated_at=NOW() WHERE user_id=$1", [uid, gr.grace_until]);
+      else { await pool.query("UPDATE subs SET status='expired', addons='{}'::jsonb, updated_at=NOW() WHERE user_id=$1", [uid]); _subLog(uid, 'expired', 'Apple'); }
+    }
+    return;
+  }
+  // اشتراك الموقع شغّال؟ ما نكتب فوقه (الحماية من الدفع مرتين في /api/apple/verify)
+  if (s && s.pay_method !== 'apple' && _subLive(s) && s.status !== 'trial') return;
+  const addons = {}; rows.filter(r => r.kind === 'addon' && live(r)).forEach(r => { addons[r.addon_key] = 1; });
+  const status = plan.trial ? 'trial' : 'active';
+  await pool.query(`INSERT INTO subs (user_id, tier, cycle, status, period_start, period_end, auto_renew, cancel_at_end, next_tier, next_cycle, next_addons, addons, card_token, pay_method, grace_until, trial_used, updated_at)
+      VALUES ($1,$2,$3,$4,NOW(),$5,$6,$7,NULL,NULL,NULL,$8::jsonb,NULL,'apple',NULL,TRUE,NOW())
+    ON CONFLICT (user_id) DO UPDATE SET tier=$2, cycle=$3, status=$4, period_end=$5, auto_renew=$6, cancel_at_end=$7, next_tier=NULL, next_cycle=NULL, next_addons=NULL, addons=$8::jsonb, card_token=NULL, pay_method='apple', grace_until=NULL, trial_used=TRUE, updated_at=NOW()`,
+    [uid, plan.tier, plan.cycle, status, plan.expires_at, !!plan.auto_renew, !plan.auto_renew, JSON.stringify(addons)]);
+}
+app.get('/api/apple/me', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.status(403).json({ message: 'الاشتراكات لحسابات المزوّدين' });
+    const uid = req.user.id, s = (await pool.query('SELECT * FROM subs WHERE user_id=$1', [uid])).rows[0];
+    const web = !!(s && s.pay_method !== 'apple' && _subLive(s) && s.status !== 'trial');
+    const own = (await pool.query("SELECT product_id FROM apple_tx WHERE user_id=$1 AND status='active' AND expires_at > NOW()", [uid])).rows.map(r => r.product_id);
+    res.json({ uuid: await _appleUuid(uid), products: Object.keys(APPLE_PRODUCTS), web, own, open: await _subOpen(uid), trial_ok: !(s && s.trial_used) && !(await _subEverPaid(uid)) });
+  } catch(e){ console.error('apple-me:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// التطبيق يرسل إثبات الشراء (أو الاستعادة) — نتحقق ونفعّل
+app.post('/api/apple/verify', auth, rateLimiter(60, 600000), async (req, res) => {
+  try {
+    if (req.user.role !== 'provider') return res.status(403).json({ message: 'الاشتراكات لحسابات المزوّدين' });
+    let tx; try { tx = _appleJws(req.body && req.body.jws); } catch(e){ console.warn('apple-verify bad jws:', e.message); return res.status(400).json({ message: 'تعذّر التحقق من عملية الشراء' }); }
+    if (!APPLE_PRODUCTS[tx.productId] || tx.bundleId !== APPLE_BUNDLE) return res.status(400).json({ message: 'منتج غير معروف' });
+    const uid = req.user.id, uuid = await _appleUuid(uid);
+    // العملية لازم تكون لنفس الحساب (appAccountToken) — ما ينتقل اشتراك من حساب لثاني
+    if (tx.appAccountToken && String(tx.appAccountToken).toLowerCase() !== String(uuid).toLowerCase()) return res.status(409).json({ message: 'هذا الاشتراك مرتبط بحساب آخر في مناقصة', code: 'other_account' });
+    const ex = (await pool.query('SELECT user_id FROM apple_tx WHERE otid=$1', [String(tx.originalTransactionId || tx.transactionId)])).rows[0];
+    if (ex && ex.user_id !== uid) return res.status(409).json({ message: 'هذا الاشتراك مرتبط بحساب آخر في مناقصة', code: 'other_account' });
+    const s = (await pool.query('SELECT * FROM subs WHERE user_id=$1', [uid])).rows[0];
+    if (s && s.pay_method !== 'apple' && _subLive(s) && s.status !== 'trial' && APPLE_PRODUCTS[tx.productId].kind === 'plan') {
+      await _appleTx(uid, tx, null); _subLog(uid, 'apple_conflict', tx.productId);
+      return res.status(409).json({ message: 'لديك اشتراك فعّال من الموقع — لن يُفعَّل اشتراك Apple فوقه. يمكنك إلغاؤه من إعدادات Apple.', code: 'web_active' });
+    }
+    const before = s ? s.status : null;
+    await _appleTx(uid, tx, null); await _appleSync(uid);
+    const now = (await pool.query('SELECT * FROM subs WHERE user_id=$1', [uid])).rows[0];
+    if (now && now.pay_method === 'apple' && (before !== now.status || !s || s.tier !== now.tier)) {
+      _subLog(uid, 'apple_' + (now.status === 'trial' ? 'trial' : 'paid'), tx.productId);
+      try { await notify(uid, now.status === 'trial' ? 'بدأت تجربتك المجانية ✅' : 'تم تفعيل اشتراكك ✅', 'باقة ' + (SUB_TN[now.tier] || '') + ' فعّالة حتى ' + new Date(now.period_end).toISOString().slice(0, 10) + '.', 'sub', null, { url: '/plan.html' }); } catch(e){}
+    }
+    res.json({ ok: true, status: now && now.status, tier: now && now.tier });
+  } catch(e){ console.error('apple-verify:', e.message); res.status(500).json({ message: 'تعذّر تفعيل الاشتراك' }); }
+});
+// إشعارات Apple (App Store Server Notifications V2) — الرابط يُحط في App Store Connect
+app.post('/api/apple/notify', rateLimiter(300, 60000), async (req, res) => {
+  let n; try { n = _appleJws(req.body && req.body.signedPayload); } catch(e){ console.warn('apple-notify bad:', e.message); return res.status(400).json({ ok: false }); }
+  try {
+    const d = n.data || {}; if (d.bundleId && d.bundleId !== APPLE_BUNDLE) return res.json({ ok: true });
+    const tx = d.signedTransactionInfo ? _appleJws(d.signedTransactionInfo) : null;
+    const rn = d.signedRenewalInfo ? _appleJws(d.signedRenewalInfo) : null;
+    if (!tx) return res.json({ ok: true });
+    const otid = String(tx.originalTransactionId || tx.transactionId);
+    let uid = ((await pool.query('SELECT user_id FROM apple_tx WHERE otid=$1', [otid])).rows[0] || {}).user_id;
+    if (!uid && tx.appAccountToken) uid = ((await pool.query('SELECT id FROM users WHERE lower(apple_uuid)=lower($1)', [String(tx.appAccountToken)])).rows[0] || {}).id;
+    if (!uid) { console.warn('apple-notify: unknown user', n.notificationType, otid); return res.json({ ok: true }); }
+    const type = String(n.notificationType || ''), sub = String(n.subtype || '');
+    await _appleTx(uid, tx, rn ? Number(rn.autoRenewStatus) === 1 : null);
+    if (type === 'DID_FAIL_TO_RENEW') {
+      const gu = rn && rn.gracePeriodExpiresDate ? new Date(Number(rn.gracePeriodExpiresDate)) : null;
+      await pool.query("UPDATE apple_tx SET status=$2, grace_until=$3 WHERE otid=$1", [otid, gu && gu.getTime() > Date.now() ? 'grace' : 'expired', gu]);
+      try { await notify(uid, 'تعذّر تجديد الاشتراك', 'لم تتمكن Apple من تجديد اشتراكك. حدّث وسيلة الدفع من إعدادات Apple للحفاظ على المزايا.', 'sub', null, { url: '/plan.html' }); } catch(e){}
+    }
+    if (type === 'EXPIRED' || type === 'GRACE_PERIOD_EXPIRED') await pool.query("UPDATE apple_tx SET status='expired' WHERE otid=$1", [otid]);
+    if (type === 'REFUND' || type === 'REVOKE') { await pool.query("UPDATE apple_tx SET status='revoked' WHERE otid=$1", [otid]); _notifyAdmins('↩️ استرجاع اشتراك Apple', tx.productId, 'sub', null).catch(()=>{}); }
+    await _appleSync(uid);
+    _subLog(uid, 'apple_' + type.toLowerCase().slice(0, 20), sub + ' ' + tx.productId);
+    res.json({ ok: true });
+  } catch(e){ console.error('apple-notify:', e.message); res.status(500).json({ ok: false }); }
+});
 // ── الإدارة ──
 async function _subsAdminData(){
   {
@@ -9011,7 +9164,7 @@ async function _subsAdminData(){
     const tr = (await pool.query(`SELECT COUNT(*)::int n, COUNT(*) FILTER (WHERE EXISTS (SELECT 1 FROM sub_pay p WHERE p.user_id=s.user_id AND p.status='paid' AND p.amount_h>0))::int c FROM subs s WHERE trial_used`)).rows[0];
     const newM = (await pool.query(`SELECT COUNT(DISTINCT user_id)::int n FROM sub_pay WHERE status='paid' AND kind='new' AND paid_at >= $1`, [m0])).rows[0].n;
     const revM = (await pool.query(`SELECT COALESCE(SUM(amount_h),0)::bigint h FROM sub_pay WHERE status='paid' AND COALESCE(err,'') NOT LIKE 'مسترجع%' AND paid_at >= $1`, [m0])).rows[0].h;
-    return { items: rows.map(s => ({ user_id: s.user_id, name: s.uname, city: s.city, phone: s.phone, tier: s.tier, cycle: s.cycle, status: s.live ? s.status : (s.status === 'cancelled' ? 'cancelled' : 'expired'), period_end: s.period_end, grace_until: s.grace_until, addons: s.addons, cancel_at_end: s.cancel_at_end, card_last4: s.card_last4, auto: !!s.card_token && s.auto_renew, coupon: s.last_coupon, paid_n: s.paid_n, last_ref: s.last_ref, renew: _SAR(_subPrice(cfg, s.next_tier || s.tier, s.next_cycle || s.cycle) + _subAddonsH(cfg, s.next_addons || s.addons, s.next_cycle || s.cycle)), since: s.created_at })),
+    return { items: rows.map(s => ({ user_id: s.user_id, name: s.uname, city: s.city, phone: s.phone, tier: s.tier, cycle: s.cycle, status: s.live ? s.status : (s.status === 'cancelled' ? 'cancelled' : 'expired'), period_end: s.period_end, grace_until: s.grace_until, addons: s.addons, cancel_at_end: s.cancel_at_end, card_last4: s.card_last4, auto: s.pay_method === 'apple' ? !!s.auto_renew : (!!s.card_token && s.auto_renew), via: s.pay_method === 'apple' ? 'apple' : 'web', coupon: s.last_coupon, paid_n: s.paid_n, last_ref: s.last_ref, renew: _SAR(_subPrice(cfg, s.next_tier || s.tier, s.next_cycle || s.cycle) + _subAddonsH(cfg, s.next_addons || s.addons, s.next_cycle || s.cycle)), since: s.created_at })),
       stats: { mrr: _SAR(mrr), pro: st.pro, pro_y: st.pro_y, ent: st.ent, ent_y: st.ent_y, trial: st.trial, grace: st.grace, cancelled_m: st.cancelled_m, trial_conv: tr.n ? Math.round(tr.c * 100 / tr.n) : 0, new_m: newM, revenue_m: _SAR(Number(revM)) } };
   }
 }
