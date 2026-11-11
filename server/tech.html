@@ -79,6 +79,14 @@ function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/j
   return fetch(p,o).then(function(r){ if(r.status===401){ login(); throw 0; } return r.json().then(function(j){ if(!r.ok){ var e=new Error(j.message||'حدث خطأ'); throw e; } return j; }); });}
 function toast(t){ var e=document.getElementById('toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){e.style.display='none';},2600); }
 function dt(x){ if(!x)return ''; try{ return new Date(x).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; } }
+var WATCH=null, LAST=0, WL=null;
+function stopShare(){ if(WATCH!==null&&navigator.geolocation){ navigator.geolocation.clearWatch(WATCH); } WATCH=null; try{ if(WL){ WL.release(); WL=null; } }catch(e){} }
+function startShare(){ if(WATCH!==null||!navigator.geolocation||!S.j) return; var jid=S.j.id;
+  try{ if(navigator.wakeLock) navigator.wakeLock.request('screen').then(function(w){ WL=w; }).catch(function(){}); }catch(e){}
+  WATCH=navigator.geolocation.watchPosition(function(pos){ var e=document.getElementById('shr'); if(Date.now()-LAST<30000) return; LAST=Date.now();
+    api('/api/tech/jobs/'+jid,{method:'POST',body:JSON.stringify({act:'loc',lat:pos.coords.latitude,lng:pos.coords.longitude,acc:Math.round(pos.coords.accuracy||0)})}).then(function(){ if(e) e.textContent='آخر تحديث للموقع: الحين'; }).catch(function(){}); },
+    function(err){ var e=document.getElementById('shr'); if(e) e.innerHTML='<b style="color:#b42318">ما قدرنا نوصل لموقعك — فعّل خدمة الموقع وسمح لمناقصة</b>'; }, {enableHighAccuracy:true,maximumAge:15000,timeout:20000}); }
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible'&&S.j&&S.j.enroute_at&&!S.j.arrived_at){ LAST=0; stopShare(); startShare(); } });
 function setUrl(q){ try{ history.replaceState(null,'',q?'?'+q:location.pathname); }catch(e){} }
 function list(){
   setUrl(''); S.j=null;
@@ -97,18 +105,22 @@ function draw(){
   var h='<div class="row" style="gap:8px"><button class="btn sec" style="padding:7px 11px" onclick="_tBack()">‹ مهامي</button></div><div><div class="mu">'+esc(j.provider_name)+(j.sched_at?' · '+dt(j.sched_at):'')+'</div><div class="h1" style="font-size:20px">'+esc(j.title)+'</div><div class="mu">'+esc(j.client_name||'')+(j.address?' · '+esc(j.address):'')+'</div></div>';
   h+='<div class="row" style="flex-wrap:nowrap">'+(j.maps?'<a class="btn sec" style="flex:1" target="_blank" rel="noopener" href="'+esc(j.maps)+'">📍 الموقع</a>':'')+(j.client_phone?'<a class="btn sec" style="flex:1" href="tel:'+esc(j.client_phone)+'">📞 اتصال بالعميل</a>':'')+'</div>';
   if(!open) h+='<div class="card" style="background:#f8fafc"><b>انسلّم المشروع — شكراً لك</b></div>';
-  else if(!j.arrived_at) h+='<button class="btn" style="background:#16a34a;color:#fff;padding:14px;font-size:16px" id="arr" onclick="_tArr()">✓ وصلت الموقع</button>';
+  else if(!j.arrived_at){ if(!j.enroute_at) h+='<button class="btn sec" style="padding:13px;font-size:15px" id="enr" onclick="_tEnr()">🚗 في الطريق</button>';
+    else h+='<div class="card" style="background:#eff4ff;border-color:#bfd3fe;padding:12px 14px"><b style="color:#1e3a8a">📍 نشارك موقعك مع المؤسسة والعميل لين توصل</b><div class="mu" style="margin-top:3px">خلّ الصفحة مفتوحة · يوقف تلقائياً لما تضغط «وصلت»</div><div class="mu" id="shr" style="margin-top:3px">جاري تحديد موقعك…</div></div>';
+    h+='<button class="btn" style="background:#16a34a;color:#fff;padding:14px;font-size:16px" id="arr" onclick="_tArr()">✓ وصلت الموقع</button>'; }
   else h+='<div class="pill p-g" style="align-self:flex-start;height:28px">📍 وصلت '+dt(j.arrived_at)+'</div>';
   h+='<div class="card"><div class="row sb" style="margin-bottom:4px"><span class="h3">المهام</span><span class="pill p-b">'+dn+' من '+j.tasks.length+'</span></div>'+j.tasks.map(function(t){ return '<button class="ck'+(t.done?' done':'')+'" style="width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:right;cursor:pointer;font-family:inherit;color:inherit" '+(open?'onclick="_tTask(\''+esc(t.id)+'\')"':'disabled')+'><span class="b">'+(t.done?'✓':'')+'</span><span class="t" style="flex:1">'+esc(t.t)+'</span></button>'; }).join('')+'</div>';
   h+='<div class="card"><div class="row sb"><span class="h3">الصور</span></div><div class="phs">'+j.photos.map(function(p){ return '<a href="'+esc(p.url)+'" target="_blank" rel="noopener" class="ph" style="background-image:url(&quot;'+esc(p.url)+'&quot;)"><span>'+(p.kind==='before'?'قبل':'بعد')+'</span></a>'; }).join('')+'</div>'+(open?'<div class="row" style="margin-top:10px;flex-wrap:nowrap"><label class="btn sec" style="flex:1;cursor:pointer">📷 صورة قبل<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_tPh(this,\'before\')"></label><label class="btn sec" style="flex:1;cursor:pointer">📷 صورة بعد<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_tPh(this,\'after\')"></label></div>':'')+'</div>';
   (j.extras||[]).forEach(function(e){ h+='<div class="row sb card" style="padding:12px 14px;font-size:13.5px;font-weight:700"><span>عمل إضافي: '+esc(e.descr)+'</span><span class="pill '+({tech:'p-y',sent:'p-y',approved:'p-g',declined:'p-r',dropped:'p-gr'}[e.status]||'p-gr')+'">'+({tech:'عند المؤسسة',sent:'عند العميل',approved:'وافق العميل',declined:'رفض العميل',dropped:'ملغي'}[e.status]||'')+'</span></div>'; });
   if(open) h+='<button class="btn sec" style="padding:13px" onclick="_tDev()">+ سجّل جهاز عند العميل</button><button class="btn sec" style="padding:13px" onclick="_tExtra()">+ عمل إضافي (يحتاج موافقة)</button>'+(j.finished_at?'<div class="pill p-b" style="align-self:center;height:28px">🏁 بلّغت المؤسسة إنك خلّصت</div>':'<button class="btn pri" style="padding:14px;font-size:15px" onclick="_tFin()">خلّصت — أبلغ المؤسسة</button>');
   A.innerHTML=h;
+  if(open&&j.enroute_at&&!j.arrived_at) startShare(); else stopShare();
 }
 function act(b){ return api('/api/tech/jobs/'+S.j.id,{method:'POST',body:JSON.stringify(b)}); }
 function re(msg){ return api('/api/tech/jobs/'+S.j.id).then(function(j){ S.j=j; draw(); if(msg)toast(msg); }); }
-window._tBack=function(){ list(); };
-window._tArr=function(){ var b=document.getElementById('arr'); b.disabled=true; act({act:'arrive'}).then(function(){ re('تم — بلّغنا المؤسسة والعميل'); }).catch(function(e){ b.disabled=false; if(e)toast(e.message); }); };
+window._tBack=function(){ stopShare(); list(); };
+window._tEnr=function(){ var b=document.getElementById('enr'); b.disabled=true; act({act:'enroute'}).then(function(){ re('بلّغنا العميل إنك في الطريق'); }).catch(function(e){ b.disabled=false; if(e)toast(e.message); }); };
+window._tArr=function(){ var b=document.getElementById('arr'); b.disabled=true; stopShare(); act({act:'arrive'}).then(function(){ re('تم — بلّغنا المؤسسة والعميل'); }).catch(function(e){ b.disabled=false; if(e)toast(e.message); }); };
 window._tTask=function(tid){ act({act:'task',tid:tid}).then(function(){ re(); }).catch(function(e){ if(e)toast(e.message); }); };
 window._tFin=function(){ var left=S.j.tasks.filter(function(t){return !t.done;}).length; if(!confirm(left?'باقي '+left+' مهام ما علّمت عليها. تبلّغ إنك خلّصت؟':'تبلّغ المؤسسة إنك خلّصت؟'))return; act({act:'finish'}).then(function(){ re('بلّغنا المؤسسة'); }).catch(function(e){ if(e)toast(e.message); }); };
 function shrink(f,cb){ var rd=new FileReader(); rd.onload=function(){ var im=new Image(); im.onload=function(){ var w=Math.min(1280,im.width), c=document.createElement('canvas'); c.width=w; c.height=Math.round(im.height*w/im.width); c.getContext('2d').drawImage(im,0,0,c.width,c.height); cb(c.toDataURL('image/jpeg',.8)); }; im.src=rd.result; }; rd.readAsDataURL(f); }

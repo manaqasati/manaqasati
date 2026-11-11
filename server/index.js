@@ -157,7 +157,7 @@ if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 const _CSP_RO = process.env.CSP_OFF === '1' ? '' : [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://www.clarity.ms https://*.clarity.ms https://www.googletagmanager.com https://*.google-analytics.com https://analytics.tiktok.com https://sc-static.net https://connect.facebook.net https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://accounts.google.com/gsi/client https://appleid.cdn-apple.com https://cdn.moyasar.com https://applepay.cdn-apple.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style https://cdn.moyasar.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style https://cdn.moyasar.com https://cdnjs.cloudflare.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
@@ -4017,6 +4017,8 @@ async function setupDatabase() {
       await _mig('ALTER TABLE customer_devices ADD COLUMN IF NOT EXISTS qr_token VARCHAR(24)');
       await _mig('CREATE UNIQUE INDEX IF NOT EXISTS cdev_qr ON customer_devices(qr_token)');
       await _mig('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS plan_visit_id INTEGER');
+      await _mig('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS enroute_at TIMESTAMPTZ');
+      await _mig(`CREATE TABLE IF NOT EXISTS job_locs (job_id INTEGER PRIMARY KEY, provider_id INTEGER, tech_id INTEGER, lat DOUBLE PRECISION, lng DOUBLE PRECISION, acc INTEGER, at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig(`CREATE TABLE IF NOT EXISTS maint_plans (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, customer_id INTEGER REFERENCES provider_customers(id) ON DELETE CASCADE, client_id INTEGER REFERENCES users(id) ON DELETE SET NULL, title VARCHAR(120), device_ids JSONB DEFAULT '[]'::jsonb, every_m INTEGER DEFAULT 6, duration_m INTEGER DEFAULT 12, first_at DATE, end_at DATE, price NUMERIC(12,2) DEFAULT 0, price_per VARCHAR(6) DEFAULT 'year', includes VARCHAR(300), tasks JSONB DEFAULT '[]'::jsonb, status VARCHAR(10) DEFAULT 'offered', renew_reminded BOOLEAN DEFAULT FALSE, renewed_to INTEGER, decided_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig(`CREATE TABLE IF NOT EXISTS maint_visits (id SERIAL PRIMARY KEY, plan_id INTEGER REFERENCES maint_plans(id) ON DELETE CASCADE, n INTEGER, due_at DATE, job_id INTEGER, status VARCHAR(10) DEFAULT 'upcoming', postpone_req VARCHAR(300), postpone_at TIMESTAMPTZ, done_at TIMESTAMPTZ)`);
       await _mig('CREATE INDEX IF NOT EXISTS mv_plan ON maint_visits(plan_id)');
@@ -9428,7 +9430,7 @@ async function _saaiAdjust(saaiId, newVal, title){
 }
 async function _jobGate(req, res){ return _qGate(req, res); }
 function _jobOut(j, who){
-  const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: j.tasks || [], photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, created_at: j.created_at, updated_at: j.updated_at };
+  const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, enroute_at: j.enroute_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: j.tasks || [], photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, created_at: j.created_at, updated_at: j.updated_at };
   if (who !== 'tech') Object.assign(o, { value: parseFloat(j.value) || 0, extra_total: parseFloat(j.extra_total) || 0 });
   if (who === 'prov') Object.assign(o, { client_phone: j.client_phone, client_id: j.client_id, tech_id: j.tech_id, tech_name: j.tech_name || null });
   if (who === 'tech') Object.assign(o, { client_phone: j.client_phone, provider_name: j.pname });
@@ -9476,6 +9478,13 @@ app.get('/api/jobs', auth, providerOnly, async (req, res) => {
   try { const r = await pool.query(`SELECT j.*, t.name AS tech_name, (SELECT COUNT(*)::int FROM job_extras e WHERE e.job_id=j.id AND e.status='tech') AS extra_wait FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id WHERE j.provider_id=$1 ORDER BY CASE j.status WHEN 'active' THEN 0 WHEN 'scheduled' THEN 1 WHEN 'new' THEN 2 WHEN 'delivered' THEN 3 ELSE 4 END, COALESCE(j.sched_at, j.created_at) DESC LIMIT 300`, [req.user.id]);
     const ss = await _plnRow(req.user.id); const L = await _subLimits(req.user.id);
     res.json({ live: _subLive(ss) && await _subOpen(req.user.id), limit: L.limits.projects || 0, items: r.rows.map(j => Object.assign(_jobOut(j, 'prov'), { extra_wait: j.extra_wait })) }); } catch(e){ console.error('jobs:', e.message); res.json({ items: [] }); }
+});
+app.get('/api/jobs/map', auth, providerOnly, async (req, res) => {
+  try { if (!(await _mapTier(req.user.id))) return res.status(403).json({ code: 'tier', message: 'الخريطة اللايف من مزايا باقة مؤسسة' });
+    const r = await pool.query(`SELECT j.id, j.title, j.address, j.client_name, j.sched_at, j.enroute_at, t.name AS tech_name, l.lat, l.lng, l.acc, l.at FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id LEFT JOIN job_locs l ON l.job_id=j.id
+      WHERE j.provider_id=$1 AND j.enroute_at IS NOT NULL AND j.arrived_at IS NULL AND j.status IN ('new','scheduled','active') ORDER BY j.enroute_at DESC LIMIT 100`, [req.user.id]);
+    const today = (await pool.query(`SELECT j.id, j.title, j.sched_at, j.arrived_at, t.name AS tech_name FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id WHERE j.provider_id=$1 AND j.status IN ('scheduled','active') AND j.sched_at::date = (NOW() AT TIME ZONE 'Asia/Riyadh')::date ORDER BY j.sched_at LIMIT 100`, [req.user.id])).rows;
+    res.json({ items: r.rows, today }); } catch(e){ console.error('map:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/jobs/:id', auth, providerOnly, async (req, res) => {
   try { const j = await _jobRow(parseInt(req.params.id) || 0, 'AND j.provider_id=$2', [req.user.id]); if (!j) return res.status(404).json({ message: 'المشروع غير موجود' });
@@ -9548,6 +9557,8 @@ app.post('/api/jobs/:id/extras', auth, providerOnly, async (req, res) => {
     res.json({ ok: true, extra: e });
   } catch(x){ console.error('job-extra:', x.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// ── الخريطة اللايف (باقة مؤسسة): الفنيين اللي «في الطريق» — آخر موقع بس (ما نحفظ المسار) وينمسح بعد 24 ساعة ──
+async function _mapTier(pid){ try { const ss = await _plnRow(pid); if (!_subLive(ss) || !(await _subOpen(pid))) return false; const L = await _subLimits(pid); return !!L.limits.map; } catch(e){ return false; } }
 // ── الفني ──
 async function _techIds(uid){
   const me = (await pool.query('SELECT phone FROM users WHERE id=$1', [uid])).rows[0] || {}; const p9 = _ph9(me.phone);
@@ -9565,12 +9576,21 @@ app.get('/api/tech/jobs/:id', auth, async (req, res) => {
     const ex = (await pool.query("SELECT id, descr, status, created_at FROM job_extras WHERE job_id=$1 AND by_tech ORDER BY id", [j.id])).rows;
     res.json(Object.assign(_jobOut(j, 'tech'), { extras: ex })); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
-app.post('/api/tech/jobs/:id', auth, rateLimiter(120, 600000), async (req, res) => {
+app.post('/api/tech/jobs/:id', auth, rateLimiter(300, 600000), async (req, res) => {
   try { const j = await _techJob(req); if (!j) return res.status(404).json({ message: 'المهمة غير موجودة' });
     const b = req.body || {}, act = String(b.act || ''), id = j.id, tn = j.tech_name || 'الفني';
     if (!['new', 'scheduled', 'active'].includes(j.status)) return res.status(409).json({ message: 'المشروع انسلّم' });
+    if (act === 'enroute') { if (j.arrived_at) return res.status(409).json({ message: 'وصلت الموقع مسبقاً' }); if (j.enroute_at) return res.json({ ok: true });
+      await pool.query('UPDATE jobs SET enroute_at=NOW(), updated_at=NOW() WHERE id=$1', [id]); await _jobLog(id, tn + ' في الطريق');
+      try { await notify(j.provider_id, '🚗 ' + tn + ' في الطريق', j.title || '', 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
+      if (j.client_id) try { await notify(j.client_id, '🚗 الفني ' + tn + ' في الطريق إليك', (j.title || '') + ' — ' + j.pname, 'job', id, { url: '/job.html?id=' + id }); } catch(e){}
+      return res.json({ ok: true }); }
+    if (act === 'loc') { if (!j.enroute_at || j.arrived_at) return res.status(409).json({ message: 'المشاركة تبدأ بـ«في الطريق» وتنتهي بالوصول' });
+      const la = parseFloat(b.lat), ln = parseFloat(b.lng); if (!(la >= 15 && la <= 33 && ln >= 33 && ln <= 57)) return res.status(400).json({ message: 'موقع غير صحيح' });
+      await pool.query('INSERT INTO job_locs (job_id, provider_id, tech_id, lat, lng, acc, at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) ON CONFLICT (job_id) DO UPDATE SET lat=EXCLUDED.lat, lng=EXCLUDED.lng, acc=EXCLUDED.acc, at=NOW()', [id, j.provider_id, j.tech_id, la, ln, Math.min(99999, Math.max(0, parseInt(b.acc) || 0))]);
+      return res.json({ ok: true }); }
     if (act === 'arrive') { if (j.arrived_at) return res.json({ ok: true });
-      await pool.query("UPDATE jobs SET arrived_at=NOW(), status='active', updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, tn + ' وصل الموقع');
+      await pool.query("UPDATE jobs SET arrived_at=NOW(), status='active', updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, tn + ' وصل الموقع'); await pool.query('DELETE FROM job_locs WHERE job_id=$1', [id]);
       try { await notify(j.provider_id, '📍 ' + tn + ' وصل الموقع', j.title || '', 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
       if (j.client_id) try { await notify(j.client_id, '📍 الفني ' + tn + ' وصل', (j.title || '') + ' — ' + j.pname, 'job', id, { url: '/job.html?id=' + id }); } catch(e){}
       return res.json({ ok: true }); }
@@ -9601,7 +9621,9 @@ app.get('/api/my/jobs', auth, async (req, res) => {
 app.get('/api/cjobs/:id', auth, async (req, res) => {
   try { const j = await _jobRow(parseInt(req.params.id) || 0, 'AND j.client_id=$2', [req.user.id]); if (!j) return res.status(404).json({ message: 'المشروع غير موجود' });
     const ex = (await pool.query("SELECT id, descr, price, photo, status, sent_at, decided_at FROM job_extras WHERE job_id=$1 AND status IN ('sent','approved','declined') ORDER BY id", [j.id])).rows;
-    res.json(Object.assign(_jobOut(j, 'client'), { extras: ex })); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+    let live = null;
+    if (j.enroute_at && !j.arrived_at && (await _mapTier(j.provider_id))) { const l = (await pool.query("SELECT lat, lng, at FROM job_locs WHERE job_id=$1 AND at > NOW() - interval '10 minutes'", [j.id])).rows[0]; if (l) live = l; }
+    res.json(Object.assign(_jobOut(j, 'client'), { extras: ex, live, map_on: !!(await _mapTier(j.provider_id)) })); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.post('/api/cjobs/:id', auth, rateLimiter(30, 600000), async (req, res) => {
   try { const j = await _jobRow(parseInt(req.params.id) || 0, 'AND j.client_id=$2', [req.user.id]); if (!j) return res.status(404).json({ message: 'المشروع غير موجود' });
@@ -9630,6 +9652,7 @@ async function _jobTick(){
   const r = (await pool.query("UPDATE jobs SET status='done', confirmed_at=NOW(), auto_confirmed=TRUE, updated_at=NOW() WHERE status='delivered' AND delivered_at < NOW() - interval '3 days' RETURNING id, provider_id, title")).rows;
   for (const j of r) { await _jobDone(j.id); await _jobLog(j.id, 'تأكّد الاستلام تلقائياً بعد 3 أيام'); try { await notify(j.provider_id, 'اكتمل المشروع', (j.title || '') + ' — تأكّد الاستلام تلقائياً', 'job', j.id, { url: '/jobs.html?id=' + j.id }); } catch(e){} }
   try { await _planTick(); } catch(e){ console.error('plan-tick:', e.message); }
+  try { await pool.query("DELETE FROM job_locs WHERE at < NOW() - interval '24 hours' OR job_id IN (SELECT id FROM jobs WHERE arrived_at IS NOT NULL OR status IN ('delivered','done','cancelled'))"); } catch(e){}
   return r.length;
 }
 setInterval(() => _jobLock('jobs', _jobTick), 60 * 60 * 1000);
