@@ -323,6 +323,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .pj-bid.acc{border:2px solid #16a34a;background:#f7fef9}
 .pj-bid.rej{opacity:.6}
 .pj-bid.mine{border-color:#93c5fd}
+.pj-bid.pro{border-top:3px solid #1e3a8a}
 .pj-tags{display:flex;gap:6px;flex-wrap:wrap}
 .pj-bh{display:flex;align-items:center;gap:11px}
 .pj-dots{border:0;background:#f1f5f9;color:#475569;width:34px;height:34px;border-radius:10px;font-size:18px;font-weight:900;cursor:pointer;flex-shrink:0;line-height:1;align-self:flex-start}
@@ -755,7 +756,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   var isCheap=(unit==='total'&&price>0&&tp.length>1&&price===Math.min.apply(null,tp));
   var isAcc=b.status==='accepted',isRej=b.status==='rejected',isMine=!!b.is_mine;
   var showBest=isBest&&!isAcc&&!isRej&&isOwner&&reqStatus==='open';
-  var cls='pj-bid'+(showBest?' best':'')+(isAcc?' acc':'')+(isRej?' rej':'')+(isMine?' mine':'');
+  var cls='pj-bid'+(b.pro_sub?' pro':'')+(showBest?' best':'')+(isAcc?' acc':'')+(isRej?' rej':'')+(isMine?' mine':'');
   var h='<div class="'+cls+'">';
   var tags='';
   if(isAcc)tags+='<span class="pj-pill" style="background:#16a34a;color:#fff">✓ العرض المقبول</span>';
@@ -771,7 +772,7 @@ function _bidCard(b,isBest,isOwner,reqStatus){
   if(tags)h+='<div class="pj-tags">'+tags+'</div>';
   h+='<div class="pj-bh">';
   h+='<a class="pj-av" href="'+proUrl+'">'+(provImg?'<img src="'+esc(provImg)+'" loading="lazy" alt="">':esc(name.charAt(0)))+'</a>';
-  h+='<div style="flex:1;min-width:0"><a href="'+proUrl+'" class="pj-bn">'+esc(name)+(b.provider_verified?' <span class="pj-vf">✓</span>':'')+'</a>';
+  h+='<div style="flex:1;min-width:0"><a href="'+proUrl+'" class="pj-bn">'+esc(name)+(b.provider_verified?' <span class="pj-vf">✓</span>':'')+'</a>'+(window._proChip?_proChip(b):'');
   var sub=[];if(avg>0)sub.push('★ '+avg.toFixed(1)+(reviews?' ('+reviews+')':''));if(cp)sub.push(cp+' مشروع منجز');if(!sub.length)sub.push('لا توجد تقييمات بعد');var _px=_pxChip(b);if(_px)sub.push(_px);else if(b.provider_city)sub.push(esc(b.provider_city));if(b.reply_speed)sub.push('<span style="color:#15803d;font-size:11.5px;font-weight:800">⚡ '+esc(b.reply_speed)+'</span>');
   h+='<div class="pj-bs">'+sub.join(' · ')+'</div></div>';
   var showPrice=price>0&&(isOwner||isMine||String(b.price_visibility)==='public');

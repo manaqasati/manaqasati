@@ -37,6 +37,7 @@
     + '#mqMore .mm-nm{flex:1;min-width:0}#mqMore .mm-nm b{display:block;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#mqMore .mm-nm small{font-size:12px;font-weight:800;color:#bfdbfe}'
     + '#mqMore .mm-share{background:#fff;color:#0b1f4d;border:0;border-radius:11px;padding:8px 12px;font:900 12.5px Tajawal,sans-serif;cursor:pointer;flex-shrink:0}'
     + '#mqMore .mm-new{display:block;width:100%;border:0;background:#1d4ed8;color:#fff;border-radius:15px;padding:13px;font:900 15px Tajawal,sans-serif;margin-bottom:10px;cursor:pointer}'
+    + '#mqMore .mm-sw{display:flex;background:#eef3fb;border-radius:14px;padding:4px;margin:0 0 10px;gap:3px}#mqMore .mm-sw button{flex:1;border:0;background:transparent;color:#475569;font:900 14px Tajawal,sans-serif;padding:10px 4px;border-radius:11px;cursor:pointer}#mqMore .mm-sw button.on{background:#0b1f4d;color:#fff;box-shadow:0 6px 14px -8px rgba(11,31,77,.6)}[data-theme=dark] #mqMore .mm-sw{background:rgba(255,255,255,.08)}[data-theme=dark] #mqMore .mm-sw button{color:#cbd5e1}'
     + '#mqMore .mm-g{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}'
     + '#mqMore .mm-t{position:relative;border:0;border-radius:16px;padding:11px 10px;display:flex;flex-direction:column;align-items:flex-start;gap:5px;text-align:right;cursor:pointer;min-height:92px;font-family:inherit;transition:transform .12s}'
     + '#mqMore .mm-t:active{transform:scale(.96)}'
@@ -60,23 +61,23 @@
     return '<button type="button" class="mm-t ' + cls + '" data-act="' + act + '">' + (badge ? '<span class="mm-bd">' + badge + '</span>' : '')
       + '<span class="mm-i">' + ic(k) + '</span><b>' + name + '</b><small' + (red ? ' class="red"' : '') + '>' + sub + '</small></button>';
   }
-  var state = { saai: null };
+  var state = { saai: null, side: (function(){ try { return localStorage.getItem('mnq_side') === 'w' ? 'w' : 'm'; } catch(e){ return 'm'; } })() };
   function tilesProv(){
     var nOpen = badgeOf(['nb-open']), nNot = badgeOf(['nb-notif', 'mob-nb']);
     var p = W._prof || {}, rat = parseFloat(p.avg_rating) || 0;
     var due = state.saai && state.saai.pending_total > 0 ? state.saai.pending_total : 0;
+    if (state.side === 'w' && winOn()) return ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'تقويم الجدولة', 'مواعيد الفريق · نقل بالسحب', 0, 'url:/cal.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'مشاريع العملاء والفريق', 'مواعيد · فنيين · تسليم', 0, 'url:/jobs.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'الحضور والانصراف', 'دوام الفريق · الإجازات · التقرير', 0, 'url:/att.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c3', 'doc', 'عروض الأسعار', 'عرض باسمك بـ3 خيارات · دفتر العملاء', 0, 'url:/quotes.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c2', 'doc', 'الصفحة التعريفية وطلبات التسعيرة', 'خدماتك · QR · الطلبات الخاصة', 0, 'url:/mypage.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('customers'))) || !W._subsOpen ? '' : tile('c5', 'team', 'دفتر العملاء', 'العملاء · الأجهزة · الملاحظات', 0, 'url:/customers.html'))
+      + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c2', 'team', 'الفروع', 'مدن وفرق · مشرف لكل فرع', 0, 'url:/branches.html'))
+      + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c1', 'star', 'الاشتراك والباقة', 'مساعد الفوز · مؤسسة', 0, 'url:/plan.html'));
     return tile('c1', 'search', 'تصفح المشاريع', nOpen ? nOpen + ' مشروع يناسبك' : 'مشاريع تناسب تخصصك', nOpen, 'pg:browse')
       + tile('c2', 'doc', 'العروض والمشاريع', 'عروضك وحالة كل واحد', 0, 'pg:works')
       + tile('c6', 'team', 'مقاول باطن', 'اطلب أو قدّم · الشركاء', (W._subCount > 0 ? W._subCount : ((W._subIsNew && W._subIsNew()) ? 'جديد' : 0)), 'pg:sub')
       + tile('c7', 'medal', 'الأعمال الموثّقة', 'وثّق شغلك — عروضك تطلع أول', ((W.WP && W.WP.isNew && W.WP.isNew()) ? 'جديد' : 0), 'pg:proof')
-      + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c1', 'star', 'الاشتراك والباقة', 'مساعد الفوز · مؤسسة', 0, 'url:/plan.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c2', 'doc', 'الصفحة التعريفية وطلبات التسعيرة', 'خدماتك · QR · الطلبات الخاصة', 0, 'url:/mypage.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c3', 'doc', 'عروض الأسعار', 'عرض باسمك بـ3 خيارات · دفتر العملاء', 0, 'url:/quotes.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'مشاريع العملاء والفريق', 'مواعيد · فنيين · تسليم', 0, 'url:/jobs.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'تقويم الجدولة', 'مواعيد الفريق · نقل بالسحب', 0, 'url:/cal.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'الحضور والانصراف', 'دوام الفريق · الإجازات · التقرير', 0, 'url:/att.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('customers'))) || !W._subsOpen ? '' : tile('c5', 'team', 'دفتر العملاء', 'العملاء · الأجهزة · الملاحظات', 0, 'url:/customers.html'))
-      + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c2', 'team', 'الفروع', 'مدن وفرق · مشرف لكل فرع', 0, 'url:/branches.html'))
       + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('stats'))) ? '' : tile('c6', 'star', 'الأرقام والتقارير', 'لوحة الأرقام · التقرير الشهري', 0, 'url:/stats.html'))
       + ((W.DLG && W.DLG.isMe()) ? '' : tile('c7', 'star', 'منصة الاقتراحات', 'اقترح ميزة · صوّت على أفكار زملائك', 0, 'url:/ideas.html'))
       + tile('c3', 'money', 'محفظة السعي', due ? 'عليك ' + fmt(due) + ' ريال — سدّد' : 'ما عليك شي ✓', due ? '!' : 0, 'pg:saai', !!due)
@@ -88,6 +89,8 @@
       + ((W.DLG && W.DLG.isMe()) ? tile('c2', 'user', 'حساب المفوّض', 'كلمة سرّي وصلاحياتي', 0, 'pg:dlgme') : tile('c2', 'team', 'المفوّض', 'خلّ موظفك يشتغل معك', 0, 'pg:dlg'))
       + tile('c6', 'help', 'الدعم الفني', 'واتساب مباشر', 0, 'wa');
   }
+  function winOn(){ return PROV && !!W._subsOpen && !(W.DLG && W.DLG.isMe() && !['quotes', 'jobs', 'customers'].some(function(k){ return W.DLG.has && W.DLG.has(k); })); }
+  function swH(){ if (!winOn()) return ''; return '<div class="mm-sw" role="tablist"><button type="button" data-act="side:m" class="' + (state.side !== 'w' ? 'on' : '') + '">السوق</button><button type="button" data-act="side:w" class="' + (state.side === 'w' ? 'on' : '') + '">مساعد الفوز</button></div>'; }
   function tilesCli(){
     var nNot = badgeOf(['notifBadge', 'mob-notif-badge']), nChat = badgeOf(['bn-chat-badge']);
     return tile('c1', 'doc', 'المشاريع', 'مشاريعك وعروضها', 0, 'sh:requests')
@@ -134,12 +137,13 @@
     sh.addEventListener('touchend', function(e){ if (y0 == null) return; var dy = (e.changedTouches[0].clientY - y0); y0 = null; sh.style.transform = ''; if (dy > 90) close(); });
   }
   function render(){
-    box.querySelector('.mm-sh').innerHTML = '<div class="mm-grip"></div>' + head() + '<div class="mm-g">' + (PROV ? tilesProv() : tilesCli()) + '</div>' + foot();
+    box.querySelector('.mm-sh').innerHTML = '<div class="mm-grip"></div>' + head() + (PROV ? swH() : '') + '<div class="mm-g">' + (PROV ? tilesProv() : tilesCli()) + '</div>' + foot();
     if (W.DLG && W.DLG.isMe()) box.querySelector('.mm-sh').innerHTML = W.DLG.filter(box.querySelector('.mm-sh').innerHTML);
   }
   function setOn(on){ var b = D.getElementById('bn-profile'); if (b) b.classList.toggle('mm-on', !!on); }
   function open(){
     build(); render();
+    if (PROV && !W._subsOpen) [900, 1800].forEach(function(ms){ setTimeout(function(){ if (W._subsOpen && box.classList.contains('on')) render(); }, ms); });
     box.classList.add('on'); requestAnimationFrame(function(){ requestAnimationFrame(function(){ box.classList.add('in'); }); });
     D.documentElement.style.overflow = 'hidden'; setOn(true);
     if (W.mqBack) { if (!bk) bk = W.mqBack.push(function(){ bk = null; hide(); }); }
@@ -165,6 +169,7 @@
 
   function go(fn){ close(true); setTimeout(fn, 30); }
   function act(a){
+    if (a.indexOf('side:') === 0) { state.side = a.slice(5); try { localStorage.setItem('mnq_side', state.side); } catch(e){} if (W.MNQ_NAV) W.MNQ_NAV.show(state.side); render(); return; }
     if (a.indexOf('pg:') === 0) return go(function(){ if (typeof W.gotoPage === 'function') W.gotoPage(a.slice(3)); });
     if (a.indexOf('sh:') === 0) return go(function(){ if (typeof W.show === 'function') W.show(a.slice(3), null, a.slice(3)); });
     if (a.indexOf('url:') === 0) { close(true); location.href = a.slice(4); return; }

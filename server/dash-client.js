@@ -1146,7 +1146,7 @@ function loadBids(id){
           +'<div class="bid-top">'
             +'<div class="bid-av">'+avHtml+'</div>'
             +'<div class="bid-id">'
-              +'<div class="bid-name">'+esc(safeName)+vBadge+_onlineDot(b.provider_last_seen)+'</div>'
+              +'<div class="bid-name">'+esc(safeName)+vBadge+(window._proChip?_proChip(b):'')+_onlineDot(b.provider_last_seen)+'</div>'
               +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span>'+_wpBadge(b.wp_level!=null?b.wp_level:((parseInt(b.works_verified)||0)>0?1:0))+'</div>'
               +(b.provider_city?'<div class="bid-city"'+(b.prox===0?' style="color:#15803d;font-weight:800"':(b.prox===1?' style="color:#0f766e;font-weight:800"':''))+'><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+(b.area_mode==='travel'&&b.prox===2?'يقدر ينتقل لمدينتك · من ':b.serves==='city'?'يخدم مدينتك · مقره ':(b.serves==='all'&&b.prox===2?'يخدم كل المدن · مقره ':(b.prox===0?'من مدينتك · ':(b.prox===1?'من منطقتك · ':''))))+esc(b.provider_city)+(b.prox===2&&b.serves!=='all'&&b.prox_km?' · تقريباً '+(Math.round(b.prox_km/50)*50||b.prox_km).toLocaleString('en-US')+' كم':'')+'</div>':'')
             +'</div>'

@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/branch.js','/route.js','/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/branch.js','/route.js','/pnav.js','/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -1163,6 +1163,7 @@ app.get('/api/bids/public/:id', async (req, res) => {
         EXISTS(SELECT 1 FROM bid_reports br WHERE br.bid_id=b.id AND br.client_id=$4::int) as is_hidden,
         CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean OR b.provider_id = $4::int THEN b.attachment_url ELSE NULL END as attachment_url,
         b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode,
+        CASE WHEN COALESCE(b.price_visibility,'client')='public' OR $3::boolean OR b.provider_id = $4::int THEN b.quote_items ELSE NULL END as quote_items, EXISTS(SELECT 1 FROM subs s WHERE s.user_id=u.id AND s.status IN ('trial','active','grace') AND (CASE WHEN s.status='grace' THEN s.grace_until ELSE s.period_end END) > NOW()) AS pro_sub,
         CASE WHEN $3::boolean THEN COALESCE(b.invited,FALSE) ELSE FALSE END AS invited,
         CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.need_items ELSE NULL END as need_items, CASE WHEN b.provider_id = $4::int OR $3::boolean THEN b.need_other ELSE NULL END as need_other,
         b.price as _p,
@@ -1506,7 +1507,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
     let providers = [];
     try {
       const r = await pool.query(
-        `SELECT id, name, business_name, city, bio, profile_image, tier, badge,
+        `SELECT id, name, business_name, city, bio, profile_image, tier, badge, EXISTS(SELECT 1 FROM subs s WHERE s.user_id=users.id AND s.status IN ('trial','active','grace') AND (CASE WHEN s.status='grace' THEN s.grace_until ELSE s.period_end END) > NOW()) AS pro_sub,
            COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating,
            COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count
          FROM users WHERE role='provider' AND is_active=TRUE
@@ -1543,7 +1544,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
       const av = p.avg_rating ? `<span style="color:#F0A500">${seoStars(p.avg_rating)}</span> <span style="color:#64748b;font-size:12px">${(+p.avg_rating).toFixed(1)} (${p.review_count})</span>` : '<span style="color:#94a3b8;font-size:12px">جديد</span>';
       const slug = seoSlug(p.business_name || p.name || 'مزود') + '-' + p.id;
       const bio = p.bio ? `<p style="font-size:13px;color:#3a4c6b;margin:6px 0 0;line-height:1.7">${seoEsc(String(p.bio).slice(0,120))}</p>` : '';
-      return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:15px;margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><h3 style="margin:0;font-size:15px;color:#1e3a8a"><a href="/pro/${slug}" style="color:#1e3a8a;text-decoration:none">${nm}</a></h3><div>${av}</div></div><div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${seoEsc(p.city||city)} · ${seoEsc(cat)}</div>${bio}<a href="/pro/${slug}" style="display:inline-block;margin-top:10px;font-size:12.5px;font-weight:700;color:#1e40af;text-decoration:none">عرض الملف ←</a></div>`;
+      return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:15px;margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><h3 style="margin:0;font-size:15px;color:#1e3a8a"><a href="/pro/${slug}" style="color:#1e3a8a;text-decoration:none">${nm}</a>${p.pro_sub ? ' <span style="display:inline-block;font-size:10.5px;font-weight:900;color:#1e3a8a;background:#eef3ff;border:1px solid #c7d6f5;border-radius:999px;padding:1px 8px;vertical-align:middle">🏢 منشأة</span>' : ''}</h3><div>${av}</div></div><div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${seoEsc(p.city||city)} · ${seoEsc(cat)}</div>${bio}<a href="/pro/${slug}" style="display:inline-block;margin-top:10px;font-size:12.5px;font-weight:700;color:#1e40af;text-decoration:none">عرض الملف ←</a></div>`;
     }).join('') : `<p style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:18px;color:#64748b"><strong>انشر مشروعك مجاناً</strong> — نوصّله لمزوّدين ${seoEsc(cat)} المناسبين في ${seoEsc(city)}، ويوصلك عروضهم وتختار الأنسب.</p>`;
 
     const otherCities = SEO_CITIES.filter(c=>c!==city).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(cat)}/${seoSlug(c)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(cat)} ${seoEsc(c)}</a>`).join('');
@@ -4045,6 +4046,7 @@ async function setupDatabase() {
       // الدوام والحضور + التقويم
       await _mig(`ALTER TABLE provider_techs ADD COLUMN IF NOT EXISTS sched JSONB, ADD COLUMN IF NOT EXISTS rate NUMERIC(8,2) DEFAULT 0, ADD COLUMN IF NOT EXISTS late_alert BOOLEAN DEFAULT TRUE`);
       await _mig(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS dur_min INTEGER DEFAULT 120`);
+      await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS quote_items JSONB`);
       await _mig(`ALTER TABLE job_costs ADD COLUMN IF NOT EXISTS kind VARCHAR(10)`);
       await _mig(`CREATE TABLE IF NOT EXISTS tech_shifts (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, tech_id INTEGER REFERENCES provider_techs(id) ON DELETE CASCADE, day DATE NOT NULL, in_at TIMESTAMPTZ, out_at TIMESTAMPTZ, in_lat DOUBLE PRECISION, in_lng DOUBLE PRECISION, in_km NUMERIC(8,1), out_lat DOUBLE PRECISION, out_lng DOUBLE PRECISION, src VARCHAR(8), late_min INTEGER DEFAULT 0, UNIQUE(tech_id, day))`);
       await _mig(`CREATE TABLE IF NOT EXISTS tech_leaves (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, tech_id INTEGER REFERENCES provider_techs(id) ON DELETE CASCADE, d1 DATE NOT NULL, d2 DATE NOT NULL, reason VARCHAR(200), status VARCHAR(10) DEFAULT 'pending', by_tech BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW(), decided_at TIMESTAMPTZ)`);
@@ -6038,7 +6040,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
 // ═══ PROVIDER ENDPOINTS ═══
 app.get('/api/provider/bids', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.dlg_name, b.attachment_url, b.show_profile, b.work_images, b.need_items, b.need_other, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.status AS req_status, (r.assigned_provider_id IS NULL) AS unassigned, cc.status AS claim_status, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
+    const r = await pool.query(`SELECT b.id, b.request_id, b.price, b.days, b.note, b.status, b.created_at, b.dlg_name, b.attachment_url, b.show_profile, b.work_images, b.need_items, b.need_other, b.quote_items, b.price_visibility, b.price_unit, b.materials, b.seen_at, b.hold_state, b.hold_reason, b.held_until, b.reject_reason, b.reject_budget, b.chance_until, b.improved_at, b.improved_from_price, b.improved_from_days, b.improve_note, (b.status='rejected' AND b.chance_until > NOW() AND b.improved_at IS NULL AND r.status='open' AND r.assigned_provider_id IS NULL) AS chance_open, r.status AS req_status, (r.assigned_provider_id IS NULL) AS unassigned, cc.status AS claim_status, r.title as request_title, r.category, r.city, r.client_id, u.name as client_name,
       CASE WHEN (b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted' THEN u.phone ELSE NULL END as client_phone,
       ((b.price IS NOT NULL AND b.price>0 AND (char_length(COALESCE(b.note,''))>=25 OR b.attachment_url IS NOT NULL) AND COALESCE(b.hold_state,'') NOT IN ('held','rejected')) OR b.status='accepted') as contact_unlocked
       , (${_REAL_BID_SQL}) AS real_bid, (${_ASKABLE_REQ_SQL}) AS askable_req, ak.id AS ask_id, ak.status AS ask_status, ak.sends AS ask_sends, ak.last_sent_at AS ask_last_at
@@ -6856,7 +6858,7 @@ app.get('/api/requests/:id/bids', auth, async (req, res) => {
     const r = await pool.query(`
       SELECT b.id, b.request_id, b.provider_id, b.price, b.days, b.note,
              b.status, b.created_at, COALESCE(b.price_unit,'total') as price_unit, b.attachment_url,
-             b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode, COALESCE(b.invited,FALSE) AS invited, b.need_items, b.need_other,
+             b.work_images, CASE WHEN b.show_profile THEN u.company_profile_url END AS company_profile_url, b.area_mode, COALESCE(b.invited,FALSE) AS invited, b.need_items, b.need_other, b.quote_items, EXISTS(SELECT 1 FROM subs s WHERE s.user_id=u.id AND s.status IN ('trial','active','grace') AND (CASE WHEN s.status='grace' THEN s.grace_until ELSE s.period_end END) > NOW()) AS pro_sub,
         u.name as provider_name, u.phone as provider_phone,
         u.last_seen_at as provider_last_seen,
         u.city as provider_city, u.service_cities AS _sc, COALESCE(u.serves_all_cities,FALSE) AS _sa, u.badge as provider_badge, u.tier as provider_tier,
@@ -7001,6 +7003,15 @@ async function _bidExtras(bidId, providerId, body){
       const ot = it.includes('other') ? (_needTxt(body.need_other, 100) || null) : null;
       const it2 = ot ? it : it.filter(k => k !== 'other');
       await pool.query('UPDATE bids SET need_items=$1, need_other=$2 WHERE id=$3', [it2.length ? it2 : null, ot, bidId]);
+    }
+    // عرض سعر مفصّل (بنود) — لمشتركي مساعد الفوز
+    if (body.quote_items !== undefined) {
+      let it = null;
+      if (Array.isArray(body.quote_items) && body.quote_items.length && _subLive(await _plnRow(providerId))) {
+        it = body.quote_items.slice(0, 30).map(x => ({ t: _cleanTxt(x && x.t || '', 120), q: Math.max(1, Math.min(99999, parseFloat(x && x.q) || 1)), u: _cleanTxt(x && x.u || '', 30), p: Math.round(Math.max(0, Math.min(10000000, parseFloat(x && x.p) || 0)) * 100) / 100 })).filter(x => x.t.length >= 2);
+        if (!it.length) it = null;
+      }
+      await pool.query('UPDATE bids SET quote_items=$1::jsonb WHERE id=$2', [it ? JSON.stringify(it) : null, bidId]);
     }
     if (Array.isArray(body.work_images)) {
       const out = [];
@@ -10625,7 +10636,7 @@ async function _bkTechFree(pid, slotsByDay, slotMin){
   const jb = (await pool.query("SELECT tech_id, sched_at, dur_min FROM jobs WHERE provider_id=$1 AND tech_id IS NOT NULL AND status IN ('new','scheduled','active') AND sched_at >= $2 AND sched_at < $3", [pid, _ryAt(ymds[0], 0), _ryAt(ymds[ymds.length - 1], 1440)])).rows;
   const out = {};
   ymds.forEach(y => { const dow = _ryDow(y); slotsByDay[y].forEach(t0 => { const m1 = _ryMin(t0), m2 = m1 + slotMin; let n = 0;
-    ts.forEach(t => { const s = _attSched(t); if (!s.days.includes(dow) || _onLeave(lv, t.id, y) || m1 < _hm(s.from) || m2 > _hm(s.to)) return;
+    ts.forEach(t => { const s = _attSched(t); if (_onLeave(lv, t.id, y)) return; if (t.sched && (!s.days.includes(dow) || m1 < _hm(s.from) || m2 > _hm(s.to))) return;   // بدون جدول دوام محفوظ = متاح بأوقات الحجز
       if (jb.some(j => j.tech_id === t.id && _ryYmd(j.sched_at) === y && _ryMin(j.sched_at) < m2 && _ryMin(j.sched_at) + _JDUR(j) > m1)) return; n++; });
     out[t0.getTime()] = n; }); });
   return out;
@@ -11637,7 +11648,7 @@ app.get('/api/providers', async (req, res) => {
     if (city)     { params.push(`%${city}%`); base += ` AND city ILIKE $${params.length}`; }
     const countR = await pool.query(`SELECT COUNT(*)::int c ${base}`, params);
     const total = countR.rows[0] ? countR.rows[0].c : 0;
-    const q = `SELECT id, name, city, specialties, badge, tier, wp_level(id) AS wp_level, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects ${base} ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, CASE tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 200`;
+    const q = `SELECT id, name, city, specialties, badge, tier, wp_level(id) AS wp_level, EXISTS(SELECT 1 FROM subs s WHERE s.user_id=users.id AND s.status IN ('trial','active','grace') AND (CASE WHEN s.status='grace' THEN s.grace_until ELSE s.period_end END) > NOW()) AS pro_sub, bio, profile_image, experience_years, last_bumped_at, created_at, COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0)::float as avg_rating, COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0)::int as review_count, (SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed')::int as completed_projects ${base} ORDER BY CASE WHEN profile_image IS NOT NULL AND bio IS NOT NULL AND specialties IS NOT NULL AND array_length(specialties,1) > 0 THEN 0 ELSE 1 END ASC, CASE tier WHEN 'expert' THEN 0 WHEN 'distinguished' THEN 1 WHEN 'active' THEN 2 ELSE 3 END ASC, COALESCE(last_bumped_at, created_at) DESC LIMIT 200`;
     const r = await pool.query(q, params);
     if (req.user && req.user.role === 'admin') res.set('X-Total-Count', String(total));   // العدد للإدارة فقط
     res.json(r.rows.map(p => ({ ...p, avg_rating: parseFloat(p.avg_rating)||0, review_count: parseInt(p.review_count)||0, completed_projects: parseInt(p.completed_projects)||0, is_verified: !!(p.profile_image&&p.bio&&(p.specialties||[]).length>0&&(parseFloat(p.avg_rating)||0)>0) })));

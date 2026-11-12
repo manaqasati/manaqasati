@@ -457,7 +457,7 @@ function render(p,rat){
   hero+='<h1 class="pp-hname">'+esc(nm)+'</h1>';
   if(sp.length)hero+='<div class="pp-hsp">'+esc(sp.slice(0,4).join(' · '))+'</div>';
   var _vw=(Array.isArray(p.verified_works)?p.verified_works:[]).filter(function(w){return w&&(w.images||[]).length;});
-  var bd=(vrf?'<span class="pp-pill" style="background:rgba(255,255,255,.16);color:#fff">موثّق ✓</span>':'')+_wpLvPill(p.wp_level!=null?p.wp_level:(_vw.length?1:0));
+  var bd=(vrf?'<span class="pp-pill" style="background:rgba(255,255,255,.16);color:#fff">موثّق ✓</span>':'')+(p.page_live?'<span class="pp-pill" style="background:rgba(255,255,255,.16);color:#fff">🏢 منشأة</span>':'')+_wpLvPill(p.wp_level!=null?p.wp_level:(_vw.length?1:0));
   if(bd)hero+='<div class="pp-hb">'+bd+'</div>';
   hero+='</div></div>';
   var m=last?Math.floor((Date.now()-new Date(last))/60000):99999;

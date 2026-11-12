@@ -328,5 +328,6 @@ var rf=''; try{ rf=localStorage.getItem('mnq_ref')||''; }catch(e){}
 (rf?api('/api/subs/ref',{method:'POST',body:JSON.stringify({code:rf})}).then(function(r){ try{localStorage.removeItem('mnq_ref');}catch(e){} if(r.ok)toast('تم ربط رمز الدعوة ✓ — تحصل على مكافأة الدعوة عند أول اشتراك'); }).catch(function(){}):Promise.resolve()).then(load).catch(function(e){ if(e&&e.message!=='auth')app.innerHTML='<div class="card">تعذّر التحميل، يُرجى تحديث الصفحة</div>'; });
 })();
 </script>
+<script src="/pnav.js?v=1" defer></script>
 </body>
 </html>

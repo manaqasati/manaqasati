@@ -372,7 +372,7 @@ window._nsoMount=function(radioName,reqId){
   function safe(u){u=String(u||'');return /^https?:\/\/[^\s"'<>`\\]+$/i.test(u)?u:'';}
   function api(){ return (typeof W.API==='string'&&W.API)||''; }
   function tok(){ try{return localStorage.getItem('token')||'';}catch(e){return '';} }
-  W._bxSt={prof:null,on:true,won:true,imgs:[]};
+  W._bxSt={prof:null,on:true,won:true,imgs:[],qon:false,qi:[],pl:null,sub:null};
   if(!document.getElementById('bx-css')){var st=document.createElement('style');st.id='bx-css';st.textContent=
     '.bx-o{display:flex;align-items:center;gap:10px;border:1.5px solid #e1e9f6;background:#fff;border-radius:12px;padding:10px 12px;margin-top:9px;cursor:pointer;text-align:right}'
     +'.bx-o b{display:block;font-size:13px;color:#0f2544}.bx-o small{display:block;font-size:11.5px;color:#64748b;font-weight:700;margin-top:2px;line-height:1.6}'
@@ -381,7 +381,13 @@ window._nsoMount=function(radioName,reqId){
     +'.bx-th{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.bx-th span{position:relative;width:54px;height:54px;border-radius:9px;overflow:hidden;background:#eef3fb}.bx-th img{width:100%;height:100%;object-fit:cover}'
     +'.bx-th span button{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;border:0;background:rgba(15,23,42,.7);color:#fff;font-size:11px;line-height:18px;padding:0;cursor:pointer}'
     +'.bx-add{width:54px;height:54px;border-radius:9px;border:1.5px dashed #93c5fd;background:#f8fbff;color:#1d4ed8;font-weight:900;font-size:11px;cursor:pointer;font-family:inherit}'
-    +'[data-theme="dark"] .bx-o{background:#111827;border-color:rgba(148,163,184,.25)}[data-theme="dark"] .bx-o b{color:#e5e7eb}';
+    +'[data-theme="dark"] .bx-o{background:#111827;border-color:rgba(148,163,184,.25)}[data-theme="dark"] .bx-o b{color:#e5e7eb}'
+    +'.bx-q{width:100%;display:flex;flex-direction:column;gap:6px;margin-top:8px}.bx-qr{display:flex;gap:5px;align-items:center}.bx-qr input{border:1.5px solid #e1e9f6;border-radius:9px;padding:8px 9px;font:700 13px Tajawal,sans-serif;min-width:0;background:#fff;color:#0f2544}.bx-qr .t{flex:1}@media(max-width:460px){.bx-qr{flex-wrap:wrap;padding-bottom:6px;border-bottom:1px dashed #e1e9f6}.bx-qr .t{flex:1 1 100%}.bx-qr .q{flex:0 0 70px}.bx-qr .p{flex:1}}.bx-qr .q{width:52px;text-align:center}.bx-qr .p{width:84px}'
+    +'.bx-qr button{border:0;background:#fef2f2;color:#b91c1c;width:30px;height:30px;border-radius:8px;cursor:pointer;flex:none;font-size:15px}.bx-qa{display:flex;gap:6px;flex-wrap:wrap}.bx-qa button,.bx-qa select{border:1.5px dashed #93c5fd;background:#f8fbff;color:#1d4ed8;border-radius:9px;padding:7px 11px;font:800 12px Tajawal,sans-serif;cursor:pointer}'
+    +'.bx-qt{display:flex;justify-content:space-between;font-size:13px;font-weight:900;color:#0f2544;padding-top:4px;border-top:1px dashed #e1e9f6}'
+    +'.qx{margin-top:9px;border:1px solid #e1e9f6;border-radius:12px;overflow:hidden}.qx summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;padding:10px 12px;font-size:12.5px;font-weight:900;color:#1e3a8a;background:#eef3ff}.qx summary::-webkit-details-marker{display:none}'
+    +'.qx table{width:100%;border-collapse:collapse;font-size:12.5px}.qx td,.qx th{padding:8px 10px;text-align:right;border-top:1px solid #f1f5f9}.qx th{font-size:11px;color:#64748b;font-weight:800}.qx td.n{font-family:Cairo,sans-serif;font-weight:800;white-space:nowrap}.qx tr.tt td{font-weight:900;color:#0f2544;background:#f8fafc}'
+    +'.pro-chip{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:900;color:#1e3a8a;background:#eef3ff;border:1px solid #c7d6f5;border-radius:999px;padding:1px 8px;margin-right:5px;vertical-align:middle}';
     document.head.appendChild(st);}
   function render(){
     var box=document.getElementById('bx-box'); if(!box)return; var S=W._bxSt, p=S.prof||{};
@@ -392,13 +398,30 @@ window._nsoMount=function(radioName,reqId){
     if(S.won){ h+='<div class="bx-th" style="width:100%">'+S.imgs.map(function(u,i){return '<span><img src="'+esc(u)+'" alt=""><button type="button" aria-label="إزالة" onclick="_bxSt.imgs.splice('+i+',1);_bxRender()">×</button></span>';}).join('')
       +(S.imgs.length<6?'<button type="button" class="bx-add" onclick="document.getElementById(\'bx-inp\').click()">+ إضافة</button>':'')+'</div>'; }
     h+='</div><input type="file" id="bx-inp" accept="image/*" multiple style="display:none" onchange="_bxAdd(this)">';
+    // عرض سعر مفصّل (بنود) — مساعد الفوز
+    if(S.sub&&S.sub.open){
+      if(!S.sub.live) h+='<a class="bx-o" href="/plan.html" style="text-decoration:none"><span>📋</span><div><b>عرض سعر مفصّل بالبنود</b><small>العميل يشوف بنود عرضك وأسعارها — من مزايا مساعد الفوز</small></div><span style="margin-right:auto;font-size:12px;font-weight:800;color:#1d4ed8">اعرف أكثر</span></a>';
+      else { h+='<div class="bx-o'+(S.qon?' on':'')+'" style="flex-wrap:wrap;cursor:default"><span>📋</span><div style="cursor:pointer" onclick="_bxSt.qon=!_bxSt.qon;if(_bxSt.qon&&!_bxSt.qi.length)_bxSt.qi.push({t:\'\',q:1,p:\'\'});_bxRender()"><b>عرض سعر مفصّل بالبنود</b><small>'+(S.qon?'السعر يتحسب من البنود تلقائياً':'العميل يشوف بنود عرضك وأسعارها — يطلع عرضك أوضح')+'</small></div><span class="bx-tg" style="cursor:pointer" onclick="_bxSt.qon=!_bxSt.qon;if(_bxSt.qon&&!_bxSt.qi.length)_bxSt.qi.push({t:\'\',q:1,p:\'\'});_bxRender()"><i></i></span>';
+        if(S.qon){ h+='<div class="bx-q">'+S.qi.map(function(x,i){ return '<div class="bx-qr"><input class="t" maxlength="120" placeholder="البند" value="'+esc(x.t)+'" oninput="_bxQ('+i+',\'t\',this.value)" aria-label="البند"><input class="q" type="number" min="1" inputmode="decimal" value="'+esc(x.q)+'" oninput="_bxQ('+i+',\'q\',this.value)" aria-label="الكمية"><input class="p" type="number" min="0" inputmode="decimal" placeholder="السعر" value="'+esc(x.p)+'" oninput="_bxQ('+i+',\'p\',this.value)" aria-label="سعر الوحدة"><button type="button" aria-label="حذف البند" onclick="_bxSt.qi.splice('+i+',1);_bxRender();_bxSum()">×</button></div>'; }).join('')
+            +'<div class="bx-qa">'+(S.qi.length<30?'<button type="button" onclick="_bxSt.qi.push({t:\'\',q:1,p:\'\'});_bxRender()">+ بند</button>':'')+((S.pl||[]).length?'<select onchange="_bxPL(this)" aria-label="من قائمة الأسعار"><option value="">+ من قائمة الأسعار</option>'+S.pl.map(function(x,i){ return '<option value="'+i+'">'+esc(x.t)+' — '+x.p+'</option>'; }).join('')+'</select>':'')+'</div>'
+            +'<div class="bx-qt"><span>الإجمالي</span><span id="bx-qsum">'+qsum().toLocaleString('en-US')+' ر.س</span></div></div>'; }
+        h+='</div>'; }
+    }
     box.innerHTML=h;
   }
   W._bxRender=render;
+  function qsum(){ return Math.round(W._bxSt.qi.reduce(function(a,x){ return a+(parseFloat(x.q)||0)*(parseFloat(x.p)||0); },0)*100)/100; }
+  // الإجمالي ينزل في خانة السعر
+  W._bxSum=function(){ var t=qsum(), el=document.getElementById('bx-qsum'); if(el)el.textContent=t.toLocaleString('en-US')+' ر.س';
+    if(!W._bxSt.qon||!(t>0))return; var pi=document.getElementById('eb-price')&&document.getElementById('eb-price').offsetParent!==null?document.getElementById('eb-price'):document.getElementById('bid-price');
+    if(pi){ pi.value=String(t); try{ pi.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){} } };
+  W._bxQ=function(i,k,v){ var x=W._bxSt.qi[i]; if(!x)return; x[k]=v; W._bxSum(); };
+  W._bxPL=function(sel){ var x=(W._bxSt.pl||[])[parseInt(sel.value)]; sel.value=''; if(!x)return; var q=W._bxSt.qi; if(q.length===1&&!q[0].t&&!q[0].p)q.pop(); q.push({t:x.t,q:1,p:x.p}); render(); W._bxSum(); };
   // يركّب الخانات داخل #bx-box. bid (اختياري) = عرض قائم للتعديل
   W._bxMount=function(bid){
     try{ if(W._ndMount)W._ndMount(bid); }catch(e){}
-    var S=W._bxSt; S.imgs=[]; S.on=true; S.won=true;
+    var S=W._bxSt; S.imgs=[]; S.on=true; S.won=true; S.qi=(bid&&Array.isArray(bid.quote_items))?bid.quote_items.map(function(x){return {t:x.t,q:x.q,p:x.p};}):[]; S.qon=S.qi.length>0;
+    if(!S.sub) fetch(api()+'/api/subs/open',{headers:{'Authorization':'Bearer '+tok()}}).then(function(r){return r.ok?r.json():{};}).then(function(d){ S.sub=d||{}; if(S.sub.live) return fetch(api()+'/api/tools',{headers:{'Authorization':'Bearer '+tok()}}).then(function(r){return r.ok?r.json():{};}).then(function(t){ S.pl=(t.price_list||[]).slice(0,100); }); }).then(function(){ render(); }).catch(function(){});
     var go=function(p){ S.prof=p||{};
       if(bid){ S.on=!!bid.show_profile||(bid.show_profile==null); S.imgs=Array.isArray(bid.work_images)?bid.work_images.filter(safe).slice(0,6):[]; S.won=S.imgs.length>0; }
       else { S.imgs=(Array.isArray(S.prof.portfolio_images)?S.prof.portfolio_images:[]).filter(safe).slice(0,6); S.won=S.imgs.length>0; }
@@ -415,13 +438,22 @@ window._nsoMount=function(radioName,reqId){
   };
   // عرض الإضافات للعميل: بروفايل الشركة + صور من مشاريع سابقة
   W._bxShow=function(b){
+    var qh='', qi=(b&&Array.isArray(b.quote_items))?b.quote_items:[];
+    if(qi.length){ var tot=0; qh='<details class="qx"><summary>📋 عرض السعر المفصّل ('+qi.length+' '+(qi.length===1?'بند':(qi.length<=10?'بنود':'بنداً'))+') <span style="margin-right:auto">‹</span></summary><table><tr><th>البند</th><th>الكمية</th><th>السعر</th><th>المجموع</th></tr>'
+      +qi.map(function(x){ var t=(parseFloat(x.q)||0)*(parseFloat(x.p)||0); tot+=t; return '<tr><td>'+esc(x.t)+'</td><td class="n">'+esc(x.q)+'</td><td class="n">'+Number(x.p||0).toLocaleString('en-US')+'</td><td class="n">'+Math.round(t*100/100).toLocaleString('en-US')+'</td></tr>'; }).join('')
+      +'<tr class="tt"><td colspan="3">الإجمالي</td><td class="n">'+Math.round(tot).toLocaleString('en-US')+' ر.س</td></tr></table></details>'; }
+    return qh+_bxShow0(b); };
+  var _bxShow0=function(b){
     var h='', cp=safe(b&&b.company_profile_url), im=(b&&Array.isArray(b.work_images)?b.work_images:[]).filter(safe).slice(0,6);
     if(cp) h+='<a href="'+esc(cp)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;margin-left:6px;font-size:12px;font-weight:800;color:#334766;background:#f1f5f9;padding:8px 13px;border-radius:9px;text-decoration:none">📁 بروفايل الشركة</a>';
     if(im.length) h+='<div style="margin-top:9px"><div style="font-size:11.5px;font-weight:800;color:#64748b;margin-bottom:6px">🖼️ من مشاريع سابقة</div><div style="display:flex;gap:6px;flex-wrap:wrap">'
       +im.map(function(u){return '<img loading="lazy" src="'+esc(u)+'" alt="من أعمال المزوّد" onclick="window.open(this.src,\'_blank\')" style="width:60px;height:60px;object-fit:cover;border-radius:9px;cursor:pointer;border:1px solid #e1e9f6">';}).join('')+'</div></div>';
     return h;
   };
-  W._bxGet=function(){ var S=W._bxSt, nd=(W._ndGet?W._ndGet():{}); if(!document.getElementById('bx-box')||!S.prof)return nd; return Object.assign({ show_profile: !!(S.on && S.prof && safe(S.prof.company_profile_url)), work_images: S.won ? S.imgs.slice(0,6) : [] },nd); };
+  W._bxGet=function(){ var S=W._bxSt, nd=(W._ndGet?W._ndGet():{}); if(!document.getElementById('bx-box')||!S.prof)return nd; var o={ show_profile: !!(S.on && S.prof && safe(S.prof.company_profile_url)), work_images: S.won ? S.imgs.slice(0,6) : [] };
+    if(S.sub&&S.sub.live) o.quote_items=S.qon?S.qi.filter(function(x){ return String(x.t||'').trim().length>=2; }).map(function(x){ return {t:String(x.t).trim(),q:parseFloat(x.q)||1,p:parseFloat(x.p)||0}; }):[];
+    return Object.assign(o,nd); };
+  W._proChip=function(b){ return b&&b.pro_sub?'<span class="pro-chip" title="منشأة مشتركة في مساعد الفوز">🏢 منشأة</span>':''; };
 })();
 
 /* ═══ بعد إغلاق العميل لمشروعه: «عروضك باقية» + متى ترجع له (للمؤجّل) ═══ */

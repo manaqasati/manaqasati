@@ -212,5 +212,6 @@ function shrink(f,cb){ var rd=new FileReader(); rd.onload=function(){ var im=new
 MNQ_BR.load().then(load).then(function(){ var id=parseInt(P.get('id')); if(id){ openJob(id); return; } if(P.get('map')){ _jMap(); return; } if(P.get('tab')==='team')S.tab='team'; if(P.get('new')&&S.live){ _jNew(); return; } list(); }).catch(function(e){ if(e) A.innerHTML='<div class="card empty"><b>'+esc(e.message)+'</b></div>'; });
 })();
 </script>
+<script src="/pnav.js?v=1" defer></script>
 </body>
 </html>

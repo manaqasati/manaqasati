@@ -2579,6 +2579,7 @@ document.addEventListener('DOMContentLoaded',function(){
   if(/^sub\/\d+$/.test(_h)){ window._subOpen=parseInt(_h.split('/')[1]); _h='sub'; }
   if(/^sub\/(new|\d+\/edit)$/.test(_h)){ _h='sub'; }
   if(_h==='emails'){ window._mnqEmailsDeep=1; _h='profile'; }
+  if(_h==='more'){ _h='home'; setTimeout(function(){ if(window.mqMoreOpen&&window.innerWidth<=768) window.mqMoreOpen(); },600); }
   var pg=(_h&&_pages[_h])?_h:((saved&&_pages[saved])?saved:'home');
   gotoPage(pg);
 });
