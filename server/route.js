@@ -6,7 +6,7 @@
   function len(start,pts){ var d=0,c=start; pts.forEach(function(p){ if(c) d+=km(c,p.pt); c=p.pt; }); return d; }
   // items: [{...,maps}] → {order, km, base, url, skipped}
   function plan(items,start){
-    var pts=[],skip=[]; items.forEach(function(x){ var p=ll(x.maps); if(p) pts.push({x:x,pt:p}); else skip.push(x); });
+    var pts=[],skip=[]; items.forEach(function(x){ var p=(x.lat!=null&&x.lng!=null)?{lat:+x.lat,lng:+x.lng}:ll(x.maps); if(p) pts.push({x:x,pt:p}); else skip.push(x); });
     if(pts.length<2) return null;
     var left=pts.slice(), cur=start||left[0].pt, ord=[]; if(!start){ ord.push(left.shift()); cur=ord[0].pt; }
     while(left.length){ var bi=0,bd=1e9; left.forEach(function(p,i){ var d=km(cur,p.pt); if(d<bd){bd=d;bi=i;} }); var p=left.splice(bi,1)[0]; ord.push(p); cur=p.pt; }

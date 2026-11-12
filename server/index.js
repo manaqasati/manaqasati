@@ -4038,7 +4038,10 @@ async function setupDatabase() {
       await _mig(`CREATE TABLE IF NOT EXISTS job_costs (id SERIAL PRIMARY KEY, job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE, provider_id INTEGER, title VARCHAR(120), amount NUMERIC(12,2) DEFAULT 0, photo TEXT, by_name VARCHAR(80), by_tech INTEGER, created_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig(`ALTER TABLE quotes ADD COLUMN IF NOT EXISTS fu_at TIMESTAMPTZ`);
       await _mig(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS fu_visit TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS fu_rate TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS booking_id INTEGER`);
-      await _mig(`ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS unsub BOOLEAN DEFAULT FALSE`);
+      await _mig(`ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS unsub BOOLEAN DEFAULT FALSE, ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
+      await _mig(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
+      await _mig(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
+      await _mig(`ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
       await _mig(`CREATE TABLE IF NOT EXISTS campaigns (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, branch_id INTEGER, audience VARCHAR(12), subject VARCHAR(120), body TEXT, sent_n INTEGER DEFAULT 0, status VARCHAR(10) DEFAULT 'sending', created_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig(`CREATE TABLE IF NOT EXISTS ideas (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, title VARCHAR(120) NOT NULL, body TEXT, cat VARCHAR(20) DEFAULT 'other', status VARCHAR(12) DEFAULT 'review', merged_into INTEGER, reply TEXT, reject_reason TEXT, votes INTEGER DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW(), approved_at TIMESTAMPTZ, done_at TIMESTAMPTZ)`);
       await _mig(`CREATE TABLE IF NOT EXISTS idea_votes (idea_id INTEGER REFERENCES ideas(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (idea_id, user_id))`);
@@ -9409,8 +9412,9 @@ async function _qreqHandler(req, res){
     const qcity = _cleanTxt(b.city || p.city || '', 60) || null;
     // الفرع: ملصق الجهاز → فرع العميل · غير كذا → فرع مدينة العميل (وإلا الرئيسي)
     const qbr = req._qrBr !== undefined ? req._qrBr : await _brForCity(pid, qcity);
-    const id = (await pool.query('INSERT INTO quote_requests (provider_id, client_id, service, district, city, description, pref_date, src, branch_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id',
-      [pid, req.user.id, _cleanTxt(b.service || '', 80) || null, _cleanTxt(b.district || '', 80) || null, qcity, desc, _cleanTxt(b.pref_date || '', 40) || null, b.src === 'qr' ? 'qr' : 'page', qbr || null])).rows[0].id;
+    const qla = parseFloat(b.lat), qln = parseFloat(b.lng), qg = _geoOk(qla, qln);
+    const id = (await pool.query('INSERT INTO quote_requests (provider_id, client_id, service, district, city, description, pref_date, src, branch_id, lat, lng) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id',
+      [pid, req.user.id, _cleanTxt(b.service || '', 80) || null, _cleanTxt(b.district || '', 80) || null, qcity, desc, _cleanTxt(b.pref_date || '', 40) || null, b.src === 'qr' ? 'qr' : 'page', qbr || null, qg ? qla : null, qg ? qln : null])).rows[0].id;
     if (await _qrTrusted(req.user.id)) {
       const q = (await pool.query("UPDATE quote_requests SET status='new', approved_at=NOW(), approved_by='تلقائي — عميل موثوق', auto=TRUE WHERE id=$1 RETURNING *", [id])).rows[0];
       const pu = (await pool.query('SELECT email, name FROM users WHERE id=$1', [pid])).rows[0] || {};
@@ -9512,6 +9516,36 @@ function _qOut(q, forClient){
   return o;
 }
 app.get('/q/:t', (req, res) => res.sendFile(__dirname + '/quote.html'));
+// ═══════════ الموقع الجغرافي للمشروع (لأفضل مسار) ═══════════
+// يقرأ الإحداثيات من رابط الخرائط — والروابط المختصرة (maps.app.goo.gl) يفتحها السيرفر ويتبع التحويل
+function _geoOk(la, ln){ return la >= 15 && la <= 33 && ln >= 33 && ln <= 57; }
+function _geoParse(u){ u = String(u || ''); try { u = decodeURIComponent(u); } catch(e){}
+  const m = u.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/) || u.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/) || u.match(/[?&](?:q|ll|query|destination|daddr|center)=(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/) || u.match(/\/(?:place|search|dir)\/[^@]*?(-?\d{1,2}\.\d{3,}),\s*\+?(-?\d{1,3}\.\d{3,})/);
+  if (!m) return null; const la = parseFloat(m[1]), ln = parseFloat(m[2]); return _geoOk(la, ln) ? { lat: la, lng: ln } : null; }
+const _GEO_SHORT = /^https:\/\/(maps\.app\.goo\.gl|goo\.gl\/maps|g\.co\/kgs|maps\.google\.com|www\.google\.com\/maps|google\.com\/maps)/i;
+async function _geoResolve(u){
+  const d = _geoParse(u); if (d) return d; if (!u || !_GEO_SHORT.test(String(u))) return null;
+  try { let url = String(u);
+    for (let k = 0; k < 5; k++) {
+      const r = await fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(5000), headers: { 'User-Agent': 'Mozilla/5.0' } });
+      const loc = r.headers.get('location'); const g = _geoParse(loc); if (g) return g;
+      if (loc && r.status >= 300 && r.status < 400) { url = new URL(loc, url).toString(); continue; }
+      // الصفحة نفسها: ندوّر على رابط فيه @lat,lng أو center=lat%2Clng
+      const t = (await r.text().catch(() => '')).slice(0, 300000);
+      const a = t.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/) || t.match(/center=(-?\d{1,2}\.\d+)%2C(-?\d{1,3}\.\d+)/);
+      if (a && _geoOk(parseFloat(a[1]), parseFloat(a[2]))) return { lat: parseFloat(a[1]), lng: parseFloat(a[2]) };
+      return null;
+    }
+  } catch(e){} return null; }
+// موقع المشروع: من الرابط، وإلا من موقع العميل المحفوظ (من زيارة سابقة)
+async function _jobGeo(id){
+  try { const j = (await pool.query('SELECT id, provider_id, client_id, client_phone, maps, lat FROM jobs WHERE id=$1', [id])).rows[0]; if (!j) return;
+    let g = j.maps ? await _geoResolve(j.maps) : null;
+    if (!g) { const c = (await pool.query("SELECT lat, lng FROM provider_customers WHERE provider_id=$1 AND lat IS NOT NULL AND (client_id=$2 OR phone9=$3) LIMIT 1", [j.provider_id, j.client_id || 0, _ph9(j.client_phone)])).rows[0]; if (c) g = c; }
+    if (g) await pool.query('UPDATE jobs SET lat=$2, lng=$3 WHERE id=$1', [id, g.lat, g.lng]);
+  } catch(e){ console.error('job-geo:', e.message); } }
+setInterval(() => _jobLock('job_geo', async () => { const r = (await pool.query("SELECT id FROM jobs WHERE lat IS NULL AND status IN ('new','scheduled','active') AND (maps IS NOT NULL OR client_phone IS NOT NULL) ORDER BY id DESC LIMIT 100")).rows; for (const x of r) await _jobGeo(x.id); }), 30 * 60 * 1000);
+
 // ═══════════ أدوات المشترك: قائمة الأسعار · المتابعة الآلية · الحجز المباشر · تكلفة المشروع · الحملات ═══════════
 const TOOLS_DEF = { fu: { quote: 1, visit: 1, rate: 0 }, book: { on: 0, days: [6, 0, 1, 2, 3, 4], from: '08:00', to: '18:00', slot: 120, cap: 1 } };
 async function _toolsCfg(pid){
@@ -9569,8 +9603,9 @@ app.post('/api/pro/:id/book', auth, rateLimiter(20, 3600000), async (req, res) =
     const pend = (await pool.query("SELECT COUNT(*)::int n FROM bookings WHERE provider_id=$1 AND client_id=$2 AND status IN ('pending','proposed')", [pid, req.user.id])).rows[0].n;
     if (pend >= 2) return res.status(409).json({ message: 'عندك حجز بانتظار تأكيد المزوّد' });
     const city = _cleanTxt(b.city || '', 60) || null; const br = await _brForCity(pid, city);
-    const k = (await pool.query('INSERT INTO bookings (provider_id, client_id, item_id, title, qty, price, at, city, district, note, branch_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *',
-      [pid, req.user.id, it.id, it.t, qty, it.p, at, city, _cleanTxt(b.district || '', 80) || null, _cleanML(b.note || '', 500) || null, br])).rows[0];
+    const bla = parseFloat(b.lat), bln = parseFloat(b.lng), bg = _geoOk(bla, bln);
+    const k = (await pool.query('INSERT INTO bookings (provider_id, client_id, item_id, title, qty, price, at, city, district, note, branch_id, lat, lng) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *',
+      [pid, req.user.id, it.id, it.t, qty, it.p, at, city, _cleanTxt(b.district || '', 80) || null, _cleanML(b.note || '', 500) || null, br, bg ? bla : null, bg ? bln : null])).rows[0];
     const cu = (await pool.query('SELECT name FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
     try { await notify(pid, '📅 حجز جديد ينتظر تأكيدك', it.t + (qty > 1 ? ' × ' + qty : '') + ' — ' + (cu.name || 'عميل') + ' · ' + _bkFmt(at), 'booking', k.id, { url: '/mypage.html#book' }); } catch(e){}
     res.json({ ok: true, id: k.id, message: 'وصل طلب الحجز ✅ — المزوّد يأكد موعدك خلال يوم، ويوصلك إشعار' });
@@ -9586,8 +9621,9 @@ app.get('/api/provider/bookings', auth, providerOnly, async (req, res) => {
 async function _bkConfirm(k, at){
   const tasks = [{ id: 't' + Date.now().toString(36), t: k.title + (k.qty > 1 ? ' × ' + k.qty : ''), done: false }];
   const cu = (await pool.query('SELECT name, phone FROM users WHERE id=$1', [k.client_id])).rows[0] || {};
-  const j = (await pool.query(`INSERT INTO jobs (provider_id, client_id, client_name, client_phone, title, address, value, tasks, log, sched_at, status, branch_id, booking_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10,'new',$11,$12) RETURNING id`,
-    [k.provider_id, k.client_id, cu.name || '', cu.phone || '', k.title + (k.qty > 1 ? ' × ' + k.qty : ''), [k.district, k.city].filter(Boolean).join('، ') || null, (parseFloat(k.price) || 0) * k.qty, JSON.stringify(tasks), JSON.stringify([{ at: new Date(), t: 'حجز مباشر — تأكد الموعد ' + _bkFmt(at) }]), at, k.branch_id || null, k.id])).rows[0].id;
+  const j = (await pool.query(`INSERT INTO jobs (provider_id, client_id, client_name, client_phone, title, address, value, tasks, log, sched_at, status, branch_id, booking_id, lat, lng) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10,'new',$11,$12,$13,$14) RETURNING id`,
+    [k.provider_id, k.client_id, cu.name || '', cu.phone || '', k.title + (k.qty > 1 ? ' × ' + k.qty : ''), [k.district, k.city].filter(Boolean).join('، ') || null, (parseFloat(k.price) || 0) * k.qty, JSON.stringify(tasks), JSON.stringify([{ at: new Date(), t: 'حجز مباشر — تأكد الموعد ' + _bkFmt(at) }]), at, k.branch_id || null, k.id, k.lat, k.lng])).rows[0].id;
+  if (k.lat == null) await _jobGeo(j);
   await pool.query("UPDATE bookings SET status='confirmed', at=$2, decided_at=NOW(), job_id=$3 WHERE id=$1", [k.id, at, j]);
   await _qCustomer(k.provider_id, { client_id: k.client_id, client_name: cu.name || '', client_phone: cu.phone || '', branch_id: k.branch_id }, false);
   return j;
@@ -10091,11 +10127,12 @@ app.post('/api/q/:t/act', auth, rateLimiter(20, 600000), async (req, res) => {
       if (!r.rows.length) return res.status(409).json({ message: 'العرض تغيّر — حدّث الصفحة' });
       await _qCustomer(q.provider_id, Object.assign({}, q, { client_id: req.user.id }), true);
       // يتحوّل لمشروع تلقائياً (المهام = بنود الخيار)
-      try { const qr = q.qreq_id ? (await pool.query('SELECT district, city FROM quote_requests WHERE id=$1', [q.qreq_id])).rows[0] : null;
+      try { const qr = q.qreq_id ? (await pool.query('SELECT district, city, lat, lng FROM quote_requests WHERE id=$1', [q.qreq_id])).rows[0] : null;
         const tasks = (o.items || []).map((x, k) => ({ id: 't' + Date.now().toString(36) + k, t: x.t + (x.q > 1 ? ' × ' + x.q : ''), done: false }));
         const jid = (await pool.query(`INSERT INTO jobs (provider_id, client_id, client_name, client_phone, quote_id, title, address, value, tasks, log, branch_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11) RETURNING id`,
           [q.provider_id, req.user.id, q.client_name, q.client_phone, q.id, q.title, qr ? [qr.district, qr.city].filter(Boolean).join('، ') : null, o.total, JSON.stringify(tasks), JSON.stringify([{ at: new Date(), t: 'العميل وافق على «' + o.n + '» — بدأ المشروع' }]), q.branch_id || null])).rows[0].id;
         await pool.query('UPDATE quotes SET job_id=$2 WHERE id=$1', [q.id, jid]);
+        if (qr && qr.lat != null) await pool.query('UPDATE jobs SET lat=$2, lng=$3 WHERE id=$1', [jid, qr.lat, qr.lng]); else _jobGeo(jid).catch(() => {});
         try { await notify(q.provider_id, '🧰 مشروع جديد: ' + (q.title || ''), 'حدّد الموعد والفني', 'job', jid, { url: '/jobs.html?id=' + jid }); } catch(e){}
       } catch(e){ console.error('job-from-quote:', e.message); }
       const t = '✅ ' + cn + ' وافق على عرضك', bd = '«' + (q.title || 'عرض السعر') + '» — ' + o.n + ' بـ ' + Number(o.total).toLocaleString('en-US') + ' ر.س' + (saaiId ? ' · يُسجّل عليه سعي المنصة (عميل من السوق)' : '');
@@ -10138,6 +10175,7 @@ async function _jobGate(req, res){ return _qGate(req, res); }
 function _jobOut(j, who){
   const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, enroute_at: j.enroute_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: j.tasks || [], photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, created_at: j.created_at, updated_at: j.updated_at };
   if (who !== 'tech') Object.assign(o, { value: parseFloat(j.value) || 0, extra_total: parseFloat(j.extra_total) || 0 });
+  if (j.lat != null && j.lng != null) { o.lat = j.lat; o.lng = j.lng; if (!o.maps) o.maps = 'https://www.google.com/maps/search/?api=1&query=' + j.lat + ',' + j.lng; }
   if (who === 'prov') Object.assign(o, { client_phone: j.client_phone, client_id: j.client_id, tech_id: j.tech_id, tech_name: j.tech_name || null, branch_id: j.branch_id || null });
   if (who === 'tech') Object.assign(o, { client_phone: j.client_phone, provider_name: j.pname });
   if (who === 'client') Object.assign(o, { provider_id: j.provider_id, provider_name: j.pname, provider_phone: j.pphone, tech_name: j.tech_name || null });
@@ -10195,7 +10233,7 @@ app.get('/api/jobs/map', auth, providerOnly, async (req, res) => {
     const c = await _brCtx(req), a = [req.user.id]; const w = _brSql(c, 'j.branch_id', a);
     const r = await pool.query(`SELECT j.id, j.title, j.address, j.client_name, j.sched_at, j.enroute_at, t.name AS tech_name, l.lat, l.lng, l.acc, l.at FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id LEFT JOIN job_locs l ON l.job_id=j.id
       WHERE j.provider_id=$1${w} AND j.enroute_at IS NOT NULL AND j.arrived_at IS NULL AND j.status IN ('new','scheduled','active') ORDER BY j.enroute_at DESC LIMIT 100`, a);
-    const today = (await pool.query(`SELECT j.id, j.title, j.sched_at, j.arrived_at, j.maps, j.address, j.tech_id, t.name AS tech_name FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id WHERE j.provider_id=$1${w} AND j.status IN ('scheduled','active') AND j.sched_at::date = (NOW() AT TIME ZONE 'Asia/Riyadh')::date ORDER BY j.sched_at LIMIT 100`, a)).rows;
+    const today = (await pool.query(`SELECT j.id, j.title, j.sched_at, j.arrived_at, j.maps, j.lat, j.lng, j.address, j.tech_id, t.name AS tech_name FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id WHERE j.provider_id=$1${w} AND j.status IN ('scheduled','active') AND j.sched_at::date = (NOW() AT TIME ZONE 'Asia/Riyadh')::date ORDER BY j.sched_at LIMIT 100`, a)).rows;
     res.json({ items: r.rows, today }); } catch(e){ console.error('map:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.get('/api/jobs/:id', auth, providerOnly, async (req, res) => {
@@ -10220,6 +10258,7 @@ app.post('/api/jobs', auth, providerOnly, async (req, res) => {
     const j = (await pool.query(`INSERT INTO jobs (provider_id, client_id, client_name, client_phone, title, address, maps, value, tasks, log, branch_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10::jsonb,$11) RETURNING *`,
       [req.user.id, cid, cn, cp, title, _cleanTxt(b.address || '', 200) || null, _safeUrl(b.maps) || null, Math.max(0, parseFloat(b.value) || 0), JSON.stringify(tasks), JSON.stringify([{ at: new Date(), t: 'أُنشئ المشروع' }]), br])).rows[0];
     await _qCustomer(req.user.id, { client_id: cid, client_name: cn, client_phone: cp, branch_id: br }, false);
+    await _jobGeo(j.id);
     res.json({ ok: true, job: _jobOut(j, 'prov') });
   } catch(e){ console.error('job-new:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -10234,6 +10273,7 @@ app.post('/api/jobs/:id', auth, providerOnly, async (req, res) => {
       let sched = b.sched_at !== undefined ? (b.sched_at ? new Date(b.sched_at) : null) : j.sched_at; if (sched && isNaN(sched)) return res.status(400).json({ message: 'الموعد غير صحيح' });
       const st = ['new', 'scheduled'].includes(j.status) ? (sched && tech ? 'scheduled' : 'new') : j.status;
       const r = (await pool.query('UPDATE jobs SET title=$2, address=$3, maps=$4, sched_at=$5, tech_id=$6, status=$7, updated_at=NOW() WHERE id=$1 RETURNING *', [id, _cleanTxt(b.title || j.title, 120), b.address !== undefined ? (_cleanTxt(b.address, 200) || null) : j.address, b.maps !== undefined ? (_safeUrl(b.maps) || null) : j.maps, sched, tech, st])).rows[0];
+      if (b.maps !== undefined && (b.maps || null) !== (j.maps || null)) { await pool.query('UPDATE jobs SET lat=NULL, lng=NULL WHERE id=$1', [id]); _jobGeo(id).catch(() => {}); }
       const fmt = d => d ? new Date(d).toLocaleString('ar-SA-u-nu-latn-ca-gregory', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' }) : '';
       if (String(sched || '') !== String(j.sched_at || '') && sched) { await _jobLog(id, 'الموعد: ' + fmt(sched)); if (j.client_id) try { await notify(j.client_id, '🗓 موعد مشروعك: ' + fmt(sched), (j.title || '') + ' — ' + j.pname, 'job', id, { url: '/job.html?id=' + id }); } catch(e){} }
       if (tech && tech !== j.tech_id) { const tu = await _jobTechUid(tech); const tn = (await pool.query('SELECT name FROM provider_techs WHERE id=$1', [tech])).rows[0].name; await _jobLog(id, 'الفني: ' + tn);
@@ -10313,6 +10353,10 @@ app.post('/api/tech/jobs/:id', auth, rateLimiter(300, 600000), async (req, res) 
       await pool.query('INSERT INTO job_locs (job_id, provider_id, tech_id, lat, lng, acc, at) VALUES ($1,$2,$3,$4,$5,$6,NOW()) ON CONFLICT (job_id) DO UPDATE SET lat=EXCLUDED.lat, lng=EXCLUDED.lng, acc=EXCLUDED.acc, at=NOW()', [id, j.provider_id, j.tech_id, la, ln, Math.min(99999, Math.max(0, parseInt(b.acc) || 0))]);
       return res.json({ ok: true }); }
     if (act === 'arrive') { if (j.arrived_at) return res.json({ ok: true });
+      // موقع الفني لما يوصل = موقع العميل (للزيارات الجاية وأفضل مسار)
+      const la = parseFloat(b.lat), ln = parseFloat(b.lng), acc = parseFloat(b.acc) || 0;
+      if (_geoOk(la, ln) && acc <= 150) { await pool.query('UPDATE jobs SET lat=COALESCE(lat,$2), lng=COALESCE(lng,$3) WHERE id=$1', [id, la, ln]);
+        await pool.query('UPDATE provider_customers SET lat=$3, lng=$4 WHERE provider_id=$1 AND (client_id=$2 OR phone9=$5) AND lat IS NULL', [j.provider_id, j.client_id || 0, la, ln, _ph9(j.client_phone)]).catch(() => {}); }
       await pool.query("UPDATE jobs SET arrived_at=NOW(), status='active', updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, tn + ' وصل الموقع'); await pool.query('DELETE FROM job_locs WHERE job_id=$1', [id]);
       try { await notify(j.provider_id, '📍 ' + tn + ' وصل الموقع', j.title || '', 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
       if (j.client_id) try { await notify(j.client_id, '📍 الفني ' + tn + ' وصل', (j.title || '') + ' — ' + j.pname, 'job', id, { url: '/job.html?id=' + id }); } catch(e){}
@@ -10589,7 +10633,7 @@ async function _planTick(){
     const tasks = (v.tasks || []).map((t, k) => ({ id: 't' + Date.now().toString(36) + k, t, done: false }));
     const j = (await pool.query(`INSERT INTO jobs (provider_id, client_id, client_name, client_phone, title, address, value, tasks, log, plan_visit_id, branch_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10,$11) RETURNING id`,
       [v.provider_id, v.client_id, v.cname, v.cphone, 'صيانة دورية: ' + v.title + ' (زيارة ' + v.n + ')', v.caddr, val, JSON.stringify(tasks), JSON.stringify([{ at: new Date(), t: 'زيارة ' + v.n + ' من خطة الصيانة — موعدها ' + _ymd(v.due_at) }]), v.id, v.mbr || null])).rows[0].id;
-    await pool.query("UPDATE maint_visits SET status='created', job_id=$2 WHERE id=$1", [v.id, j]);
+    await pool.query("UPDATE maint_visits SET status='created', job_id=$2 WHERE id=$1", [v.id, j]); _jobGeo(j).catch(() => {});
     try { await notify(v.provider_id, '🛠 زيارة صيانة دورية قربت', v.cname + ' — ' + v.title + ' (' + _ymd(v.due_at) + ') — حدّد الموعد والفني', 'job', j, { url: '/jobs.html?id=' + j }); } catch(e){}
     if (v.client_id) try { await notify(v.client_id, '🔔 صيانتك الدورية قربت', v.title + ' — ' + v.pname + ' · ' + _ymd(v.due_at), 'job', j, { url: '/job.html?id=' + j }); } catch(e){}
   }

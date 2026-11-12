@@ -118,7 +118,7 @@ function feats(t){ var L=D.cfg.limits[t]||{}; var f=[]; f.push(L.projects?[nn(L.
 function buyBlock(html){ if(D&&D.open===false&&!(D.sub&&['active','grace'].indexOf(D.sub.status)>-1)) return '<div class="note">الاشتراكات تُفتح قريباً — سنبلغك فور إتاحتها.</div>'; return IOSAPP?'':html; }
 function chooser(inTrial){
  var C=D.cfg, off=D.offer;
- var h='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div class="h3" style="margin:0">'+(inTrial?'اشترك الآن واحتفظ بمزاياك':'اختر باقتك')+'</div><div class="mu">ألغِ في أي وقت · بدون التزام</div></div>'
+ var h='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div class="h3" style="margin:0">'+(inTrial?'اشترك الآن واحتفظ بمزاياك':'اختر باقتك')+'</div><div class="mu">'+(CY==='y'?'ادفع سنوياً ووفّر شهرين · يمكنك إيقاف التجديد في أي وقت':'ألغِ في أي وقت · بدون التزام')+'</div></div>'
   +'<div class="seg"><button type="button" data-cy="m" class="'+(CY==='m'?'on':'')+'">شهري</button><button type="button" data-cy="y" class="'+(CY==='y'?'on':'')+'">سنوي <span class="pill p-g" style="height:19px">شهران مجاناً</span></button></div></div>';
  h+='<div class="plans">'+['pro','ent'].map(function(t){ var p=C.tiers[t][CY];
    return '<button type="button" class="plan'+(TIER===t?' on':'')+'" data-t="'+t+'"><h4>'+esc(C.tiers[t].name)+(t==='pro'?' <span class="pill p-g">الأكثر اختياراً</span>':'')+'</h4><div class="price">'+money(p)+' <small>ر.س / '+(CY==='y'?'سنة':'شهر')+'</small></div>'+(CY==='y'?'<div class="mu">يعادل '+money(Math.round(p/12))+' ر.س شهرياً</div>':'')+'<ul>'+feats(t)+'</ul></button>'; }).join('')+'</div>';
