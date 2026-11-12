@@ -35,7 +35,7 @@
   function hide(id){ var e = D.getElementById(id); if (e) e.style.display = 'none'; }
   function applyMe(){
     css(); var m = S.me;
-    hide('ni-dlg'); hide('ni-saai'); hide('ni-plan'); hide('ni-ideas'); hide('ni-branches'); if (m.perms.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (m.perms.indexOf('jobs') < 0) hide('ni-jobs'); if (m.perms.indexOf('customers') < 0) hide('ni-cust'); if (m.perms.indexOf('stats') < 0) hide('ni-stats'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
+    hide('ni-dlg'); hide('ni-saai'); hide('ni-plan'); hide('ni-ideas'); hide('ni-branches'); if (m.perms.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (m.perms.indexOf('jobs') < 0) { hide('ni-jobs'); hide('ni-cal'); hide('ni-att'); } if (m.perms.indexOf('customers') < 0) hide('ni-cust'); if (m.perms.indexOf('stats') < 0) hide('ni-stats'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
     // bn-profile هو زر «المزيد» بالجوال (فيه الإشعارات والخروج) — ما نخفيه
     ['browse', 'works', 'profile', 'proof', 'sub'].forEach(function(p){ if (!okPage(p)) { hide('ni-' + p); if (p !== 'profile') hide('bn-' + p); } });
     if (!okPage('chat')) { hide('ni-chat'); hide('bn-chat'); }

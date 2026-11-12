@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#172554">
+<title>الحضور والانصراف — مناقصة</title>
+<link rel="icon" href="/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;min-height:100vh;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font-family:inherit}
+.top{height:62px;background:#172554;border-bottom:3px solid #0ea5e9;display:flex;align-items:center;justify-content:space-between;padding:0 18px;color:#fff;position:sticky;top:0;z-index:20}
+.top b{font-size:21px;font-weight:900}.top b i{color:#38bdf8;font-style:normal}
+.top a{color:#fff;text-decoration:none;font-size:13px;font-weight:800;opacity:.85}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 110px;display:flex;flex-direction:column;gap:14px}
+.h1{font-size:22px;font-weight:900;color:#172554}.mu{color:#64748b;font-size:12.5px;font-weight:700}
+.card{background:#fff;border:1px solid #e6eefb;border-radius:18px;box-shadow:0 2px 10px rgba(30,58,138,.05);padding:18px}
+.h3{font-size:15px;font-weight:900;color:#172554}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;padding:10px 15px;font-weight:800;font-size:13.5px;border:0;cursor:pointer;white-space:nowrap;text-decoration:none}
+.pri{background:#1e3a8a;color:#fff}.sec{background:#fff;border:1.5px solid #e2e8f0;color:#1e293b}.wa{background:#16a34a;color:#fff}.dan{background:#fff;border:1.5px solid #fecdca;color:#b42318}.gold{background:#fffbeb;border:1.5px solid #fde68a;color:#1e3a8a}
+.btn:disabled{opacity:.55;cursor:default}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sb{justify-content:space-between}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.tabs::-webkit-scrollbar{display:none}
+.tabs button{border:1.5px solid #e2e8f0;background:#fff;color:#475467;border-radius:99px;padding:7px 13px;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.tabs button.on{background:#172554;color:#fff;border-color:#172554}
+.pill{display:inline-flex;align-items:center;gap:4px;height:23px;border-radius:99px;padding:0 10px;font-size:11.5px;font-weight:800;white-space:nowrap}
+.p-b{background:#eff4ff;color:#1e3a8a}.p-g{background:#ecfdf3;color:#067647}.p-gr{background:#f2f4f7;color:#475467}.p-y{background:#fffaeb;color:#b54708}.p-r{background:#fef3f2;color:#b42318}
+.ql{display:flex;flex-direction:column;gap:10px}
+.qi{display:flex;gap:12px;align-items:center;cursor:pointer;text-align:right;width:100%;border:1px solid #e6eefb;background:#fff;border-radius:16px;padding:14px;color:inherit}
+.qi:hover{border-color:#bfd3fe}
+.qi .c{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.qi b{font-size:14.5px;color:#172554}
+.amt{font-family:Cairo,sans-serif;font-weight:900;color:#172554;white-space:nowrap}
+.f label{display:block;font-size:12.5px;font-weight:800;color:#334766;margin-bottom:5px}
+.f input,.f textarea,.f select{width:100%;border:1.5px solid #e2e8f0;border-radius:11px;padding:10px 12px;font-size:14.5px;background:#fff;color:#1e293b}
+.f textarea{min-height:80px;resize:vertical}
+.grid2{display:flex;gap:12px}.grid2>*{flex:1;min-width:0}
+.ed{display:flex;gap:16px;align-items:flex-start}.ed .main{flex:1.7;min-width:0;display:flex;flex-direction:column;gap:14px}.ed .side{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;position:sticky;top:76px}
+.seg{display:flex;background:#e2e8f0;border-radius:12px;padding:4px}
+.seg button{flex:1;border:0;background:transparent;padding:9px 6px;border-radius:9px;font-weight:800;font-size:13px;color:#64748b;cursor:pointer}
+.seg button.on{background:#fff;color:#172554;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.opt{border:1.5px solid #e2e8f0;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;background:#fff}
+.opt.rec{border-color:#1e3a8a;background:#f8faff}
+.it{display:flex;gap:6px;align-items:center}
+.it input{border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 10px;font-size:14px;min-width:0;background:#fff}
+.it .t{flex:1}.it .q{width:58px;text-align:center}.it .p{width:96px}
+.x{border:0;background:#fef3f2;color:#b42318;width:32px;height:32px;border-radius:9px;cursor:pointer;font-size:16px;flex:none}
+.chk{display:flex;gap:8px;font-size:13px;font-weight:700;align-items:flex-start;line-height:1.6}
+.sheet-ov{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:700px){.sheet-ov{align-items:center}}
+.sheet{background:#fff;width:min(480px,100%);max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
+@media(min-width:700px){.sheet{border-radius:20px}}
+.bar{position:fixed;bottom:0;right:0;left:0;background:#fff;border-top:1px solid #e2e8f0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:15;box-shadow:0 -6px 20px rgba(30,58,138,.08)}
+.bar .in{max-width:1180px;margin:0 auto;display:flex;gap:8px;align-items:center}
+.toast{position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:#172554;color:#fff;padding:11px 18px;border-radius:12px;font-weight:800;font-size:13.5px;z-index:99;display:none}
+.empty{text-align:center;padding:40px 16px}
+@media(max-width:820px){.ed{flex-direction:column}.ed .side{position:static;width:100%}.ed .main{width:100%}.grid2{flex-direction:column}}
+.steps{display:flex;align-items:flex-start}.steps div{flex:1;text-align:center;font-size:11.5px;font-weight:800;color:#94a3b8;position:relative;padding-top:24px}.steps div:before{content:'';position:absolute;top:6px;left:50%;width:100%;height:3px;background:#e2e8f0}.steps div:first-child:before{display:none}.steps div i{position:absolute;top:0;right:calc(50% - 8px);width:16px;height:16px;border-radius:50%;background:#e2e8f0;z-index:1}.steps div.on{color:#1e3a8a}.steps div.on i,.steps div.on:before{background:#1e3a8a}
+.ck{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #f1f5f9;font-size:14px;font-weight:700}.ck .b{width:28px;height:28px;border-radius:8px;border:2px solid #cbd5e1;background:#fff;flex:none;color:#fff;font-size:15px;cursor:pointer;font-weight:900}.ck.done .b{background:#16a34a;border-color:#16a34a}.ck.done .t{color:#94a3b8;text-decoration:line-through}
+.phs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.ph{width:84px;height:84px;border-radius:12px;background:#e2e8f0 center/cover;position:relative;display:block}.ph span{position:absolute;bottom:4px;right:4px;background:rgba(15,23,42,.7);color:#fff;font-size:10.5px;font-weight:800;border-radius:6px;padding:1px 6px}
+</style>
+<script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script><script src="/branch.js?v=1"></script></head>
+<body>
+<div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحة التحكم</a></div>
+<div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
+if(!TOK){ try{localStorage.setItem('_after_login',location.pathname+location.search);}catch(e){} location.href='/auth.html'; return; }
+var A=document.getElementById('app'), P=new URLSearchParams(location.search);
+var S={tab:(location.hash||'').replace('#','')||'today', m:''};
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},window.MNQ_BR?MNQ_BR.h():{},o.headers||{});
+  return fetch(p,o).then(function(r){ if(r.status===401){ location.href='/auth.html'; throw 0; } return r.json().then(function(j){ if(!r.ok){ var e=new Error(j.message||'حدث خطأ'); e.j=j; e.s=r.status; throw e; } return j; }); });}
+function toast(t){ var e=document.getElementById('toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){e.style.display='none';},2600); }
+function tm(x){ if(!x)return '—'; try{ return new Date(x).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',timeZone:'Asia/Riyadh'}); }catch(e){ return ''; } }
+function dmy(y){ try{ return new Date(y+'T12:00:00Z').toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'long',day:'numeric',month:'long'}); }catch(e){ return y; } }
+function hm(n){ n=Math.round(n||0); var h=Math.floor(n/60), m=n%60; return [h?h+'س':'',(m||!h)?m+'د':''].filter(Boolean).join(' '); }
+function h12(x){ var p=String(x||'').split(':'), h=+p[0], m=p[1]||'00'; return (h%12||12)+(m!=='00'?':'+m:'')+(h<12?' ص':' م'); }
+function m2(v){ return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
+var ST={in:['حاضر','p-g'],late:['متأخر','p-y'],out:['انصرف','p-gr'],absent:['ما سجّل','p-r'],leave:['إجازة','p-gr'],off:['مو يوم دوامه','p-gr'],soon:['دوامه ما بدأ','p-b']};
+var AV=['#1e3a8a','#0e7490','#7c3aed','#b45309','#15803d','#be185d'];
+function head(n){ return '<div class="row sb"><div><div class="h1">الحضور والانصراف</div><div class="mu">وقت وموقع حضور وانصراف فريقك، والإجازات، والتقرير الشهري</div></div><div id="brbar"></div></div>'
+  +'<div class="tabs"><button class="'+(S.tab==='today'?'on':'')+'" onclick="_aTab(\'today\')">اليوم</button><button class="'+(S.tab==='month'?'on':'')+'" onclick="_aTab(\'month\')">التقرير الشهري</button><button class="'+(S.tab==='leaves'?'on':'')+'" onclick="_aTab(\'leaves\')">الإجازات'+(n?' ('+n+')':'')+'</button></div>'; }
+window._aTab=function(t){ S.tab=t; history.replaceState(null,'','#'+t); go(); };
+function lock(e){
+  if(e&&e.j&&(e.j.code==='tier'||e.j.code==='sub')){ A.innerHTML='<div class="card" style="display:flex;flex-direction:column;gap:12px;max-width:620px"><div style="font-size:40px">⏱</div><div class="h1">الحضور والانصراف — من مزايا باقة مؤسسة</div>'
+    +'<ul style="list-style:none;display:flex;flex-direction:column;gap:9px;font-weight:800;font-size:14px;line-height:1.7"><li>✓ الفني يسجّل «بدأت دوامي / خلصت» من جواله بضغطة</li><li>✓ تنبيه لك إذا تأخر أحد عن دوامه</li><li>✓ طلبات الإجازة وموافقتك، وتنقفل أيامها في التقويم والحجز</li><li>✓ تقرير شهري بالساعات والتأخير والغياب والإضافي — وتصدير Excel للرواتب</li><li>✓ ساعات كل فني على المشروع تنحسب في تكلفته وربحه</li></ul>'
+    +'<a class="btn pri" href="/plan.html" style="align-self:flex-start">رقّ باقتك إلى مؤسسة</a><div class="mu">جدول دوام الفنيين وأجرة الساعة متاحة لك من «الفريق» في صفحة المشاريع.</div></div>'; return true; }
+  return false; }
+function brb(){ MNQ_BR.bar(document.getElementById('brbar'),function(){ go(); }); }
+function go(){ if(S.tab==='month') return month(); if(S.tab==='leaves') return leaves(); return today(); }
+function today(){
+  api('/api/att/today').then(function(r){ S.T=r;
+    var c=r.counts, h=head(r.pending.length)+'<div class="card" style="padding:14px"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">'
+      +[['حاضر',c.present,'#15803d'],['متأخر',c.late,'#b54708'],['ما سجّل',c.absent,'#b42318'],['إجازة',c.leave,'#475467']].map(function(x){ return '<div style="background:#f5f8ff;border-radius:12px;padding:10px 4px"><b style="display:block;font-family:Cairo;font-size:22px;color:'+x[2]+'">'+x[1]+'</b><span class="mu">'+x[0]+'</span></div>'; }).join('')+'</div></div>';
+    r.items.filter(function(t){return t.st==='absent';}).forEach(function(t){ h+='<div class="card" style="background:#fef3f2;border-color:#fecdca;padding:12px 14px;color:#b42318;font-weight:800;font-size:13.5px">⏰ '+esc(t.name)+' ما سجّل حضوره — دوامه بدأ '+h12(t.sched.from)+' (من '+hm(t.late_by)+')</div>'; });
+    if(!r.items.length) h+='<div class="card empty"><b>ما عندك فنيين للحين</b><div class="mu" style="margin-top:6px">أضفهم من «الفريق» في صفحة المشاريع</div><a class="btn pri" style="margin-top:12px" href="/jobs.html?tab=team">الفريق</a></div>';
+    else h+='<div class="card" style="padding:6px 16px">'+r.items.map(function(t,i){ var s=ST[t.st]||['','p-gr'], sh=t.shift, info='';
+      if(sh){ info='حضر '+tm(sh.in_at)+(sh.out_at?' · انصرف '+tm(sh.out_at):'')+(sh.src==='auto'?' (مع أول «وصلت»)':''); if(sh.km!=null) info+=' · 📍 '+(sh.km<1?'عند أول مشروع':'يبعد '+sh.km+' كم عن أول مشروع'+(sh.km>=10?' ⚠️':'')); if(t.job) info+=' · يشتغل الحين: '+esc(t.job.title); }
+      else if(t.st==='leave') info='إجازة معتمدة'; else if(t.st==='off') info='اليوم مو من أيام دوامه'; else if(t.st==='soon') info='دوامه يبدأ '+h12(t.sched.from); else info='ما سجّل للحين';
+      return '<div class="row" style="padding:12px 0;border-top:'+(i?'1px solid #f1f5f9':'0')+';flex-wrap:nowrap"><span style="width:38px;height:38px;border-radius:50%;background:'+AV[i%AV.length]+';color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none">'+esc((t.name||'ف')[0])+'</span><div style="flex:1;min-width:0"><b style="color:#172554">'+esc(t.name)+'</b>'+MNQ_BR.tag(t.branch_id)+'<div class="mu">'+info+'</div></div><span class="pill '+s[1]+'">'+s[0]+(t.st==='late'&&sh?' '+hm(sh.late_min):'')+'</span></div>'; }).join('')+'</div>';
+    h+=pend(r.pending);
+    A.innerHTML=h; brb(); }).catch(function(e){ if(!lock(e)&&e) A.innerHTML='<div class="card empty">'+esc(e.message)+'</div>'; });
+}
+function pend(L){ if(!L||!L.length) return ''; return L.map(function(l){ return '<div class="card" style="display:flex;flex-direction:column;gap:8px"><div class="row sb"><b style="color:#172554">🌴 طلب إجازة — '+esc(l.name)+'</b><span class="mu">'+(l.d1===l.d2?dmy(l.d1):dmy(l.d1)+' ← '+dmy(l.d2))+'</span></div>'+(l.reason?'<div class="mu">السبب: '+esc(l.reason)+'</div>':'')+(l.jobs_n?'<div class="mu" style="color:#b54708">⚠️ عنده '+l.jobs_n+' مشروع بهالفترة — انقلها لفني ثاني من التقويم</div>':'')
+  +'<div class="row"><button class="btn pri" style="flex:1" onclick="_lv('+l.id+',\'approve\')">موافقة</button><button class="btn sec" style="flex:1" onclick="_lv('+l.id+',\'reject\')">رفض</button></div></div>'; }).join(''); }
+window._lv=function(id,act){ api('/api/att/leaves',{method:'POST',body:JSON.stringify({id:id,act:act})}).then(function(){ toast(act==='approve'?'تمت الموافقة ✅ وانقفلت أيامها':'تم الرفض'); go(); }).catch(function(e){ if(e)toast(e.message); }); };
+function months(){ var o=[], d=new Date(); for(var k=0;k<6;k++){ var x=new Date(d.getFullYear(), d.getMonth()-k, 15); o.push(x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')); } return o; }
+function mName(m){ try{ return new Date(m+'-15T12:00:00Z').toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{month:'long',year:'numeric'}); }catch(e){ return m; } }
+function month(){
+  S.m=S.m||months()[0];
+  api('/api/att/month?m='+S.m).then(function(r){ var t=r.total;
+    var h=head(S.T?S.T.pending.length:0)+'<div class="row sb"><div><div class="h3">'+esc(mName(r.month))+'</div><div class="mu">أيام العمل '+r.workdays+' · من جدول دوام كل فني</div></div><div class="row"><select class="mnq-br-sel" onchange="_aM(this.value)" aria-label="الشهر">'+months().map(function(m){ return '<option value="'+m+'"'+(m===S.m?' selected':'')+'>'+esc(mName(m))+'</option>'; }).join('')+'</select><button class="btn pri" onclick="_aCsv()">⬇ تصدير Excel للرواتب</button></div></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">'+[['نسبة الالتزام',t.commit==null?'—':t.commit+'%','#15803d'],['ساعات العمل',m2(t.hours)+' س','#172554'],['ساعات إضافية',m2(t.over)+' س','#1e3a8a'],['تكلفة ساعات الفريق على المشاريع',m2(t.labor)+' ر.س','#172554']].map(function(x){ return '<div class="card" style="padding:14px"><div class="mu">'+x[0]+'</div><b style="font-family:Cairo;font-size:24px;color:'+x[2]+'">'+x[1]+'</b></div>'; }).join('')+'</div>'
+      +'<div class="card" style="padding:6px 8px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:640px"><tr>'+['الفني','أيام الحضور','التأخير','الغياب','الإجازة','ساعات العمل','إضافي','تكلفته على المشاريع'].map(function(x){ return '<th style="text-align:right;font-size:12px;color:#667085;padding:10px 8px">'+x+'</th>'; }).join('')+'</tr>'
+      +(r.rows.length?r.rows.map(function(x){ return '<tr style="border-top:1px solid #f0f2f5">'+['<b>'+esc(x.name)+'</b>',x.days,x.late_n?x.late_n+' ('+hm(x.late_min)+')':'0',x.absent,x.leave,m2(x.hours)+'س',m2(x.over)+'س',x.labor?m2(x.labor)+' ر.س':(x.rate?'0':'<span class="mu">حدّد أجرة الساعة</span>')].map(function(v){ return '<td style="padding:11px 8px;font-size:13.5px;font-weight:700">'+v+'</td>'; }).join('')+'</tr>'; }).join(''):'<tr><td colspan="8" class="mu" style="padding:16px">ما فيه فنيين</td></tr>')+'</table></div>'
+      +'<div class="card" style="background:#f5f8ff;border-style:dashed;font-size:12.5px;font-weight:700;color:#344054;line-height:1.8">💡 التكلفة = ساعات الفني في كل مشروع (من «وصلت» إلى «خلّصت») × أجرة ساعته اللي حطيتها في «الدوام والأجرة» — وتنضاف تلقائياً لتكلفة المشروع وربحه.</div>';
+    A.innerHTML=h; brb(); }).catch(function(e){ if(!lock(e)&&e) A.innerHTML='<div class="card empty">'+esc(e.message)+'</div>'; });
+}
+window._aM=function(v){ S.m=v; month(); };
+window._aCsv=function(){ fetch('/api/att/month?csv=1&m='+S.m,{headers:Object.assign({'Authorization':'Bearer '+TOK},MNQ_BR.h())}).then(function(r){ if(!r.ok) throw new Error('تعذّر التصدير'); return r.blob(); }).then(function(b){ var a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='الحضور-'+S.m+'.csv'; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500); }).catch(function(e){ toast(e.message); }); };
+function leaves(){
+  Promise.all([api('/api/att/today'),api('/api/team')]).then(function(x){ var r=x[0], tm=x[1].items||[]; S.T=r;
+    var h=head(r.pending.length)+(r.pending.length?'<div class="h3">بانتظار ردّك</div>'+pend(r.pending):'<div class="card mu">ما فيه طلبات إجازة جديدة</div>');
+    h+='<div class="card f" style="display:flex;flex-direction:column;gap:10px"><span class="h3">سجّل إجازة لفني</span><div class="grid2"><div><label for="lv-t">الفني</label><select id="lv-t">'+tm.map(function(t){ return '<option value="'+t.id+'">'+esc(t.name)+'</option>'; }).join('')+'</select></div><div><label for="lv-r">السبب (اختياري)</label><input id="lv-r" maxlength="200" placeholder="مثال: إجازة سنوية"></div></div><div class="grid2"><div><label for="lv-1">من</label><input id="lv-1" type="date"></div><div><label for="lv-2">إلى</label><input id="lv-2" type="date"></div></div><button class="btn pri" id="lv-go">حفظ الإجازة</button><div class="mu">أيام الإجازة تنقفل في التقويم والحجز المباشر تلقائياً</div></div>';
+    A.innerHTML=h; brb();
+    document.getElementById('lv-go').onclick=function(){ var b=this; b.disabled=true; api('/api/att/leaves',{method:'POST',body:JSON.stringify({tech_id:document.getElementById('lv-t').value,d1:document.getElementById('lv-1').value,d2:document.getElementById('lv-2').value||document.getElementById('lv-1').value,reason:document.getElementById('lv-r').value})}).then(function(){ toast('انحفظت الإجازة ✅'); leaves(); }).catch(function(e){ b.disabled=false; if(e)toast(e.message); }); };
+  }).catch(function(e){ if(!lock(e)&&e) A.innerHTML='<div class="card empty">'+esc(e.message)+'</div>'; });
+}
+MNQ_BR.load().then(go);
+})();
+</script>
+</body>
+</html>

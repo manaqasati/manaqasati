@@ -3420,7 +3420,7 @@ const _DLG_GROUPS = [
   ['proofs', /^\/api\/provider\/proofs(\/|$)/],
   ['sub', /^\/api\/(sub|partners)(\/|$)/],
   ['quotes', /^\/api\/(quotes|provider\/qreqs)(\/|$)/],
-  ['jobs', /^\/api\/(jobs|team|branches)(\/|$)/],
+  ['jobs', /^\/api\/(jobs|team|branches|cal|att)(\/|$)/],
   ['customers', /^\/api\/(customers|plans)(\/|$)/],
 ];
 const _DLG_NO = 'هذي العملية لصاحب الحساب فقط';
@@ -4042,6 +4042,13 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
       await _mig(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
       await _mig(`ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
+      // الدوام والحضور + التقويم
+      await _mig(`ALTER TABLE provider_techs ADD COLUMN IF NOT EXISTS sched JSONB, ADD COLUMN IF NOT EXISTS rate NUMERIC(8,2) DEFAULT 0, ADD COLUMN IF NOT EXISTS late_alert BOOLEAN DEFAULT TRUE`);
+      await _mig(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS dur_min INTEGER DEFAULT 120`);
+      await _mig(`ALTER TABLE job_costs ADD COLUMN IF NOT EXISTS kind VARCHAR(10)`);
+      await _mig(`CREATE TABLE IF NOT EXISTS tech_shifts (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, tech_id INTEGER REFERENCES provider_techs(id) ON DELETE CASCADE, day DATE NOT NULL, in_at TIMESTAMPTZ, out_at TIMESTAMPTZ, in_lat DOUBLE PRECISION, in_lng DOUBLE PRECISION, in_km NUMERIC(8,1), out_lat DOUBLE PRECISION, out_lng DOUBLE PRECISION, src VARCHAR(8), late_min INTEGER DEFAULT 0, UNIQUE(tech_id, day))`);
+      await _mig(`CREATE TABLE IF NOT EXISTS tech_leaves (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, tech_id INTEGER REFERENCES provider_techs(id) ON DELETE CASCADE, d1 DATE NOT NULL, d2 DATE NOT NULL, reason VARCHAR(200), status VARCHAR(10) DEFAULT 'pending', by_tech BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW(), decided_at TIMESTAMPTZ)`);
+      await _mig(`CREATE TABLE IF NOT EXISTS att_alerts (tech_id INTEGER, day DATE, PRIMARY KEY (tech_id, day))`);
       await _mig(`CREATE TABLE IF NOT EXISTS campaigns (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, branch_id INTEGER, audience VARCHAR(12), subject VARCHAR(120), body TEXT, sent_n INTEGER DEFAULT 0, status VARCHAR(10) DEFAULT 'sending', created_at TIMESTAMPTZ DEFAULT NOW())`);
       await _mig(`CREATE TABLE IF NOT EXISTS ideas (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, title VARCHAR(120) NOT NULL, body TEXT, cat VARCHAR(20) DEFAULT 'other', status VARCHAR(12) DEFAULT 'review', merged_into INTEGER, reply TEXT, reject_reason TEXT, votes INTEGER DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW(), approved_at TIMESTAMPTZ, done_at TIMESTAMPTZ)`);
       await _mig(`CREATE TABLE IF NOT EXISTS idea_votes (idea_id INTEGER REFERENCES ideas(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (idea_id, user_id))`);
@@ -5534,7 +5541,7 @@ function _dlgPermsIn(a){ return Array.isArray(a) ? [...new Set(a.map(String).fil
 function _dlgOut(d){ return d ? { id: d.id, name: d.name, email: d.email, role: DLG_ROLES[d.role] ? d.role : 'custom', role_name: DLG_ROLES[d.role] ? DLG_ROLES[d.role].name : 'مخصّص', perms: _dlgPermsIn(d.perms), status: d.status, paused: !!d.paused_at, paused_by: d.paused_at ? d.paused_by : null, last_login: d.last_login, invite_exp: d.invite_exp, created_at: d.created_at, branch_id: d.branch_id || null } : null; }
 // أنواع الإشعارات اللي تخص كل صلاحية — المفوّض ما يشوف/يوصله غيرها (جوال + قائمة الإشعارات)
 const _DLG_NT = { bids: ['request', 'new_request', 'new_project', 'new_project_rem', 'bid', 'bid_rejected', 'req_updated', 'request_closed', 'question_answered', 'negotiate', 'accept_ask', 'pause_ask', 'bidwatch'],
-  chat: ['message'], awarded: ['claim', 'done', 'review', 'review_reply'], proofs: ['proof', 'wp_level', 'wp_announce'], sub: ['sub', 'sub_new'], quotes: ['qreq', 'quote'], jobs: ['job'], customers: ['plan'] };
+  chat: ['message'], awarded: ['claim', 'done', 'review', 'review_reply'], proofs: ['proof', 'wp_level', 'wp_announce'], sub: ['sub', 'sub_new'], quotes: ['qreq', 'quote'], jobs: ['job', 'att'], customers: ['plan'] };
 function _dlgTypes(perms){ return [].concat(...(perms || []).map(p => _DLG_NT[p] || [])); }
 async function _dlgInvite(d, owner){
   const tok = crypto.randomBytes(24).toString('base64url');
@@ -8661,9 +8668,9 @@ app.get('/api/admin/pay/recent', requirePermission('settings.manage'), async (re
 const SUB_DEF = {
   tiers: { pro: { name: 'مساعد الفوز', m: 99, y: 990 }, ent: { name: 'مؤسسة', m: 249, y: 2490 } },
   limits: {
-    free: { projects: 0, dlg: 1, tech: 0, branch: 0, map: 0, emails: 0 },
-    pro:  { projects: 5, dlg: 3, tech: 10, branch: 1, map: 0, emails: 100 },
-    ent:  { projects: 25, dlg: 10, tech: 50, branch: 3, map: 1, emails: 500 }
+    free: { projects: 0, dlg: 1, tech: 0, branch: 0, map: 0, emails: 0, att: 0 },
+    pro:  { projects: 5, dlg: 3, tech: 10, branch: 1, map: 0, emails: 100, att: 0 },
+    ent:  { projects: 25, dlg: 10, tech: 50, branch: 3, map: 1, emails: 500, att: 1 }
   },
   addons: {
     dlg:    { name: 'مشرف أو مندوب إضافي', p: 19, n: 1, k: 'dlg', tiers: ['pro', 'ent'], on: 1 },
@@ -9581,12 +9588,13 @@ async function _bkOpen(pid){ const ss = await _plnRow(pid); if (!_subLive(ss) ||
   const items = (await _priceList(pid)).filter(x => x.book); if (!items.length) return null; return { cfg: c.book, items }; }
 app.get('/api/pro/:id/book', async (req, res) => {
   try { const pid = parseInt(req.params.id) || 0; const o = await _bkOpen(pid); if (!o) return res.json({ on: false });
-    const days = []; const now = Date.now();
-    for (let k = 0; days.length < 10 && k < 21; k++) { const d = new Date(now + k * 864e5); const ymd = _bkDayStr(d); const dow = new Date(ymd + 'T12:00:00Z').getUTCDay(); if (!o.cfg.days.includes(dow)) continue;
-      const slots = _bkSlots(o.cfg, ymd).filter(t => t.getTime() > now + 2 * 3600000); if (!slots.length) continue;
+    const days = []; const now = Date.now(); const SB = {};
+    for (let k = 0; Object.keys(SB).length < 10 && k < 21; k++) { const ymd = _bkDayStr(new Date(now + k * 864e5)); if (!o.cfg.days.includes(_ryDow(ymd))) continue; const sl = _bkSlots(o.cfg, ymd).filter(t => t.getTime() > now + 2 * 3600000); if (sl.length) SB[ymd] = sl; }
+    const TF = await _bkTechFree(pid, SB, o.cfg.slot);
+    for (const ymd of Object.keys(SB)) { const dow = _ryDow(ymd); const slots = SB[ymd];
       const taken = (await pool.query("SELECT at, COUNT(*)::int n FROM bookings WHERE provider_id=$1 AND status IN ('pending','confirmed','proposed') AND at >= $2 AND at < $3 GROUP BY at", [pid, slots[0], new Date(slots[slots.length - 1].getTime() + 1)])).rows;
       const tk = {}; taken.forEach(r => { tk[new Date(r.at).getTime()] = r.n; });
-      days.push({ ymd, dow, slots: slots.map(t => ({ at: t.toISOString(), free: (tk[t.getTime()] || 0) < o.cfg.cap })) }); }
+      days.push({ ymd, dow, slots: slots.map(t => ({ at: t.toISOString(), free: (tk[t.getTime()] || 0) < o.cfg.cap && (!TF || (TF[t.getTime()] || 0) > (tk[t.getTime()] || 0)) })) }); }
     res.json({ on: true, items: o.items.map(x => ({ id: x.id, t: x.t, u: x.u, p: x.p })), days, slot: o.cfg.slot });
   } catch(e){ console.error('book-get:', e.message); res.json({ on: false }); }
 });
@@ -9600,6 +9608,7 @@ app.post('/api/pro/:id/book', auth, rateLimiter(20, 3600000), async (req, res) =
     const ymd = _bkDayStr(at); if (!o.cfg.days.includes(new Date(ymd + 'T12:00:00Z').getUTCDay()) || !_bkSlots(o.cfg, ymd).some(t => t.getTime() === at.getTime())) return res.status(400).json({ message: 'اختر وقتاً من الأوقات المتاحة' });
     const n = (await pool.query("SELECT COUNT(*)::int n FROM bookings WHERE provider_id=$1 AND at=$2 AND status IN ('pending','confirmed','proposed')", [pid, at])).rows[0].n;
     if (n >= o.cfg.cap) return res.status(409).json({ message: 'هذا الوقت انحجز — اختر وقتاً ثانياً' });
+    { const TF = await _bkTechFree(pid, { [ymd]: [at] }, o.cfg.slot); if (TF && (TF[at.getTime()] || 0) <= n) return res.status(409).json({ message: 'هذا الوقت انحجز — اختر وقتاً ثانياً' }); }
     const pend = (await pool.query("SELECT COUNT(*)::int n FROM bookings WHERE provider_id=$1 AND client_id=$2 AND status IN ('pending','proposed')", [pid, req.user.id])).rows[0].n;
     if (pend >= 2) return res.status(409).json({ message: 'عندك حجز بانتظار تأكيد المزوّد' });
     const city = _cleanTxt(b.city || '', 60) || null; const br = await _brForCity(pid, city);
@@ -9911,7 +9920,7 @@ const _BR_NT = { job: 'jobs', quote: 'quotes', qreq: 'quote_requests', plan: 'ma
 async function _brRefOk(owner, br, type, refId){ if (!br || !_BR_NT[type] || !refId) return true;
   try { const v = await _brAll(owner); const r = (await pool.query(`SELECT branch_id FROM ${_BR_NT[type]} WHERE id=$1`, [refId])).rows[0]; return !r || (r.branch_id || v.main) === br; } catch(e){ return true; } }
 async function _brNtSql(req, args){ const br = req.user.dlg && req.user.dlg.br; if (!br) return ''; const v = await _brAll(req.user.id); args.push(br); const b = '$' + args.length; args.push(v.main || 0); const m = '$' + args.length;
-  return ` AND NOT (type IN ('job','quote','qreq','plan') AND ref_id IS NOT NULL AND COALESCE(CASE type WHEN 'job' THEN (SELECT branch_id FROM jobs WHERE id=ref_id) WHEN 'quote' THEN (SELECT branch_id FROM quotes WHERE id=ref_id) WHEN 'qreq' THEN (SELECT branch_id FROM quote_requests WHERE id=ref_id) WHEN 'plan' THEN (SELECT branch_id FROM maint_plans WHERE id=ref_id) END, ${m}) <> ${b})`; }
+  return ` AND NOT (type IN ('job','quote','qreq','plan','att') AND ref_id IS NOT NULL AND COALESCE(CASE type WHEN 'job' THEN (SELECT branch_id FROM jobs WHERE id=ref_id) WHEN 'quote' THEN (SELECT branch_id FROM quotes WHERE id=ref_id) WHEN 'qreq' THEN (SELECT branch_id FROM quote_requests WHERE id=ref_id) WHEN 'plan' THEN (SELECT branch_id FROM maint_plans WHERE id=ref_id) WHEN 'att' THEN (SELECT branch_id FROM provider_techs WHERE id=ref_id) END, ${m}) <> ${b})`; }
 function _brOut(b){ return b ? { id: b.id, name: b.name, city: b.city || '', phone: b.phone || '', main: !!b.is_main, paused: !!b.paused } : null; }
 async function _brOf(pid, bid){ const v = await _brAll(pid); return v.rows.find(b => b.id === (bid || v.main)) || null; }
 // العميل: اسم الفرع وجواله (إذا عند المزوّد أكثر من فرع)
@@ -10173,7 +10182,7 @@ async function _saaiAdjust(saaiId, newVal, title){
 }
 async function _jobGate(req, res){ return _qGate(req, res); }
 function _jobOut(j, who){
-  const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, enroute_at: j.enroute_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: j.tasks || [], photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, created_at: j.created_at, updated_at: j.updated_at };
+  const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, enroute_at: j.enroute_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: j.tasks || [], photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, dur_min: parseInt(j.dur_min) || 120, created_at: j.created_at, updated_at: j.updated_at };
   if (who !== 'tech') Object.assign(o, { value: parseFloat(j.value) || 0, extra_total: parseFloat(j.extra_total) || 0 });
   if (j.lat != null && j.lng != null) { o.lat = j.lat; o.lng = j.lng; if (!o.maps) o.maps = 'https://www.google.com/maps/search/?api=1&query=' + j.lat + ',' + j.lng; }
   if (who === 'prov') Object.assign(o, { client_phone: j.client_phone, client_id: j.client_id, tech_id: j.tech_id, tech_name: j.tech_name || null, branch_id: j.branch_id || null });
@@ -10272,6 +10281,7 @@ app.post('/api/jobs/:id', auth, providerOnly, async (req, res) => {
       if (tech && !(await pool.query('SELECT 1 FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [tech, req.user.id])).rows.length) return res.status(400).json({ message: 'الفني غير موجود في فريقك' });
       let sched = b.sched_at !== undefined ? (b.sched_at ? new Date(b.sched_at) : null) : j.sched_at; if (sched && isNaN(sched)) return res.status(400).json({ message: 'الموعد غير صحيح' });
       const st = ['new', 'scheduled'].includes(j.status) ? (sched && tech ? 'scheduled' : 'new') : j.status;
+      if (b.dur_min !== undefined) await pool.query('UPDATE jobs SET dur_min=$2 WHERE id=$1', [id, Math.max(30, Math.min(720, parseInt(b.dur_min) || 120))]);
       const r = (await pool.query('UPDATE jobs SET title=$2, address=$3, maps=$4, sched_at=$5, tech_id=$6, status=$7, updated_at=NOW() WHERE id=$1 RETURNING *', [id, _cleanTxt(b.title || j.title, 120), b.address !== undefined ? (_cleanTxt(b.address, 200) || null) : j.address, b.maps !== undefined ? (_safeUrl(b.maps) || null) : j.maps, sched, tech, st])).rows[0];
       if (b.maps !== undefined && (b.maps || null) !== (j.maps || null)) { await pool.query('UPDATE jobs SET lat=NULL, lng=NULL WHERE id=$1', [id]); _jobGeo(id).catch(() => {}); }
       const fmt = d => d ? new Date(d).toLocaleString('ar-SA-u-nu-latn-ca-gregory', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' }) : '';
@@ -10357,7 +10367,8 @@ app.post('/api/tech/jobs/:id', auth, rateLimiter(300, 600000), async (req, res) 
       const la = parseFloat(b.lat), ln = parseFloat(b.lng), acc = parseFloat(b.acc) || 0;
       if (_geoOk(la, ln) && acc <= 150) { await pool.query('UPDATE jobs SET lat=COALESCE(lat,$2), lng=COALESCE(lng,$3) WHERE id=$1', [id, la, ln]);
         await pool.query('UPDATE provider_customers SET lat=$3, lng=$4 WHERE provider_id=$1 AND (client_id=$2 OR phone9=$5) AND lat IS NULL', [j.provider_id, j.client_id || 0, la, ln, _ph9(j.client_phone)]).catch(() => {}); }
-      await pool.query("UPDATE jobs SET arrived_at=NOW(), status='active', updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, tn + ' وصل الموقع'); await pool.query('DELETE FROM job_locs WHERE job_id=$1', [id]);
+      await pool.query("UPDATE jobs SET arrived_at=NOW(), status='active', updated_at=NOW() WHERE id=$1", [id]); await _jobLog(id, tn + ' وصل الموقع');
+      if (await _attOn(j.provider_id)) { const tt = (await pool.query('SELECT * FROM provider_techs WHERE id=$1', [j.tech_id])).rows[0]; if (tt) await _attIn(tt, 'auto', _geoOk(la, ln) ? la : NaN, _geoOk(la, ln) ? ln : NaN).catch(() => {}); } await pool.query('DELETE FROM job_locs WHERE job_id=$1', [id]);
       try { await notify(j.provider_id, '📍 ' + tn + ' وصل الموقع', j.title || '', 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
       if (j.client_id) try { await notify(j.client_id, '📍 الفني ' + tn + ' وصل', (j.title || '') + ' — ' + j.pname, 'job', id, { url: '/job.html?id=' + id }); } catch(e){}
       return res.json({ ok: true }); }
@@ -10374,12 +10385,251 @@ app.post('/api/tech/jobs/:id', auth, rateLimiter(300, 600000), async (req, res) 
       const cid = await _custEnsure(j.provider_id, j.client_name, j.client_phone, j.client_id); if (!cid) return res.status(400).json({ message: 'العميل بدون رقم جوال — ما ينحفظ الجهاز' });
       await pool.query('INSERT INTO customer_devices (provider_id, customer_id, kind, name, brand, place, qty, last_service, added_by) VALUES ($1,$2,$3,$4,$5,$6,$7,CURRENT_DATE,$8)', [j.provider_id, cid, 'device', d.name, d.brand, d.place, d.qty, tn]);
       await _jobLog(id, tn + ' سجّل جهاز: ' + d.name + (d.place ? ' — ' + d.place : '')); return res.json({ ok: true }); }
-    if (act === 'finish') { await pool.query('UPDATE jobs SET finished_at=NOW(), updated_at=NOW() WHERE id=$1', [id]); await _jobLog(id, tn + ' خلّص الشغل');
+    if (act === 'finish') { await pool.query('UPDATE jobs SET finished_at=NOW(), updated_at=NOW() WHERE id=$1', [id]); await _jobLog(id, tn + ' خلّص الشغل'); await _laborCost(id);
       try { await notify(j.provider_id, '🏁 ' + tn + ' خلّص الشغل', (j.title || '') + ' — راجع وسلّم المشروع للعميل', 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
       return res.json({ ok: true }); }
     res.status(400).json({ message: 'إجراء غير معروف' });
   } catch(e){ console.error('tech-act:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// ═══════════ الدوام والحضور (مؤسسة) · تقويم الجدولة (مشترك) ═══════════
+const ATT_DEF = { days: [6, 0, 1, 2, 3, 4], from: '08:00', to: '17:00', grace: 15 };
+const _h12s = s => { const [h, m] = String(s || '0:00').split(':').map(Number); return (h % 12 || 12) + (m ? ':' + String(m).padStart(2, '0') : '') + (h < 12 ? ' ص' : ' م'); };
+const _hm = s => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(s || '')); return m ? (+m[1]) * 60 + (+m[2]) : 0; };
+function _attSched(t){ const s = (t && t.sched) || {}; return { days: Array.isArray(s.days) ? s.days : ATT_DEF.days, from: s.from || ATT_DEF.from, to: s.to || ATT_DEF.to, grace: s.grace != null ? s.grace : ATT_DEF.grace }; }
+const _ryYmd = d => _bkDayStr(d ? new Date(d) : new Date());
+const _ryMin = d => { const x = new Date(new Date(d).getTime() + _RY); return x.getUTCHours() * 60 + x.getUTCMinutes(); };
+const _ryDow = ymd => new Date(ymd + 'T12:00:00Z').getUTCDay();
+const _ryAt = (ymd, min) => new Date(Date.parse(ymd + 'T00:00:00Z') + min * 60000 - _RY);
+function _kmBetween(a, b){ if (!a || !b || a.lat == null || b.lat == null) return null; const R = 6371, r = Math.PI / 180; const dl = (b.lat - a.lat) * r, dn = (b.lng - a.lng) * r;
+  const h = Math.sin(dl / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dn / 2) ** 2; return Math.round(2 * R * Math.asin(Math.sqrt(h)) * 10) / 10; }
+async function _attOn(pid){ try { const ss = await _plnRow(pid); if (!_subLive(ss) || !(await _subOpen(pid))) return false; const L = await _subLimits(pid); return !!L.limits.att; } catch(e){ return false; } }
+async function _attGate(req, res){ if (!(await _attOn(req.user.id))) { res.status(403).json({ code: 'tier', message: 'الحضور والانصراف من مزايا باقة مؤسسة' }); return false; } return true; }
+function _attSchedIn(b){ const s = {}; if (Array.isArray(b.days)) s.days = [...new Set(b.days.map(Number).filter(d => d >= 0 && d <= 6))];
+  ['from', 'to'].forEach(f => { if (/^([01]\d|2[0-3]):[0-5]\d$/.test(String(b[f] || ''))) s[f] = b[f]; });
+  if ([0, 5, 10, 15, 20, 30, 45, 60].includes(parseInt(b.grace))) s.grace = parseInt(b.grace); return s; }
+// يوم إجازة؟ (إجازة معتمدة)
+async function _attLeaves(techIds, d1, d2){ if (!techIds.length) return []; return (await pool.query("SELECT tech_id, d1::text AS d1, d2::text AS d2 FROM tech_leaves WHERE tech_id = ANY($1) AND status='approved' AND d2 >= $2::date AND d1 <= $3::date", [techIds, d1, d2])).rows; }
+const _onLeave = (lv, tid, ymd) => lv.some(l => l.tech_id === tid && l.d1 <= ymd && l.d2 >= ymd);
+// تسجيل الحضور (زر أو تلقائي مع أول «وصلت»)
+async function _attIn(t, src, la, ln){
+  const ymd = _ryYmd(); const s = _attSched(t); const now = new Date();
+  const late = s.days.includes(_ryDow(ymd)) ? Math.max(0, _ryMin(now) - _hm(s.from)) : 0;
+  let km = null; if (_geoOk(la, ln)) { const fj = (await pool.query("SELECT lat, lng FROM jobs WHERE tech_id=$1 AND lat IS NOT NULL AND status IN ('new','scheduled','active') AND (sched_at AT TIME ZONE 'Asia/Riyadh')::date = $2::date ORDER BY sched_at LIMIT 1", [t.id, ymd])).rows[0]; km = _kmBetween({ lat: la, lng: ln }, fj); }
+  const r = await pool.query(`INSERT INTO tech_shifts (provider_id, tech_id, day, in_at, in_lat, in_lng, in_km, src, late_min) VALUES ($1,$2,$3::date,NOW(),$4,$5,$6,$7,$8) ON CONFLICT (tech_id, day) DO NOTHING RETURNING *`,
+    [t.provider_id, t.id, ymd, _geoOk(la, ln) ? la : null, _geoOk(la, ln) ? ln : null, km, src, late > s.grace ? late : 0]);
+  return r.rows[0] || null;
+}
+function _shOut(x){ return { day: typeof x.day === 'string' ? x.day : _ryYmd(x.day), in_at: x.in_at, out_at: x.out_at, late_min: x.late_min || 0, src: x.src, km: x.in_km != null ? parseFloat(x.in_km) : null, mins: x.out_at ? Math.round((new Date(x.out_at) - new Date(x.in_at)) / 60000) : null }; }
+// ── الفني ──
+app.get('/api/tech/att', auth, async (req, res) => {
+  try { const ids = await _techIds(req.user.id); if (!ids.length) return res.json({ items: [] });
+    const ts = (await pool.query(`SELECT t.*, COALESCE(NULLIF(u.business_name,''),u.name) AS pname FROM provider_techs t JOIN users u ON u.id=t.provider_id WHERE t.id = ANY($1) ORDER BY t.id`, [ids])).rows;
+    const out = [];
+    for (const t of ts) { if (!(await _attOn(t.provider_id))) continue;
+      const sh = (await pool.query("SELECT *, day::text AS day FROM tech_shifts WHERE tech_id=$1 ORDER BY tech_shifts.day DESC LIMIT 5", [t.id])).rows.map(_shOut);
+      const lv = (await pool.query("SELECT id, d1::text AS d1, d2::text AS d2, reason, status FROM tech_leaves WHERE tech_id=$1 AND d2 >= CURRENT_DATE - 30 ORDER BY d1 DESC LIMIT 10", [t.id])).rows;
+      const today = sh.find(x => x.day === _ryYmd()) || null;
+      out.push({ tech_id: t.id, pname: t.pname, name: t.name, sched: _attSched(t), today, last: sh, leaves: lv }); }
+    res.json({ items: out }); } catch(e){ console.error('tech-att:', e.message); res.json({ items: [] }); }
+});
+app.post('/api/tech/att', auth, rateLimiter(60, 600000), async (req, res) => {
+  try { const ids = await _techIds(req.user.id); const b = req.body || {}; const tid = parseInt(b.tech_id) || ids[0];
+    if (!ids.includes(tid)) return res.status(404).json({ message: 'غير موجود' });
+    const t = (await pool.query('SELECT * FROM provider_techs WHERE id=$1', [tid])).rows[0]; if (!(await _attOn(t.provider_id))) return res.status(403).json({ message: 'الحضور غير مفعّل عند المؤسسة' });
+    const act = String(b.act || ''), la = parseFloat(b.lat), ln = parseFloat(b.lng), acc = parseFloat(b.acc) || 0, gok = _geoOk(la, ln) && acc <= 300;
+    if (act === 'in') { const r = await _attIn(t, 'btn', gok ? la : NaN, gok ? ln : NaN); if (!r) return res.status(409).json({ message: 'سجّلت حضورك اليوم مسبقاً' });
+      if (r.late_min) try { await notify(t.provider_id, '⏰ ' + t.name + ' حضر متأخر ' + r.late_min + ' دقيقة', 'سجّل حضوره ' + _bkFmt(r.in_at), 'att', t.id, { url: '/att.html' }); } catch(e){}
+      return res.json({ ok: true, shift: _shOut(Object.assign(r, { day: _ryYmd() })) }); }
+    if (act === 'out') { const r = (await pool.query("UPDATE tech_shifts SET out_at=NOW(), out_lat=$2, out_lng=$3 WHERE tech_id=$1 AND day=$4::date AND out_at IS NULL RETURNING *", [tid, gok ? la : null, gok ? ln : null, _ryYmd()])).rows[0];
+      if (!r) return res.status(409).json({ message: 'سجّل حضورك أول' }); return res.json({ ok: true, shift: _shOut(Object.assign(r, { day: _ryYmd() })) }); }
+    if (act === 'leave') { const d1 = String(b.d1 || ''), d2 = String(b.d2 || b.d1 || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(d1) || !/^\d{4}-\d{2}-\d{2}$/.test(d2) || d2 < d1 || d1 < _ryYmd()) return res.status(400).json({ message: 'اختر تاريخ الإجازة' });
+      if ((Date.parse(d2) - Date.parse(d1)) / 864e5 > 60) return res.status(400).json({ message: 'أطول إجازة 60 يوم' });
+      const reason = _cleanTxt(b.reason || '', 200);
+      const k = (await pool.query("INSERT INTO tech_leaves (provider_id, tech_id, d1, d2, reason, status, by_tech) VALUES ($1,$2,$3,$4,$5,'pending',TRUE) RETURNING id", [t.provider_id, tid, d1, d2, reason || null])).rows[0];
+      const jn = (await pool.query("SELECT COUNT(*)::int n FROM jobs WHERE tech_id=$1 AND status IN ('new','scheduled','active') AND (sched_at AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $2::date AND $3::date", [tid, d1, d2])).rows[0].n;
+      try { await notify(t.provider_id, '🌴 ' + t.name + ' يطلب إجازة', (d1 === d2 ? d1 : d1 + ' ← ' + d2) + (reason ? ' · ' + reason : '') + (jn ? ' · عنده ' + jn + ' مشروع بهالفترة ⚠️' : ''), 'att', t.id, { url: '/att.html#leaves' }); } catch(e){}
+      return res.json({ ok: true, message: 'وصل طلبك للمشرف — يوصلك إشعار بالرد' }); }
+    if (act === 'leave_cancel') { await pool.query("DELETE FROM tech_leaves WHERE id=$1 AND tech_id=$2 AND status='pending'", [parseInt(b.id) || 0, tid]); return res.json({ ok: true }); }
+    res.status(400).json({ message: 'إجراء غير معروف' });
+  } catch(e){ console.error('tech-att-post:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// ── المزوّد: دوام الفني وأجرته (لكل المشتركين — يستخدمها التقويم والحجز) ──
+app.get('/api/team/:id/sched', auth, providerOnly, async (req, res) => {
+  try { const t = (await pool.query('SELECT * FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [parseInt(req.params.id) || 0, req.user.id])).rows[0]; if (!t || _brDeny(await _brCtx(req), t.branch_id)) return res.status(404).json({ message: 'الفني غير موجود' });
+    const lv = (await pool.query("SELECT id, d1::text AS d1, d2::text AS d2, reason, status, by_tech FROM tech_leaves WHERE tech_id=$1 AND d2 >= CURRENT_DATE - 60 ORDER BY d1 DESC LIMIT 20", [t.id])).rows;
+    res.json({ id: t.id, name: t.name, sched: _attSched(t), rate: parseFloat(t.rate) || 0, late_alert: t.late_alert !== false, leaves: lv, att: await _attOn(req.user.id) }); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.put('/api/team/:id/sched', auth, providerOnly, async (req, res) => {
+  try { if (!(await _jobGate(req, res))) return; const b = req.body || {};
+    const t = (await pool.query('SELECT * FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [parseInt(req.params.id) || 0, req.user.id])).rows[0]; if (!t || _brDeny(await _brCtx(req), t.branch_id)) return res.status(404).json({ message: 'الفني غير موجود' });
+    const s = Object.assign({}, _attSched(t), _attSchedIn(b.sched || {})); if (_hm(s.to) <= _hm(s.from)) return res.status(400).json({ message: 'وقت النهاية لازم بعد البداية' });
+    const rate = b.rate !== undefined ? Math.round(Math.max(0, Math.min(10000, parseFloat(b.rate) || 0)) * 100) / 100 : (parseFloat(t.rate) || 0);
+    await pool.query('UPDATE provider_techs SET sched=$2::jsonb, rate=$3, late_alert=$4 WHERE id=$1', [t.id, JSON.stringify(s), rate, b.late_alert !== undefined ? !!b.late_alert : t.late_alert !== false]);
+    res.json({ ok: true, sched: s, rate }); } catch(e){ console.error('sched-put:', e.message); res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
+// ── المزوّد: الحضور ──
+async function _attTechs(req){ const c = await _brCtx(req), a = [req.user.id]; const w = _brSql(c, 'branch_id', a); return (await pool.query('SELECT * FROM provider_techs WHERE provider_id=$1 AND active' + w + ' ORDER BY id', a)).rows; }
+app.get('/api/att/today', auth, providerOnly, async (req, res) => {
+  try { if (!(await _attGate(req, res))) return; const ts = await _attTechs(req); const ymd = _ryYmd(), now = _ryMin(new Date()); const ids = ts.map(t => t.id);
+    const sh = ids.length ? (await pool.query("SELECT *, day::text AS day FROM tech_shifts WHERE tech_id = ANY($1) AND day=$2::date", [ids, ymd])).rows : [];
+    const lv = await _attLeaves(ids, ymd, ymd);
+    const cur = ids.length ? (await pool.query("SELECT DISTINCT ON (tech_id) tech_id, title, address FROM jobs WHERE tech_id = ANY($1) AND status='active' AND arrived_at IS NOT NULL AND finished_at IS NULL ORDER BY tech_id, arrived_at DESC", [ids])).rows : [];
+    const items = ts.map(t => { const s = _attSched(t), x = sh.find(r => r.tech_id === t.id), work = s.days.includes(_ryDow(ymd)); let st;
+      if (_onLeave(lv, t.id, ymd)) st = 'leave'; else if (x) st = x.out_at ? 'out' : (x.late_min ? 'late' : 'in'); else if (!work) st = 'off'; else if (now > _hm(s.from) + s.grace) st = 'absent'; else st = 'soon';
+      const j = cur.find(r => r.tech_id === t.id);
+      return { id: t.id, name: t.name, branch_id: t.branch_id || null, st, sched: s, shift: x ? _shOut(x) : null, job: j ? { title: j.title, address: j.address } : null, late_by: st === 'absent' ? now - _hm(s.from) : 0 }; });
+    const pend = (await pool.query(`SELECT l.id, l.tech_id, t.name, l.d1::text AS d1, l.d2::text AS d2, l.reason, (SELECT COUNT(*)::int FROM jobs j WHERE j.tech_id=l.tech_id AND j.status IN ('new','scheduled','active') AND (j.sched_at AT TIME ZONE 'Asia/Riyadh')::date BETWEEN l.d1 AND l.d2) AS jobs_n FROM tech_leaves l JOIN provider_techs t ON t.id=l.tech_id WHERE l.tech_id = ANY($1) AND l.status='pending' ORDER BY l.d1`, [ids])).rows;
+    const n = k => items.filter(x => k.includes(x.st)).length;
+    res.json({ day: ymd, items, counts: { present: n(['in', 'late', 'out']), late: n(['late']), absent: n(['absent']), leave: n(['leave']) }, pending: pend });
+  } catch(e){ console.error('att-today:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+async function _attMonth(req, m){
+  const ts = await _attTechs(req); const ids = ts.map(t => t.id); const d1 = m + '-01'; const end = new Date(Date.parse(d1 + 'T00:00:00Z')); end.setUTCMonth(end.getUTCMonth() + 1); end.setUTCDate(0);
+  const today = _ryYmd(); const d2 = end.toISOString().slice(0, 10) < today ? end.toISOString().slice(0, 10) : today;
+  const sh = ids.length ? (await pool.query("SELECT *, day::text AS day FROM tech_shifts WHERE tech_id = ANY($1) AND day BETWEEN $2::date AND $3::date", [ids, d1, end.toISOString().slice(0, 10)])).rows : [];
+  const lv = await _attLeaves(ids, d1, d2);
+  const lab = ids.length ? (await pool.query("SELECT c.by_tech AS tech_id, COALESCE(SUM(c.amount),0)::float v FROM job_costs c WHERE c.by_tech = ANY($1) AND c.kind='labor' AND (c.created_at AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $2::date AND $3::date GROUP BY c.by_tech", [ids, d1, end.toISOString().slice(0, 10)])).rows : [];
+  let workdays = 0; const rows = ts.map(t => { const s = _attSched(t); const mine = sh.filter(x => x.tech_id === t.id); let wd = 0, absent = 0, leave = 0; const since = _ryYmd(t.created_at || d1);
+    for (let d = new Date(d1 + 'T12:00:00Z'); d.toISOString().slice(0, 10) <= d2; d.setUTCDate(d.getUTCDate() + 1)) { const y = d.toISOString().slice(0, 10); if (!s.days.includes(d.getUTCDay())) continue; wd++;
+      if (_onLeave(lv, t.id, y)) { leave++; continue; } if (!mine.some(x => x.day === y) && y < today && y >= since) absent++; }
+    workdays = Math.max(workdays, wd); const plan = _hm(s.to) - _hm(s.from);
+    let mins = 0, over = 0; mine.forEach(x => { if (!x.out_at) return; const mm = Math.round((new Date(x.out_at) - new Date(x.in_at)) / 60000); mins += mm; if (s.days.includes(_ryDow(x.day))) over += Math.max(0, mm - plan); else over += mm; });
+    const late = mine.filter(x => x.late_min > 0);
+    return { id: t.id, name: t.name, days: mine.length, late_n: late.length, late_min: late.reduce((a, x) => a + x.late_min, 0), absent, leave, hours: Math.round(mins / 6) / 10, over: Math.round(over / 6) / 10, labor: Math.round(((lab.find(r => r.tech_id === t.id) || {}).v || 0) * 100) / 100, rate: parseFloat(t.rate) || 0 }; });
+  const tot = rows.reduce((a, r) => { a.days += r.days; a.exp += Math.max(0, r.days + r.absent); a.hours += r.hours; a.over += r.over; a.labor += r.labor; a.ontime += r.days - r.late_n; return a; }, { days: 0, exp: 0, hours: 0, over: 0, labor: 0, ontime: 0 });
+  return { month: m, workdays, rows, total: { hours: Math.round(tot.hours * 10) / 10, over: Math.round(tot.over * 10) / 10, labor: Math.round(tot.labor * 100) / 100, commit: tot.exp ? Math.round(tot.ontime / tot.exp * 100) : null } };
+}
+app.get('/api/att/month', auth, providerOnly, async (req, res) => {
+  try { if (!(await _attGate(req, res))) return; const m = /^\d{4}-\d{2}$/.test(String(req.query.m || '')) ? req.query.m : _ryYmd().slice(0, 7);
+    const r = await _attMonth(req, m);
+    if (req.query.csv) { const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+      const L = [['الفني', 'أيام الحضور', 'مرات التأخير', 'دقائق التأخير', 'الغياب', 'الإجازة', 'ساعات العمل', 'ساعات إضافية', 'أجرة الساعة', 'تكلفته على المشاريع']].concat(r.rows.map(x => [x.name, x.days, x.late_n, x.late_min, x.absent, x.leave, x.hours, x.over, x.rate, x.labor]));
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8'); res.setHeader('Content-Disposition', 'attachment; filename="attendance-' + m + '.csv"');
+      return res.send('﻿' + L.map(l => l.map(q).join(',')).join('\r\n')); }
+    res.json(r); } catch(e){ console.error('att-month:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/att/leaves', auth, providerOnly, async (req, res) => {
+  try { if (!(await _attGate(req, res))) return; const b = req.body || {};
+    if (b.id) { const l = (await pool.query("SELECT l.*, l.d1::text AS d1, l.d2::text AS d2, t.user_id, t.branch_id FROM tech_leaves l JOIN provider_techs t ON t.id=l.tech_id WHERE l.id=$1 AND l.provider_id=$2", [parseInt(b.id) || 0, req.user.id])).rows[0];
+      if (!l || _brDeny(await _brCtx(req), l.branch_id)) return res.status(404).json({ message: 'الطلب غير موجود' });
+      if (b.act === 'delete') { await pool.query('DELETE FROM tech_leaves WHERE id=$1', [l.id]); return res.json({ ok: true }); }
+      if (l.status !== 'pending') return res.status(409).json({ message: 'تم الرد على الطلب' });
+      const okk = b.act === 'approve'; await pool.query('UPDATE tech_leaves SET status=$2, decided_at=NOW() WHERE id=$1', [l.id, okk ? 'approved' : 'rejected']);
+      if (l.user_id) try { await notify(l.user_id, okk ? '🌴 انقبلت إجازتك' : 'ما انقبلت إجازتك', (l.d1 === l.d2 ? l.d1 : l.d1 + ' ← ' + l.d2) + (b.note ? ' · ' + _cleanTxt(b.note, 120) : ''), 'att', l.id, { url: '/tech.html' }); } catch(e){}
+      return res.json({ ok: true }); }
+    const t = (await pool.query('SELECT * FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [parseInt(b.tech_id) || 0, req.user.id])).rows[0]; if (!t || _brDeny(await _brCtx(req), t.branch_id)) return res.status(404).json({ message: 'الفني غير موجود' });
+    const d1 = String(b.d1 || ''), d2 = String(b.d2 || b.d1 || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(d1) || !/^\d{4}-\d{2}-\d{2}$/.test(d2) || d2 < d1) return res.status(400).json({ message: 'اختر تاريخ الإجازة' });
+    await pool.query("INSERT INTO tech_leaves (provider_id, tech_id, d1, d2, reason, status, by_tech, decided_at) VALUES ($1,$2,$3,$4,$5,'approved',FALSE,NOW())", [req.user.id, t.id, d1, d2, _cleanTxt(b.reason || '', 200) || null]);
+    res.json({ ok: true }); } catch(e){ console.error('att-leave:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// تنبيه المشرف: الفني ما سجّل حضوره بعد بداية دوامه + السماحية
+async function _attTick(){
+  const ymd = _ryYmd(), now = _ryMin(new Date()), dow = _ryDow(ymd);
+  const ts = (await pool.query(`SELECT t.* FROM provider_techs t JOIN subs s ON s.user_id=t.provider_id WHERE t.active AND t.late_alert IS NOT FALSE AND s.status IN ('trial','active','grace')
+    AND NOT EXISTS (SELECT 1 FROM tech_shifts x WHERE x.tech_id=t.id AND x.day=$1::date) AND NOT EXISTS (SELECT 1 FROM att_alerts a WHERE a.tech_id=t.id AND a.day=$1::date)
+    AND NOT EXISTS (SELECT 1 FROM tech_leaves l WHERE l.tech_id=t.id AND l.status='approved' AND $1::date BETWEEN l.d1 AND l.d2) LIMIT 500`, [ymd])).rows;
+  let n = 0;
+  for (const t of ts) { const s = _attSched(t); if (!s.days.includes(dow)) continue; const lateBy = now - _hm(s.from); if (lateBy <= s.grace || now > _hm(s.to)) continue;
+    if (!(await _attOn(t.provider_id))) continue;
+    await pool.query('INSERT INTO att_alerts (tech_id, day) VALUES ($1,$2::date) ON CONFLICT DO NOTHING', [t.id, ymd]);
+    try { await notify(t.provider_id, '⏰ ' + t.name + ' ما سجّل حضوره', 'دوامه بدأ ' + _h12s(s.from) + ' (من ' + lateBy + ' دقيقة)' + (t.phone ? ' · ' + t.phone : ''), 'att', t.id, { url: '/att.html' }); n++; } catch(e){} }
+  return n;
+}
+setInterval(() => _jobLock('att_tick', _attTick).catch(() => {}), 5 * 60 * 1000);
+app.post('/api/admin/att/tick', auth, async (req, res) => { if (req.user.role !== 'admin') return res.status(403).json({}); try { res.json({ n: await _attTick() }); } catch(e){ res.status(500).json({ message: e.message }); } });
+// أجرة الفني على المشروع: من «وصلت» إلى «خلّصت» × أجرة ساعته (تنضاف لتكلفة المشروع تلقائياً)
+async function _laborCost(jobId){
+  try { const j = (await pool.query('SELECT j.id, j.provider_id, j.tech_id, j.arrived_at, j.finished_at, t.rate, t.name FROM jobs j JOIN provider_techs t ON t.id=j.tech_id WHERE j.id=$1', [jobId])).rows[0];
+    if (!j || !j.arrived_at || !j.finished_at) return; const rate = parseFloat(j.rate) || 0; const hrs = Math.max(0, (new Date(j.finished_at) - new Date(j.arrived_at)) / 3600000);
+    await pool.query("DELETE FROM job_costs WHERE job_id=$1 AND kind='labor'", [jobId]);
+    if (!(rate > 0) || hrs < 0.05) return; const h = Math.round(hrs * 10) / 10;
+    await pool.query("INSERT INTO job_costs (job_id, provider_id, title, amount, by_name, by_tech, kind) VALUES ($1,$2,$3,$4,$5,$6,'labor')", [jobId, j.provider_id, 'ساعات عمل ' + j.name + ' (' + h + ' س × ' + rate + ')', Math.round(hrs * rate * 100) / 100, 'تلقائي', j.tech_id]);
+  } catch(e){ console.error('labor:', e.message); }
+}
+// ── تقويم الجدولة ──
+const _JDUR = j => Math.max(30, Math.min(720, parseInt(j.dur_min) || 120));
+async function _calConflicts(pid, jobId, techId, at, dur, km0){
+  const w = []; if (!techId || !at) return w;
+  const t = (await pool.query('SELECT * FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [techId, pid])).rows[0]; if (!t) return ['الفني غير موجود'];
+  const ymd = _ryYmd(at), s = _attSched(t), m1 = _ryMin(at), m2 = m1 + dur;
+  if ((await _attLeaves([t.id], ymd, ymd)).length) w.push(t.name + ' إجازة ذاك اليوم');
+  else if (!s.days.includes(_ryDow(ymd))) w.push('ذاك اليوم مو من أيام دوام ' + t.name);
+  else if (m1 < _hm(s.from) || m2 > _hm(s.to)) w.push('خارج دوام ' + t.name + ' (' + _h12s(s.from) + ' – ' + _h12s(s.to) + ')');
+  const oth = (await pool.query("SELECT id, title, sched_at, dur_min, lat, lng FROM jobs WHERE tech_id=$1 AND id<>$2 AND status IN ('new','scheduled','active') AND sched_at IS NOT NULL AND (sched_at AT TIME ZONE 'Asia/Riyadh')::date=$3::date ORDER BY sched_at", [techId, jobId || 0, ymd])).rows;
+  oth.forEach(o => { const a = new Date(o.sched_at).getTime(), b = a + _JDUR(o) * 60000; if (a < at.getTime() + dur * 60000 && b > at.getTime()) w.push(t.name + ' عنده «' + o.title + '» ' + _bkFmt(o.sched_at).split('،').pop().trim() + ' ويتداخل معه'); });
+  if (km0) { const prev = oth.filter(o => new Date(o.sched_at).getTime() + _JDUR(o) * 60000 <= at.getTime() && o.lat != null).pop(); const d = _kmBetween(prev, km0);
+    if (prev && d != null && d >= 15) { const gap = (at.getTime() - (new Date(prev.sched_at).getTime() + _JDUR(prev) * 60000)) / 60000; if (gap < d * 1.5 + 10) w.push('يبعد ' + Math.round(d) + ' كم عن مشروعه السابق «' + prev.title + '» وما يلحق غالباً'); } }
+  const bk = (await pool.query("SELECT 1 FROM bookings WHERE provider_id=$1 AND status='pending' AND at=$2 LIMIT 1", [pid, at])).rows; if (bk.length) w.push('فيه حجز مباشر بانتظار التأكيد بنفس الوقت');
+  return w;
+}
+app.get('/api/cal', auth, providerOnly, async (req, res) => {
+  try { if (!(await _jobGate(req, res))) return; const c = await _brCtx(req);
+    const from = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.from || '')) ? req.query.from : _ryYmd(); const days = Math.max(1, Math.min(7, parseInt(req.query.days) || 1));
+    const a0 = _ryAt(from, 0), a1 = new Date(a0.getTime() + days * 864e5); const to = _ryYmd(new Date(a1.getTime() - 1));
+    const ts = await _attTechs(req); const ids = ts.map(t => t.id);
+    const a = [req.user.id, a0, a1]; const w = _brSql(c, 'j.branch_id', a);
+    const jobs = (await pool.query(`SELECT j.id, j.title, j.sched_at, j.dur_min, j.tech_id, j.status, j.address, j.client_name, j.lat, j.lng, j.arrived_at, j.finished_at, j.branch_id, j.plan_visit_id, j.booking_id FROM jobs j WHERE j.provider_id=$1${w} AND j.sched_at >= $2 AND j.sched_at < $3 AND j.status NOT IN ('cancelled') ORDER BY j.sched_at`, a)).rows;
+    const a2 = [req.user.id]; const w2 = _brSql(c, 'j.branch_id', a2);
+    const uns = (await pool.query(`SELECT j.id, j.title, j.sched_at, j.dur_min, j.tech_id, j.status, j.address, j.client_name, j.lat, j.lng, j.plan_visit_id FROM jobs j WHERE j.provider_id=$1${w2} AND j.status='new' AND (j.sched_at IS NULL OR j.tech_id IS NULL) ORDER BY COALESCE(j.sched_at, j.created_at) LIMIT 60`, a2)).rows;
+    const a3 = [req.user.id, a0, a1]; const w3 = _brSql(c, 'k.branch_id', a3);
+    const bks = (await pool.query(`SELECT k.id, k.title, k.qty, k.at, k.district, u.name AS cname FROM bookings k JOIN users u ON u.id=k.client_id WHERE k.provider_id=$1${w3} AND k.status IN ('pending','proposed') AND k.at >= $2 AND k.at < $3 ORDER BY k.at`, a3)).rows;
+    const lv = await _attLeaves(ids, from, to);
+    const J = j => ({ id: j.id, title: j.title, at: j.sched_at, dur: _JDUR(j), tech_id: j.tech_id, status: j.status, status_t: _JST[j.status] || '', address: j.address, client: j.client_name, lat: j.lat, lng: j.lng, done: !!j.finished_at, plan: !!j.plan_visit_id, booking: !!j.booking_id });
+    res.json({ from, days, techs: ts.map(t => ({ id: t.id, name: t.name, sched: _attSched(t), branch_id: t.branch_id || null })), leaves: lv, jobs: jobs.map(J), unscheduled: uns.map(J), bookings: bks.map(k => ({ id: k.id, title: k.title + (k.qty > 1 ? ' × ' + k.qty : ''), at: k.at, client: k.cname, district: k.district })) });
+  } catch(e){ console.error('cal:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/cal/move', auth, providerOnly, async (req, res) => {
+  try { if (!(await _jobGate(req, res))) return; const b = req.body || {};
+    const j = await _jobRow(parseInt(b.job_id) || 0, 'AND j.provider_id=$2', [req.user.id]); if (!j || _brDeny(await _brCtx(req), j.branch_id)) return res.status(404).json({ message: 'المشروع غير موجود' });
+    if (!['new', 'scheduled'].includes(j.status) && !(j.status === 'active' && !j.arrived_at)) return res.status(409).json({ message: 'المشروع بدأ أو انسلّم — ما ينقل' });
+    const at = b.at ? new Date(b.at) : null; if (!at || isNaN(at)) return res.status(400).json({ message: 'اختر الوقت' });
+    const tech = b.tech_id ? parseInt(b.tech_id) || null : null; const dur = b.dur ? Math.max(30, Math.min(720, parseInt(b.dur) || 120)) : _JDUR(j);
+    if (tech && !(await pool.query('SELECT 1 FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [tech, req.user.id])).rows.length) return res.status(400).json({ message: 'الفني غير موجود في فريقك' });
+    const warn = await _calConflicts(req.user.id, j.id, tech, at, dur, j.lat != null ? { lat: j.lat, lng: j.lng } : null);
+    if (b.dry) return res.json({ ok: false, dry: true, warnings: warn, has_client: !!j.client_id });
+    if (warn.length && !b.confirm) return res.json({ ok: false, need_confirm: true, warnings: warn });
+    const moved = String(at.getTime()) !== String(j.sched_at ? new Date(j.sched_at).getTime() : ''), techCh = tech !== (j.tech_id || null);
+    const st = tech ? 'scheduled' : 'new';
+    await pool.query('UPDATE jobs SET sched_at=$2, tech_id=$3, dur_min=$4, status=CASE WHEN status IN (\'new\',\'scheduled\') THEN $5::varchar ELSE status END, fu_visit=CASE WHEN $6::boolean THEN NULL ELSE fu_visit END, updated_at=NOW() WHERE id=$1', [j.id, at, tech, dur, st, moved]);
+    const tn = tech ? (await pool.query('SELECT name FROM provider_techs WHERE id=$1', [tech])).rows[0].name : '';
+    if (moved) await _jobLog(j.id, 'الموعد: ' + _bkFmt(at)); if (techCh && tech) await _jobLog(j.id, 'الفني: ' + tn);
+    if (tech && (moved || techCh)) { const tu = await _jobTechUid(tech); if (tu) try { await notify(tu, techCh ? '🧰 مهمة جديدة: ' + (j.title || '') : '🗓 تغيّر موعد: ' + (j.title || ''), _bkFmt(at) + (j.address ? ' · ' + j.address : ''), 'tech', j.id, { url: '/tech.html?id=' + j.id }); } catch(e){} }
+    if (techCh && j.tech_id) { const ou = await _jobTechUid(j.tech_id); if (ou) try { await notify(ou, 'انتقلت مهمة لفني ثاني', j.title || '', 'tech', j.id, { url: '/tech.html' }); } catch(e){} }
+    let told = false; if (b.notify !== false && moved && j.client_id) { try { await notify(j.client_id, '🗓 تغيّر موعد زيارتك: ' + _bkFmt(at), (j.title || '') + ' — ' + j.pname + (tn ? ' · الفني ' + tn : ''), 'job', j.id, { url: '/job.html?id=' + j.id }); told = true; } catch(e){} }
+    res.json({ ok: true, told, warnings: warn });
+  } catch(e){ console.error('cal-move:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// اقترح أفضل فني: فاضي بالوقت (دوام + بدون إجازة + بدون تداخل) ثم الأقرب
+app.get('/api/cal/suggest', auth, providerOnly, async (req, res) => {
+  try { if (!(await _jobGate(req, res))) return;
+    const j = await _jobRow(parseInt(req.query.job_id) || 0, 'AND j.provider_id=$2', [req.user.id]); if (!j) return res.status(404).json({ message: 'المشروع غير موجود' });
+    const at = req.query.at ? new Date(req.query.at) : (j.sched_at ? new Date(j.sched_at) : null); const dur = _JDUR(j); const ts = await _attTechs(req);
+    const ymd = at ? _ryYmd(at) : _ryYmd(new Date(Date.now() + 864e5)); const lv = await _attLeaves(ts.map(t => t.id), ymd, ymd);
+    const out = [];
+    for (const t of ts) { if (_onLeave(lv, t.id, ymd)) continue; const s = _attSched(t); if (!s.days.includes(_ryDow(ymd))) continue;
+      const oth = (await pool.query("SELECT sched_at, dur_min, lat, lng FROM jobs WHERE tech_id=$1 AND id<>$2 AND status IN ('new','scheduled','active') AND sched_at IS NOT NULL AND (sched_at AT TIME ZONE 'Asia/Riyadh')::date=$3::date ORDER BY sched_at", [t.id, j.id, ymd])).rows;
+      // أول وقت فاضي بنفس اليوم (لو ما فيه وقت محدد) أو تأكد إن الوقت المحدد فاضي
+      const busy = oth.map(o => [_ryMin(o.sched_at), _ryMin(o.sched_at) + _JDUR(o)]); const free = m => m >= _hm(s.from) && m + dur <= _hm(s.to) && !busy.some(x => x[0] < m + dur && x[1] > m);
+      let m = null; if (at) { if (free(_ryMin(at))) m = _ryMin(at); } else { for (let k = _hm(s.from); k + dur <= _hm(s.to); k += 30) if (free(k)) { m = k; break; } }
+      if (m == null) continue; const near = oth.filter(o => o.lat != null); const km = j.lat != null && near.length ? Math.min(...near.map(o => _kmBetween(o, { lat: j.lat, lng: j.lng }))) : null;
+      out.push({ id: t.id, name: t.name, at: _ryAt(ymd, m).toISOString(), jobs_n: oth.length, km }); }
+    out.sort((x, y) => (x.km == null ? 999 : x.km) - (y.km == null ? 999 : y.km) || x.jobs_n - y.jobs_n);
+    res.json({ items: out.slice(0, 5), day: ymd });
+  } catch(e){ console.error('cal-suggest:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// الحجز المباشر: كم فني فاضي بالوقت (دوام + إجازات + مواعيد) — لو عنده فريق
+async function _bkTechFree(pid, slotsByDay, slotMin){
+  const ts = (await pool.query('SELECT * FROM provider_techs WHERE provider_id=$1 AND active', [pid])).rows; if (!ts.length) return null;
+  const ymds = Object.keys(slotsByDay); if (!ymds.length) return {};
+  const lv = await _attLeaves(ts.map(t => t.id), ymds[0], ymds[ymds.length - 1]);
+  const jb = (await pool.query("SELECT tech_id, sched_at, dur_min FROM jobs WHERE provider_id=$1 AND tech_id IS NOT NULL AND status IN ('new','scheduled','active') AND sched_at >= $2 AND sched_at < $3", [pid, _ryAt(ymds[0], 0), _ryAt(ymds[ymds.length - 1], 1440)])).rows;
+  const out = {};
+  ymds.forEach(y => { const dow = _ryDow(y); slotsByDay[y].forEach(t0 => { const m1 = _ryMin(t0), m2 = m1 + slotMin; let n = 0;
+    ts.forEach(t => { const s = _attSched(t); if (!s.days.includes(dow) || _onLeave(lv, t.id, y) || m1 < _hm(s.from) || m2 > _hm(s.to)) return;
+      if (jb.some(j => j.tech_id === t.id && _ryYmd(j.sched_at) === y && _ryMin(j.sched_at) < m2 && _ryMin(j.sched_at) + _JDUR(j) > m1)) return; n++; });
+    out[t0.getTime()] = n; }); });
+  return out;
+}
 // ── العميل ──
 app.get('/api/my/jobs', auth, async (req, res) => {
   try { const r = await pool.query(`SELECT j.*, t.name AS tech_name, COALESCE(NULLIF(u.business_name,''),u.name) AS pname, u.phone AS pphone FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id JOIN users u ON u.id=j.provider_id WHERE j.client_id=$1 AND j.status<>'cancelled' ORDER BY j.updated_at DESC LIMIT 100`, [req.user.id]);

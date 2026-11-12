@@ -73,6 +73,8 @@
       + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c2', 'doc', 'الصفحة التعريفية وطلبات التسعيرة', 'خدماتك · QR · الطلبات الخاصة', 0, 'url:/mypage.html'))
       + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c3', 'doc', 'عروض الأسعار', 'عرض باسمك بـ3 خيارات · دفتر العملاء', 0, 'url:/quotes.html'))
       + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'مشاريع العملاء والفريق', 'مواعيد · فنيين · تسليم', 0, 'url:/jobs.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'تقويم الجدولة', 'مواعيد الفريق · نقل بالسحب', 0, 'url:/cal.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'الحضور والانصراف', 'دوام الفريق · الإجازات · التقرير', 0, 'url:/att.html'))
       + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('customers'))) || !W._subsOpen ? '' : tile('c5', 'team', 'دفتر العملاء', 'العملاء · الأجهزة · الملاحظات', 0, 'url:/customers.html'))
       + ((W.DLG && W.DLG.isMe()) || !W._subsOpen ? '' : tile('c2', 'team', 'الفروع', 'مدن وفرق · مشرف لكل فرع', 0, 'url:/branches.html'))
       + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('stats'))) ? '' : tile('c6', 'star', 'الأرقام والتقارير', 'لوحة الأرقام · التقرير الشهري', 0, 'url:/stats.html'))

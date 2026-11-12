@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#172554">
+<title>تقويم الجدولة — مناقصة</title>
+<link rel="icon" href="/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&family=Cairo:wght@800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;min-height:100vh;-webkit-font-smoothing:antialiased}
+button,input,textarea,select{font-family:inherit}
+.top{height:62px;background:#172554;border-bottom:3px solid #0ea5e9;display:flex;align-items:center;justify-content:space-between;padding:0 18px;color:#fff;position:sticky;top:0;z-index:20}
+.top b{font-size:21px;font-weight:900}.top b i{color:#38bdf8;font-style:normal}
+.top a{color:#fff;text-decoration:none;font-size:13px;font-weight:800;opacity:.85}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 110px;display:flex;flex-direction:column;gap:14px}
+.h1{font-size:22px;font-weight:900;color:#172554}.mu{color:#64748b;font-size:12.5px;font-weight:700}
+.card{background:#fff;border:1px solid #e6eefb;border-radius:18px;box-shadow:0 2px 10px rgba(30,58,138,.05);padding:18px}
+.h3{font-size:15px;font-weight:900;color:#172554}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;padding:10px 15px;font-weight:800;font-size:13.5px;border:0;cursor:pointer;white-space:nowrap;text-decoration:none}
+.pri{background:#1e3a8a;color:#fff}.sec{background:#fff;border:1.5px solid #e2e8f0;color:#1e293b}.wa{background:#16a34a;color:#fff}.dan{background:#fff;border:1.5px solid #fecdca;color:#b42318}.gold{background:#fffbeb;border:1.5px solid #fde68a;color:#1e3a8a}
+.btn:disabled{opacity:.55;cursor:default}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sb{justify-content:space-between}
+.tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}.tabs::-webkit-scrollbar{display:none}
+.tabs button{border:1.5px solid #e2e8f0;background:#fff;color:#475467;border-radius:99px;padding:7px 13px;font-weight:800;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.tabs button.on{background:#172554;color:#fff;border-color:#172554}
+.pill{display:inline-flex;align-items:center;gap:4px;height:23px;border-radius:99px;padding:0 10px;font-size:11.5px;font-weight:800;white-space:nowrap}
+.p-b{background:#eff4ff;color:#1e3a8a}.p-g{background:#ecfdf3;color:#067647}.p-gr{background:#f2f4f7;color:#475467}.p-y{background:#fffaeb;color:#b54708}.p-r{background:#fef3f2;color:#b42318}
+.ql{display:flex;flex-direction:column;gap:10px}
+.qi{display:flex;gap:12px;align-items:center;cursor:pointer;text-align:right;width:100%;border:1px solid #e6eefb;background:#fff;border-radius:16px;padding:14px;color:inherit}
+.qi:hover{border-color:#bfd3fe}
+.qi .c{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.qi b{font-size:14.5px;color:#172554}
+.amt{font-family:Cairo,sans-serif;font-weight:900;color:#172554;white-space:nowrap}
+.f label{display:block;font-size:12.5px;font-weight:800;color:#334766;margin-bottom:5px}
+.f input,.f textarea,.f select{width:100%;border:1.5px solid #e2e8f0;border-radius:11px;padding:10px 12px;font-size:14.5px;background:#fff;color:#1e293b}
+.f textarea{min-height:80px;resize:vertical}
+.grid2{display:flex;gap:12px}.grid2>*{flex:1;min-width:0}
+.ed{display:flex;gap:16px;align-items:flex-start}.ed .main{flex:1.7;min-width:0;display:flex;flex-direction:column;gap:14px}.ed .side{flex:1;min-width:0;display:flex;flex-direction:column;gap:14px;position:sticky;top:76px}
+.seg{display:flex;background:#e2e8f0;border-radius:12px;padding:4px}
+.seg button{flex:1;border:0;background:transparent;padding:9px 6px;border-radius:9px;font-weight:800;font-size:13px;color:#64748b;cursor:pointer}
+.seg button.on{background:#fff;color:#172554;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.opt{border:1.5px solid #e2e8f0;border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;background:#fff}
+.opt.rec{border-color:#1e3a8a;background:#f8faff}
+.it{display:flex;gap:6px;align-items:center}
+.it input{border:1.5px solid #e2e8f0;border-radius:10px;padding:9px 10px;font-size:14px;min-width:0;background:#fff}
+.it .t{flex:1}.it .q{width:58px;text-align:center}.it .p{width:96px}
+.x{border:0;background:#fef3f2;color:#b42318;width:32px;height:32px;border-radius:9px;cursor:pointer;font-size:16px;flex:none}
+.chk{display:flex;gap:8px;font-size:13px;font-weight:700;align-items:flex-start;line-height:1.6}
+.sheet-ov{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+@media(min-width:700px){.sheet-ov{align-items:center}}
+.sheet{background:#fff;width:min(480px,100%);max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
+@media(min-width:700px){.sheet{border-radius:20px}}
+.bar{position:fixed;bottom:0;right:0;left:0;background:#fff;border-top:1px solid #e2e8f0;padding:10px 16px calc(10px + env(safe-area-inset-bottom));z-index:15;box-shadow:0 -6px 20px rgba(30,58,138,.08)}
+.bar .in{max-width:1180px;margin:0 auto;display:flex;gap:8px;align-items:center}
+.toast{position:fixed;bottom:86px;left:50%;transform:translateX(-50%);background:#172554;color:#fff;padding:11px 18px;border-radius:12px;font-weight:800;font-size:13.5px;z-index:99;display:none}
+.empty{text-align:center;padding:40px 16px}
+@media(max-width:820px){.ed{flex-direction:column}.ed .side{position:static;width:100%}.ed .main{width:100%}.grid2{flex-direction:column}}
+.steps{display:flex;align-items:flex-start}.steps div{flex:1;text-align:center;font-size:11.5px;font-weight:800;color:#94a3b8;position:relative;padding-top:24px}.steps div:before{content:'';position:absolute;top:6px;left:50%;width:100%;height:3px;background:#e2e8f0}.steps div:first-child:before{display:none}.steps div i{position:absolute;top:0;right:calc(50% - 8px);width:16px;height:16px;border-radius:50%;background:#e2e8f0;z-index:1}.steps div.on{color:#1e3a8a}.steps div.on i,.steps div.on:before{background:#1e3a8a}
+.ck{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #f1f5f9;font-size:14px;font-weight:700}.ck .b{width:28px;height:28px;border-radius:8px;border:2px solid #cbd5e1;background:#fff;flex:none;color:#fff;font-size:15px;cursor:pointer;font-weight:900}.ck.done .b{background:#16a34a;border-color:#16a34a}.ck.done .t{color:#94a3b8;text-decoration:line-through}
+.phs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.ph{width:84px;height:84px;border-radius:12px;background:#e2e8f0 center/cover;position:relative;display:block}.ph span{position:absolute;bottom:4px;right:4px;background:rgba(15,23,42,.7);color:#fff;font-size:10.5px;font-weight:800;border-radius:6px;padding:1px 6px}
+</style>
+<script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script><script src="/branch.js?v=1"></script><style>
+.wrap{max-width:1440px}
+.calw{display:flex;gap:14px;align-items:flex-start}
+.calg{flex:1;min-width:0;background:#fff;border:1px solid #e6eefb;border-radius:16px;overflow:auto}
+.cg{display:grid;position:relative;min-width:560px}
+.ch{position:sticky;top:0;z-index:4;background:#f5f8ff;font-weight:900;font-size:12.5px;color:#172554;padding:9px 6px;border-inline-start:1px solid #eef2f9;text-align:center;border-bottom:1px solid #e6eefb}
+.ctm{font-size:11px;color:#94a3b8;font-weight:800;padding:3px 6px;border-top:1px solid #f1f5f9;height:54px}
+.ccol{position:relative;border-inline-start:1px solid #eef2f9}
+.ccol .hl{height:54px;border-top:1px solid #f1f5f9}
+.ccol.off{background:repeating-linear-gradient(135deg,#f1f5f9 0 8px,#fff 8px 16px)}
+.ccol.tgt{background:#eef4ff}
+.ev{position:absolute;inset-inline:4px;border-radius:9px;padding:4px 7px;font-size:11.5px;font-weight:800;line-height:1.4;color:#172554;z-index:2;overflow:hidden;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.ev small{display:block;font-weight:700;color:#475467;font-size:10.5px}
+.e1{background:#e0eaff;border-inline-start:4px solid #1e3a8a}.e2{background:#dcfce7;border-inline-start:4px solid #16a34a;cursor:pointer}.e3{background:#fef3c7;border-inline-start:4px solid #d97706;cursor:pointer}.e4{background:#fff;border:1.5px dashed #94a3b8;cursor:pointer}
+.ghost{position:fixed;z-index:60;pointer-events:none;box-shadow:0 14px 30px rgba(30,58,138,.35);transform:rotate(-2deg);outline:2px solid #1e3a8a;width:180px;opacity:.95}
+.side{width:260px;flex:none;display:flex;flex-direction:column;gap:10px;position:sticky;top:76px}
+.uj{position:relative;inset:auto;margin-top:8px;display:block}
+.nowl{position:absolute;inset-inline:0;height:2px;background:#ef4444;z-index:3}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.wl{background:#fef3f2;color:#b42318;border:1px solid #fecdca;border-radius:12px;padding:9px 12px;font-size:12.5px;font-weight:800;line-height:1.7}
+.okl{background:#ecfdf3;color:#067647;border:1px solid #abefc6;border-radius:12px;padding:9px 12px;font-size:12.5px;font-weight:800}
+.tg{width:44px;height:26px;border-radius:99px;background:#cbd5e1;position:relative;border:0;cursor:pointer;flex:none}.tg:after{content:'';position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.15s}.tg.on{background:#1e3a8a}.tg.on:after{right:21px}
+.mli{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #f1f5f9}.mli:first-child{border-top:0}
+@media(max-width:820px){.calw{flex-direction:column}.side{width:100%;position:static}.desk{display:none!important}}
+@media(min-width:821px){.mob{display:none!important}}
+</style>
+</head>
+<body>
+<div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحة التحكم</a></div>
+<div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
+<div class="toast" id="toast"></div>
+<script>
+(function(){
+var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
+if(!TOK){ try{localStorage.setItem('_after_login',location.pathname+location.search);}catch(e){} location.href='/auth.html'; return; }
+var A=document.getElementById('app'), P=new URLSearchParams(location.search), RY=3*3600000, RH=54;
+function ymdOf(d){ return new Date(new Date(d).getTime()+RY).toISOString().slice(0,10); }
+function minOf(d){ var x=new Date(new Date(d).getTime()+RY); return x.getUTCHours()*60+x.getUTCMinutes(); }
+function atOf(y,m){ return new Date(Date.parse(y+'T00:00:00Z')+m*60000-RY); }
+function addD(y,n){ var d=new Date(y+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }
+var S={view:P.get('v')==='week'?'week':'day', from:P.get('d')||ymdOf(new Date()), tf:0, D:null};
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},window.MNQ_BR?MNQ_BR.h():{},o.headers||{});
+  return fetch(p,o).then(function(r){ if(r.status===401){ location.href='/auth.html'; throw 0; } return r.json().then(function(j){ if(!r.ok){ var e=new Error(j.message||'حدث خطأ'); e.j=j; throw e; } return j; }); });}
+function toast(t){ var e=document.getElementById('toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){e.style.display='none';},2800); }
+function h12(m){ var h=Math.floor(m/60), mm=m%60; return (h%12||12)+(mm?':'+String(mm).padStart(2,'0'):'')+(h<12?' ص':' م'); }
+function dlab(y,long){ try{ return new Date(y+'T12:00:00Z').toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',long?{weekday:'long',day:'numeric',month:'long'}:{weekday:'short',day:'numeric'}); }catch(e){ return y; } }
+var hmn=function(s){ var p=String(s||'0:0').split(':'); return (+p[0])*60+(+p[1]||0); };
+function cls(j){ if(j.done||['delivered','done'].indexOf(j.status)>=0) return 'e2'; if(j.status==='active') return 'e3'; return 'e1'; }
+function movable(j){ return ['new','scheduled'].indexOf(j.status)>=0; }
+function onLeave(tid,y){ return (S.D.leaves||[]).some(function(l){ return l.tech_id===tid&&l.d1<=y&&l.d2>=y; }); }
+function tname(id){ var t=(S.D.techs||[]).filter(function(x){return x.id===id;})[0]; return t?t.name:''; }
+function load(){ var days=S.view==='week'?7:1; history.replaceState(null,'','?d='+S.from+(S.view==='week'?'&v=week':''));
+  return api('/api/cal?from='+S.from+'&days='+days).then(function(d){ S.D=d; draw(); }).catch(function(e){ if(e&&e.j&&e.j.code==='sub'){ A.innerHTML='<div class="card" style="max-width:600px;display:flex;flex-direction:column;gap:10px"><div style="font-size:38px">📅</div><div class="h1">تقويم الجدولة من مزايا الاشتراك</div><div class="mu" style="line-height:1.9">اسحب المشروع للفني والوقت، وتشوف يوم فريقك كامل، والنظام ينبّهك على التداخل والإجازات والمسافة.</div><a class="btn pri" href="/plan.html" style="align-self:flex-start">اعرض الباقات</a></div>'; return; } if(e) A.innerHTML='<div class="card empty">'+esc(e.message)+'</div>'; }); }
+function range(){ var lo=8*60, hi=18*60; (S.D.techs||[]).forEach(function(t){ lo=Math.min(lo,hmn(t.sched.from)); hi=Math.max(hi,hmn(t.sched.to)); });
+  (S.D.jobs||[]).concat(S.D.bookings||[]).forEach(function(j){ var m=minOf(j.at); lo=Math.min(lo,m); hi=Math.max(hi,m+(j.dur||60)); });
+  return [Math.max(0,Math.floor(lo/60)), Math.min(24,Math.ceil(hi/60))]; }
+function evH(j,h0,lab){ var m=minOf(j.at), top=(m-h0*60)/60*RH, ht=Math.max(26,(j.dur||60)/60*RH-4);
+  return '<div class="ev '+cls(j)+'" data-j="'+j.id+'" style="top:'+(top+2)+'px;height:'+ht+'px">'+esc(j.title)+'<small>'+esc([h12(m),lab,j.address||j.client].filter(Boolean).join(' · '))+'</small></div>'; }
+function bkH(k,h0){ var m=minOf(k.at), top=(m-h0*60)/60*RH; return '<a class="ev e4" href="/mypage.html#book" style="top:'+(top+2)+'px;height:'+(RH-4)+'px;text-decoration:none">حجز مباشر (بانتظار التأكيد)<small>'+esc(k.title+' · '+(k.client||''))+'</small></a>'; }
+function draw(){
+  var D=S.D, wk=S.view==='week', R=range(), h0=R[0], h1=R[1], nH=h1-h0, today=ymdOf(new Date());
+  var h='<div class="row sb"><div class="row" style="gap:8px"><div class="h1">التقويم</div><div class="tabs"><button class="'+(!wk?'on':'')+'" onclick="_cV(\'day\')">يوم</button><button class="'+(wk?'on':'')+'" onclick="_cV(\'week\')">أسبوع</button></div></div><div class="row"><div id="brbar"></div><a class="btn pri" href="/jobs.html?new=1">+ مشروع</a></div></div>'
+    +'<div class="row" style="gap:6px"><button class="btn sec" style="padding:7px 12px" onclick="_cN(-1)" aria-label="السابق">›</button><b style="color:#172554;font-size:15px">'+(wk?dlab(S.from)+' ← '+dlab(addD(S.from,6)):dlab(S.from,true))+'</b><button class="btn sec" style="padding:7px 12px" onclick="_cN(1)" aria-label="التالي">‹</button>'+(S.from!==today?'<button class="btn sec" style="padding:7px 12px" onclick="_cT()">اليوم</button>':'')+'</div>';
+  var cols=wk?[0,1,2,3,4,5,6].map(function(k){ return {key:addD(S.from,k), lab:dlab(addD(S.from,k)), day:addD(S.from,k)}; }):D.techs.map(function(t){ return {key:t.id, lab:t.name, tech:t, day:S.from}; });
+  var grid='';
+  if(!wk&&!D.techs.length) grid='<div class="card empty"><b>أضف فنيينك أول</b><div class="mu" style="margin-top:6px">التقويم يعرض كل فني في عمود</div><a class="btn pri" style="margin-top:10px" href="/jobs.html?tab=team">الفريق</a></div>';
+  else { grid='<div class="cg" style="grid-template-columns:60px repeat('+cols.length+',minmax(130px,1fr))"><div class="ch" style="border:0"></div>'+cols.map(function(c){ return '<div class="ch">'+esc(c.lab)+(c.tech&&onLeave(c.tech.id,S.from)?' <span class="pill p-gr" style="height:19px;font-size:10px">إجازة</span>':'')+'</div>'; }).join('');
+    var tmc=''; for(var k=h0;k<h1;k++) tmc+='<div class="ctm">'+h12(k*60)+'</div>';
+    grid+='<div>'+tmc+'</div>';
+    cols.forEach(function(c){ var off=false, inner='';
+      if(c.tech){ var sc=c.tech.sched, dow=new Date(S.from+'T12:00:00Z').getUTCDay(); off=onLeave(c.tech.id,S.from)||sc.days.indexOf(dow)<0; }
+      for(var k=h0;k<h1;k++) inner+='<div class="hl"></div>';
+      D.jobs.filter(function(j){ return wk?ymdOf(j.at)===c.day:(j.tech_id===c.key&&ymdOf(j.at)===S.from); }).forEach(function(j){ inner+=evH(j,h0,wk?tname(j.tech_id):''); });
+      if(wk) D.bookings.filter(function(k){ return ymdOf(k.at)===c.day; }).forEach(function(k){ inner+=bkH(k,h0); });
+      if(c.day===today){ var nm=minOf(new Date()); if(nm>=h0*60&&nm<=h1*60) inner+='<div class="nowl" style="top:'+((nm-h0*60)/60*RH)+'px"></div>'; }
+      grid+='<div class="ccol'+(off?' off':'')+'" data-col="'+esc(c.key)+'" data-day="'+c.day+'" style="height:'+(nH*RH)+'px">'+inner+'</div>'; });
+    grid+='</div>';
+    if(!wk&&D.bookings.length) grid+='<div style="padding:10px 12px;border-top:1px solid #f1f5f9;display:flex;gap:8px;flex-wrap:wrap">'+D.bookings.map(function(k){ return '<a class="pill p-b" style="height:auto;padding:5px 10px;text-decoration:none" href="/mypage.html#book">📅 حجز بانتظار التأكيد · '+h12(minOf(k.at))+' · '+esc(k.title)+'</a>'; }).join('')+'</div>'; }
+  var side='<div class="card" style="padding:12px"><b style="color:#172554">بانتظار الجدولة ('+D.unscheduled.length+')</b><div class="mu">'+(D.unscheduled.length?'<span class="desk">اسحب المشروع للفني والوقت</span><span class="mob">اضغط «جدوِل» وحدد الفني والوقت</span>':'كل مشاريعك مجدولة ✓')+'</div>'
+    +D.unscheduled.map(function(j){ return '<div class="ev e4 uj" data-j="'+j.id+'" data-u="1">'+esc(j.title)+'<small>'+esc([j.address||j.client, j.tech_id?tname(j.tech_id):'', j.plan?'صيانة دورية':''].filter(Boolean).join(' · '))+'</small><button class="btn sec mob" style="padding:5px 10px;margin-top:6px;font-size:12px" onclick="_cOpen('+j.id+')">جدوِل</button></div>'; }).join('')+'</div>'
+    +'<div class="mu row" style="gap:10px;flex-wrap:wrap"><span class="row" style="gap:4px"><span class="dot" style="background:#1e3a8a"></span>مجدول</span><span class="row" style="gap:4px"><span class="dot" style="background:#d97706"></span>جارٍ</span><span class="row" style="gap:4px"><span class="dot" style="background:#16a34a"></span>تم</span><span class="row" style="gap:4px"><span class="dot" style="border:1.5px dashed #94a3b8"></span>بانتظار التأكيد</span></div>';
+  // الجوال: قائمة اليوم حسب الفني
+  var mob='';
+  if(!wk){ mob='<div class="mob tabs"><button class="'+(!S.tf?'on':'')+'" onclick="_cF(0)">الكل</button>'+D.techs.map(function(t){ return '<button class="'+(S.tf===t.id?'on':'')+'" onclick="_cF('+t.id+')">'+esc(t.name)+(onLeave(t.id,S.from)?' 🌴':'')+'</button>'; }).join('')+'</div>';
+    var L=D.jobs.filter(function(j){ return ymdOf(j.at)===S.from&&(!S.tf||j.tech_id===S.tf); });
+    mob+='<div class="card mob" style="padding:8px 14px">'+(L.length?L.map(function(j){ return '<div class="mli" data-lp="'+j.id+'"><span class="mu" style="width:48px;flex:none">'+h12(minOf(j.at))+'</span><div class="ev '+cls(j)+'" style="position:relative;inset:auto;flex:1">'+esc(j.title)+'<small>'+esc([tname(j.tech_id)||'بدون فني',j.status_t].filter(Boolean).join(' · '))+'</small></div>'+(movable(j)?'<button class="btn sec" style="padding:6px 10px;font-size:12px" onclick="_cOpen('+j.id+')">نقل</button>':'')+'</div>'; }).join(''):'<div class="mu" style="padding:12px 0">ما فيه مواعيد هاليوم</div>')+'</div><div class="mu mob" style="text-align:center">اضغط مطوّلاً على أي موعد عشان تنقله</div>'; }
+  else { mob='<div class="mob" style="display:flex;flex-direction:column;gap:10px">'+[0,1,2,3,4,5,6].map(function(k){ var y=addD(S.from,k), L=D.jobs.filter(function(j){ return ymdOf(j.at)===y; }); return '<div class="card" style="padding:10px 14px"><b style="color:#172554">'+dlab(y,true)+'</b>'+(L.length?L.map(function(j){ return '<div class="mli"><span class="mu" style="width:48px;flex:none">'+h12(minOf(j.at))+'</span><div class="ev '+cls(j)+'" style="position:relative;inset:auto;flex:1">'+esc(j.title)+'<small>'+esc(tname(j.tech_id)||'بدون فني')+'</small></div>'+(movable(j)?'<button class="btn sec" style="padding:6px 10px;font-size:12px" onclick="_cOpen('+j.id+')">نقل</button>':'')+'</div>'; }).join(''):'<div class="mu" style="padding:6px 0">—</div>')+'</div>'; }).join('')+'</div>'; }
+  A.innerHTML=h+mob+'<div class="calw"><div class="calg desk">'+grid+'</div><div class="side">'+side+'</div></div>';
+  MNQ_BR.bar(document.getElementById('brbar'),function(){ load(); });
+  wire(h0);
+}
+window._cV=function(v){ S.view=v; load(); };
+window._cN=function(n){ S.from=addD(S.from,n*(S.view==='week'?7:1)); load(); };
+window._cT=function(){ S.from=ymdOf(new Date()); load(); };
+window._cF=function(t){ S.tf=t; draw(); };
+function jobOf(id){ return (S.D.jobs.concat(S.D.unscheduled)).filter(function(j){return j.id===id;})[0]; }
+// السحب والإفلات (كمبيوتر) + الضغط المطوّل (جوال)
+function wire(h0){
+  [].forEach.call(A.querySelectorAll('.mli[data-lp]'),function(el){ var t=null; el.addEventListener('touchstart',function(){ t=setTimeout(function(){ var j=jobOf(+el.getAttribute('data-lp')); if(j&&movable(j)) _cOpen(j.id); },550); },{passive:true}); ['touchend','touchmove','touchcancel'].forEach(function(e){ el.addEventListener(e,function(){ clearTimeout(t); },{passive:true}); }); });
+  [].forEach.call(A.querySelectorAll('.calg .ev[data-j], .side .uj[data-j]'),function(el){
+    el.addEventListener('pointerdown',function(ev){ if(ev.button!==0||ev.target.closest('button')) return; var id=+el.getAttribute('data-j'), j=jobOf(id); if(!j) return; var r=el.getBoundingClientRect(), off=el.getAttribute('data-u')?0:ev.clientY-r.top, sx=ev.clientX, sy=ev.clientY, g=null, tgt=null;
+      if(!movable(j)){ var up0=function(){ document.removeEventListener('pointerup',up0); location.href='/jobs.html?id='+id; }; document.addEventListener('pointerup',up0); return; }
+      ev.preventDefault();
+      function mv(e){ if(!g&&Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy)<6) return; if(!g){ g=el.cloneNode(true); g.classList.add('ghost'); g.style.height=Math.max(40,r.height)+'px'; document.body.appendChild(g); el.style.opacity='.35'; }
+        g.style.left=(e.clientX-90)+'px'; g.style.top=(e.clientY-off)+'px'; var c=document.elementFromPoint(e.clientX,e.clientY); c=c&&c.closest('.ccol'); if(tgt&&tgt!==c) tgt.classList.remove('tgt'); tgt=c; if(c) c.classList.add('tgt'); }
+      function up(e){ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); el.style.opacity='';
+        if(!g){ _cOpen(id); return; } g.remove(); if(!tgt) return; tgt.classList.remove('tgt');
+        var cr=tgt.getBoundingClientRect(), m=h0*60+Math.round(((e.clientY-off)-cr.top)/RH*60/30)*30; m=Math.max(0,Math.min(23*60+30,m));
+        var day=tgt.getAttribute('data-day'), tech=S.view==='week'?(j.tech_id||null):(+tgt.getAttribute('data-col')||null);
+        _cOpen(id,{tech:tech,at:atOf(day,m)}); }
+      document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
+    }); });
+}
+// ورقة النقل: الفني والوقت والمدة + التحذيرات + «نبلغ العميل؟»
+window._cOpen=function(id,want){ var j=jobOf(id); if(!j) return; want=want||{}; var at=want.at||(j.at?new Date(j.at):atOf(S.from,9*60)), tech=want.tech!==undefined?want.tech:(j.tech_id||null), notify=true;
+  var o=document.createElement('div'); o.className='sheet-ov'; o.id='sh'; o.onclick=function(e){ if(e.target===o)o.remove(); };
+  var durs=[30,60,90,120,180,240,300,360,480];
+  o.innerHTML='<div class="sheet f"><div class="row sb"><b style="font-size:17px;color:#172554">'+(j.at?'نقل':'جدولة')+' «'+esc(j.title)+'»</b><a class="mu" href="/jobs.html?id='+j.id+'">افتح المشروع</a></div>'
+    +'<div class="grid2" style="flex-direction:row"><div><label for="mv-t">الفني</label><select id="mv-t"><option value="">بدون فني</option>'+S.D.techs.map(function(t){ return '<option value="'+t.id+'"'+(t.id===tech?' selected':'')+'>'+esc(t.name)+'</option>'; }).join('')+'</select></div><div><label for="mv-u">المدة</label><select id="mv-u">'+durs.map(function(d){ return '<option value="'+d+'"'+(d===(j.dur||120)?' selected':'')+'>'+(d<60?d+' دقيقة':(d/60)+' ساعة')+'</option>'; }).join('')+'</select></div></div>'
+    +'<div class="grid2" style="flex-direction:row"><div><label for="mv-d">اليوم</label><input id="mv-d" type="date" value="'+ymdOf(at)+'"></div><div><label for="mv-h">الوقت</label><input id="mv-h" type="time" step="1800" value="'+String(Math.floor(minOf(at)/60)).padStart(2,'0')+':'+String(minOf(at)%60).padStart(2,'0')+'"></div></div>'
+    +'<button type="button" class="btn sec" id="mv-s">✨ اقترح أفضل فني لهالوقت</button><div id="mv-sl"></div><div id="mv-w"></div>'
+    +'<div class="card" id="mv-n" style="padding:12px;display:none"><div class="row sb" style="flex-wrap:nowrap"><b style="color:#172554">نبلغ العميل بالموعد الجديد؟</b><button type="button" class="tg on" id="mv-nt" aria-label="إبلاغ العميل"></button></div><div class="mu" id="mv-nx" style="margin-top:4px"></div></div>'
+    +'<button class="btn pri" id="mv-go">تأكيد</button></div>';
+  document.body.appendChild(o);
+  var $=function(i){ return document.getElementById(i); };
+  function cur(){ var hh=($('mv-h').value||'09:00').split(':'); return { tech:+$('mv-t').value||null, at:atOf($('mv-d').value, (+hh[0])*60+(+hh[1]||0)), dur:+$('mv-u').value }; }
+  function chk(){ var c=cur(); if(isNaN(c.at)) return; api('/api/cal/move',{method:'POST',body:JSON.stringify({job_id:j.id,tech_id:c.tech,at:c.at.toISOString(),dur:c.dur,dry:true})}).then(function(r){
+      $('mv-w').innerHTML=r.warnings.length?'<div class="wl">⚠️ '+r.warnings.map(esc).join('<br>⚠️ ')+'</div>':(c.tech?'<div class="okl">✓ '+esc(tname(c.tech))+' فاضي هذا الوقت</div>':'');
+      var moved=!j.at||new Date(j.at).getTime()!==c.at.getTime(); $('mv-n').style.display=r.has_client&&moved?'':'none';
+      $('mv-nx').textContent='يوصل '+(j.client||'العميل')+': «تغيّر موعد زيارتك إلى '+dlab(ymdOf(c.at),true)+' '+h12(minOf(c.at))+(c.tech?' — الفني '+tname(c.tech):'')+'»';
+      $('mv-go').textContent=r.warnings.length?'تأكيد رغم التنبيه':'تأكيد'; }).catch(function(e){ if(e)$('mv-w').innerHTML='<div class="wl">'+esc(e.message)+'</div>'; }); }
+  ['mv-t','mv-d','mv-h','mv-u'].forEach(function(i){ $(i).onchange=chk; }); chk();
+  $('mv-nt').onclick=function(){ notify=!notify; this.classList.toggle('on',notify); };
+  $('mv-s').onclick=function(){ var c=cur(); $('mv-sl').innerHTML='<div class="mu">جارٍ البحث…</div>'; api('/api/cal/suggest?job_id='+j.id+'&at='+encodeURIComponent(c.at.toISOString())).then(function(r){
+      $('mv-sl').innerHTML=r.items.length?'<div class="card" style="padding:8px 12px">'+r.items.map(function(x,i){ return '<button type="button" class="mli" style="width:100%;border:0;background:none;font-family:inherit;text-align:right;cursor:pointer" data-t="'+x.id+'"><span style="width:26px;height:26px;border-radius:50%;background:#1e3a8a;color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none">'+(i+1)+'</span><span style="flex:1"><b style="color:#172554">'+esc(x.name)+'</b><span class="mu" style="display:block">فاضي '+h12(minOf(x.at))+(x.km!=null?' · يبعد '+x.km+' كم عن مواعيده':'')+' · عنده '+x.jobs_n+' مواعيد هاليوم</span></span></button>'; }).join('')+'</div>':'<div class="wl">ما فيه فني فاضي هذا الوقت — جرّب وقت ثاني</div>';
+      [].forEach.call($('mv-sl').querySelectorAll('[data-t]'),function(b){ b.onclick=function(){ $('mv-t').value=b.getAttribute('data-t'); $('mv-sl').innerHTML=''; chk(); }; }); }).catch(function(e){ if(e)toast(e.message); }); };
+  $('mv-go').onclick=function(){ var b=this, c=cur(); b.disabled=true; api('/api/cal/move',{method:'POST',body:JSON.stringify({job_id:j.id,tech_id:c.tech,at:c.at.toISOString(),dur:c.dur,confirm:true,notify:notify})}).then(function(r){ o.remove(); toast(r.told?'انتقل الموعد ✅ وبلّغنا العميل':'انتقل الموعد ✅'); load(); }).catch(function(e){ b.disabled=false; if(e)toast(e.message); }); };
+};
+MNQ_BR.load().then(load);
+})();
+</script>
+</body>
+</html>

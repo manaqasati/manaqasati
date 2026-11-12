@@ -2023,7 +2023,7 @@ function _saaiSubNo(id){ var n=prompt('ما تم الاتفاق مع المقا�
 // الدفع الإلكتروني: هل السداد بالبطاقة فقط لهذا المزوّد؟ (التحويل البنكي يفتحه المشرف للمبالغ الكبيرة)
 window._payCfg=null;
 // «الاشتراك والباقة» يظهر لما تفتح الإدارة الاشتراكات (أو للمزوّدين المختارين للتجربة)
-setTimeout(function(){ _api('/api/subs/open').then(function(r){ var _ios=!!(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||'')); if(r&&r.open&&!(_ios&&!r.live&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap))){ window._subsOpen=true; var n=_el('ni-plan'), n2=_el('ni-mypage'), n3=_el('ni-quotes'), n4=_el('ni-jobs'), n5=_el('ni-cust'); var _me=!!(window.DLG&&DLG.isMe&&DLG.isMe()), _h=function(k){ return !_me||(DLG.has&&DLG.has(k)); }; if(!_me&&n)n.style.display=''; var nb=_el('ni-branches'); if(nb&&!_me)nb.style.display=''; if(_h('quotes')){ if(n2)n2.style.display=''; if(n3)n3.style.display=''; } if(_h('jobs')&&n4)n4.style.display=''; if(_h('customers')&&n5)n5.style.display=''; } }).catch(function(){}); },1200);
+setTimeout(function(){ _api('/api/subs/open').then(function(r){ var _ios=!!(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||'')); if(r&&r.open&&!(_ios&&!r.live&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap))){ window._subsOpen=true; var n=_el('ni-plan'), n2=_el('ni-mypage'), n3=_el('ni-quotes'), n4=_el('ni-jobs'), n5=_el('ni-cust'); var _me=!!(window.DLG&&DLG.isMe&&DLG.isMe()), _h=function(k){ return !_me||(DLG.has&&DLG.has(k)); }; if(!_me&&n)n.style.display=''; var nb=_el('ni-branches'); if(nb&&!_me)nb.style.display=''; if(_h('quotes')){ if(n2)n2.style.display=''; if(n3)n3.style.display=''; } if(_h('jobs')&&n4){ n4.style.display=''; ['ni-cal','ni-att'].forEach(function(k){ var e=_el(k); if(e)e.style.display=''; }); } if(_h('customers')&&n5)n5.style.display=''; } }).catch(function(){}); },1200);
 function _payCfgGet(){ return window._payCfg?Promise.resolve(window._payCfg):_api('/api/pay/config').then(function(c){ window._payCfg=c||{}; return window._payCfg; }).catch(function(){ window._payCfg={online:false,bank_ok:true}; return window._payCfg; }); }
 function _payOnly(){ var c=window._payCfg; return !!(c&&c.online&&!c.bank_ok); }
 function _payGo(body,btn){
@@ -2892,6 +2892,7 @@ function _nfOpenP(id){
   if(t==='stats'){ location.href='/stats.html?period=prev'; return; }
   if(t==='idea'){ location.href='/ideas.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='plan'){ location.href='/customers.html'+(n.ref_id?'?plan='+(parseInt(n.ref_id)||0):''); return; }
+  if(t==='att'){ location.href='/att.html'; return; }
   if(t==='job'){ location.href='/jobs.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='tech'){ location.href='/tech.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(t==='quote'){ location.href='/quotes.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }

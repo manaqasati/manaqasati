@@ -48,6 +48,7 @@ button,input,textarea,select{font-family:inherit}
 .it .t{flex:1}.it .q{width:58px;text-align:center}.it .p{width:96px}
 .x{border:0;background:#fef3f2;color:#b42318;width:32px;height:32px;border-radius:9px;cursor:pointer;font-size:16px;flex:none}
 .chk{display:flex;gap:8px;font-size:13px;font-weight:700;align-items:flex-start;line-height:1.6}
+.attb{width:170px;height:170px;border-radius:50%;margin:8px auto;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-family:inherit;font-weight:900;color:#fff;font-size:20px;background:radial-gradient(circle at 35% 30%,#22c55e,#15803d);box-shadow:0 14px 32px rgba(21,128,61,.35);cursor:pointer}.attb small{font-size:12px;font-weight:700;opacity:.92}.attb.out{background:radial-gradient(circle at 35% 30%,#3b82f6,#1e3a8a);box-shadow:0 14px 32px rgba(30,58,138,.35)}.attb.done{background:#f1f5f9;color:#475467;box-shadow:none;cursor:default}.attb:disabled{opacity:.6}
 .sheet-ov{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center}
 @media(min-width:700px){.sheet-ov{align-items:center}}
 .sheet{background:#fff;width:min(480px,100%);max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:20px 18px calc(18px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:12px}
@@ -104,9 +105,35 @@ function list(){
     if(!S.items.length) h+='<div class="card empty"><div style="font-size:38px">✅</div><b style="display:block;margin-top:6px">ما عندك مهام الحين</b><div class="mu" style="margin-top:6px">يوصلك إشعار لما تنضاف لك مهمة.</div></div>';
     else h+='<div id="route"></div><div class="ql">'+S.items.map(function(j){ var dn=j.tasks.filter(function(t){return t.done;}).length;
       return '<button class="qi" onclick="_tOpen('+j.id+')"><div class="c"><div class="row" style="gap:6px"><b>'+esc(j.title)+'</b>'+(j.status==='active'?'<span class="pill p-g">قيد التنفيذ</span>':(j.status==='delivered'?'<span class="pill p-gr">انسلّم</span>':''))+'</div><span class="mu">'+esc(j.provider_name)+(j.sched_at?' · 🗓 '+dt(j.sched_at):'')+'</span><span class="mu">'+esc(j.address||'')+' · المهام '+dn+' من '+j.tasks.length+'</span></div><span style="font-size:20px;color:#94a3b8">‹</span></button>'; }).join('')+'</div>';
-    A.innerHTML=h; route();
+    A.innerHTML='<div id="att"></div>'+h; route(); att();
   }).catch(function(e){ if(e) A.innerHTML='<div class="card empty"><b>'+esc(e.message)+'</b></div>'; });
 }
+// ═══ الحضور والانصراف (لو المؤسسة مفعّلته) ═══
+var DN=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+function _tm(x){ try{ return new Date(x).toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit',timeZone:'Asia/Riyadh'}); }catch(e){ return ''; } }
+function _dd(y){ try{ return new Date(y+'T12:00:00Z').toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'short',day:'numeric',month:'short'}); }catch(e){ return y; } }
+function _hm(n){ n=Math.round(n||0); var h=Math.floor(n/60), m=n%60; return [h?h+'س':'',(m||!h)?m+'د':''].filter(Boolean).join(' '); }
+function _h12(s){ var p=String(s||'').split(':'), h=+p[0], m=p[1]||'00'; return (h%12||12)+':'+m+(h<12?' ص':' م'); }
+function att(){ api('/api/tech/att').then(function(r){ var el=document.getElementById('att'); if(!el||!r.items||!r.items.length) return; S.att=r.items;
+  el.innerHTML=r.items.map(function(a){ var t=a.today, sc=a.sched, wd=sc.days.map(function(d){return DN[d];}).join('، ');
+    var big=!t?'<button class="attb" onclick="_aIn('+a.tech_id+')"><span>بدأت دوامي</span><small>اضغط للتسجيل</small></button>':(!t.out_at?'<button class="attb out" onclick="_aOut('+a.tech_id+')"><span>خلّصت دوامي</span><small>حضرت '+_tm(t.in_at)+(t.late_min?' · متأخر '+_hm(t.late_min):'')+'</small></button>':'<div class="attb done"><span>✓ انتهى دوامك</span><small>'+_tm(t.in_at)+' – '+_tm(t.out_at)+' · '+_hm(t.mins)+'</small></div>');
+    var ok=a.last.filter(function(x){return !x.late_min;}).length;
+    var last=a.last.length?'<div class="card"><div class="row sb"><b style="color:#172554">'+(a.last.length===1?'آخر يوم':'آخر '+a.last.length+' أيام')+'</b><span class="pill '+(ok===a.last.length?'p-g':'p-y')+'">ملتزم '+ok+' من '+a.last.length+'</span></div>'+a.last.map(function(x){ return '<div class="row" style="padding:9px 0;border-top:1px solid #f1f5f9;flex-wrap:nowrap"><span style="width:9px;height:9px;border-radius:50%;background:'+(x.late_min?'#d97706':'#16a34a')+';flex:none"></span><div style="flex:1"><b style="font-size:13.5px">'+esc(new Date(x.day+'T12:00:00Z').toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'long',day:'numeric',month:'short'}))+'</b><div class="mu">'+_tm(x.in_at)+(x.out_at?' – '+_tm(x.out_at)+' · '+_hm(x.mins):' – …')+'</div></div><span class="pill '+(x.late_min?'p-y':'p-g')+'">'+(x.late_min?'تأخير '+_hm(x.late_min):'بالوقت')+'</span></div>'; }).join('')+'</div>':'';
+    var lv=(a.leaves||[]).slice(0,3).map(function(l){ return '<div class="row sb" style="padding:7px 0;border-top:1px solid #f1f5f9"><span style="font-size:13px;font-weight:800">🌴 '+esc(l.d1===l.d2?_dd(l.d1):_dd(l.d1)+' ← '+_dd(l.d2))+'</span><span class="pill '+({pending:'p-y',approved:'p-g',rejected:'p-r'}[l.status])+'">'+({pending:'بانتظار الرد',approved:'معتمدة',rejected:'مرفوضة'}[l.status])+'</span></div>'; }).join('');
+    return '<div class="card" style="text-align:center;display:flex;flex-direction:column;gap:6px"><div class="mu" style="text-align:right">'+(r.items.length>1?'<b style="color:#172554">'+esc(a.pname)+'</b> · ':'')+'دوامك: '+esc(wd)+' · '+_h12(sc.from)+' – '+_h12(sc.to)+'</div>'+big+'<div class="mu">📍 يتسجّل وقت وموقع الضغطة</div></div>'+last
+      +'<div class="card" style="padding:12px 14px"><div class="row sb"><b style="color:#172554">🌴 الإجازات</b><button class="btn sec" style="padding:7px 12px" onclick="_aLv('+a.tech_id+')">اطلب إجازة</button></div>'+lv+'</div>'
+      +(!t?'<div class="mu" style="background:#f5f8ff;border:1px dashed #c7d6f5;border-radius:12px;padding:10px 12px;line-height:1.7">نسيت تسجّل؟ أول ما تضغط «وصلت» على أول مشروع تنحسب بداية دوامك تلقائياً.</div>':''); }).join('');
+}).catch(function(){}); }
+function _aGeo(cb){ var done=false, f=function(p){ if(done)return; done=true; cb(p); }; if(!navigator.geolocation) return f(null); navigator.geolocation.getCurrentPosition(function(p){ f({lat:p.coords.latitude,lng:p.coords.longitude,acc:Math.round(p.coords.accuracy||0)}); },function(){ f(null); },{enableHighAccuracy:true,timeout:6000,maximumAge:60000}); setTimeout(function(){ f(null); },7000); }
+function _aPost(b,msg){ return api('/api/tech/att',{method:'POST',body:JSON.stringify(b)}).then(function(r){ toast(r.message||msg); att(); }).catch(function(e){ if(e)toast(e.message); att(); }); }
+window._aIn=function(tid){ var b=event&&event.currentTarget; if(b)b.disabled=true; _aGeo(function(g){ _aPost(Object.assign({tech_id:tid,act:'in'},g||{}),'سجّلنا حضورك ✅ — يومك سعيد'); }); };
+window._aOut=function(tid){ if(!confirm('تسجّل نهاية دوامك؟'))return; _aGeo(function(g){ _aPost(Object.assign({tech_id:tid,act:'out'},g||{}),'سجّلنا انصرافك — يعطيك العافية'); }); };
+window._aLv=function(tid){ var o=document.createElement('div'); o.className='sheet-ov'; o.id='sh'; o.onclick=function(e){ if(e.target===o)o.remove(); };
+  var td=new Date(Date.now()+864e5).toISOString().slice(0,10);
+  o.innerHTML='<div class="sheet f"><b style="font-size:17px;color:#172554">🌴 اطلب إجازة</b><div class="grid2"><div><label for="lv1">من</label><input id="lv1" type="date" value="'+td+'"></div><div><label for="lv2">إلى</label><input id="lv2" type="date" value="'+td+'"></div></div><div><label for="lvr">السبب (اختياري)</label><input id="lvr" maxlength="200" placeholder="مثال: موعد في المستشفى"></div><button class="btn pri" id="lvgo">أرسل الطلب للمشرف</button><button class="btn sec" onclick="document.getElementById(\'sh\').remove()">إلغاء</button></div>';
+  document.body.appendChild(o);
+  document.getElementById('lvgo').onclick=function(){ this.disabled=true; var d1=document.getElementById('lv1').value; _aPost({tech_id:tid,act:'leave',d1:d1,d2:document.getElementById('lv2').value||d1,reason:document.getElementById('lvr').value},'وصل طلبك للمشرف').then(function(){ o.remove(); }); };
+};
 // زيارات اليوم مرتبة حسب الأقرب
 function route(){ if(!window.MNQ_ROUTE) return; var td=new Date().toDateString();
   var T=S.items.filter(function(j){ return j.sched_at&&new Date(j.sched_at).toDateString()===td&&['new','scheduled','active'].indexOf(j.status)>=0&&!j.arrived_at; });
