@@ -482,13 +482,16 @@ function render(p,rat){
 
   // ── الخدمات والأسعار + «اطلب تسعيرة» (المزوّد المشترك) ──
   var _PL=!!p.page_live, _SV=_PL&&Array.isArray(p.page_services)?p.page_services:[];
-  window._ppSV=_SV; window._ppNm=nm;
+  window._ppSV=_SV; window._ppNm=nm; window._ppBr=_PL&&Array.isArray(p.branches)?p.branches:[]; window._ppPL=_PL; setTimeout(_bkInit,50);
   if(_PL&&_safeUrl(p.page_cover)){ try{ var _he=document.getElementById('pp-hero'); _he.style.backgroundImage='linear-gradient(rgba(23,37,84,.55),rgba(23,37,84,.85)),url("'+_safeUrl(p.page_cover).replace(/"/g,'')+'")'; _he.style.backgroundSize='cover'; _he.style.backgroundPosition='center'; }catch(e){} }
   if(_SV.length){
     h+='<div class="pp-card o2"><div class="pp-h">الخدمات والأسعار<span class="lk" style="cursor:default;color:var(--muted);font-size:12px;font-family:Tajawal,sans-serif;margin-inline-start:auto">أسعار تقريبية</span></div><div class="pp-svc">';
     _SV.forEach(function(x,i){ h+='<button type="button" class="pp-sv" onclick="_qrOpen('+i+')"><div style="flex:1;min-width:0;text-align:right"><b>'+esc(x.t)+'</b>'+(x.d?'<small>'+esc(x.d)+'</small>':'')+'</div>'+(x.p>0?'<div class="pp-svp"><small>يبدأ من</small><b>'+Number(x.p).toLocaleString('en-US')+' <i>ر.س</i></b></div>':'')+'</button>'; });
     h+='</div><div style="font-size:11.5px;color:var(--muted);font-weight:700;margin-top:8px">السعر النهائي يحدده المزوّد بعد معرفة التفاصيل</div></div>';
   }
+  // ── الفروع (مؤسسة بأكثر من فرع) ──
+  if(window._ppBr.length){ var _bc=[]; window._ppBr.forEach(function(b){ var c=b.city||b.name; if(_bc.indexOf(c)<0)_bc.push(c); });
+    h+='<div class="pp-card o2"><div class="pp-h">فروعنا</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+_bc.map(function(c){return '<span style="display:inline-flex;align-items:center;gap:4px;background:#e0eaff;color:#1e3a8a;border-radius:99px;padding:5px 12px;font-weight:800;font-size:13px">📍 '+esc(c)+'</span>';}).join('')+'</div></div>'; }
   // ── التواصل ──
   var R=''; // العمود الجانبي على الكمبيوتر
   if(_PL) R+='<div class="pp-card o1 pp-qrq"><div style="font-weight:900;font-size:15.5px;color:var(--text);margin-bottom:6px">اطلب تسعيرة من '+esc(nm)+'</div><div style="font-size:12.5px;color:var(--muted);font-weight:700;line-height:1.7;margin:-4px 0 10px">مجاناً وبدون التزام — يوصله طلبك مباشرة ويتواصل معك.</div><button type="button" class="pp-qbtn" onclick="_qrOpen()">اطلب تسعيرة</button></div>';
@@ -626,23 +629,65 @@ function _qrOpen(i){
   var o=document.createElement('div'); o.className='qr-ov'; o.id='qr-ov'; o.onclick=function(e){ if(e.target===o)o.remove(); };
   o.innerHTML='<div class="qr-sh" role="dialog" aria-label="اطلب تسعيرة"><div><b style="font-size:18px;color:var(--p,#1e3a8a)">اطلب تسعيرة من '+esc(nm)+'</b><div style="font-size:12.5px;color:var(--muted);font-weight:700;margin-top:3px">مجاناً وبدون التزام — يوصل طلبك للمزوّد ويتواصل معك</div></div>'
     +'<div><label for="qr-s">الخدمة</label><select id="qr-s">'+sv.map(function(x,k){return '<option value="'+esc(x.t)+'"'+(k===i?' selected':'')+'>'+esc(x.t)+'</option>';}).join('')+'<option value="">خدمة أخرى</option></select></div>'
+    +(window._ppBr&&window._ppBr.length?'<div><label for="qr-c">مدينة المشروع</label><select id="qr-c">'+(function(){ var cs=[]; window._ppBr.forEach(function(b){ if(b.city&&cs.indexOf(b.city)<0)cs.push(b.city); }); return cs.map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join(''); })()+'<option value="">مدينة أخرى</option></select><div id="qr-cn" style="font-size:12px;font-weight:800;color:#15803d;margin-top:5px"></div></div>':'')
     +'<div><label for="qr-d">الحي</label><input id="qr-d" maxlength="80" placeholder="مثال: النرجس"></div>'
     +'<div><label for="qr-t">وصف مختصر</label><textarea id="qr-t" maxlength="800" placeholder="وش تحتاج بالضبط؟ مثال: تنظيف 4 مكيفات سبليت في فيلا"></textarea></div>'
     +'<div><label for="qr-w">الموعد المناسب (اختياري)</label><input id="qr-w" maxlength="40" placeholder="مثال: هذا الأسبوع بعد العصر"></div>'
     +'<div id="qr-e" style="display:none;padding:10px 12px;border-radius:12px;background:#fef3f2;color:#b42318;font-size:13px;font-weight:800"></div>'
     +'<button type="button" class="pp-qbtn" id="qr-go">أرسل الطلب</button><button type="button" id="qr-x" style="border:0;background:transparent;font-family:inherit;font-weight:800;color:var(--muted);padding:6px;cursor:pointer">إلغاء</button></div>';
   document.body.appendChild(o); document.getElementById('qr-x').onclick=function(){ o.remove(); };
+  var _qc=document.getElementById('qr-c'); if(_qc){ var _qcn=function(){ var v=_qc.value, b=null; (window._ppBr||[]).forEach(function(x){ if(!b&&x.city===v)b=x; }); document.getElementById('qr-cn').textContent=b?'✓ طلبك يوصل مباشرة لـ '+b.name:'طلبك يوصل للفرع الرئيسي'; }; _qc.onchange=_qcn; _qcn(); }
   document.getElementById('qr-go').onclick=function(){
     var b=this, e=document.getElementById('qr-e'), t=document.getElementById('qr-t').value.trim(); e.style.display='none';
     if(t.length<10){ e.textContent='اكتب وصفاً مختصراً للمطلوب'; e.style.display='block'; return; }
     b.disabled=true; b.textContent='جارٍ الإرسال…';
-    fetch(API+'/api/pro/'+getId()+'/qreq',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({service:document.getElementById('qr-s').value,district:document.getElementById('qr-d').value,description:t,pref_date:document.getElementById('qr-w').value,src:/[?&]src=qr/.test(location.search)?'qr':'page'})})
+    fetch(API+'/api/pro/'+getId()+'/qreq',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({service:document.getElementById('qr-s').value,city:(document.getElementById('qr-c')||{}).value||undefined,district:document.getElementById('qr-d').value,description:t,pref_date:document.getElementById('qr-w').value,src:/[?&]src=qr/.test(location.search)?'qr':'page'})})
       .then(function(r){ if(r.status===401){ _askLogin(); throw 0; } return r.json().then(function(d){return {s:r.status,d:d};}); })
       .then(function(x){ if(x.s===200){ o.querySelector('.qr-sh').innerHTML='<div style="text-align:center;padding:16px 4px"><div style="font-size:44px">✅</div><b style="font-size:18px;color:var(--p,#1e3a8a)">وصل طلبك</b><p style="font-size:13.5px;color:var(--muted);font-weight:700;line-height:1.9;margin-top:8px">'+esc(x.d.message||'')+'<br>يوصلك إشعار لما يتواصل معك.</p><button type="button" class="pp-qbtn" style="margin-top:12px" onclick="document.getElementById(\'qr-ov\').remove()">تمام</button></div>'; return; }
         if(x.d&&x.d.code==='market'){ location.href='/new.html'; return; }
         e.textContent=(x.d&&x.d.message)||'تعذّر الإرسال'; e.style.display='block'; b.disabled=false; b.textContent='أرسل الطلب'; })
       .catch(function(z){ if(z===0)return; e.textContent='تعذّر الاتصال'; e.style.display='block'; b.disabled=false; b.textContent='أرسل الطلب'; });
   };
+}
+// ═══ «احجز موعد»: حجز مباشر بالخدمة والوقت (المزوّد يأكد) ═══
+var _BK=null;
+function _bkInit(){ if(!window._ppPL) return; fetch(API+'/api/pro/'+getId()+'/book').then(function(r){return r.json();}).then(function(d){ if(!d||!d.on) return; _BK=d;
+  [].forEach.call(document.querySelectorAll('.pp-qbtn'),function(b){ if(b.getAttribute('onclick')!=='_qrOpen()'||b._bk) return; b._bk=1; var nb=document.createElement('button'); nb.type='button'; nb.className='pp-qbtn'; nb.textContent='📅 احجز موعد'; nb.style.cssText=b.style.cssText; nb.onclick=function(){ _bkOpen(); }; b.parentNode.insertBefore(nb,b); b.style.background='#fff'; b.style.color='var(--p,#1e3a8a)'; b.style.border='1.5px solid var(--p,#1e3a8a)'; if(b.parentNode.classList.contains('in')){ nb.style.flex='1'; } });
+  var c=document.querySelector('.pp-qrq'); if(c){ var t=c.querySelector('div'); if(t) t.textContent='احجز موعد أو اطلب تسعيرة'; }
+}).catch(function(){}); }
+function _bkFmt(x,o){ try{ return new Date(x).toLocaleString('ar-SA-u-nu-latn-ca-gregory',o); }catch(e){ return ''; } }
+function _bkOpen(){
+  var tk=''; try{tk=localStorage.getItem('token')||'';}catch(e){} if(!tk){ _askLogin(); return; } if(!_BK) return;
+  var S={it:_BK.items[0].id, qty:1, day:0, at:null}, nm=window._ppNm||'المزوّد';
+  var o=document.createElement('div'); o.className='qr-ov'; o.onclick=function(e){ if(e.target===o)o.remove(); };
+  function draw(){ var it=_BK.items.filter(function(x){return x.id===S.it;})[0]||_BK.items[0], D=_BK.days[S.day];
+    o.innerHTML='<div class="qr-sh" role="dialog" aria-label="احجز موعد"><div><b style="font-size:18px;color:var(--p,#1e3a8a)">احجز موعد مع '+esc(nm)+'</b><div style="font-size:12.5px;color:var(--muted);font-weight:700;margin-top:3px">اختر الخدمة والوقت — المزوّد يأكد موعدك خلال يوم</div></div>'
+      +'<div><label for="bk-i">الخدمة</label><select id="bk-i">'+_BK.items.map(function(x){ return '<option value="'+esc(x.id)+'"'+(x.id===S.it?' selected':'')+'>'+esc(x.t)+' — '+Number(x.p).toLocaleString('en-US')+' ر.س'+(x.u?' '+esc(x.u):'')+'</option>'; }).join('')+'</select></div>'
+      +'<div><label for="bk-q">العدد</label><input id="bk-q" type="number" min="1" max="50" value="'+S.qty+'"></div>'
+      +(window._ppBr&&window._ppBr.length?'<div><label for="bk-c">المدينة</label><select id="bk-c">'+(function(){ var cs=[]; window._ppBr.forEach(function(b){ if(b.city&&cs.indexOf(b.city)<0)cs.push(b.city); }); return cs.map(function(c){return '<option'+(S.city===c?' selected':'')+'>'+esc(c)+'</option>';}).join(''); })()+'<option value="">مدينة أخرى</option></select></div>':'')
+      +'<div><label for="bk-d">الحي</label><input id="bk-d" maxlength="80" placeholder="مثال: النرجس" value="'+esc(S.dist||'')+'"></div>'
+      +(_BK.days.length?'<div><label>اليوم</label><div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px">'+_BK.days.map(function(d,i){ var dt=new Date(d.ymd+'T12:00:00Z'); return '<button type="button" data-dy="'+i+'" style="flex:none;min-width:58px;border:1.5px solid '+(i===S.day?'var(--p,#1e3a8a)':'var(--border)')+';background:'+(i===S.day?'var(--p,#1e3a8a)':'#fff')+';color:'+(i===S.day?'#fff':'var(--text)')+';border-radius:12px;padding:6px 4px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer">'+_bkFmt(dt,{weekday:'short',timeZone:'UTC'})+'<b style="display:block;font-size:17px">'+dt.getUTCDate()+'</b></button>'; }).join('')+'</div></div>'
+        +'<div><label>الوقت</label><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">'+D.slots.map(function(t){ var on=S.at===t.at; return '<button type="button" '+(t.free?'data-at="'+t.at+'"':'disabled')+' style="border:1.5px solid '+(on?'var(--p,#1e3a8a)':'var(--border)')+';background:'+(on?'var(--p,#1e3a8a)':'#fff')+';color:'+(on?'#fff':(t.free?'var(--text)':'#cbd5e1'))+';text-decoration:'+(t.free?'none':'line-through')+';border-radius:10px;padding:9px 0;font-family:inherit;font-weight:800;font-size:13px;cursor:'+(t.free?'pointer':'default')+'">'+_bkFmt(t.at,{hour:'numeric',minute:'2-digit'})+'</button>'; }).join('')+'</div></div>'
+        :'<div style="padding:10px;border-radius:12px;background:#fef3f2;color:#b42318;font-weight:800">ما فيه أوقات متاحة قريبة — اطلب تسعيرة</div>')
+      +'<div><label for="bk-n">ملاحظة (اختياري)</label><textarea id="bk-n" maxlength="500" placeholder="مثال: الوحدات في السطح">'+esc(S.note||'')+'</textarea></div>'
+      +'<div style="padding:10px 12px;border-radius:12px;background:#ecfdf3;color:#067647;font-weight:800;font-size:13.5px">التقدير: '+Number(it.p*S.qty).toLocaleString('en-US')+' ر.س · المزوّد يأكد موعدك خلال يوم</div>'
+      +'<div id="bk-e" style="display:none;padding:10px 12px;border-radius:12px;background:#fef3f2;color:#b42318;font-size:13px;font-weight:800"></div>'
+      +'<button type="button" class="pp-qbtn" id="bk-go"'+(S.at?'':' disabled style="opacity:.55"')+'>طلب الحجز</button><button type="button" id="bk-x" style="border:0;background:transparent;font-family:inherit;font-weight:800;color:var(--muted);padding:6px;cursor:pointer">إلغاء</button></div>';
+    var keep=function(){ S.qty=parseInt(document.getElementById('bk-q').value)||1; S.dist=document.getElementById('bk-d').value; S.note=document.getElementById('bk-n').value; var c=document.getElementById('bk-c'); if(c)S.city=c.value; };
+    document.getElementById('bk-i').onchange=function(){ keep(); S.it=this.value; draw(); };
+    document.getElementById('bk-q').oninput=function(){ keep(); var e=o.querySelector('[style*="ecfdf3"]'); if(e) e.textContent='التقدير: '+Number(it.p*S.qty).toLocaleString('en-US')+' ر.س · المزوّد يأكد موعدك خلال يوم'; };
+    [].forEach.call(o.querySelectorAll('[data-dy]'),function(b){ b.onclick=function(){ keep(); S.day=parseInt(b.getAttribute('data-dy')); S.at=null; draw(); }; });
+    [].forEach.call(o.querySelectorAll('[data-at]'),function(b){ b.onclick=function(){ keep(); S.at=b.getAttribute('data-at'); draw(); }; });
+    document.getElementById('bk-x').onclick=function(){ o.remove(); };
+    document.getElementById('bk-go').onclick=function(){ keep(); if(!S.at)return; var b=this, e=document.getElementById('bk-e'); b.disabled=true; b.textContent='جارٍ الإرسال…';
+      fetch(API+'/api/pro/'+getId()+'/book',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({item_id:S.it,qty:S.qty,at:S.at,city:S.city||undefined,district:S.dist,note:S.note})})
+        .then(function(r){ if(r.status===401){ _askLogin(); throw 0; } return r.json().then(function(d){return {s:r.status,d:d};}); })
+        .then(function(x){ if(x.s===200){ o.querySelector('.qr-sh').innerHTML='<div style="text-align:center;padding:16px 4px"><div style="font-size:44px">📅</div><b style="font-size:18px;color:var(--p,#1e3a8a)">وصل طلب الحجز</b><p style="font-size:13.5px;color:var(--muted);font-weight:700;line-height:1.9;margin-top:6px">'+esc(x.d.message||'')+'</p><button type="button" class="pp-qbtn" onclick="document.querySelector(\'.qr-ov\').remove()" style="margin-top:12px">تمام</button></div>'; return; }
+          e.textContent=(x.d&&x.d.message)||'تعذّر الحجز'; e.style.display='block'; b.disabled=false; b.textContent='طلب الحجز'; })
+        .catch(function(z){ if(z===0)return; e.textContent='تعذّر الاتصال'; e.style.display='block'; b.disabled=false; b.textContent='طلب الحجز'; }); };
+  }
+  if(window._ppBr&&window._ppBr.length){ var cs=window._ppBr.filter(function(b){return b.city;}); S.city=cs.length?cs[0].city:''; }
+  document.body.appendChild(o); draw();
 }
 function _askLogin(){
   if(confirm('سجّل دخولك عشان يظهر رقم المزوّد وتتواصل معه.\nالتسجيل ياخذ أقل من دقيقة.')){

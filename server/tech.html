@@ -63,7 +63,7 @@ button,input,textarea,select{font-family:inherit}
 .stars{display:flex;gap:6px;justify-content:center}.stars button{border:0;background:none;font-size:34px;color:#e2e8f0;cursor:pointer;line-height:1}.stars button.on{color:#f59e0b}
 .wrap{max-width:680px}
 </style>
-</head>
+<script src="/route.js?v=1"></script></head>
 <body>
 <div class="top"><b>مناقصة <i>•</i></b><a href="/">الرئيسية</a></div>
 <div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
@@ -102,11 +102,20 @@ function list(){
     if(!r.tech){ A.innerHTML='<div class="card empty"><div style="font-size:40px">👷</div><b style="display:block;font-size:17px;margin-top:6px;color:#172554">ما فيه مؤسسة أضافتك كفني</b><div class="mu" style="margin-top:8px;line-height:1.9">اطلب من المؤسسة تضيف رقم جوالك في «الفريق». لازم يكون نفس الرقم المسجّل في حسابك.</div></div>'; return; }
     var h='<div><div class="h1">مهام الفني</div><div class="mu" style="margin-top:3px">'+(S.items.length?S.items.length+' مهمة':'ما فيه مهام الحين')+'</div></div>';
     if(!S.items.length) h+='<div class="card empty"><div style="font-size:38px">✅</div><b style="display:block;margin-top:6px">ما عندك مهام الحين</b><div class="mu" style="margin-top:6px">يوصلك إشعار لما تنضاف لك مهمة.</div></div>';
-    else h+='<div class="ql">'+S.items.map(function(j){ var dn=j.tasks.filter(function(t){return t.done;}).length;
+    else h+='<div id="route"></div><div class="ql">'+S.items.map(function(j){ var dn=j.tasks.filter(function(t){return t.done;}).length;
       return '<button class="qi" onclick="_tOpen('+j.id+')"><div class="c"><div class="row" style="gap:6px"><b>'+esc(j.title)+'</b>'+(j.status==='active'?'<span class="pill p-g">قيد التنفيذ</span>':(j.status==='delivered'?'<span class="pill p-gr">انسلّم</span>':''))+'</div><span class="mu">'+esc(j.provider_name)+(j.sched_at?' · 🗓 '+dt(j.sched_at):'')+'</span><span class="mu">'+esc(j.address||'')+' · المهام '+dn+' من '+j.tasks.length+'</span></div><span style="font-size:20px;color:#94a3b8">‹</span></button>'; }).join('')+'</div>';
-    A.innerHTML=h;
+    A.innerHTML=h; route();
   }).catch(function(e){ if(e) A.innerHTML='<div class="card empty"><b>'+esc(e.message)+'</b></div>'; });
 }
+// زيارات اليوم مرتبة حسب الأقرب
+function route(){ if(!window.MNQ_ROUTE) return; var td=new Date().toDateString();
+  var T=S.items.filter(function(j){ return j.sched_at&&new Date(j.sched_at).toDateString()===td&&['new','scheduled','active'].indexOf(j.status)>=0&&!j.arrived_at; });
+  if(T.length<2) return;
+  MNQ_ROUTE.here(function(me){ var r=MNQ_ROUTE.plan(T,me); var el=document.getElementById('route'); if(!r||!el) return;
+    var save=r.base-r.km;
+    el.innerHTML='<div class="card" style="background:linear-gradient(135deg,#172554,#1e3a8a);color:#fff;border:0"><b style="font-size:15.5px">🧭 رتّبنا زيارات اليوم حسب الأقرب</b><div style="font-size:12.5px;opacity:.85;font-weight:700;margin-top:4px">المسافة تقريباً '+r.km+' كم'+(save>1?' بدل '+r.base+' كم — توفّر '+save+' كم':'')+'</div>'
+      +'<div style="margin-top:10px;display:flex;flex-direction:column;gap:6px">'+r.order.map(function(j,i){ return '<button onclick="_tOpen('+j.id+')" style="display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.1);border:0;border-radius:12px;padding:9px 10px;color:#fff;font-family:inherit;text-align:right;cursor:pointer"><span style="width:26px;height:26px;border-radius:50%;background:#fbbf24;color:#172554;font-weight:900;display:flex;align-items:center;justify-content:center;flex:none">'+(i+1)+'</span><span style="flex:1;min-width:0"><b style="display:block;font-size:13.5px">'+esc(j.title)+'</b><span style="font-size:11.5px;opacity:.8">'+esc(j.address||'')+(j.sched_at?' · '+dt(j.sched_at):'')+'</span></span><span style="font-size:11.5px;opacity:.8">'+r.legs[i]+' كم</span></button>'; }).join('')+'</div>'
+      +'<a class="btn" style="background:#fbbf24;color:#172554;margin-top:10px;width:100%" target="_blank" rel="noopener" href="'+r.url+'">افتح المسار كامل في خرائط Google</a>'+(r.skipped.length?'<div style="font-size:11.5px;opacity:.75;margin-top:6px">'+r.skipped.length+' زيارة بدون موقع على الخريطة — ما دخلت في الترتيب</div>':'')+'</div>'; }); }
 window._tOpen=function(id){ setUrl('id='+id); api('/api/tech/jobs/'+id).then(function(j){ S.j=j; draw(); }).catch(function(e){ if(e){ toast(e.message); list(); } }); };
 function draw(){
   var j=S.j, open=['new','scheduled','active'].indexOf(j.status)>=0, dn=j.tasks.filter(function(t){return t.done;}).length;
@@ -120,6 +129,8 @@ function draw(){
   h+='<div class="card"><div class="row sb" style="margin-bottom:4px"><span class="h3">المهام</span><span class="pill p-b">'+dn+' من '+j.tasks.length+'</span></div>'+j.tasks.map(function(t){ return '<button class="ck'+(t.done?' done':'')+'" style="width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:right;cursor:pointer;font-family:inherit;color:inherit" '+(open?'onclick="_tTask(\''+esc(t.id)+'\')"':'disabled')+'><span class="b">'+(t.done?'✓':'')+'</span><span class="t" style="flex:1">'+esc(t.t)+'</span></button>'; }).join('')+'</div>';
   h+='<div class="card"><div class="row sb"><span class="h3">الصور</span></div><div class="phs">'+j.photos.map(function(p){ return '<a href="'+esc(p.url)+'" target="_blank" rel="noopener" class="ph" style="background-image:url(&quot;'+esc(p.url)+'&quot;)"><span>'+(p.kind==='before'?'قبل':'بعد')+'</span></a>'; }).join('')+'</div>'+(open?'<div class="row" style="margin-top:10px;flex-wrap:nowrap"><label class="btn sec" style="flex:1;cursor:pointer">📷 صورة قبل<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_tPh(this,\'before\')"></label><label class="btn sec" style="flex:1;cursor:pointer">📷 صورة بعد<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_tPh(this,\'after\')"></label></div>':'')+'</div>';
   (j.extras||[]).forEach(function(e){ h+='<div class="row sb card" style="padding:12px 14px;font-size:13.5px;font-weight:700"><span>عمل إضافي: '+esc(e.descr)+'</span><span class="pill '+({tech:'p-y',sent:'p-y',approved:'p-g',declined:'p-r',dropped:'p-gr'}[e.status]||'p-gr')+'">'+({tech:'عند المؤسسة',sent:'عند العميل',approved:'وافق العميل',declined:'رفض العميل',dropped:'ملغي'}[e.status]||'')+'</span></div>'; });
+  if((j.costs||[]).length) h+='<div class="card"><span class="h3">مصاريفك على المشروع</span>'+j.costs.map(function(c){ return '<div class="row sb" style="padding:8px 0;border-top:1px solid #f1f5f9;font-size:13.5px;font-weight:700"><span>'+esc(c.title)+(c.photo?' · <a href="'+esc(c.photo)+'" target="_blank" rel="noopener" style="color:#1e3a8a">📎 الفاتورة</a>':'')+'</span><b>'+Number(c.amount).toLocaleString('en-US')+' ر.س</b></div>'; }).join('')+'</div>';
+  if(open) h+='<button class="btn sec" style="padding:13px" onclick="_tCost()">+ مصروف (مواد، نقل…)</button>';
   if(open) h+='<button class="btn sec" style="padding:13px" onclick="_tDev()">+ سجّل جهاز عند العميل</button><button class="btn sec" style="padding:13px" onclick="_tExtra()">+ عمل إضافي (يحتاج موافقة)</button>'+(j.finished_at?'<div class="pill p-b" style="align-self:center;height:28px">🏁 بلّغت المؤسسة إنك خلّصت</div>':'<button class="btn pri" style="padding:14px;font-size:15px" onclick="_tFin()">خلّصت — أبلغ المؤسسة</button>');
   A.innerHTML=h;
   if(open&&j.enroute_at&&!j.arrived_at) startShare(); else stopShare();
@@ -137,6 +148,13 @@ window._tDev=function(){ var o=document.createElement('div'); o.className='sheet
   o.innerHTML='<div class="sheet f"><b style="font-size:17px;color:#172554">جهاز عند العميل</b><div><label for="dv-n">نوع الجهاز</label><input id="dv-n" maxlength="100" placeholder="مثال: مكيف سبليت"></div><div class="grid2"><div><label for="dv-b">الماركة</label><input id="dv-b" maxlength="60"></div><div><label for="dv-q">العدد</label><input id="dv-q" inputmode="numeric" maxlength="3" value="1"></div></div><div><label for="dv-p">المكان</label><input id="dv-p" maxlength="80" placeholder="مثال: الصالة"></div><button class="btn pri" id="dv-go">حفظ</button><button class="btn" style="background:transparent;color:#64748b" onclick="document.getElementById(\'sh\').remove()">رجوع</button></div>';
   document.body.appendChild(o);
   document.getElementById('dv-go').onclick=function(){ var b=this; b.disabled=true; act({act:'device',name:document.getElementById('dv-n').value,brand:document.getElementById('dv-b').value,qty:document.getElementById('dv-q').value,place:document.getElementById('dv-p').value}).then(function(){ o.remove(); re('انحفظ الجهاز'); }).catch(function(e){ b.disabled=false; if(e)toast(e.message); }); };
+};
+window._tCost=function(){ var o=document.createElement('div'); o.className='sheet-ov'; o.id='sh'; o.onclick=function(e){ if(e.target===o)o.remove(); }; var PH=null;
+  o.innerHTML='<div class="sheet f" style="display:flex;flex-direction:column;gap:12px"><b style="font-size:17px;color:#172554">مصروف على المشروع</b><div class="mu">يشوفه صاحب المؤسسة بس — العميل ما يشوفه</div><div><label>البند</label><input id="cs-t" maxlength="120" placeholder="مثال: نحاس وعوازل"></div><div><label>المبلغ (ر.س)</label><input id="cs-a" inputmode="decimal" maxlength="9"></div><label class="btn sec" style="cursor:pointer" id="cs-pl">📎 صورة الفاتورة (اختياري)<input type="file" accept="image/*" style="display:none" id="cs-p"></label><button class="btn pri" id="cs-go">إضافة</button></div>';
+  document.body.appendChild(o);
+  document.getElementById('cs-p').onchange=function(){ var f=this.files&&this.files[0]; if(!f)return; shrink(f,function(d){ PH=d; document.getElementById('cs-pl').firstChild.textContent='✓ انرفقت الفاتورة'; }); };
+  document.getElementById('cs-go').onclick=function(){ var b=this; b.disabled=true; var a=String(document.getElementById('cs-a').value||'').replace(/[٠-٩]/g,function(c){return '٠١٢٣٤٥٦٧٨٩'.indexOf(c);}).replace(/[^\d.]/g,'');
+    act({act:'cost',title:document.getElementById('cs-t').value,amount:a,photo:PH}).then(function(){ o.remove(); re('انضاف المصروف'); }).catch(function(e){ b.disabled=false; if(e)toast(e.message); }); };
 };
 window._tExtra=function(){ var o=document.createElement('div'); o.className='sheet-ov'; o.id='sh'; o.onclick=function(e){ if(e.target===o)o.remove(); };
   o.innerHTML='<div class="sheet f"><b style="font-size:17px;color:#172554">عمل إضافي</b><div class="mu">المؤسسة تحدد السعر وترسله للعميل يوافق.</div><div><label for="ex-d">وش العمل الإضافي؟</label><textarea id="ex-d" maxlength="200" placeholder="مثال: المكثف في الوحدة 3 تالف ويحتاج تغيير"></textarea></div><label class="btn sec" style="cursor:pointer" id="ex-pl">📷 صورة (اختياري)<input type="file" accept="image/*" capture="environment" style="display:none" id="ex-f"></label><button class="btn pri" id="ex-go">أرسل للمؤسسة</button><button class="btn" style="background:transparent;color:#64748b" onclick="document.getElementById(\'sh\').remove()">رجوع</button></div>';

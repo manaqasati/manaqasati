@@ -58,6 +58,8 @@ button{font-family:inherit}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#172554;color:#fff;padding:12px 18px;border-radius:12px;font-weight:800;font-size:13.5px;z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.25);max-width:92vw;text-align:center}
 .spin{width:60px;height:60px;border-radius:50%;border:5px solid #dbeafe;border-top-color:#1d4ed8;margin:40px auto;animation:sp 1s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 @media(max-width:820px){.grid{flex-direction:column}.main,.side{width:100%}.plans{flex-direction:column}.hero{flex-direction:column}}
+.inf{display:inline-flex;width:17px;height:17px;border-radius:50%;border:1.5px solid #94a3b8;color:#64748b;font-size:10.5px;font-weight:900;align-items:center;justify-content:center;font-family:Georgia,serif;font-style:italic;cursor:pointer;vertical-align:middle;margin-inline-start:4px;flex:none}.inf:hover,.inf:focus{border-color:#1e3a8a;color:#1e3a8a;outline:0}
+.tipx{position:absolute;z-index:200;background:#172554;color:#fff;border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:700;line-height:1.8;box-shadow:0 10px 30px rgba(15,23,42,.25);text-align:right}
 </style>
 </head>
 <body>
@@ -82,10 +84,37 @@ function mo(n){ n=+n||1; return n===1?'شهر مجاني':(n===2?'شهران م�
 function dy(n){ n=+n||0; return n===1?'يوماً واحداً':(n===2?'يومين':(n<=10?n+' أيام':n+' يوماً')); }
 function brn(b){ b=String(b||'').toLowerCase(); return ({mada:'مدى',visa:'Visa',master:'Mastercard',mastercard:'Mastercard',amex:'American Express',applepay:'Apple Pay'})[b]||(b?b:'بطاقة'); }
 function nn(n,one,pl,acc){ n=+n||0; return n===1?one:(n>=3&&n<=10?n+' '+pl:n+' '+acc); }
-function feats(t){ var L=D.cfg.limits[t]||{}; var f=[]; f.push(L.projects?nn(L.projects,'مشروع نشط واحد','مشاريع نشطة','مشروعاً نشطاً'):'مشاريع السوق والعروض'); f.push(nn(L.dlg,'مشرف أو مندوب واحد','مشرفين ومندوبين','مشرفاً ومندوباً')); if(L.tech)f.push(nn(L.tech,'فني واحد','فنيين','فنياً')); if(t!=='free')f.push(L.branch>1?'فروع متعددة':'فرع واحد');
- var li=f.map(function(x){return '<li>'+esc(x)+'</li>';}).join('');
- if(t!=='free'){ li+='<li>عروض أسعار باسمك وشعارك</li><li>دفتر العملاء وخطط الصيانة</li>'; li+=L.map?'<li>الخريطة اللايف لفريقك</li><li>الأرقام والتقارير ودعم بأولوية</li>':'<li class="no">الخريطة اللايف</li>'; }
+var TIPS={
+ proj:'عدد مشاريع عملائك اللي تديرها في نفس الوقت: توزّع الفنيين، وتتابع التنفيذ، وتسلّم العميل. المشروع اللي سلّمته أو ألغيته ما ينحسب.',
+ market:'تشوف مشاريع السوق وتقدّم عروضك عليها مجاناً، والسعي 3% فقط إذا اتفقت مع العميل.',
+ dlg:'أشخاص من فريقك يدخلون على حسابك بصلاحيات تحددها أنت (مندوب مبيعات، مشرف مشاريع، مدير حساب). كل واحد يشوف اللي سمحت له فيه بس، والدفع وحذف الحساب تبقى لك وحدك.',
+ tech:'فنيين تضيفهم برقم جوالهم. توصلهم المهام على جوالاتهم، ويرفعون الصور ويطلبون الأعمال الإضافية، وتشوف تقدّمهم أول بأول.',
+ branch:'كل فرع باسم تختاره (مدينة أو قسم)، وله مشرفوه وفنيوه ومشاريعه وعملاؤه. مشرف الفرع يشوف فرعه بس، وأنت تشوف الكل. وطلبات التسعيرة من مدينة الفرع توصله مباشرة.',
+ branch1:'كل مشاريعك وفريقك وعملاؤك في مكان واحد. وإذا توسّعت لمدن ثانية، باقة مؤسسة فيها 3 فروع.',
+ quotes:'عرض سعر احترافي باسم منشأتك وشعارك، فيه حتى 3 خيارات. يوصل العميل على جواله ويختار ويوافق بضغطة، وتقدر تطبعه PDF.',
+ book:'كل عملائك وأجهزتهم وسجل أعمالهم في مكان واحد. وخطط صيانة دورية تذكّرك وتذكّر العميل قبل كل زيارة، فيرجع لك العميل كل مرة بدل ما يروح لغيرك.',
+ map:'تشوف فنيينك على الخريطة وهم في الطريق لمواقع العملاء، وتعرف متى وصل كل واحد.',
+ booking:'زر «احجز موعد» في صفحتك: العميل يختار الخدمة واليوم والوقت المتاح، وأنت تأكد بضغطة ويصير مشروع بموعده. وقائمة أسعار جاهزة تبني منها عروضك بثواني.',
+ fu:'مناقصة تتابع عملاءك عنك: تذكير بالعرض اللي ما انرد عليه، وتذكير العميل بموعد الزيارة قبلها بيوم، وطلب تقييم بعد التسليم.',
+ emails:'رسالة وحدة توصل كل عملاء دفترك أو فئة منهم (المتكررين، اللي ما تعاملوا من فترة…) — مثل «قبل الصيف نظّف مكيفك». برصيد شهري وتقدر تزيده.',
+ cost:'سجّل مصاريف كل مشروع (مواد، عمالة، نقل) — والفني يضيفها من جواله مع صورة الفاتورة — وتعرف ربحك الحقيقي لكل مشروع وكل فرع.',
+ stats:'أرقام عملك كاملة: نسبة فوزك بالعروض، والصفقات، وأداء كل فني. ويوصلك تقرير شهري، وطلباتك عند الدعم لها الأولوية.'
+};
+function tip(k){ return TIPS[k]?' <span class="inf" role="button" tabindex="0" aria-label="شرح الميزة" data-tip="'+k+'">i</span>':''; }
+function feats(t){ var L=D.cfg.limits[t]||{}; var f=[]; f.push(L.projects?[nn(L.projects,'مشروع نشط واحد','مشاريع نشطة','مشروعاً نشطاً'),'proj']:['مشاريع السوق والعروض','market']); f.push([nn(L.dlg,'مشرف أو مندوب واحد','مشرفين ومندوبين','مشرفاً ومندوباً'),'dlg']); if(L.tech)f.push([nn(L.tech,'فني واحد','فنيين','فنياً'),'tech']); if(t!=='free')f.push(L.branch>1?[nn(L.branch,'فرع واحد','فروع','فرعاً'),'branch']:['فرع واحد','branch1']);
+ var li=f.map(function(x){return '<li>'+esc(x[0])+tip(x[1])+'</li>';}).join('');
+ if(t!=='free'){ li+='<li>عروض أسعار باسمك وشعارك'+tip('quotes')+'</li><li>حجز مواعيد مباشر من صفحتك'+tip('booking')+'</li><li>دفتر العملاء وخطط الصيانة'+tip('book')+'</li><li>متابعة آلية للعروض والمواعيد'+tip('fu')+'</li>'+(L.emails?'<li>'+nn(L.emails,'إيميل واحد','إيميلات','إيميل')+' حملات شهرياً'+tip('emails')+'</li>':'')+'<li>تكلفة وربح كل مشروع'+tip('cost')+'</li>'; li+=L.map?'<li>الخريطة اللايف لفريقك'+tip('map')+'</li><li>الأرقام والتقارير ودعم بأولوية'+tip('stats')+'</li>':'<li class="no">الخريطة اللايف</li>'; }
  return li; }
+// ⓘ: على الكمبيوتر بالوقوف، وعلى الجوال بالضغط
+(function(){ var tp=null; function hide(){ if(tp){ tp.remove(); tp=null; } }
+ function show(el){ hide(); var k=el.getAttribute('data-tip'); if(!TIPS[k])return; tp=document.createElement('div'); tp.className='tipx'; tp.textContent=TIPS[k]; document.body.appendChild(tp);
+   var r=el.getBoundingClientRect(), w=Math.min(300,window.innerWidth-24); tp.style.width=w+'px'; var x=Math.max(12,Math.min(window.innerWidth-w-12,r.left+r.width/2-w/2)); tp.style.left=x+'px'; tp.style.top=(r.bottom+window.scrollY+8)+'px'; }
+ document.addEventListener('click',function(e){ var el=e.target.closest&&e.target.closest('.inf'); if(el){ e.preventDefault(); e.stopPropagation(); if(tp&&tp._k===el&&!window.matchMedia('(hover:hover)').matches)hide(); else { show(el); if(tp)tp._k=el; } return; } hide(); },true);
+ document.addEventListener('mouseover',function(e){ var el=e.target.closest&&e.target.closest('.inf'); if(el&&window.matchMedia('(hover:hover)').matches){ show(el); if(tp)tp._k=el; } });
+ document.addEventListener('mouseout',function(e){ var el=e.target.closest&&e.target.closest('.inf'); if(el&&window.matchMedia('(hover:hover)').matches) hide(); });
+ document.addEventListener('keydown',function(e){ var el=document.activeElement; if((e.key==='Enter'||e.key===' ')&&el&&el.classList&&el.classList.contains('inf')){ e.preventDefault(); show(el); } if(e.key==='Escape')hide(); });
+ window.addEventListener('scroll',hide,{passive:true});
+})();
 function buyBlock(html){ if(D&&D.open===false&&!(D.sub&&['active','grace'].indexOf(D.sub.status)>-1)) return '<div class="note">الاشتراكات تُفتح قريباً — سنبلغك فور إتاحتها.</div>'; return IOSAPP?'':html; }
 function chooser(inTrial){
  var C=D.cfg, off=D.offer;
@@ -95,7 +124,7 @@ function chooser(inTrial){
    return '<button type="button" class="plan'+(TIER===t?' on':'')+'" data-t="'+t+'"><h4>'+esc(C.tiers[t].name)+(t==='pro'?' <span class="pill p-g">الأكثر اختياراً</span>':'')+'</h4><div class="price">'+money(p)+' <small>ر.س / '+(CY==='y'?'سنة':'شهر')+'</small></div>'+(CY==='y'?'<div class="mu">يعادل '+money(Math.round(p/12))+' ر.س شهرياً</div>':'')+'<ul>'+feats(t)+'</ul></button>'; }).join('')+'</div>';
  var adh='';
  Object.keys(C.addons||{}).forEach(function(k){ var a=C.addons[k]; if(!a.on||a.tiers.indexOf(TIER)<0) return; var q=parseInt(ADQ[k])||0;
-   adh+='<div class="row"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':'👥'))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+money(a.p)+' ر.س شهرياً</div></div>'
+   adh+='<div class="row"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':(k==='emails'?'✉️':'👥')))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+money(a.p)+' ر.س شهرياً</div></div>'
     +'<div class="step"><button type="button" data-nless="'+k+'"'+(q<=0?' disabled':'')+'>−</button><b>'+q+'</b><button type="button" class="add" data-nadd="'+k+'">+</button></div></div>'; });
  if(adh) h+=buyBlock('<div id="nadd" style="margin-top:16px;border-top:1px dashed #dbe3f4;padding-top:12px"><div class="h3" style="font-size:15px;margin-bottom:2px">احتجت أكثر؟ أضف لباقتك</div><div class="mu" style="margin-bottom:6px">اختياري — تُضاف إلى اشتراكك وتتجدد معه، ويمكنك إلغاؤها في أي وقت</div>'+adh+'</div>');
  h+='<div class="mu" style="margin-top:10px">الباقة المجانية مستمرة لك دائماً: مشاريع السوق والعروض، ومشرف أو مندوب واحد.</div>';
@@ -183,7 +212,7 @@ function manage(){
  if(S.status!=='trial'&&S.status!=='grace'&&!IOSAPP){
   var na=S.next_addons||S.addons||{}, ah='', totA=0;
   Object.keys(C.addons).forEach(function(k){ var a=C.addons[k]; if(!a.on)return; var ok=a.tiers.indexOf(S.tier)>-1, q=parseInt((S.addons||{})[k])||0, nq=parseInt(na[k]); if(isNaN(nq))nq=q; totA+=q*a.p;
-    ah+='<div class="row" style="'+(ok?'':'opacity:.55')+'"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':'👥'))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+money(a.p)+' ر.س شهرياً'+(nq<q?' · '+(q-nq)+' تنتهي بنهاية الفترة':'')+'</div></div>'
+    ah+='<div class="row" style="'+(ok?'':'opacity:.55')+'"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':(k==='emails'?'✉️':'👥')))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+money(a.p)+' ر.س شهرياً'+(nq<q?' · '+(q-nq)+' تنتهي بنهاية الفترة':'')+'</div></div>'
      +(ok&&S.status!=='grace'?buyBlock('<div class="step"><button type="button" data-less="'+k+'"'+(nq<=0?' disabled':'')+'>−</button><b>'+q+'</b><button type="button" class="add" data-add="'+k+'">+</button></div>'):(ok?(q?'<b style="font-size:14px">'+q+'</b>':''):'<span class="pill p-gr">متاحة لباقة مؤسسة</span>'))+'</div>'; });
   var diff=(C.tiers.ent.m-C.tiers.pro.m);
   h+='<div class="card"><div class="h3" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">الإضافات <span class="mu">تُضاف إلى اشتراكك وتتجدد معه، ويمكنك إلغاؤها في أي وقت</span></div>'+ah
@@ -260,8 +289,8 @@ function iapManage(){
    +'<div class="lim"><span>مشرفون ومندوبون</span><b>'+(U.dlg||0)+' من '+L.dlg+'</b></div><div class="lim"><span>مشاريع نشطة</span><b>'+(U.projects||0)+' من '+L.projects+'</b></div><div class="lim"><span>فنيون</span><b>'+(U.tech||0)+' من '+L.tech+'</b></div>'
    +'<div class="lim"><span>الفروع</span><b>'+(L.branch>=99?'متعددة':L.branch)+'</b></div><div class="lim"><span>الخريطة اللايف</span><b>'+(L.map?'✓':'—')+'</b></div></div>';
   if(S.status!=='grace'){ var ah='';
-    Object.keys(C.addons).forEach(function(k){ var a=C.addons[k]; if(!a.on||a.tiers.indexOf(S.tier)<0) return; var sku=SKU.addon[k], q=APR[sku], has=own.indexOf(sku)>-1;
-      ah+='<div class="row"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':'👥'))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+(q?'<bdi dir="ltr">'+esc(q.displayPrice)+'</bdi>'+' / شهر':'…')+'</div></div>'
+    Object.keys(C.addons).forEach(function(k){ var a=C.addons[k]; if(!a.on||a.tiers.indexOf(S.tier)<0) return; var sku=SKU.addon[k]; if(!sku) return; var q=APR[sku], has=own.indexOf(sku)>-1;
+      ah+='<div class="row"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':(k==='emails'?'✉️':'👥')))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+(q?'<bdi dir="ltr">'+esc(q.displayPrice)+'</bdi>'+' / شهر':'…')+'</div></div>'
        +(has?'<span class="pill p-g">✓ مفعّلة</span>':'<button type="button" class="btn sec" data-iapa="'+sku+'" style="padding:8px 14px"'+(APBUSY||!q?' disabled':'')+'>إضافة</button>')+'</div>'; });
     if(ah) h+='<div class="card"><div class="h3" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">الإضافات <span class="mu">اشتراك شهري يتجدد مع Apple، وإلغاؤه من «إدارة الاشتراك»</span></div>'+ah+iapLegal()+'</div>';
   }

@@ -61,7 +61,7 @@ button,input,textarea,select{font-family:inherit}
 .hr{display:flex;gap:11px;align-items:center;padding:11px 0;border-top:1px solid #f1f5f9}.hr .c{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.hr b{font-size:14px;color:#172554}.hi{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
 @media(max-width:820px){.kp{flex-wrap:wrap}.kp .k{flex:1 1 40%}.kp .v{font-size:20px}}
 </style>
-<script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script></head>
+<script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script><script src="/branch.js?v=1"></script></head>
 <body>
 <div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحة التحكم</a></div>
 <div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
@@ -72,7 +72,7 @@ var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
 if(!TOK){ try{localStorage.setItem('_after_login',location.pathname+location.search);}catch(e){} location.href='/auth.html'; return; }
 var A=document.getElementById('app'), P=new URLSearchParams(location.search), S={f:'',q:'',items:[],live:false,c:null};
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},o.headers||{});
+function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},window.MNQ_BR?MNQ_BR.h():{},o.headers||{});
   return fetch(p,o).then(function(r){ if(r.status===401){ try{localStorage.setItem('_after_login',location.pathname+location.search);}catch(e){} location.href='/auth.html'; throw 0; } return r.json().then(function(j){ if(!r.ok){ throw new Error(j.message||'حدث خطأ'); } return j; }); });}
 function toast(t){ var e=document.getElementById('toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){e.style.display='none';},2600); }
 function m(v){ return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
@@ -89,27 +89,46 @@ function list(){
   api('/api/customers'+qs).then(function(r){ S.items=r.items||[]; S.live=!!r.live; S.total=r.total||0; draw(); }).catch(function(e){ if(e) A.innerHTML='<div class="card empty"><b>'+esc(e.message)+'</b></div>'; });
 }
 function draw(){
-  var h='<div class="row sb"><div class="h1">دفتر العملاء <span class="mu">('+S.total+')</span></div>'+(S.live?'<button class="btn pri" onclick="_cAdd()">+ عميل</button>':'')+'</div>'+ro();
+  var h='<div class="row sb"><div class="h1">دفتر العملاء <span class="mu">('+S.total+')</span></div>'+(S.live?'<div class="row"><button class="btn sec" onclick="_cmp()">✉️ حملة لعملائك</button><button class="btn pri" onclick="_cAdd()">+ عميل</button></div>':'')+'</div><div id="brbar" style="display:none"></div>'+ro();
   h+='<input id="cq" type="search" maxlength="40" placeholder="🔍 بحث بالاسم أو الجوال" value="'+esc(S.q)+'" style="width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:11px 13px;font-size:15px;font-family:inherit;background:#fff">';
   h+='<div class="tabs">'+[['','الكل'],['repeat','متكررين'],['open','عندهم مشروع مفتوح'],['idle','ما تعاملوا من 6 شهور']].map(function(t){ return '<button class="'+(S.f===t[0]?'on':'')+'" onclick="_cF(\''+t[0]+'\')">'+t[1]+'</button>'; }).join('')+'</div>';
   if(!S.items.length) h+='<div class="card empty"><div style="font-size:38px">👥</div><b style="display:block;margin-top:6px">'+(S.total?'ما فيه نتائج':'دفترك فاضي')+'</b><div class="mu" style="margin-top:6px">كل عميل ترسل له عرض سعر أو تسوي له مشروع ينضاف تلقائياً.</div></div>';
   else h+='<div class="ql">'+S.items.map(function(c,i){ var tag=c.open_n?'<span class="pill p-y">مشروع مفتوح</span>':(c.q_wait?'<span class="pill p-b">عرض بانتظاره</span>':(c.jobs_n>=2?'<span class="pill p-g">متكرر</span>':''));
     var sub=(c.jobs_n?c.jobs_n+' مشروع':'')+(c.total?' · '+m(c.total)+' ر.س':'')+(c.last_at?' · آخر تعامل '+d(c.last_at):'');
-    return '<button class="qi" onclick="_cOpen('+c.id+')">'+av(c.name,i)+'<div class="c"><b>'+esc(c.name||'عميل')+'</b><span class="mu">'+(sub.replace(/^ · /,'')||(c.manual?'أُضيف يدوي':''))+'</span></div>'+tag+'</button>'; }).join('')+'</div>';
-  A.innerHTML=h;
+    return '<button class="qi" onclick="_cOpen('+c.id+')">'+av(c.name,i)+'<div class="c"><b>'+esc(c.name||'عميل')+MNQ_BR.tag(c.branch_id)+'</b><span class="mu">'+(sub.replace(/^ · /,'')||(c.manual?'أُضيف يدوي':''))+'</span></div>'+tag+'</button>'; }).join('')+'</div>';
+  A.innerHTML=h; MNQ_BR.bar(document.getElementById('brbar'),function(){ list(); });
   var q=document.getElementById('cq'), t; q.oninput=function(){ clearTimeout(t); t=setTimeout(function(){ S.q=q.value.trim(); list(); setTimeout(function(){ var n=document.getElementById('cq'); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } },60); },350); };
 }
 window._cF=function(f){ S.f=f; list(); };
+// ───── الحملات بالإيميل ─────
+var AUD=[['all','كل العملاء'],['repeat','المتكررين'],['idle','ما تعاملوا من 6 شهور'],['plans','عندهم خطة صيانة']];
+window._cmp=function(){ setUrl('camp=1'); api('/api/campaigns').then(function(r){ S.cp=r; S.aud=S.aud||'all'; cmp(); }).catch(function(e){ if(e)toast(e.message); }); };
+function cmp(){ var r=S.cp, left=Math.max(0,r.limit-r.used), pct=r.limit?Math.min(100,Math.round(r.used/r.limit*100)):100, n=r.counts[S.aud]||0;
+  var h='<div class="row" style="gap:8px"><button class="btn sec" style="padding:7px 11px" onclick="_cBack()">‹ دفتر العملاء</button></div><div class="h1">حملة لعملائك</div>';
+  h+='<div class="card"><div class="row sb"><b style="color:#172554">رصيد الشهر</b><span class="mu">'+r.used+' من '+r.limit+' إيميل</span></div><div style="height:8px;background:#eef3ff;border-radius:99px;overflow:hidden;margin-top:8px"><div style="height:8px;width:'+pct+'%;background:'+(left?'#1e3a8a':'#b42318')+'"></div></div>'+(r.addon?'<div class="mu" style="margin-top:6px">تحتاج أكثر؟ <a href="/plan.html" style="color:#1e3a8a">إضافة «500 إيميل» بـ '+r.addon+' ر.س شهرياً</a></div>':'')+'</div>';
+  h+='<div class="card f" style="display:flex;flex-direction:column;gap:12px"><div><label>لمين؟</label><div class="tabs" style="flex-wrap:wrap">'+AUD.map(function(a){ return '<button class="'+(S.aud===a[0]?'on':'')+'" onclick="_cmpA(\''+a[0]+'\')">'+a[1]+' ('+(r.counts[a[0]]||0)+')</button>'; }).join('')+'</div><div class="mu" style="margin-top:6px">يوصل '+n+' عميل عندهم إيميل (من '+r.total+' في دفترك)</div></div>'
+    +'<div><label for="cm-s">العنوان</label><input id="cm-s" maxlength="120" value="'+esc(S.cms||'')+'" placeholder="مثال: الصيف قرّب — نظّف مكيفاتك قبل الحر"></div>'
+    +'<div><label for="cm-b">الرسالة</label><textarea id="cm-b" maxlength="2000" style="min-height:120px" placeholder="مثال: خصم 15% على تنظيف المكيفات حتى نهاية الشهر…">'+esc(S.cmb||'')+'</textarea></div>'
+    +'<button class="btn pri" id="cm-go"'+(n&&left?'':' disabled')+'>إرسال لـ '+Math.min(n,left)+' عميل</button><div class="mu" style="text-align:center">كل إيميل باسم منشأتك، فيه زر للتواصل ورابط إلغاء الاشتراك</div></div>';
+  if(r.history.length) h+='<div class="card"><span class="h3">الحملات السابقة</span>'+r.history.map(function(x){ return '<div class="row sb" style="padding:8px 0;border-top:1px solid #f1f5f9;font-size:13.5px;font-weight:700"><span>'+esc(x.subject)+'</span><span class="mu">'+x.sent_n+' إيميل · '+d(x.created_at)+'</span></div>'; }).join('')+'</div>';
+  A.innerHTML=h;
+  document.getElementById('cm-s').oninput=function(){ S.cms=this.value; }; document.getElementById('cm-b').oninput=function(){ S.cmb=this.value; };
+  document.getElementById('cm-go').onclick=function(){ send(false); };
+  function send(partial){ var b=document.getElementById('cm-go'); b.disabled=true; api('/api/campaigns',{method:'POST',body:JSON.stringify({audience:S.aud,subject:S.cms,body:S.cmb,partial:partial})}).then(function(x){ toast(x.message||'انرسلت'); S.cms=''; S.cmb=''; _cmp(); })
+    .catch(function(e){ if(!e)return; if(e.j&&e.j.code==='partial'&&confirm(e.message)){ send(true); return; } b.disabled=false; toast(e.message); }); }
+}
+window._cmpA=function(a){ S.aud=a; cmp(); };
+window._cMv=function(el){ var to=parseInt(el.value); if(!to)return; api('/api/branches/move',{method:'POST',body:JSON.stringify({kind:'customer',id:S.c.customer.id,to:to})}).then(function(r){ toast(r.message||'انتقل'); _cOpen(S.c.customer.id); }).catch(function(e){ if(e)toast(e.message); el.value=''; }); };
 function sheet(inner){ var o=document.createElement('div'); o.className='sheet-ov'; o.id='sh'; o.onclick=function(e){ if(e.target===o)o.remove(); }; o.innerHTML='<div class="sheet f">'+inner+'</div>'; document.body.appendChild(o); return o; }
-window._cAdd=function(){ var o=sheet('<b style="font-size:17px;color:#172554">عميل جديد</b><div><label for="a-n">الاسم</label><input id="a-n" maxlength="80"></div><div><label for="a-p">الجوال</label><input id="a-p" dir="ltr" inputmode="tel" maxlength="15" placeholder="05xxxxxxxx" style="text-align:right"></div><div><label for="a-e">الإيميل (اختياري)</label><input id="a-e" type="email" dir="ltr" maxlength="120" style="text-align:right"></div><div><label for="a-a">العنوان (اختياري)</label><input id="a-a" maxlength="200"></div><button class="btn pri" id="a-go">إضافة</button><button class="btn" style="background:transparent;color:#64748b" onclick="document.getElementById(\'sh\').remove()">رجوع</button>');
-  document.getElementById('a-go').onclick=function(){ var b=this; b.disabled=true; api('/api/customers',{method:'POST',body:JSON.stringify({name:document.getElementById('a-n').value,phone:document.getElementById('a-p').value,address:document.getElementById('a-a').value,email:document.getElementById('a-e').value})}).then(function(r){ o.remove(); toast('انضاف'); _cOpen(r.id); }).catch(function(e){ b.disabled=false; if(e)toast(e.message); }); }; };
+window._cAdd=function(){ var o=sheet('<b style="font-size:17px;color:#172554">عميل جديد</b><div><label for="a-n">الاسم</label><input id="a-n" maxlength="80"></div>'+MNQ_BR.field('a-b',0,'الفرع')+'<div><label for="a-p">الجوال</label><input id="a-p" dir="ltr" inputmode="tel" maxlength="15" placeholder="05xxxxxxxx" style="text-align:right"></div><div><label for="a-e">الإيميل (اختياري)</label><input id="a-e" type="email" dir="ltr" maxlength="120" style="text-align:right"></div><div><label for="a-a">العنوان (اختياري)</label><input id="a-a" maxlength="200"></div><button class="btn pri" id="a-go">إضافة</button><button class="btn" style="background:transparent;color:#64748b" onclick="document.getElementById(\'sh\').remove()">رجوع</button>');
+  document.getElementById('a-go').onclick=function(){ var b=this; b.disabled=true; api('/api/customers',{method:'POST',body:JSON.stringify({name:document.getElementById('a-n').value,phone:document.getElementById('a-p').value,address:document.getElementById('a-a').value,email:document.getElementById('a-e').value,branch_id:MNQ_BR.val('a-b')})}).then(function(r){ o.remove(); toast('انضاف'); _cOpen(r.id); }).catch(function(e){ b.disabled=false; if(e)toast(e.message); }); }; };
 // ───── ملف العميل ─────
 window._cOpen=function(id){ setUrl('id='+id); api('/api/customers/'+id).then(function(r){ S.c=r; S.live=!!r.live; prof(); }).catch(function(e){ if(e){ toast(e.message); list(); } }); };
 var QST={sent:['بانتظار العميل','p-b'],change:['طلب تعديل','p-y'],accepted:['وافق','p-g'],declined:['اعتذر','p-r'],expired:['انتهى','p-gr']};
 function prof(){
   var R=S.c, c=R.customer, st=R.stats;
   var h='<div class="row" style="gap:8px"><button class="btn sec" style="padding:7px 11px" onclick="_cBack()">‹ دفتر العملاء</button></div>'+ro();
-  h+='<div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">'+av(c.name,c.id,60)+'<div style="flex:1;min-width:180px"><div class="h1">'+esc(c.name)+'</div><div class="mu" style="margin-top:3px"><span dir="ltr">'+esc(c.phone)+'</span>'+(c.email?' · <a href="mailto:'+esc(c.email)+'" dir="ltr" style="color:#1e3a8a">'+esc(c.email)+'</a>':'')+(c.address?' · '+esc(c.address):'')+' · عميل من '+d(c.created_at)+'</div><div class="row" style="gap:6px;margin-top:6px">'+(st.jobs_n>=2?'<span class="pill p-g">عميل متكرر</span>':'')+(c.client_id?'<span class="pill p-b">له حساب في مناقصة</span>':'')+'</div></div><div class="row"><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+wa(c.phone)+'">واتساب</a><a class="btn sec" href="tel:'+esc(c.phone)+'">اتصال</a>'+(S.live?'<a class="btn pri" href="/quotes.html?new=1&n='+encodeURIComponent(c.name)+'&p='+encodeURIComponent(c.phone)+'">+ عرض سعر</a>':'')+'</div></div>';
+  h+='<div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">'+av(c.name,c.id,60)+'<div style="flex:1;min-width:180px"><div class="h1">'+esc(c.name)+'</div><div class="mu" style="margin-top:3px"><span dir="ltr">'+esc(c.phone)+'</span>'+(c.email?' · <a href="mailto:'+esc(c.email)+'" dir="ltr" style="color:#1e3a8a">'+esc(c.email)+'</a>':'')+(c.address?' · '+esc(c.address):'')+' · عميل من '+d(c.created_at)+(MNQ_BR.multi?' · 📍 '+esc(MNQ_BR.name(c.branch_id)):'')+'</div>'+(MNQ_BR.multi&&!MNQ_BR.forced&&S.live?'<div style="margin-top:6px"><select class="mnq-br-sel" style="padding:6px 8px;font-size:12px" onchange="_cMv(this)" aria-label="نقل لفرع"><option value="">نقل العميل لفرع…</option>'+MNQ_BR.list.filter(function(b){return b.id!==MNQ_BR.of(c.branch_id)&&!b.paused;}).map(function(b){return '<option value="'+b.id+'">'+esc(b.name)+'</option>';}).join('')+'</select></div>':'')+'<div class="row" style="gap:6px;margin-top:6px">'+(st.jobs_n>=2?'<span class="pill p-g">عميل متكرر</span>':'')+(c.client_id?'<span class="pill p-b">له حساب في مناقصة</span>':'')+'</div></div><div class="row"><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+wa(c.phone)+'">واتساب</a><a class="btn sec" href="tel:'+esc(c.phone)+'">اتصال</a>'+(S.live?'<a class="btn pri" href="/quotes.html?new=1&n='+encodeURIComponent(c.name)+'&p='+encodeURIComponent(c.phone)+'">+ عرض سعر</a>':'')+'</div></div>';
   h+='<div class="kp">'+[['إجمالي التعامل',m(st.total),'ر.س (مشاريع مكتملة)'],['المشاريع',st.jobs_n,st.done_n+' مكتملة'+(st.open_n?' · '+st.open_n+' مفتوحة':'')],['عروض الأسعار',st.quotes_n,st.quotes_ok+' موافقة'],['تقييمه لك',st.rating?st.rating+' ★':'—',st.rating_n?'من '+st.rating_n+' تقييم':'ما قيّم للحين']].map(function(k){ return '<div class="card k"><span class="mu">'+k[0]+'</span><div class="v">'+k[1]+'</div><span class="mu">'+k[2]+'</span></div>'; }).join('')+'</div>';
   h+='<div class="ed"><div class="main">';
   // السجل
@@ -180,10 +199,13 @@ window._pAct=function(a){ if(a==='cancel'&&!confirm('تلغي الخطة؟ ال�
 window._pMove=function(vid){ var v=document.getElementById('mv'+vid).value; if(!v){ toast('اختر التاريخ'); return; } api('/api/plans/'+S.p.id,{method:'POST',body:JSON.stringify({act:'move',visit_id:vid,due_at:v})}).then(function(){ toast('تغيّر الموعد'); _pOpen(S.p.id); }).catch(function(e){ if(e)toast(e.message); }); };
 window._pRenew=function(direct){ var pr=String(document.getElementById('rn-p').value||'').replace(/[٠-٩]/g,function(c){return '٠١٢٣٤٥٦٧٨٩'.indexOf(c);}).replace(/[^\d.]/g,''); api('/api/plans/'+S.p.id,{method:'POST',body:JSON.stringify({act:'renew',direct:direct,price:pr})}).then(function(r){ toast('تم التجديد'); _pOpen(r.id); }).catch(function(e){ if(e)toast(e.message); }); };
 var id=parseInt(P.get('id')), ph=P.get('ph'), pl=parseInt(P.get('plan'));
+MNQ_BR.load().then(function(){
 if(pl) _pOpen(pl);
 else if(id) _cOpen(id);
+else if(P.get('camp')) _cmp();
 else if(ph) api('/api/customers/by-phone/'+encodeURIComponent(ph)).then(function(r){ _cOpen(r.id); }).catch(function(e){ if(e)toast(e.message); list(); });
 else list();
+});
 })();
 </script>
 </body>

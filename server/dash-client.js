@@ -3258,6 +3258,8 @@ function _nfOpenC(id){
   if(n.type==='verify_email'){ try{_vbShow();}catch(e){} return; }
   if(n.type==='plan'&&n.ref_id){ location.href='/mplan.html?id='+(parseInt(n.ref_id)||0); return; }
   if(n.type==='job'&&n.ref_id){ location.href='/job.html?id='+(parseInt(n.ref_id)||0); return; }
+  if(n.type==='booking'&&n.ref_id){ location.href='/book.html?id='+(parseInt(n.ref_id)||0); return; }
+  if(n.type==='idea'&&n.ref_id){ location.href='/ideas.html?id='+(parseInt(n.ref_id)||0); return; }
   if(n.type==='tech'){ location.href='/tech.html'+(n.ref_id?'?id='+(parseInt(n.ref_id)||0):''); return; }
   if(n.type==='quote'&&n.ref_id){ location.href='/quote.html?id='+(parseInt(n.ref_id)||0); return; }
   if(n.type==='support'){ if(window.supOpen)supOpen(); else location.href='/chat?support=1'; return; }

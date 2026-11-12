@@ -57,7 +57,7 @@ function _navSums(){
     e.textContent=sum; e.style.display=sum?'inline-flex':'none'; });
 }
 // ═══ قسمين: «المنصة» و«الاشتراكات» — مبدّل فوق القائمة ═══
-var _SPG=['subhome','subs','subplans','subcoupons','subqreq','subinv','subuse'];
+var _SPG=['subhome','subs','subplans','subcoupons','subqreq','subinv','subuse','ideas'];
 function _admMode(m,go){
   var cur=document.getElementById('nav-s')&&document.getElementById('nav-s').style.display!=='none'?'s':'p';
   if(m!==cur){ var a=document.getElementById('nav-p'),b=document.getElementById('nav-s'); if(a)a.style.display=m==='p'?'':'none'; if(b)b.style.display=m==='s'?'':'none';
@@ -138,6 +138,7 @@ function showPage(pg,el){
   meta.subrev=['🛡️ مراجعة «مقاول باطن»','طلبات المزوّدين قبل نشرها — وتساعد الجاد يوضّح طلبه'];
   meta.named=['⭐ المحجوزة بالاسم','مشاريع طلب فيها العميل مزوّد بالاسم — تفاعل المزوّد المطلوب والمزوّدين الثانيين'];
   meta.invites=['دعوات العملاء','العميل يشارك رابط مشروعه مع مقاولين يعرفهم — مين فتح ومين سجّل ومين قدّم ورسى عليه'];
+  meta.ideas=['💡 الاقتراحات','اقتراحات المزوّدين: راجعها قبل النشر، ادمج المكرر، وحدّث حالتها — المصوّتين يوصلهم إشعار'];
   meta.subhome=['الاشتراكات — نظرة عامة','مساعد الفوز ومؤسسة: الدخل والمشتركين وكل شي يحتاج متابعة'];meta.subplans=['الباقات والأسعار','الأسعار والحدود والإضافات والفترة المجانية — وفتح الاشتراكات لكل المزوّدين'];meta.subcoupons=['الكوبونات والعروض','كوبونات الخصم وعروض المناسبات — الخصم على الدفعة اللي ينستخدم فيها بس'];meta.subqreq=['طلبات التسعيرة','مراجعة طلبات العملاء الخاصة قبل ما توصل المزوّد المشترك'];meta.subinv=['الفواتير والمدفوعات','كل عمليات دفع الاشتراكات — الناجحة والمتعثّرة والمسترجعة'];meta.subuse=['الاستخدام والمزايا','وش يستخدم المشتركين من مزايا الباقة — عروض الأسعار والمشاريع والفريق والصيانة'];meta.payset=['الدفع الإلكتروني','بوابة الدفع للسعي والاشتراكات'];
   meta.drafts=['مشاريع ما اكتملت','ناس بدأوا يكتبون مشروع وطلعوا — نذكّرهم تلقائياً ونرجّعهم لمسودّتهم'];
   document.getElementById('pageTitle').textContent=_g?GRPS[_g].l:meta[pg][0];
@@ -164,6 +165,7 @@ function showPage(pg,el){
   if(pg==='subqreq')loadQreqAdmin();
   if(pg==='subinv')loadSubInv();
   if(pg==='subuse')loadSubUse();
+  if(pg==='ideas')loadIdeasAdmin();
   if(pg==='payset')_saPayBox();
   if(pg==='settings')loadSettings();
   if(pg==='marketing')loadMarketing();
@@ -6395,7 +6397,7 @@ function gsOpenReq(id){
 
 // ═══ هوية الإدارة + تقييد الواجهة حسب الصلاحية ═══
 var _me=null,_myPerms=[];
-var NAV_PERM={subhome:'settings.manage',subs:'settings.manage',subplans:'settings.manage',subcoupons:'settings.manage',subinv:'settings.manage',subuse:'settings.manage',payset:'settings.manage',subqreq:'requests.review',dlgs:'users.view',support:'support.view',subrev:'requests.review',subc:'requests.view',nstats:'analytics.view',invites:'analytics.view',named:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
+var NAV_PERM={ideas:'requests.edit',subhome:'settings.manage',subs:'settings.manage',subplans:'settings.manage',subcoupons:'settings.manage',subinv:'settings.manage',subuse:'settings.manage',payset:'settings.manage',subqreq:'requests.review',dlgs:'users.view',support:'support.view',subrev:'requests.review',subc:'requests.view',nstats:'analytics.view',invites:'analytics.view',named:'analytics.view',deals:'requests.view',vstats:'users.view',appstats:'analytics.view',ctstats:'analytics.view',claims:'requests.view',bidreasons:'bids.view',dashboard:'dashboard.view',analytics:'analytics.view',users:'users.view',requests:'requests.view',projreview:'requests.review',offerwatch:'requests.view',engagement:'requests.view',contactlog:'requests.view',bids:'bids.view',reviews:'reviews.view',questions:'questions.view',reports:'reports.view',logs:'logs.view',settings:'settings.manage',admins:'admins.manage',outreach:'outreach.manage'};
 function permOK(p){ return _myPerms.indexOf('*')>=0 || _myPerms.indexOf(p)>=0; }
 function gateUI(){
   document.querySelectorAll('.ni').forEach(function(btn){
@@ -8894,3 +8896,35 @@ function _loadVSum(){
 }
 // يرجع آخر قسم كان مفتوح (المنصة أو الاشتراكات)
 (function(){ try{ var h=(location.hash||'').replace('#','').split('?')[0]; if(_SPG.indexOf(h)>-1) _admMode('s'); }catch(e){} try{ _navSums(); }catch(e){} })();
+
+// ═══ الاقتراحات (منصة اقتراحات المزوّدين) ═══
+var _IDS=_IDS||{st:'review'};
+function loadIdeasAdmin(){
+  if(!_IDS)_IDS={st:'review'};
+  var root=document.getElementById('ideas-root'); if(!root)return;
+  fetch(API+'/api/admin/ideas?st='+_IDS.st,hdr()).then(function(r){return r.json();}).then(function(d){
+    if(!d||!d.items){ root.innerHTML=emptyState('تعذّر التحميل'); return; } _IDS.d=d; var C=d.counts||{}, ST=d.statuses||{};
+    var b=document.getElementById('ideas-badge'); if(b){ b.textContent=C.review||''; b.style.display=C.review?'':'none'; }
+    var tabs=['review','open','study','planned','progress','done','declined','hidden','merged'];
+    var h='<div class="ad-card" style="display:flex;gap:6px;flex-wrap:wrap">'+tabs.map(function(t){ return '<button type="button" class="'+(_IDS.st===t?'btn-p':'btn-g')+'" style="padding:7px 12px;border-radius:99px;font-size:12.5px" onclick="_idsTab(\''+t+'\')">'+esc(ST[t]||t)+(C[t]?' ('+C[t]+')':'')+'</button>'; }).join('')+'</div>';
+    if(!d.items.length) h+=emptyState(_IDS.st==='review'?'ما فيه اقتراحات بانتظار المراجعة':'ما فيه شي هنا');
+    else h+=d.items.map(function(i){
+      var acts='';
+      if(i.status==='review') acts='<button class="btn-p" onclick="_idsAct('+i.id+',\'approve\')">اعتماد ونشر</button><button class="btn-g" onclick="_idsMerge('+i.id+')">دمج مع…</button><button class="btn-g" onclick="_idsAct('+i.id+',\'reject\')">غير مناسب</button><button class="btn-g" onclick="_idsAct('+i.id+',\'hide\')">إخفاء</button>';
+      else if(i.status!=='merged'&&i.status!=='hidden') acts='<select onchange="_idsSt('+i.id+',this)" style="padding:7px 10px;border-radius:10px;border:1.5px solid #dbe4f3;font-family:inherit;font-weight:800"><option value="">تغيير الحالة…</option>'+['open','study','planned','progress','done'].filter(function(s){return s!==i.status;}).map(function(s){return '<option value="'+s+'">'+esc(ST[s])+'</option>';}).join('')+'</select><button class="btn-g" onclick="_idsMerge('+i.id+')">دمج مع…</button><button class="btn-g" onclick="_idsAct('+i.id+',\'reject\')">غير مناسب</button>';
+      return '<div class="ad-card" style="display:flex;gap:14px;align-items:flex-start"><div style="text-align:center;min-width:64px"><div style="font-family:Cairo;font-size:24px;font-weight:900;color:#172554">'+i.votes+'</div><div style="font-size:11px;color:#64748b;font-weight:800">صوت</div>'+(i.sub_votes?'<div style="margin-top:4px;background:#ecfdf3;color:#067647;border-radius:99px;font-size:11px;font-weight:800;padding:2px 6px">'+i.sub_votes+' مشترك</div>':'')+'</div>'
+        +'<div style="flex:1;min-width:0"><b style="font-size:15px;color:#172554">'+esc(i.title)+'</b> <span style="font-size:11.5px;background:#f2f4f7;border-radius:99px;padding:2px 8px;font-weight:800">'+esc(i.cat_t)+'</span><div style="font-size:13px;font-weight:600;line-height:1.8;margin-top:4px;white-space:pre-wrap">'+esc(i.body)+'</div>'
+        +'<div style="font-size:12px;color:#64748b;font-weight:700;margin-top:4px">#'+i.id+' · '+esc(i.uname||'')+(i.city?' · '+esc(i.city):'')+' · 💬 '+i.comments_n+(i.reply?' · الرد: '+esc(i.reply):'')+'</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">'+acts+'<a class="btn-g" href="/ideas.html?id='+i.id+'" target="_blank" rel="noopener">فتح</a></div></div></div>'; }).join('');
+    root.innerHTML=h;
+  }).catch(function(){ root.innerHTML=emptyState('تعذّر التحميل'); });
+}
+window._idsTab=function(t){ _IDS.st=t; loadIdeasAdmin(); };
+function _idsPost(id,body,msg){ fetch(API+'/api/admin/ideas/'+id,Object.assign(hdr(),{method:'POST',body:JSON.stringify(body)})).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});}).then(function(x){ if(!x.ok) return toast(x.j.message||'تعذّر','error'); toast(msg+(x.j.notified?' — وصل إشعار لـ '+x.j.notified+' مصوّت':''),'success'); loadIdeasAdmin(); }).catch(function(){ toast('تعذّر','error'); }); }
+window._idsAct=function(id,act){ var body={act:act};
+  if(act==='approve'){ var rp=prompt('رد قصير يظهر مع الاقتراح (اختياري):',''); if(rp===null)return; body.reply=rp; }
+  if(act==='reject'||act==='hide'){ var why=prompt(act==='hide'?'سبب الإخفاء (للسجل):':'السبب (يوصل صاحب الاقتراح والمصوّتين):',''); if(why===null)return; body.reason=why; }
+  _idsPost(id,body,act==='approve'?'انتشر':'تم'); };
+window._idsSt=function(id,el){ var st=el.value; if(!st)return; var rp=prompt('رد يظهر للمزوّدين مع الحالة الجديدة (اختياري):',''); if(rp===null){ el.value=''; return; } _idsPost(id,{act:'status',status:st,reply:rp||undefined},'تحدّثت الحالة'); };
+window._idsMerge=function(id){ var into=prompt('رقم الاقتراح المنشور اللي تبي تدمج فيه (#):',''); if(!into)return; _idsPost(id,{act:'merge',into:parseInt(String(into).replace(/\D/g,''))},'اندمج — الأصوات انتقلت'); };
+setTimeout(function(){ try{ fetch(API+'/api/admin/ideas?st=review',hdr()).then(function(r){return r.json();}).then(function(d){ var b=document.getElementById('ideas-badge'); var n=d&&d.counts&&d.counts.review; if(b&&n){ b.textContent=n; b.style.display=''; } }).catch(function(){}); }catch(e){} },2500);

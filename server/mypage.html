@@ -22,8 +22,8 @@ button,input,textarea{font-family:inherit}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;padding:10px 15px;font-weight:800;font-size:13.5px;border:0;cursor:pointer;white-space:nowrap;text-decoration:none}
 .pri{background:#1e3a8a;color:#fff}.sec{background:#fff;border:1.5px solid #e2e8f0;color:#1e293b}.wa{background:#16a34a;color:#fff}.dan{background:#fff;border:1.5px solid #fecdca;color:#b42318}
 .btn:disabled{opacity:.55;cursor:default}
-.seg{display:flex;background:#e2e8f0;border-radius:12px;padding:4px;max-width:420px}
-.seg button{flex:1;border:0;background:transparent;padding:10px;border-radius:9px;font-weight:800;font-size:13.5px;color:#64748b;cursor:pointer;display:flex;gap:6px;align-items:center;justify-content:center}
+.seg{display:flex;background:#e2e8f0;border-radius:12px;padding:4px;max-width:640px;overflow-x:auto;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}
+.seg button{flex:1 0 auto;white-space:nowrap;border:0;background:transparent;padding:10px;border-radius:9px;font-weight:800;font-size:13.5px;color:#64748b;cursor:pointer;display:flex;gap:6px;align-items:center;justify-content:center}
 .seg button.on{background:#fff;color:#172554;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .bd{min-width:20px;height:20px;border-radius:99px;background:#ef4444;color:#fff;font-size:11px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
 .pill{display:inline-flex;align-items:center;height:23px;border-radius:99px;padding:0 10px;font-size:11.5px;font-weight:800;white-space:nowrap}
@@ -48,7 +48,7 @@ button,input,textarea{font-family:inherit}
 .two{display:flex;gap:14px;align-items:flex-start}.two>*{flex:1;min-width:0}
 @media(max-width:760px){.two{flex-direction:column}.two>*{width:100%}}
 </style>
-<script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script></head>
+<script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script><script src="/branch.js?v=1"></script></head>
 <body>
 <div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحة التحكم</a></div>
 <div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
@@ -57,40 +57,80 @@ button,input,textarea{font-family:inherit}
 (function(){
 var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
 if(!TOK){ location.href='/auth.html?redirect=mypage'; return; }
-var A=document.getElementById('app'), S={tab:/#page/.test(location.hash)?'page':'req', pg:null, items:[]};
+var A=document.getElementById('app'), S={tab:/#page/.test(location.hash)?'page':(/#book/.test(location.hash)?'book':(/#tools/.test(location.hash)?'tools':'req')), pg:null, items:[], bk:[], tl:null};
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},o.headers||{});
+function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},window.MNQ_BR?MNQ_BR.h():{},o.headers||{});
   return fetch(p,o).then(function(r){ if(r.status===401){ location.href='/auth.html?redirect=mypage'; throw 0; } return r.json().then(function(j){ if(!r.ok){ var e=new Error(j.message||'حدث خطأ'); e.j=j; throw e; } return j; }); });}
 function toast(t){ var e=document.getElementById('toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){e.style.display='none';},2600); }
 function ago(x){ if(!x)return ''; var m=Math.round((Date.now()-new Date(x))/60000); if(m<60)return 'قبل '+Math.max(1,m)+' د'; var h=Math.round(m/60); if(h<24)return 'قبل '+h+' س'; return 'قبل '+Math.round(h/24)+' يوم'; }
 function wa(ph){ ph=String(ph||'').replace(/\D/g,''); if(ph.indexOf('05')===0)ph='966'+ph.slice(1); else if(ph.indexOf('5')===0&&ph.length===9)ph='966'+ph; return ph; }
-window._mpTab=function(t){ S.tab=t; try{history.replaceState(null,'',t==='page'?'#page':'#');}catch(e){} draw(); };
+window._mpBr=function(id,el){ var to=parseInt(el.value); if(!to)return; api('/api/provider/qreqs/'+id,{method:'POST',body:JSON.stringify({act:'branch',to:to})}).then(function(r){ toast(r.message||'تحوّل'); load(); }).catch(function(e){ if(e)toast(e.message); el.value=''; }); };
+window._mpTab=function(t){ S.tab=t; try{history.replaceState(null,'',t==='req'?'#':'#'+t);}catch(e){} draw(); };
 
 function load(){
-  Promise.all([api('/api/provider/page'), api('/api/provider/qreqs').catch(function(){return {items:[]};})]).then(function(r){ S.pg=r[0]; S.items=r[1].items||[]; S.sv=(S.pg.services||[]).map(function(x){return {t:x.t,d:x.d||'',p:x.p||''};}); S.cover=S.pg.cover; draw(); })
+  Promise.all([api('/api/provider/page'), api('/api/provider/qreqs').catch(function(){return {items:[]};}), api('/api/provider/bookings').catch(function(){return {items:[]};}), api('/api/tools').catch(function(){return null;})]).then(function(r){ S.pg=r[0]; S.items=r[1].items||[]; S.bk=r[2].items||[]; S.tl=r[3]; S.sv=(S.pg.services||[]).map(function(x){return {t:x.t,d:x.d||'',p:x.p||''};}); S.cover=S.pg.cover; draw(); })
   .catch(function(e){ if(e===0)return; A.innerHTML='<div class="card empty"><b>'+esc(e.message==='للمزوّدين فقط'?'هذه الصفحة للمزوّدين':e.message)+'</b><div style="margin-top:12px"><a class="btn sec" href="/dashboard-provider.html">رجوع</a></div></div>'; });
 }
 function draw(){
-  var P=S.pg, nn=S.items.filter(function(x){return x.status==='new';}).length;
+  var P=S.pg, nn=S.items.filter(function(x){return x.status==='new';}).length, bn=S.bk.filter(function(x){return x.status==='pending';}).length;
   var h='<div><div class="h1">الصفحة التعريفية وطلبات التسعيرة</div><div class="mu" style="margin-top:4px">العملاء يطلبون تسعيرة منك مباشرة من صفحتك — يراجعها فريق مناقصة قبل ما توصلك.</div></div>';
   if(!P.live){
     h+='<div class="card lock"><div style="font-size:17px;font-weight:900">«اطلب تسعيرة» من مزايا الاشتراك</div><div style="font-size:13.5px;opacity:.85;font-weight:700;line-height:1.9;margin-top:6px">مع الاشتراك تظهر في صفحتك خدماتك وأسعارك وزر «اطلب تسعيرة»، وتوصلك الطلبات الخاصة مباشرة بدون سعي.</div>'
       +(P.open?'<a class="btn" style="background:#fbbf24;color:#172554;margin-top:12px" href="/plan.html">عرض الباقات</a>':'<div class="pill p-y" style="margin-top:12px">الاشتراكات تُفتح قريباً</div>')+'</div>';
   }
-  h+='<div class="seg"><button class="'+(S.tab==='req'?'on':'')+'" onclick="_mpTab(\'req\')">طلبات التسعيرة'+(nn?' <span class="bd">'+nn+'</span>':'')+'</button><button class="'+(S.tab==='page'?'on':'')+'" onclick="_mpTab(\'page\')">الصفحة التعريفية</button></div>';
-  h+= S.tab==='req'?reqs():page();
-  A.innerHTML=h;
+  h+='<div class="seg"><button class="'+(S.tab==='req'?'on':'')+'" onclick="_mpTab(\'req\')">طلبات التسعيرة'+(nn?' <span class="bd">'+nn+'</span>':'')+'</button><button class="'+(S.tab==='book'?'on':'')+'" onclick="_mpTab(\'book\')">الحجوزات'+(bn?' <span class="bd">'+bn+'</span>':'')+'</button><button class="'+(S.tab==='page'?'on':'')+'" onclick="_mpTab(\'page\')">الصفحة التعريفية</button><button class="'+(S.tab==='tools'?'on':'')+'" onclick="_mpTab(\'tools\')">الحجز والمتابعة</button></div>';
+  if(S.tab==='req'||S.tab==='book') h+='<div id="brbar" style="display:none"></div>';
+  h+= S.tab==='req'?reqs():(S.tab==='book'?books():(S.tab==='tools'?tools():page()));
+  A.innerHTML=h; if(S.tab==='req'||S.tab==='book') MNQ_BR.bar(document.getElementById('brbar'),function(){ load(); });
   if(S.tab==='page') qr();
 }
 var ST={new:['جديد','p-b'],seen:['اطّلعت عليه','p-g'],declined:['اعتذرت','p-gr']};
+// ───── الحجوزات ─────
+function fmtAt(x){ try{ return new Date(x).toLocaleString('ar-SA-u-nu-latn-ca-gregory',{weekday:'long',day:'numeric',month:'long',hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; } }
+var BKS={pending:['بانتظار تأكيدك','p-y'],proposed:['اقترحت وقتاً — بانتظار العميل','p-b'],confirmed:['تأكد · صار مشروع','p-g'],declined:['اعتذرت','p-gr'],cancelled:['ألغاه العميل','p-gr'],expired:['فات موعده','p-gr']};
+function books(){ var h='';
+  if(!S.tl||!S.tl.book||!S.tl.book.on) h+='<div class="card" style="background:#f5f8ff;border:1px dashed #c7d6f5"><b>الحجز المباشر مقفل</b><div class="mu" style="margin-top:4px">فعّله من «الحجز والمتابعة» — يطلع زر «احجز موعد» في صفحتك جنب «اطلب تسعيرة».</div><button class="btn sec" style="margin-top:10px" onclick="_mpTab(\'tools\')">الإعدادات</button></div>';
+  if(!S.bk.length) return h+'<div class="card empty"><div style="font-size:38px">📅</div><b style="display:block;margin-top:6px">ما فيه حجوزات للحين</b></div>';
+  S.bk.forEach(function(k){ var s=BKS[k.status]||['','p-gr'];
+    h+='<div class="card qr'+(k.status==='pending'?' new':'')+'"><div class="row" style="justify-content:space-between"><b style="font-size:15.5px;color:#172554">'+esc(k.title)+(k.qty>1?' × '+k.qty:'')+'</b><span class="pill '+s[1]+'">'+s[0]+'</span></div>'
+      +'<div class="meta"><span>👤 '+esc(k.client_name||'عميل')+'</span><span>📅 '+esc(fmtAt(k.status==='proposed'?k.alt_at:k.at))+'</span>'+(k.district||k.city?'<span>📍 '+esc([k.district,k.city].filter(Boolean).join('، '))+'</span>':'')+'<span>💰 '+Number(k.total).toLocaleString('en-US')+' ر.س</span>'+(MNQ_BR.multi?'<span>🏢 '+esc(MNQ_BR.name(k.branch_id))+'</span>':'')+'</div>'
+      +(k.note?'<div style="font-size:13px;font-weight:600;white-space:pre-wrap">'+esc(k.note)+'</div>':'')
+      +(k.status==='pending'?'<div class="row"><button class="btn pri" onclick="_bkAct('+k.id+',\'confirm\')">تأكيد الموعد</button><button class="btn sec" onclick="_bkProp('+k.id+')">اقتراح وقت ثاني</button>'+(k.client_phone?'<a class="btn wa" href="https://wa.me/'+wa(k.client_phone)+'" target="_blank" rel="noopener">واتساب</a>':'')+'<button class="btn" style="background:transparent;color:#b42318" onclick="_bkAct('+k.id+',\'decline\')">اعتذار</button></div>':'')
+      +(k.status==='confirmed'&&k.job_id?'<a class="btn sec" href="/jobs.html?id='+k.job_id+'">افتح المشروع — حدّد الفني</a>':'')+'</div>'; });
+  return h; }
+window._bkAct=function(id,act){ var body={act:act}; if(act==='decline'){ var w=prompt('سبب الاعتذار (يوصل العميل):','غير متاح في هذا الموعد'); if(w===null)return; body.reason=w; }
+  api('/api/provider/bookings/'+id,{method:'POST',body:JSON.stringify(body)}).then(function(r){ toast(act==='confirm'?'تأكد الموعد ✅ وصار مشروع':'تم'); load(); if(act==='confirm'&&r.job_id) setTimeout(function(){ location.href='/jobs.html?id='+r.job_id; },900); }).catch(function(e){ if(e)toast(e.message); }); };
+window._bkProp=function(id){ var o=document.createElement('div'); o.className='sheet-ov'; o.onclick=function(e){ if(e.target===o)o.remove(); };
+  o.innerHTML='<div class="sheet f" style="display:flex;flex-direction:column;gap:12px"><b style="font-size:17px;color:#172554">اقتراح وقت ثاني</b><input id="bk-at" type="datetime-local"><button class="btn pri" id="bk-go">إرسال للعميل</button></div>'; document.body.appendChild(o);
+  document.getElementById('bk-go').onclick=function(){ var v=document.getElementById('bk-at').value; if(!v){ toast('اختر الوقت'); return; } api('/api/provider/bookings/'+id,{method:'POST',body:JSON.stringify({act:'propose',at:new Date(v).toISOString()})}).then(function(){ o.remove(); toast('وصل العميل الوقت المقترح'); load(); }).catch(function(e){ if(e)toast(e.message); }); }; };
+// ───── الحجز والمتابعة ─────
+var DN=['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
+function tg(id,on,t,d){ return '<label class="row sb" style="cursor:pointer;flex-wrap:nowrap;gap:12px;padding:10px 0;border-top:1px solid #f1f5f9"><span style="flex:1"><b style="font-size:14px;color:#172554">'+t+'</b><span class="mu" style="display:block">'+d+'</span></span><input type="checkbox" id="'+id+'"'+(on?' checked':'')+' style="width:22px;height:22px;accent-color:#1e3a8a"></label>'; }
+function tools(){ var T=S.tl; if(!T) return '<div class="card"><b>تعذّر التحميل</b></div>'; if(!T.live) return '<div class="card lock"><div style="font-size:17px;font-weight:900">الحجز المباشر والمتابعة الآلية من مزايا الاشتراك</div></div>';
+  var B=T.book, F=T.fu, PL=T.price_list||[];
+  var h='<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="h3" style="font-size:16px">📅 الحجز المباشر</div>'+tg('bk-on',B.on,'«احجز موعد» في صفحتك','يطلع جنب «اطلب تسعيرة» — العميل يختار الخدمة والوقت، وأنت تأكد')
+    +'<div><label>أيام العمل</label><div class="row" style="gap:5px">'+[6,0,1,2,3,4,5].map(function(d){ var on=B.days.indexOf(d)>=0; return '<button type="button" class="btn '+(on?'pri':'sec')+'" data-day="'+d+'" style="padding:7px 10px;font-size:12.5px">'+DN[d]+'</button>'; }).join('')+'</div></div>'
+    +'<div class="row" style="gap:10px;flex-wrap:nowrap"><div style="flex:1"><label>من</label><input id="bk-f" type="time" value="'+B.from+'"></div><div style="flex:1"><label>إلى</label><input id="bk-t" type="time" value="'+B.to+'"></div></div>'
+    +'<div class="row" style="gap:10px;flex-wrap:nowrap"><div style="flex:1"><label>مدة الموعد</label><select id="bk-s">'+[[60,'ساعة'],[90,'ساعة ونص'],[120,'ساعتين'],[180,'3 ساعات'],[240,'4 ساعات']].map(function(x){return '<option value="'+x[0]+'"'+(B.slot===x[0]?' selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></div><div style="flex:1"><label>حجوزات بنفس الوقت</label><select id="bk-c">'+[1,2,3,4,5,6,8,10].map(function(n){return '<option'+(B.cap===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select></div></div>'
+    +'<div><label>الخدمات اللي تنحجز مباشرة</label>'+(PL.length?PL.map(function(x,i){ return '<label class="row sb" style="cursor:pointer;flex-wrap:nowrap;padding:8px 0;border-top:1px solid #f1f5f9"><span><input type="checkbox" data-bi="'+i+'"'+(x.book?' checked':'')+' style="width:20px;height:20px;accent-color:#1e3a8a;vertical-align:middle"> <b style="font-size:14px">'+esc(x.t)+'</b></span><b>'+Number(x.p).toLocaleString('en-US')+' ر.س</b></label>'; }).join('')+'<div class="mu">الخدمات غير المختارة تبقى «اطلب تسعيرة»</div>':'<div class="mu">أضف خدماتك وأسعارها أول من <a href="/quotes.html?tab=prices" style="color:#1e3a8a">عروض الأسعار ← قائمة الأسعار</a></div>')+'</div></div>';
+  h+='<div class="card"><div class="h3" style="font-size:16px">🔔 المتابعة الآلية</div><div class="mu" style="margin-top:2px">مناقصة تتابع عملاءك عنك — إشعار باسم منشأتك</div>'
+    +tg('fu-q',F.quote,'تذكير بالعرض اللي ما انرد عليه','بعد 3 أيام من الإرسال، مرة وحدة')+tg('fu-v',F.visit,'تذكير العميل بموعد الزيارة','قبل الموعد بيوم، فيه اسم الفني والوقت')+tg('fu-r',F.rate,'طلب تقييم بعد التسليم','إذا العميل ما أكّد الاستلام خلال يومين')+'</div>';
+  h+='<button class="btn pri" onclick="_tlSave()" style="width:100%">حفظ</button>';
+  setTimeout(function(){ [].forEach.call(document.querySelectorAll('[data-day]'),function(b){ b.onclick=function(){ b.classList.toggle('pri'); b.classList.toggle('sec'); }; }); },0);
+  return h; }
+window._tlSave=function(){ var T=S.tl, days=[].map.call(document.querySelectorAll('[data-day].pri'),function(b){return parseInt(b.getAttribute('data-day'));});
+  var PL=(T.price_list||[]).map(function(x,i){ var c=document.querySelector('[data-bi="'+i+'"]'); return Object.assign({},x,{book:c?c.checked:!!x.book}); });
+  api('/api/tools',{method:'PUT',body:JSON.stringify({price_list:PL,book:{on:document.getElementById('bk-on').checked,days:days,from:document.getElementById('bk-f').value,to:document.getElementById('bk-t').value,slot:parseInt(document.getElementById('bk-s').value),cap:parseInt(document.getElementById('bk-c').value)},fu:{quote:document.getElementById('fu-q').checked,visit:document.getElementById('fu-v').checked,rate:document.getElementById('fu-r').checked}})})
+    .then(function(r){ S.tl.book=r.book; S.tl.fu=r.fu; S.tl.price_list=r.price_list; toast('انحفظ ✅'); draw(); }).catch(function(e){ if(e)toast(e.message); }); };
 function reqs(){
   var h='', P=S.pg;
   if(P.review_n) h+='<div class="card" style="padding:12px 16px;background:#fffaeb;border-color:#fde68a"><span class="mu" style="color:#b54708">'+P.review_n+' طلب قيد مراجعة فريق مناقصة — يوصلك بعد الاعتماد</span></div>';
   if(!S.items.length) return h+'<div class="card empty"><div style="font-size:38px">📭</div><b style="display:block;margin-top:6px">ما فيه طلبات تسعيرة للحين</b><div class="mu" style="margin-top:6px">شارك رابط صفحتك أو الـ QR مع عملائك — من تبويب «الصفحة التعريفية».</div><button class="btn sec" style="margin-top:12px" onclick="_mpTab(\'page\')">الصفحة التعريفية</button></div>';
   S.items.forEach(function(q){ var s=ST[q.status]||['',''];
     h+='<div class="card qr'+(q.status==='new'?' new':'')+'" id="q'+q.id+'"><div class="row" style="justify-content:space-between"><b style="font-size:15.5px;color:#172554">'+esc(q.service||'طلب تسعيرة')+'</b><span class="row"><span class="pill '+s[1]+'">'+s[0]+'</span><span class="mu">'+ago(q.approved_at||q.created_at)+'</span></span></div>'
-      +'<div class="meta"><span>👤 '+esc(q.client_name||'عميل')+'</span>'+(q.district||q.city?'<span>📍 '+esc([q.district,q.city].filter(Boolean).join('، '))+'</span>':'')+(q.pref_date?'<span>🗓 '+esc(q.pref_date)+'</span>':'')+(q.src==='qr'?'<span class="pill p-b">من QR</span>':'')+'</div>'
+      +'<div class="meta"><span>👤 '+esc(q.client_name||'عميل')+'</span>'+(MNQ_BR.multi?'<span>🏢 '+esc(MNQ_BR.name(q.branch_id))+'</span>':'')+(q.district||q.city?'<span>📍 '+esc([q.district,q.city].filter(Boolean).join('، '))+'</span>':'')+(q.pref_date?'<span>🗓 '+esc(q.pref_date)+'</span>':'')+(q.src==='qr'?'<span class="pill p-b">من QR</span>':'')+'</div>'
       +'<div class="desc">'+esc(q.description)+'</div>';
+    if(MNQ_BR.multi&&!MNQ_BR.forced&&q.status!=='declined') h+='<div><select class="mnq-br-sel" style="padding:6px 8px;font-size:12px" onchange="_mpBr('+q.id+',this)" aria-label="تحويل لفرع"><option value="">تحويل الطلب لفرع…</option>'+MNQ_BR.list.filter(function(b){return b.id!==MNQ_BR.of(q.branch_id)&&!b.paused;}).map(function(b){return '<option value="'+b.id+'">'+esc(b.name)+'</option>';}).join('')+'</select></div>';
     if(q.status==='declined') h+='<div class="mu">سبب الاعتذار: '+esc(q.decline_reason||'')+'</div>';
     else h+='<div class="row">'+(q.client_phone?'<a class="btn wa" href="https://wa.me/'+wa(q.client_phone)+'?text='+encodeURIComponent('السلام عليكم، معك '+(S.pg.name||'')+' — بخصوص طلب التسعيرة «'+(q.service||'')+'» من مناقصة')+'" target="_blank" rel="noopener" onclick="_mpSeen('+q.id+')">واتساب العميل</a><a class="btn sec" href="tel:'+esc(q.client_phone)+'" onclick="_mpSeen('+q.id+')">اتصال</a>':'')
       +(S.pg.live?'<a class="btn pri" href="/quotes.html?qreq='+q.id+'&n='+encodeURIComponent(q.client_name||'')+'&t='+encodeURIComponent(q.service||'')+'">أرسل عرض سعر</a>':'')+(q.status==='new'?'<button class="btn sec" onclick="_mpSeen('+q.id+',1)">تم الاطّلاع</button>':'')+'<button class="btn dan" onclick="_mpDecl('+q.id+')">اعتذار</button><button class="btn sec" style="color:#b42318;font-size:12.5px;padding:8px 12px" onclick="_mpRep('+q.id+')">إبلاغ: طلب غير جاد</button></div>';
@@ -129,7 +169,7 @@ function qr(){ var box=document.getElementById('qrbox'); if(!box)return; var u=S
   if(window.qrcode){ mk(); return; } if(QRL){ QRL.then(mk); return; }
   QRL=new Promise(function(ok){ var s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'; s.onload=ok; s.onerror=ok; document.head.appendChild(s); }); QRL.then(mk); }
 window._mpQrDl=function(){ var s=document.querySelector('#qrbox svg'); if(!s){ var im=document.querySelector('#qrbox img'); if(im) window.open(im.src.replace('300x300','1000x1000'),'_blank'); return; } var img=new Image(); img.onload=function(){ var c=document.createElement('canvas'); c.width=c.height=1000; var x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,1000,1000); x.drawImage(img,40,40,920,920); var a=document.createElement('a'); a.download='manaqasa-qr.png'; a.href=c.toDataURL('image/png'); a.click(); }; img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(new XMLSerializer().serializeToString(s)); };
-load();
+MNQ_BR.load().then(load);
 })();
 </script>
 </body>

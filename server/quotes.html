@@ -58,7 +58,7 @@ button,input,textarea,select{font-family:inherit}
 .empty{text-align:center;padding:40px 16px}
 @media(max-width:820px){.ed{flex-direction:column}.ed .side{position:static;width:100%}.ed .main{width:100%}.grid2{flex-direction:column}}
 </style>
-<script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script></head>
+<script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script><script src="/branch.js?v=1"></script></head>
 <body>
 <div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحة التحكم</a></div>
 <div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
@@ -70,7 +70,7 @@ if(!TOK){ try{localStorage.setItem('_after_login',location.pathname+location.sea
 var A=document.getElementById('app'), P=new URLSearchParams(location.search);
 var S={tab:'all', items:[], live:false, cust:null, view:'list', q:null};
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
-function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},o.headers||{});
+function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},window.MNQ_BR?MNQ_BR.h():{},o.headers||{});
   return fetch(p,o).then(function(r){ if(r.status===401){ try{localStorage.setItem('_after_login',location.pathname+location.search);}catch(e){} location.href='/auth.html'; throw 0; } return r.json().then(function(j){ if(!r.ok){ var e=new Error(j.message||'حدث خطأ'); e.j=j; e.s=r.status; throw e; } return j; }); });}
 function toast(t){ var e=document.getElementById('toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){e.style.display='none';},2600); }
 function m(v){ return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
@@ -90,17 +90,48 @@ function rng(q){ var t=(q.options||[]).map(function(o){return o.total;}); if(!t.
 function list(){
   S.view='list'; setUrl(S.tab==='cust'?'tab=cust':'');
   var cnt={all:S.items.length}; S.items.forEach(function(q){ cnt[q.status]=(cnt[q.status]||0)+1; });
-  var tabs=[['all','الكل'],['sent','بانتظار العميل'],['change','طلب تعديل'],['accepted','وافق العميل'],['draft','مسودات'],['cust','العملاء']];
-  var h='<div class="row sb"><div><div class="h1">عروض الأسعار</div><div class="mu" style="margin-top:3px">عرض باسمك فيه حتى 3 خيارات — العميل يختار ويوافق من جواله</div></div>'+(S.live?'<button class="btn pri" onclick="_qNew()">+ عرض سعر جديد</button>':'')+'</div>';
+  var tabs=[['all','الكل'],['sent','بانتظار العميل'],['change','طلب تعديل'],['accepted','وافق العميل'],['draft','مسودات'],['prices','قائمة الأسعار'],['cust','العملاء']];
+  var h='<div class="row sb"><div><div class="h1">عروض الأسعار</div><div class="mu" style="margin-top:3px">عرض باسمك فيه حتى 3 خيارات — العميل يختار ويوافق من جواله</div><div id="brbar" style="margin-top:8px;display:none"></div></div>'+(S.live?'<button class="btn pri" onclick="_qNew()">+ عرض سعر جديد</button>':'')+'</div>';
   if(!S.live) h+=lockCard();
   h+='<div class="tabs">'+tabs.map(function(t){ var n=t[0]==='cust'?'':(cnt[t[0]]?' ('+cnt[t[0]]+')':''); return '<button class="'+(S.tab===t[0]?'on':'')+'" onclick="_qTab(\''+t[0]+'\')">'+t[1]+n+'</button>'; }).join('')+'</div>';
   if(S.tab==='cust'){ A.innerHTML=h+'<div id="cust"><div class="mu">جارٍ التحميل…</div></div>'; custs(); return; }
+  if(S.tab==='prices'){ A.innerHTML=h+'<div id="prl"><div class="mu">جارٍ التحميل…</div></div>'; prices(); return; }
   var L=S.items.filter(function(q){ return S.tab==='all'||q.status===S.tab; });
   if(!L.length) h+='<div class="card empty"><div style="font-size:38px">📄</div><b style="display:block;margin-top:6px">'+(S.items.length?'ما فيه عروض هنا':'ما سوّيت عروض أسعار للحين')+'</b><div class="mu" style="margin-top:6px">العرض بخيارات (أساسي · متوسط · شامل) يخلي العميل يختار الأنسب له — وغالباً يختار الأعلى.</div>'+(S.live?'<button class="btn pri" style="margin-top:12px" onclick="_qNew()">سوّ أول عرض</button>':'')+'</div>';
   else h+='<div class="ql">'+L.map(function(q){ var s=ST[q.status]||['','']; var ch=q.status==='accepted'&&q.options[q.chosen];
-    return '<button class="qi" onclick="_qOpen('+q.id+')"><div class="c"><div class="row" style="gap:6px"><b>'+esc(q.title||'بدون عنوان')+'</b><span class="pill '+s[1]+'">'+s[0]+'</span>'+(q.status==='sent'&&q.viewed_at?'<span class="pill p-g">👁 فتحه</span>':'')+(q.status==='sent'&&!q.viewed_at?'<span class="pill p-gr">ما فتحه</span>':'')+'</div><span class="mu">'+esc(q.client_name||'—')+' · رقم '+q.no+' · '+d(q.updated_at)+(q.options.length>1?' · '+q.options.length+' خيارات':'')+'</span>'+(q.status==='change'&&q.client_note?'<span class="mu" style="color:#b54708">«'+esc(q.client_note)+'»</span>':'')+'</div><div class="amt">'+(ch?m(ch.total):rng(q))+' <small style="font-size:11px;color:#64748b">ر.س</small></div></button>'; }).join('')+'</div>';
-  A.innerHTML=h;
+    return '<button class="qi" onclick="_qOpen('+q.id+')"><div class="c"><div class="row" style="gap:6px"><b>'+esc(q.title||'بدون عنوان')+'</b>'+MNQ_BR.tag(q.branch_id)+'<span class="pill '+s[1]+'">'+s[0]+'</span>'+(q.status==='sent'&&q.viewed_at?'<span class="pill p-g">👁 فتحه</span>':'')+(q.status==='sent'&&!q.viewed_at?'<span class="pill p-gr">ما فتحه</span>':'')+'</div><span class="mu">'+esc(q.client_name||'—')+' · رقم '+q.no+' · '+d(q.updated_at)+(q.options.length>1?' · '+q.options.length+' خيارات':'')+'</span>'+(q.status==='change'&&q.client_note?'<span class="mu" style="color:#b54708">«'+esc(q.client_note)+'»</span>':'')+'</div><div class="amt">'+(ch?m(ch.total):rng(q))+' <small style="font-size:11px;color:#64748b">ر.س</small></div></button>'; }).join('')+'</div>';
+  A.innerHTML=h; MNQ_BR.bar(document.getElementById('brbar'),function(){ load().then(list); });
 }
+function vatOf(v){ return Math.round(v*0.15*100)/100; }
+function totLine(i,o){ var t=tot(o); return S.q&&S.q.vat?'المبلغ: <b>'+m(t)+'</b> · الضريبة 15%: <b>'+m(vatOf(t))+'</b> · الإجمالي: <b class="amt">'+m(t+vatOf(t))+'</b> ر.س':'الإجمالي: <b class="amt">'+m(t)+'</b> ر.س'; }
+// ───── قائمة الأسعار ─────
+function plLoad(){ return S.pl?Promise.resolve(S.pl):api('/api/tools').then(function(r){ S.pl=r.price_list||[]; return S.pl; }); }
+function prices(){ plLoad().then(function(L){ var el=document.getElementById('prl'); if(!el)return;
+  var h='<div class="mu" style="margin-bottom:8px">خدماتك بأسعارها مرة وحدة — وعرض السعر ينبني منها بضغطة. الأسعار خاصة فيك.</div><button class="btn pri" onclick="_plEdit()"'+(S.live?'':' disabled')+'>+ خدمة</button>';
+  h+=L.length?'<div class="card" style="margin-top:10px;padding:6px 16px">'+L.map(function(x,i){ return '<div class="it" style="padding:10px 0;border-top:'+(i?'1px solid #f1f5f9':'0')+'"><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(x.t)+'</b>'+(x.book?' <span class="pill p-g">ينحجز مباشرة</span>':'')+'<div class="mu">'+esc(x.u||'')+'</div></div><b class="amt">'+m(x.p)+' <small class="mu">ر.س</small></b><button class="btn sec" style="padding:6px 10px" onclick="_plEdit('+i+')">✎</button></div>'; }).join('')+'</div>'
+    :'<div class="card empty" style="margin-top:10px"><div style="font-size:36px">🏷</div><b style="display:block;margin-top:6px">قائمتك فاضية</b><div class="mu" style="margin-top:6px">أضف خدماتك المتكررة (مثل: تنظيف مكيف 150 ر.س للوحدة)</div></div>';
+  el.innerHTML=h; }).catch(function(e){ if(e)toast(e.message); }); }
+function plSave(L){ return api('/api/tools',{method:'PUT',body:JSON.stringify({price_list:L})}).then(function(r){ S.pl=r.price_list||[]; return S.pl; }); }
+window._plEdit=function(i){ var x=i!=null?S.pl[i]:{t:'',u:'',p:''}; var o=document.createElement('div'); o.className='sheet-ov'; o.onclick=function(e){ if(e.target===o)o.remove(); };
+  o.innerHTML='<div class="sheet f"><b style="font-size:17px;color:#172554">'+(i!=null?'تعديل الخدمة':'خدمة جديدة')+'</b><div><label>اسم الخدمة</label><input id="pl-t" maxlength="80" value="'+esc(x.t)+'" placeholder="مثال: تنظيف مكيف سبليت"></div><div class="grid2"><div><label>الوحدة (اختياري)</label><input id="pl-u" maxlength="40" value="'+esc(x.u||'')+'" placeholder="مثال: للوحدة"></div><div><label>السعر (ر.س)</label><input id="pl-p" inputmode="decimal" maxlength="9" value="'+esc(x.p||'')+'"></div></div><div class="row"><button class="btn pri" id="pl-go" style="flex:1">حفظ</button>'+(i!=null?'<button class="btn dan" id="pl-del">حذف</button>':'')+'</div></div>';
+  document.body.appendChild(o);
+  document.getElementById('pl-go').onclick=function(){ var L=S.pl.slice(), n={id:x.id,t:document.getElementById('pl-t').value.trim(),u:document.getElementById('pl-u').value.trim(),p:parseFloat(nd(document.getElementById('pl-p').value))||0,book:!!x.book}; if(n.t.length<2){ toast('اكتب اسم الخدمة'); return; } if(i!=null)L[i]=n; else L.push(n); plSave(L).then(function(){ o.remove(); toast('انحفظت'); prices(); }).catch(function(e){ if(e)toast(e.message); }); };
+  var dl=document.getElementById('pl-del'); if(dl) dl.onclick=function(){ var L=S.pl.slice(); L.splice(i,1); plSave(L).then(function(){ o.remove(); prices(); }).catch(function(e){ if(e)toast(e.message); }); };
+};
+// اختيار بنود من القائمة داخل خيار العرض
+window._qPick=function(oi){ plLoad().then(function(L){ if(!L.length){ toast('قائمة الأسعار فاضية — أضف خدماتك من تبويب «قائمة الأسعار»'); return; }
+  var Q={}; var o=document.createElement('div'); o.className='sheet-ov'; o.onclick=function(e){ if(e.target===o)o.remove(); };
+  var draw=function(f){ var LL=L.filter(function(x){ return !f||x.t.indexOf(f)>=0; }); var n=Object.keys(Q).filter(function(k){return Q[k]>0;}).length;
+    document.getElementById('pk-l').innerHTML=LL.map(function(x){ var q=Q[x.id]||0; return '<div class="it" style="padding:8px 0"><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(x.t)+'</b><div class="mu">'+m(x.p)+' ر.س'+(x.u?' · '+esc(x.u):'')+'</div></div><div class="row" style="gap:0;border:1.5px solid #e2e8f0;border-radius:10px;overflow:hidden;flex-wrap:nowrap"><button class="btn" style="padding:6px 11px;border-radius:0;background:#f1f5f9" data-pm="'+x.id+'">−</button><b style="padding:0 10px">'+q+'</b><button class="btn pri" style="padding:6px 11px;border-radius:0" data-pp="'+x.id+'">+</button></div></div>'; }).join('');
+    document.getElementById('pk-go').textContent=n?'إضافة '+n+' بنود للخيار':'اختر البنود'; document.getElementById('pk-go').disabled=!n; };
+  o.innerHTML='<div class="sheet f"><div class="row sb"><b style="font-size:17px;color:#172554">أضف من قائمة الأسعار</b><button class="btn sec" style="padding:6px 10px" id="pk-x">✕</button></div><input id="pk-s" placeholder="🔍 بحث…"><div id="pk-l"></div><button class="btn pri" id="pk-go">اختر البنود</button></div>';
+  document.body.appendChild(o); draw('');
+  document.getElementById('pk-x').onclick=function(){ o.remove(); }; document.getElementById('pk-s').oninput=function(){ draw(this.value.trim()); };
+  document.getElementById('pk-l').onclick=function(e){ var p=e.target.getAttribute('data-pp'), mm=e.target.getAttribute('data-pm'); if(p)Q[p]=(Q[p]||0)+1; if(mm)Q[mm]=Math.max(0,(Q[mm]||0)-1); if(p||mm) draw(document.getElementById('pk-s').value.trim()); };
+  document.getElementById('pk-go').onclick=function(){ var it=S.q.options[oi].items.filter(function(x){ return (x.t||'').trim()||parseFloat(nd(x.p)); });
+    L.forEach(function(x){ if(Q[x.id]>0) it.push({t:x.t+(x.u?' ('+x.u+')':''),q:Q[x.id],p:String(x.p)}); }); S.q.options[oi].items=it.length?it:[{t:'',q:1,p:''}]; o.remove(); draw2(); };
+  }).catch(function(e){ if(e)toast(e.message); }); };
+function draw2(){ draw(); }
 window._qTab=function(t){ if(t==='cust'){ location.href='/customers.html'; return; } S.tab=t; list(); };
 function custs(){
   api('/api/quotes/customers').then(function(r){ var L=r.items||[], el=document.getElementById('cust'); if(!el)return;
@@ -141,17 +172,18 @@ function draw(){
   else if(sent&&q.status==='sent') h+='<div class="mu">أي تعديل تحفظه يوصل العميل كنسخة محدّثة (النسخة '+q.version+' الحين).</div>';
   h+='<div class="ed"><div class="main">';
   h+='<div class="card f" style="display:flex;flex-direction:column;gap:12px"><div class="grid2"><div><label for="q-cn">اسم العميل</label><input id="q-cn" data-k="client_name" maxlength="80" value="'+esc(q.client_name||'')+'" placeholder="مثال: أبو سعد"></div><div><label for="q-cp">جوال العميل</label><input id="q-cp" data-k="client_phone" dir="ltr" inputmode="tel" maxlength="15" value="'+esc(q.client_phone||'')+'" placeholder="05xxxxxxxx" style="text-align:right"></div></div>'
-    +'<div><label for="q-t">عنوان العرض</label><input id="q-t" data-k="title" maxlength="120" value="'+esc(q.title||'')+'" placeholder="مثال: صيانة مكيفات فيلا"></div></div>';
+    +'<div><label for="q-t">عنوان العرض</label><input id="q-t" data-k="title" maxlength="120" value="'+esc(q.title||'')+'" placeholder="مثال: صيانة مكيفات فيلا"></div>'+(!q.id&&!q.qreq_id?MNQ_BR.field('q-b',q.branch_id,'الفرع'):'')+'</div>';
   h+='<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="row sb"><span class="h3">الخيارات</span><div class="seg" style="min-width:260px">'+[1,2,3].map(function(n){ return '<button class="'+(q.options.length===n?'on':'')+'" onclick="_qN('+n+')">'+(n===1?'خيار واحد':n===2?'خياران':'3 خيارات')+'</button>'; }).join('')+'</div></div>';
   q.options.forEach(function(o,i){
     h+='<div class="opt'+(o.rec&&q.options.length>1?' rec':'')+'"><div class="row sb"><input data-o="'+i+'" data-k="n" maxlength="30" value="'+esc(o.n)+'" placeholder="اسم الخيار" style="border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 10px;font-weight:900;font-size:15px;width:150px">'+(q.options.length>1?'<label class="row" style="gap:5px;font-size:12.5px;font-weight:800;cursor:pointer"><input type="radio" name="rec" '+(o.rec?'checked':'')+' onchange="_qRec('+i+')"> ننصح فيه</label>':'')+'</div>';
     h+='<div class="it mu" style="font-size:11.5px"><span style="flex:1">البند</span><span style="width:58px;text-align:center">الكمية</span><span style="width:96px">السعر (ر.س)</span><span style="width:32px"></span></div>';
     o.items.forEach(function(x,j){ h+='<div class="it"><input class="t" data-o="'+i+'" data-j="'+j+'" data-k="t" maxlength="120" value="'+esc(x.t)+'" placeholder="مثال: تنظيف مكيف سبليت"><input class="q" data-o="'+i+'" data-j="'+j+'" data-k="q" inputmode="numeric" maxlength="4" value="'+esc(x.q||1)+'"><input class="p" data-o="'+i+'" data-j="'+j+'" data-k="p" inputmode="decimal" maxlength="9" value="'+esc(x.p===0?'0':(x.p||''))+'" placeholder="0"><button class="x" title="حذف" onclick="_qDelIt('+i+','+j+')">×</button></div>'; });
-    h+='<div class="row sb"><button class="btn sec" style="padding:7px 12px;font-size:12.5px" onclick="_qAddIt('+i+')">+ بند</button><span>الإجمالي: <b class="amt" id="tot'+i+'">'+m(tot(o))+'</b> ر.س</span></div>';
+    h+='<div class="row sb"><button class="btn sec" style="padding:7px 12px;font-size:12.5px" onclick="_qAddIt('+i+')">+ بند</button><button class="btn sec" style="padding:7px 12px;font-size:12.5px" onclick="_qPick('+i+')">🏷 من قائمة الأسعار</button><span id="tot'+i+'" style="font-size:13px">'+totLine(i,o)+'</span></div>';
     h+='<div class="grid2 f"><div><label>مدة التنفيذ</label><input data-o="'+i+'" data-k="days" maxlength="40" value="'+esc(o.days||'')+'" placeholder="مثال: يوم واحد"></div><div><label>الضمان</label><input data-o="'+i+'" data-k="warranty" maxlength="60" value="'+esc(o.warranty||'')+'" placeholder="مثال: 90 يوم على العمل"></div></div></div>';
   });
   h+='</div>';
   h+='<div class="card f" style="display:flex;flex-direction:column;gap:12px"><div class="grid2"><div><label for="q-v">صلاحية العرض</label><select id="q-v" data-k="valid_days">'+[7,14,30].map(function(v){return '<option value="'+v+'"'+(parseInt(q.valid_days)===v?' selected':'')+'>'+v+' يوم</option>';}).join('')+'</select></div><div><label for="q-dp">دفعة مقدمة (اختياري)</label><select id="q-dp" data-k="deposit_pct">'+[0,10,20,25,30,50].map(function(v){return '<option value="'+v+'"'+(parseInt(q.deposit_pct)===v?' selected':'')+'>'+(v?v+'%':'بدون')+'</option>';}).join('')+'</select></div></div>'
+    +'<label style="display:flex;gap:10px;align-items:center;cursor:pointer;background:#f5f8ff;border:1px solid #dbe4f3;border-radius:12px;padding:10px 12px"><input type="checkbox" id="q-vat"'+(q.vat?' checked':'')+' onchange="_qVat(this.checked)" style="width:20px;height:20px;accent-color:#1e3a8a"><span><b style="font-size:14px">إضافة ضريبة القيمة المضافة 15%</b><span class="mu" style="display:block">تظهر للعميل تحت كل خيار: المبلغ، والضريبة، والإجمالي</span></span></label>'
     +'<div><label for="q-nt">ملاحظات وشروط (اختياري)</label><textarea id="q-nt" data-k="notes" maxlength="1500" placeholder="مثال: السعر يشمل المواد · الموعد بالتنسيق">'+esc(q.notes||'')+'</textarea></div><div class="mu">الدفع بينك وبين العميل مباشرة — المنصة ما تستلم مبالغ العرض.</div></div>';
   h+='</div><div class="side"><div class="card" id="chk"></div><div class="card" id="pv"></div></div></div>';
   h+='<div class="bar"><div class="in">'+(q.id&&q.status==='draft'?'<button class="btn dan" onclick="_qDel()">حذف</button>':'')+'<span style="flex:1"></span>'+(!sent?'<button class="btn sec" id="b-draft" onclick="_qSave(false)">حفظ مسودة</button>':'')+'<button class="btn pri" id="b-send" onclick="_qSave(true)"'+(S.live?'':' disabled')+'>'+(q._reprice?'أرسل التعديل':(sent?'أرسل التحديث':'أرسل العرض'))+'</button></div></div>';
@@ -160,17 +192,18 @@ function draw(){
 function side(){
   var q=S.q, C=checks(q), ok=C.filter(function(c){return c[0];}).length;
   var c=document.getElementById('chk'); if(c) c.innerHTML='<div class="row sb" style="margin-bottom:8px"><span class="h3">افحص عرضك</span><span class="pill '+(ok===C.length?'p-g':'p-y')+'">'+ok+' من '+C.length+'</span></div>'+C.map(function(x){ return '<div class="chk"><span style="color:'+(x[0]?'#067647':'#b54708')+'">'+(x[0]?'✓':'!')+'</span><span>'+x[1]+'</span></div>'; }).join('');
-  var p=document.getElementById('pv'); if(p) p.innerHTML='<span class="mu">اللي يشوفه العميل</span><div style="margin-top:8px;border:1px solid #e6eefb;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px;color:#172554">'+esc(q.title||'عنوان العرض')+'</b><div class="row" style="gap:6px;flex-wrap:nowrap">'+q.options.map(function(o){ return '<div style="flex:1;min-width:0;text-align:center;padding:8px 4px;border-radius:10px;border:1.5px solid '+(o.rec&&q.options.length>1?'#1e3a8a':'#e9ecf1')+'"><div style="font-size:11.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.n||'—')+'</div><b class="amt" style="font-size:13.5px">'+m(tot(o))+'</b></div>'; }).join('')+'</div><span class="mu" style="font-size:11.5px">صالح '+(q.valid_days||14)+' يوم'+(parseInt(q.deposit_pct)?' · دفعة مقدمة '+q.deposit_pct+'%':'')+'</span></div>';
+  var p=document.getElementById('pv'); if(p) p.innerHTML='<span class="mu">اللي يشوفه العميل</span><div style="margin-top:8px;border:1px solid #e6eefb;border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px"><b style="font-size:14px;color:#172554">'+esc(q.title||'عنوان العرض')+'</b><div class="row" style="gap:6px;flex-wrap:nowrap">'+q.options.map(function(o){ return '<div style="flex:1;min-width:0;text-align:center;padding:8px 4px;border-radius:10px;border:1.5px solid '+(o.rec&&q.options.length>1?'#1e3a8a':'#e9ecf1')+'"><div style="font-size:11.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(o.n||'—')+'</div><b class="amt" style="font-size:13.5px">'+m(q.vat?tot(o)+vatOf(tot(o)):tot(o))+'</b></div>'; }).join('')+'</div><span class="mu" style="font-size:11.5px">'+(q.vat?'شامل الضريبة 15% · ':'')+'صالح '+(q.valid_days||14)+' يوم'+(parseInt(q.deposit_pct)?' · دفعة مقدمة '+q.deposit_pct+'%':'')+'</span></div>';
 }
 document.addEventListener('input',function(e){ var t=e.target, q=S.q; if(S.view!=='edit'||!q||!t.dataset||!t.dataset.k)return;
   var k=t.dataset.k, v=t.value;
   if(k==='p'||k==='q'){ var c=k==='q'?nd(v).replace(/\./g,''):nd(v); if(c!==v){ t.value=c; } v=c; }
-  if(t.dataset.j!=null){ q.options[t.dataset.o].items[t.dataset.j][k]=v; var tt=document.getElementById('tot'+t.dataset.o); if(tt)tt.textContent=m(tot(q.options[t.dataset.o])); }
+  if(t.dataset.j!=null){ q.options[t.dataset.o].items[t.dataset.j][k]=v; var tt=document.getElementById('tot'+t.dataset.o); if(tt)tt.innerHTML=totLine(t.dataset.o,q.options[t.dataset.o]); }
   else if(t.dataset.o!=null){ q.options[t.dataset.o][k]=v; }
   else q[k]=v;
   side();
 });
 document.addEventListener('change',function(e){ var t=e.target; if(S.view==='edit'&&t.tagName==='SELECT'&&t.dataset.k){ S.q[t.dataset.k]=parseInt(t.value)||0; side(); } });
+window._qVat=function(on){ S.q.vat=!!on; S.q.options.forEach(function(o,i){ var tt=document.getElementById('tot'+i); if(tt)tt.innerHTML=totLine(i,o); }); side(); };
 window._qN=function(n){ var O=S.q.options; while(O.length<n)O.push(blank(O.length)); if(O.length>n)O.length=n; if(n>1&&!O.some(function(o){return o.rec;}))O[1].rec=true; draw(); };
 window._qRec=function(i){ S.q.options.forEach(function(o,k){o.rec=k===i;}); draw(); };
 window._qAddIt=function(i){ S.q.options[i].items.push({t:'',q:1,p:''}); draw(); var L=document.querySelectorAll('input[data-o="'+i+'"][data-k="t"]'); if(L.length)L[L.length-1].focus(); };
@@ -179,7 +212,7 @@ window._qBack=function(){ S.view='list'; load().then(list); };
 window._qDel=function(){ if(!confirm('تحذف المسودة؟'))return; api('/api/quotes/'+S.q.id,{method:'DELETE'}).then(function(){ toast('انحذفت'); _qBack(); }).catch(function(e){ if(e)toast(e.message); }); };
 window._qSave=function(send){
   var q=S.q, b=document.getElementById(send?'b-send':'b-draft'); if(b){ b.disabled=true; }
-  var body={id:q.id||undefined, qreq_id:q.qreq_id||undefined, client_name:q.client_name, client_phone:q.client_phone, title:q.title, notes:q.notes, deposit_pct:q.deposit_pct, valid_days:q.valid_days, send:!!send,
+  var body={id:q.id||undefined, qreq_id:q.qreq_id||undefined, client_name:q.client_name, client_phone:q.client_phone, title:q.title, notes:q.notes, deposit_pct:q.deposit_pct, valid_days:q.valid_days, send:!!send, vat:!!q.vat, branch_id:!q.id?MNQ_BR.val('q-b'):undefined,
     options:q.options.map(function(o){ return {n:o.n, rec:!!o.rec, days:o.days, warranty:o.warranty, items:o.items.map(function(x){ return {t:x.t, q:parseInt(x.q)||1, p:parseFloat(nd(x.p))||0}; })}; })};
   api('/api/quotes',{method:'POST',body:JSON.stringify(body)}).then(function(r){
     var was=q.status&&q.status!=='draft'; S.q=r.quote; S.q.options.forEach(function(o){ if(!o.items.length)o.items=[{t:'',q:1,p:''}]; });
@@ -204,19 +237,19 @@ function view(q){
   var ch=q.status==='accepted'?q.options[q.chosen]:null;
   var h='<div class="row" style="gap:8px"><button class="btn sec" style="padding:7px 11px" onclick="_qBack()">‹ رجوع</button><span class="h1" style="font-size:19px">عرض سعر رقم '+q.no+'</span><span class="pill '+ST[q.status][1]+'">'+ST[q.status][0]+'</span></div>';
   h+='<div class="card" style="display:flex;flex-direction:column;gap:10px'+(ch?';border-color:#a6f4c5;background:#f6fef9':'')+'"><b style="font-size:16px;color:#172554">'+esc(q.title)+'</b><span class="mu">'+esc(q.client_name)+' · <span dir="ltr">'+esc(q.client_phone)+'</span> · '+d(q.decided_at)+'</span>';
-  if(ch) h+='<div style="font-size:15px;font-weight:800">اختار: '+esc(ch.n)+' — <span class="amt">'+m(ch.total)+'</span> ر.س</div>'+(q.saai?'<div class="mu" style="color:#b54708">العميل تعامل معك في السوق خلال 90 يوم — انسجّل سعي المنصة في صفحة السعي.</div>':'');
+  if(ch) h+='<div style="font-size:15px;font-weight:800">اختار: '+esc(ch.n)+' — <span class="amt">'+m(ch.total)+'</span> ر.س'+(q.vat?' + الضريبة '+m(vatOf(ch.total))+' = <span class="amt">'+m(ch.total+vatOf(ch.total))+'</span> ر.س':'')+'</div>'+(q.saai?'<div class="mu" style="color:#b54708">العميل تعامل معك في السوق خلال 90 يوم — انسجّل سعي المنصة في صفحة السعي.</div>':'');
   if(q.client_note) h+='<div style="background:#f8fafc;border-radius:12px;padding:10px 12px;font-weight:700;white-space:pre-wrap">'+(q.status==='declined'?'سبب الاعتذار: ':'ملاحظة العميل: ')+esc(q.client_note)+'</div>';
   h+='<div class="row">'+(q.job_id?'<a class="btn pri" href="/jobs.html?id='+(parseInt(q.job_id)||0)+'">افتح المشروع</a>':'')+(q.status==='accepted'&&S.live?'<button class="btn gold" onclick="_qReprice()">عدّل السعر</button>':'')+(q.client_phone?'<a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+wa(q.client_phone)+'">واتساب العميل</a><a class="btn sec" href="tel:'+esc(q.client_phone)+'">اتصال</a>':'')+'<a class="btn sec" target="_blank" rel="noopener" href="/q/'+esc(q.token)+'">العرض / PDF</a>'+(S.live?'<button class="btn sec" onclick="_qNewFor(\''+esc(q.client_name||'').replace(/'/g,'')+'\',\''+esc(q.client_phone||'')+'\')">عرض جديد لنفس العميل</button>':'')+'</div></div>';
   A.innerHTML=h;
 }
 // البداية
-load().then(function(){
+MNQ_BR.load().then(load).then(function(){
   if(S.err&&!S.items.length){ A.innerHTML='<div class="card empty"><b>'+esc(S.err)+'</b><div style="margin-top:12px"><a class="btn sec" href="/dashboard-provider.html">رجوع</a></div></div>'; return; }
   var id=parseInt(P.get('id')), qr=parseInt(P.get('qreq'));
   if(id){ var q=S.items.find(function(x){return x.id===id;}); if(q){ _qOpen(id); return; } }
   if(qr&&S.live){ edit({title:P.get('t')||'',client_name:P.get('n')||'',client_phone:'',qreq_id:qr,options:[blank(0)],notes:'',deposit_pct:0,valid_days:14,status:'draft'}); return; }
   if(P.get('new')&&S.live){ if(P.get('n')||P.get('p')) _qNewFor(P.get('n')||'',P.get('p')||''); else _qNew(); return; }
-  if(P.get('tab')==='cust') S.tab='cust';
+  if(P.get('tab')==='cust') S.tab='cust'; if(P.get('tab')==='prices') S.tab='prices';
   list();
 }).catch(function(){});
 })();

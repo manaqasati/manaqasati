@@ -35,7 +35,7 @@
   function hide(id){ var e = D.getElementById(id); if (e) e.style.display = 'none'; }
   function applyMe(){
     css(); var m = S.me;
-    hide('ni-dlg'); hide('ni-saai'); hide('ni-plan'); if (m.perms.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (m.perms.indexOf('jobs') < 0) hide('ni-jobs'); if (m.perms.indexOf('customers') < 0) hide('ni-cust'); if (m.perms.indexOf('stats') < 0) hide('ni-stats'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
+    hide('ni-dlg'); hide('ni-saai'); hide('ni-plan'); hide('ni-ideas'); hide('ni-branches'); if (m.perms.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (m.perms.indexOf('jobs') < 0) hide('ni-jobs'); if (m.perms.indexOf('customers') < 0) hide('ni-cust'); if (m.perms.indexOf('stats') < 0) hide('ni-stats'); var nm = D.getElementById('ni-dlgme'); if (nm) nm.style.display = '';
     // bn-profile هو زر «المزيد» بالجوال (فيه الإشعارات والخروج) — ما نخفيه
     ['browse', 'works', 'profile', 'proof', 'sub'].forEach(function(p){ if (!okPage(p)) { hide('ni-' + p); if (p !== 'profile') hide('bn-' + p); } });
     if (!okPage('chat')) { hide('ni-chat'); hide('bn-chat'); }
@@ -188,7 +188,7 @@
   M.list = function(){
     var pg = D.getElementById('page-dlg'); if (!pg) return; css(); var r = S.L, full = r.used >= r.limit;
     var h = '<div class="dl-w"><div class="dl-c dl-in"><div class="dl-h">👥 المفوّضين — فريقك يشتغل معك</div><div class="dl-s">كل واحد يدخل بإيميله وكلمة سرّه هو، ويشتغل باسم مؤسستك حسب دوره وصلاحياته. ' + r.used + ' من ' + r.limit + ' في باقتك.</div></div>';
-    h += r.items.length ? '<div class="dl-c" id="dl-list">' + r.items.map(function(d){ return '<div class="dl-pr dl-it" data-id="' + d.id + '"><div style="display:flex;gap:10px;align-items:center;min-width:0"><span class="dl-av" style="width:38px;height:38px;font-size:15px">' + esc(String(d.name || 'م').charAt(0)) + '</span><div style="min-width:0"><b>' + esc(d.name) + ' — ' + esc(d.role_name) + '</b><small>' + d.perms.map(function(k){ return LBL[k] ? LBL[k][0] : k; }).join(' · ') + '</small></div></div>' + stTag(d) + '</div>'; }).join('') + '</div>' : '';
+    h += r.items.length ? '<div class="dl-c" id="dl-list">' + r.items.map(function(d){ return '<div class="dl-pr dl-it" data-id="' + d.id + '"><div style="display:flex;gap:10px;align-items:center;min-width:0"><span class="dl-av" style="width:38px;height:38px;font-size:15px">' + esc(String(d.name || 'م').charAt(0)) + '</span><div style="min-width:0"><b>' + esc(d.name) + ' — ' + esc(d.role_name) + (d.branch_id && S.L.branches ? ' · 📍 ' + esc((S.L.branches.filter(function(b){ return b.id === d.branch_id; })[0] || {}).name || '') : '') + '</b><small>' + d.perms.map(function(k){ return LBL[k] ? LBL[k][0] : k; }).join(' · ') + '</small></div></div>' + stTag(d) + '</div>'; }).join('') + '</div>' : '';
     h += full ? '<div class="dl-c" style="background:#fffcf5;border-color:#fde68a"><div class="dl-h" style="font-size:14px;color:#b54708">وصلت حد باقتك (' + r.limit + ')</div><div class="dl-s">أضف مفوّض بـ 19 ر.س شهرياً من <a href="/plan.html" style="color:#1e3a8a">الاشتراك والباقة</a></div></div>' : '<button type="button" class="dl-b dl-bp" id="dl-new">+ مفوّض جديد</button>';
     h += '<div class="dl-c"><div class="dl-h" style="font-size:14px">نشاط المفوّضين</div><div id="dl-log"><div class="dl-s">جاري التحميل...</div></div></div>' + locked() + '</div>';
     pg.innerHTML = h;
@@ -196,6 +196,7 @@
     var n = D.getElementById('dl-new'); if (n) n.addEventListener('click', function(){ S.d = null; M.edit(); });
     loadLog(10);
   };
+  function brv(){ var e = D.getElementById('dl-br'); return e ? (parseInt(e.value) || null) : undefined; }
   M.edit = function(){
     var pg = D.getElementById('page-dlg'); var d = S.d; S.role = d ? d.role : 'sales';
     var h = '<div class="dl-w"><button type="button" class="dl-b dl-bo" id="dl-back" style="width:auto;align-self:flex-start;padding:9px 14px">‹ المفوّضين</button>';
@@ -203,6 +204,8 @@
     else { var act = d.status === 'active', adm = d.paused && d.paused_by === 'admin', lim = d.paused && d.paused_by === 'limit';
       h += '<div class="dl-c"><div class="dl-me"><span class="dl-av">' + esc(String(d.name || 'م').charAt(0)) + '</span><div style="flex:1;min-width:0"><div class="dl-h" style="margin:0">' + esc(d.name) + '</div><div class="dl-s" dir="ltr" style="text-align:right">' + esc(d.email) + '</div></div>' + stTag(d) + '</div>'
         + '<div class="dl-s" style="margin-top:8px;font-size:12px">' + (lim ? 'متوقف لأن عدد المفوّضين فوق حد باقتك — يرجع تلقائياً لما تزيد الحد' : act ? (d.last_login ? 'آخر دخول: ' + fmtD(d.last_login) : 'ما دخل للحين') : 'أرسلنا له رابط التفعيل على إيميله — صالح 3 أيام') + '</div>'; }
+    var BR = (S.L && S.L.branches) || [];
+    if (BR.length > 1) h += '<div class="dl-h" style="font-size:14px;margin-top:14px">الفرع</div><select class="dl-f" id="dl-br" style="margin-top:6px"><option value="">كل الفروع — يشوف ويدير كل شي</option>' + BR.map(function(b){ return '<option value="' + b.id + '"' + (d && d.branch_id === b.id ? ' selected' : '') + '>' + esc(b.name) + '</option>'; }).join('') + '</select><div class="dl-s" style="font-size:12px;margin-top:4px">مشرف الفرع يشوف فنيي فرعه ومشاريعه وعملاءه وعروضه فقط</div>';
     h += '<div class="dl-h" style="font-size:14px;margin-top:14px">الدور</div>' + roleChips(S.role) + '<div class="dl-h" style="font-size:14px;margin-top:14px">الصلاحيات</div><div id="dl-perms">' + permRows(d ? d.perms : ROLES.sales[1]) + '</div>';
     if (!d) h += '<button type="button" class="dl-b dl-bp" id="dl-madd" style="margin-top:12px">إرسال الدعوة</button><div class="dl-s" style="text-align:center;margin-top:8px;font-size:12px">يوصله إيميل يحدد منه كلمة سرّه</div></div>';
     else h += '<button type="button" class="dl-b dl-bp" id="dl-msave" style="margin-top:12px">حفظ</button><div class="dl-row" style="margin-top:10px"><button type="button" class="dl-b dl-bo" id="dl-mpause"' + (adm || lim ? ' disabled' : '') + '>' + (d.paused ? '▶ رجّعه' : '⏸ إيقاف مؤقت') + '</button><button type="button" class="dl-b dl-bo" id="dl-mresend">' + (d.status === 'active' ? 'رابط كلمة سر جديدة' : 'إعادة إرسال التفعيل') + '</button></div></div><button type="button" class="dl-b dl-bd" id="dl-mdel">إزالة المفوّض</button>';
@@ -213,11 +216,11 @@
     on('dl-madd', function(){ if (S.busy) return; var name = (D.getElementById('dl-name').value || '').trim(), email = (D.getElementById('dl-email').value || '').trim(), perms = selPerms(D.getElementById('dl-perms'));
       if (name.length < 2) return toast('اكتب اسم المفوّض', 'error'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return toast('الإيميل غير صحيح', 'error'); if (!perms.length) return toast('اختر صلاحية وحدة على الأقل', 'error');
       S.busy = true; busy('dl-madd', 1, 'جاري الإرسال...');
-      api('/api/provider/delegates', { method: 'POST', body: JSON.stringify({ name: name, email: email, perms: perms, role: S.role }) }).then(function(r){ S.busy = false; busy('dl-madd', 0);
+      api('/api/provider/delegates', { method: 'POST', body: JSON.stringify({ name: name, email: email, perms: perms, role: S.role, branch_id: brv() }) }).then(function(r){ S.busy = false; busy('dl-madd', 0);
         if (!r || !r.ok) return toast((r && r.message) || 'تعذّر الإرسال — حاول مرة ثانية', 'error'); toast('✓ أرسلنا الدعوة على إيميله', 'success'); load(); }); });
     on('dl-msave', function(){ if (S.busy) return; var perms = selPerms(D.getElementById('dl-perms')); if (!perms.length) return toast('اختر صلاحية وحدة على الأقل', 'error');
       S.busy = true; busy('dl-msave', 1, 'جاري الحفظ...');
-      api('/api/provider/delegates/' + d.id, { method: 'PUT', body: JSON.stringify({ perms: perms, role: S.role }) }).then(function(r){ S.busy = false; busy('dl-msave', 0);
+      api('/api/provider/delegates/' + d.id, { method: 'PUT', body: JSON.stringify({ perms: perms, role: S.role, branch_id: brv() }) }).then(function(r){ S.busy = false; busy('dl-msave', 0);
         if (!r || !r.ok) return toast((r && r.message) || 'تعذّر الحفظ', 'error'); toast('✓ انحفظ', 'success'); load(); }); });
     on('dl-mpause', function(){ if (S.busy) return; var p = !d.paused; if (p && !confirm('توقف ' + (d.name || 'المفوّض') + ' مؤقتاً؟')) return; S.busy = true;
       api('/api/provider/delegates/' + d.id + '/pause', { method: 'POST', body: JSON.stringify({ paused: p }) }).then(function(r){ S.busy = false; if (!r || !r.ok) return toast((r && r.message) || 'تعذّر', 'error'); toast(p ? '⏸ أوقفته مؤقتاً' : '▶ رجّع يشتغل', 'success'); load(); }); });
