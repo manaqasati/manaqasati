@@ -8709,8 +8709,13 @@ async function _subQuote(uid, body){
     if (live && s.status !== 'trial') return { error: 'لديك اشتراك فعّال، يُرجى استخدام الترقية أو التجديد' };
     const base = _subPrice(cfg, tier, cycle);
     lines.push({ t: 'باقة ' + cfg.tiers[tier].name + ' — ' + (cycle === 'y' ? 'سنوي' : 'شهري'), h: base });
+    // إضافات مع الاشتراك الجديد (اختياري) — تتجدد معه
+    const reqA = body.addons && typeof body.addons === 'object' ? body.addons : {}; const ad = {};
+    Object.keys(cfg.addons).forEach(k => { const d = cfg.addons[k]; const q = Math.max(0, Math.min(20, parseInt(reqA[k]) || 0)); if (q && d.on && d.tiers.includes(tier)) ad[k] = q; });
+    const adH = _subAddonsH(cfg, ad, cycle);
+    if (adH) { addons = ad; Object.keys(ad).forEach(k => lines.push({ t: cfg.addons[k].name + (ad[k] > 1 ? ' × ' + ad[k] : '') + ' — ' + (cycle === 'y' ? 'سنوي' : 'شهري'), h: _subAddonsH(cfg, { [k]: ad[k] }, cycle) })); }
     if (body.coupon) { const cc = await _couponCheck(body.coupon, uid, tier, cycle); if (!cc.ok) return { error: cc.message || 'رمز الخصم غير صحيح', coupon_error: true }; coupon = cc.c.code; discount = _couponOff(cc.c, base); lines.push({ t: 'خصم ' + coupon, h: -discount }); }
-    amount = base - discount;
+    amount = base + adH - discount;
   } else if (kind === 'renew') {
     if (!s || !['active', 'grace', 'expired', 'cancelled'].includes(s.status) || s.tier === 'free') return { error: 'لا يوجد اشتراك للتجديد' };
     tier = s.next_tier || s.tier; cycle = s.next_cycle || s.cycle; addons = s.next_addons || s.addons || {};
@@ -8763,7 +8768,7 @@ async function _subApply(c, sp, pay){
     if (u.ref_credit > 0) { end = _addMonths(end, u.ref_credit); await c.query('UPDATE users SET ref_credit=0 WHERE id=$1', [sp.user_id]); note += ' +' + u.ref_credit + ' شهر رصيد دعوات'; }
     let rewardRef = null;
     if (sp.kind === 'new' && sp.amount_h > 0 && u.ref_by && !u.ref_rewarded && cfg.ref_months > 0) { end = _addMonths(end, cfg.ref_months); rewardRef = u.ref_by; await c.query('UPDATE users SET ref_rewarded=TRUE WHERE id=$1', [sp.user_id]); note += ' +' + cfg.ref_months + ' شهر هدية الدعوة'; }
-    const addons = sp.kind === 'renew' ? (sp.addons || (s && (s.next_addons || s.addons)) || {}) : {};
+    const addons = sp.kind === 'renew' ? (sp.addons || (s && (s.next_addons || s.addons)) || {}) : (sp.addons || {});
     await c.query(`INSERT INTO subs (user_id, tier, cycle, status, period_start, period_end, auto_renew, cancel_at_end, next_tier, next_cycle, next_addons, addons, card_token, card_brand, card_last4, pay_method, grace_until, reminded_for, grace_reminded, trial_used, updated_at)
       VALUES ($1,$2,$3,'active',$4,$5,TRUE,FALSE,NULL,NULL,NULL,$6::jsonb,$7,$8,$9,$10,NULL,NULL,FALSE,TRUE,NOW())
       ON CONFLICT (user_id) DO UPDATE SET tier=$2, cycle=$3, status='active', period_start=$4, period_end=$5, cancel_at_end=FALSE, next_tier=NULL, next_cycle=NULL, next_addons=NULL, addons=$6::jsonb,
@@ -9011,6 +9016,8 @@ const APPLE_PRODUCTS = {
   'com.manaqasa.app.addon.dlg': { kind: 'addon', key: 'dlg' }, 'com.manaqasa.app.addon.tech': { kind: 'addon', key: 'tech' },
   'com.manaqasa.app.addon.proj': { kind: 'addon', key: 'proj' }, 'com.manaqasa.app.addon.branch': { kind: 'addon', key: 'branch' },
 };
+// أسعار المنتجات بالريال (نفس App Store Connect) — للمشتركين من متاجر بعملة ثانية
+const APPLE_SAR_H = { 'com.manaqasa.app.pro.m': 9900, 'com.manaqasa.app.pro.y': 99000, 'com.manaqasa.app.ent.m': 24900, 'com.manaqasa.app.ent.y': 249900, 'com.manaqasa.app.addon.dlg': 1999, 'com.manaqasa.app.addon.tech': 1999, 'com.manaqasa.app.addon.proj': 1999, 'com.manaqasa.app.addon.branch': 4999 };
 const _OID_LEAF = Buffer.from('060a2a864886f763640b01', 'hex'), _OID_MID = Buffer.from('060a2a864886f76364060201', 'hex');
 function _b64u(s){ return Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64'); }
 function _appleJws(token){
@@ -9050,13 +9057,16 @@ async function _appleTx(uid, tx, renew){
       auto_renew=COALESCE($10, apple_tx.auto_renew), trial=$11, env=$12, last_tx=$13, updated_at=NOW()`,
     [otid, uid, tx.productId, P.kind, P.tier || null, P.cycle || null, P.key || null, exp, st, renew == null ? null : !!renew, trial, String(tx.environment || ''), String(tx.transactionId)]);
   // الدفعة (للفواتير والدخل) — العمليات المدفوعة بس، مرة وحدة
-  const priceH = Math.round(Number(tx.price || 0) / 10); // Apple: السعر بالألف (99990 = 99.99)
+  // Apple: السعر بالألف (99990 = 99.99) وبعملة متجر الحساب — غير الريال نسجّل سعرنا بالريال ونحفظ الأصل في البيان
+  const cur = String(tx.currency || 'SAR').toUpperCase(); const rawH = Math.round(Number(tx.price || 0) / 10);
+  const priceH = !rawH ? 0 : (cur === 'SAR' ? rawH : (APPLE_SAR_H[tx.productId] || 0));
+  const lineT = 'Apple · ' + tx.productId + (cur !== 'SAR' && rawH ? ' · ' + (rawH / 100).toFixed(2) + ' ' + cur : '');
   if (priceH > 0 && !revoked) {
     const first = String(tx.transactionId) === otid;
     await pool.query(`INSERT INTO sub_pay (ref, user_id, kind, tier, cycle, addons, amount_h, status, method, paid_at, period_start, period_end, lines)
         VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7,'paid','apple',$8,$8,$9,$10::jsonb) ON CONFLICT (ref) DO NOTHING`,
       ['apl_' + String(tx.transactionId).slice(0, 34), uid, P.kind === 'addon' ? 'addon' : (first ? 'new' : 'renew'), P.tier || null, P.cycle || 'm', JSON.stringify(P.key ? { [P.key]: 1 } : {}), priceH,
-       new Date(Number(tx.purchaseDate || Date.now())), exp, JSON.stringify([{ t: 'Apple · ' + tx.productId, h: priceH }])]);
+       new Date(Number(tx.purchaseDate || Date.now())), exp, JSON.stringify([{ t: lineT, h: priceH }])]);
   }
   if (revoked) await pool.query("UPDATE sub_pay SET err='مسترجع من Apple' WHERE ref=$1", ['apl_' + String(tx.transactionId).slice(0, 34)]);
   return otid;

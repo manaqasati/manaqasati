@@ -66,7 +66,7 @@ button{font-family:inherit}
 <script>
 (function(){
 var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
-var Q=new URLSearchParams(location.search), app=document.getElementById('app'), D=null, CY='m', TIER='pro', CP='', QT=null;
+var Q=new URLSearchParams(location.search), app=document.getElementById('app'), D=null, CY='m', TIER='pro', CP='', QT=null, ADQ={};
 var IOSAPP=!!(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||''));
 if(IOSAPP){ try{ var _st=document.createElement('style'); _st.textContent='#upb,#yrb,#renb,#udnb{display:none!important}'; document.head.appendChild(_st); }catch(e){} }
 var rq=String(Q.get('ref')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,16); if(rq){ try{localStorage.setItem('mnq_ref',rq);}catch(e){} }
@@ -93,6 +93,11 @@ function chooser(inTrial){
   +'<div class="seg"><button type="button" data-cy="m" class="'+(CY==='m'?'on':'')+'">شهري</button><button type="button" data-cy="y" class="'+(CY==='y'?'on':'')+'">سنوي <span class="pill p-g" style="height:19px">شهران مجاناً</span></button></div></div>';
  h+='<div class="plans">'+['pro','ent'].map(function(t){ var p=C.tiers[t][CY];
    return '<button type="button" class="plan'+(TIER===t?' on':'')+'" data-t="'+t+'"><h4>'+esc(C.tiers[t].name)+(t==='pro'?' <span class="pill p-g">الأكثر اختياراً</span>':'')+'</h4><div class="price">'+money(p)+' <small>ر.س / '+(CY==='y'?'سنة':'شهر')+'</small></div>'+(CY==='y'?'<div class="mu">يعادل '+money(Math.round(p/12))+' ر.س شهرياً</div>':'')+'<ul>'+feats(t)+'</ul></button>'; }).join('')+'</div>';
+ var adh='';
+ Object.keys(C.addons||{}).forEach(function(k){ var a=C.addons[k]; if(!a.on||a.tiers.indexOf(TIER)<0) return; var q=parseInt(ADQ[k])||0;
+   adh+='<div class="row"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':'👥'))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+money(a.p)+' ر.س شهرياً</div></div>'
+    +'<div class="step"><button type="button" data-nless="'+k+'"'+(q<=0?' disabled':'')+'>−</button><b>'+q+'</b><button type="button" class="add" data-nadd="'+k+'">+</button></div></div>'; });
+ if(adh) h+=buyBlock('<div id="nadd" style="margin-top:16px;border-top:1px dashed #dbe3f4;padding-top:12px"><div class="h3" style="font-size:15px;margin-bottom:2px">احتجت أكثر؟ أضف لباقتك</div><div class="mu" style="margin-bottom:6px">اختياري — تُضاف إلى اشتراكك وتتجدد معه، ويمكنك إلغاؤها في أي وقت</div>'+adh+'</div>');
  h+='<div class="mu" style="margin-top:10px">الباقة المجانية مستمرة لك دائماً: مشاريع السوق والعروض، ومشرف أو مندوب واحد.</div>';
  if(D.trial_ok&&!inTrial) h+=buyBlock('<div class="trial" style="margin-top:14px"><span style="font-size:22px">🎉</span><div style="flex:1;min-width:200px"><b style="color:#15803d;font-size:14px">جرّب مساعد الفوز '+dy(C.trial_days)+' مجاناً</b><div style="font-size:12px;color:#166534;font-weight:700">دون الحاجة إلى بطاقة، وتتوقف تلقائياً بنهاية التجربة.</div></div><button type="button" class="btn sec" id="trialb">ابدأ التجربة</button></div>');
  if(off) h+='<div class="offer" style="margin-top:14px">📣 عرض: خصم '+(off.kind==='fixed'?money(off.value)+' ر.س':off.value+'%')+(off.ends_at?' حتى '+dt(off.ends_at):'')+' — يُطبَّق تلقائياً</div>';
@@ -105,13 +110,15 @@ function chooser(inTrial){
 }
 function cpBox(){ var w=document.getElementById('cpw'); if(!w)return; w.innerHTML='<div style="display:flex;gap:8px"><input class="inp'+(CP&&QT&&QT.coupon?' ok':'')+'" id="cpi" placeholder="CODE" value="'+esc(CP)+'" maxlength="30"><button type="button" class="btn sec" id="cpa">'+(CP&&QT&&QT.coupon?'إزالة':'تطبيق')+'</button></div><div id="cpm" style="font-size:12.5px;font-weight:800;margin-top:6px"></div>';
  document.getElementById('cpa').onclick=function(){ if(CP&&QT&&QT.coupon){ CP=''; quote(); return; } CP=document.getElementById('cpi').value.trim().toUpperCase(); quote(); }; }
+function _nadd(){ var C=D.cfg, r={}; Object.keys(ADQ).forEach(function(k){ var a=C.addons[k], q=parseInt(ADQ[k])||0; if(q>0&&a&&a.on&&a.tiers.indexOf(TIER)>-1) r[k]=q; }); return r; }
+function _naddP(){ var r=_nadd(), t=0; Object.keys(r).forEach(function(k){ t+=D.cfg.addons[k].p*r[k]; }); return t*(CY==='y'?12:1); }
 function quote(){
  var box=document.getElementById('qlines'); if(!box)return;
- api('/api/subs/quote',{method:'POST',body:JSON.stringify({kind:'new',tier:TIER,cycle:CY,coupon:CP||undefined})}).then(function(q){
+ api('/api/subs/quote',{method:'POST',body:JSON.stringify({kind:'new',tier:TIER,cycle:CY,coupon:CP||undefined,addons:_nadd()})}).then(function(q){
    if(q.__s!==200){ if(q.coupon_error){ var bad=CP; CP=''; cpBox(); var i=document.getElementById('cpi'); if(i){i.value=bad;i.classList.add('bad');} var m=document.getElementById('cpm'); if(m){m.style.color='#b42318';m.textContent=q.message;} return quote(); } box.innerHTML='<div class="mu">'+esc(q.message||'')+'</div>'; return; }
    QT=q; box.innerHTML=q.lines.map(function(l){return '<div class="r"><span>'+esc(l.t)+'</span><b style="'+(l.v<0?'color:#15803d':'')+'">'+(l.v<0?'− ':'')+money(Math.abs(l.v))+' ر.س</b></div>';}).join('')
      +'<hr><div class="r" style="align-items:center"><b style="font-size:15px;color:#172554">الإجمالي</b><span class="big" style="font-size:24px;color:#172554">'+money(q.amount)+' <small style="font-size:12px">ر.س</small></span></div>'
-     +'<div class="mu" style="font-size:11.5px;line-height:1.7">يُجدَّد تلقائياً بالسعر الكامل '+money(D.cfg.tiers[TIER][CY])+' ر.س '+(CY==='y'?'سنوياً':'شهرياً')+'، ويمكنك إيقاف التجديد في أي وقت.</div>';
+     +'<div class="mu" style="font-size:11.5px;line-height:1.7">يُجدَّد تلقائياً بالسعر الكامل '+money(D.cfg.tiers[TIER][CY]+_naddP())+' ر.س '+(CY==='y'?'سنوياً':'شهرياً')+'، ويمكنك إيقاف التجديد في أي وقت.</div>';
    if(CP&&q.coupon){ cpBox(); var m=document.getElementById('cpm'); if(m){m.style.color='#15803d';m.textContent='✓ تم تطبيق الخصم على هذه الدفعة';} }
    else if(document.getElementById('cpi')) cpBox();
  }).catch(function(){});
@@ -119,10 +126,11 @@ function quote(){
 function wireChooser(){
  [].forEach.call(app.querySelectorAll('[data-cy]'),function(b){ b.onclick=function(){ CY=b.getAttribute('data-cy'); render(); }; });
  [].forEach.call(app.querySelectorAll('[data-t]'),function(b){ b.onclick=function(){ TIER=b.getAttribute('data-t'); render(); }; });
+ [].forEach.call(app.querySelectorAll('[data-nadd],[data-nless]'),function(b){ b.onclick=function(){ var k=b.getAttribute('data-nadd')||b.getAttribute('data-nless'), q=parseInt(ADQ[k])||0; q=b.hasAttribute('data-nadd')?Math.min(20,q+1):Math.max(0,q-1); ADQ[k]=q; var st=b.parentNode; st.querySelector('b').textContent=q; st.querySelector('[data-nless]').disabled=q<=0; quote(); }; });
  var co=document.getElementById('cpo'); if(co) co.onclick=function(){ cpBox(); };
  if(CP) cpBox();
  var tb=document.getElementById('trialb'); if(tb) tb.onclick=function(){ tb.disabled=true; api('/api/subs/trial',{method:'POST'}).then(function(r){ if(r.ok){ toast('بدأت تجربتك المجانية ✓'); load(); } else { toast(r.message||'تعذّر'); tb.disabled=false; } }); };
- var bb=document.getElementById('buyb'); if(bb) bb.onclick=function(){ checkout({kind:'new',tier:TIER,cycle:CY,coupon:CP||undefined},bb); };
+ var bb=document.getElementById('buyb'); if(bb) bb.onclick=function(){ checkout({kind:'new',tier:TIER,cycle:CY,coupon:CP||undefined,addons:_nadd()},bb); };
  quote();
 }
 function checkout(body,btn){
@@ -232,10 +240,10 @@ function iapChooser(){
   var h='<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap"><div><div class="h3" style="margin:0">اختر باقتك</div><div class="mu">الدفع من حساب Apple</div></div>'
    +'<div class="seg"><button type="button" data-cy="m" class="'+(CY==='m'?'on':'')+'">شهري</button><button type="button" data-cy="y" class="'+(CY==='y'?'on':'')+'">سنوي <span class="pill p-g" style="height:19px">شهران مجاناً</span></button></div></div>';
   h+='<div class="plans">'+['pro','ent'].map(function(t){ var q=APR[SKU[t][CY]];
-    return '<button type="button" class="plan'+(TIER===t?' on':'')+'" data-t="'+t+'"><h4>'+esc(C.tiers[t].name)+(t==='pro'?' <span class="pill p-g">الأكثر اختياراً</span>':'')+'</h4><div class="price">'+(q?esc(q.displayPrice):'…')+' <small>/ '+iapPer(CY)+'</small></div><ul>'+feats(t)+'</ul></button>'; }).join('')+'</div>';
+    return '<button type="button" class="plan'+(TIER===t?' on':'')+'" data-t="'+t+'"><h4>'+esc(C.tiers[t].name)+(t==='pro'?' <span class="pill p-g">الأكثر اختياراً</span>':'')+'</h4><div class="price">'+(q?'<bdi dir="ltr">'+esc(q.displayPrice)+'</bdi>':'…')+' <small>/ '+iapPer(CY)+'</small></div><ul>'+feats(t)+'</ul></button>'; }).join('')+'</div>';
   var trial=AP&&AP.trial_ok&&p&&p.trial;
-  if(trial) h+='<div class="trial" style="margin-top:14px"><span style="font-size:22px">🎉</span><div style="flex:1"><b style="color:#15803d;font-size:14px">تجربة '+dy(C.trial_days)+' مجاناً لأول اشتراك</b><div style="font-size:12px;color:#166534;font-weight:700">بعدها '+esc(p.displayPrice)+' / '+iapPer(CY)+' — ويمكنك الإلغاء قبل نهاية التجربة دون أي رسوم.</div></div></div>';
-  h+='<button type="button" class="btn pri" id="iapb" style="width:100%;margin-top:14px;padding:14px;font-size:15.5px"'+(APBUSY||!p?' disabled':'')+'>'+(APBUSY?'جارٍ إتمام العملية…':(trial?'ابدأ التجربة المجانية':'اشترك في '+esc(C.tiers[TIER].name)+(p?' — '+esc(p.displayPrice):'')))+'</button>'
+  if(trial) h+='<div class="trial" style="margin-top:14px"><span style="font-size:22px">🎉</span><div style="flex:1"><b style="color:#15803d;font-size:14px">تجربة '+dy(C.trial_days)+' مجاناً لأول اشتراك</b><div style="font-size:12px;color:#166534;font-weight:700">بعدها '+'<bdi dir="ltr">'+esc(p.displayPrice)+'</bdi>'+' / '+iapPer(CY)+' — ويمكنك الإلغاء قبل نهاية التجربة دون أي رسوم.</div></div></div>';
+  h+='<button type="button" class="btn pri" id="iapb" style="width:100%;margin-top:14px;padding:14px;font-size:15.5px"'+(APBUSY||!p?' disabled':'')+'>'+(APBUSY?'جارٍ إتمام العملية…':(trial?'ابدأ التجربة المجانية':'اشترك في '+esc(C.tiers[TIER].name)+(p?' — '+'<bdi dir="ltr">'+esc(p.displayPrice)+'</bdi>':'')))+'</button>'
    +'<div style="display:flex;justify-content:center;gap:16px;margin-top:10px;flex-wrap:wrap"><button type="button" class="btn sec" id="iapr" style="padding:8px 12px;font-size:12.5px">هل لديك رمز خصم؟</button><button type="button" class="btn sec" id="iaps" style="padding:8px 12px;font-size:12.5px">استعادة المشتريات</button></div>'
    +iapLegal()+'</div>';
   return h;
@@ -246,14 +254,14 @@ function iapManage(){
   var ren=S.status==='grace'?'تعذّر التجديد — حدّث وسيلة الدفع في إعدادات Apple':(S.cancel_at_end?'ينتهي في '+dt(S.period_end)+' ولن يُجدَّد':(S.status==='trial'?'تنتهي التجربة في '+dt(S.period_end)+' ثم يتجدد تلقائياً':'يتجدد تلقائياً في '+dt(S.period_end)));
   var h='<div class="card hero"><div style="flex:1;min-width:220px"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b style="font-size:21px">باقة '+esc(C.tiers[S.tier]?C.tiers[S.tier].name:TN[S.tier])+'</b><span class="pill" style="background:#fbbf24;color:#172554">'+(S.cycle==='y'?'سنوي':'شهري')+'</span>'+st+'</div>'
    +'<div style="font-size:13px;opacity:.85;font-weight:700;margin-top:6px">'+esc(ren)+' · عن طريق Apple</div>'
-   +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+(S.tier==='pro'&&S.status!=='grace'?'<button type="button" class="btn gold" id="iapu"'+(APBUSY?' disabled':'')+'>⬆ الترقية إلى مؤسسة'+(APR[SKU.ent[S.cycle]]?' — '+esc(APR[SKU.ent[S.cycle]].displayPrice):'')+'</button>':'')
+   +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+(S.tier==='pro'&&S.status!=='grace'?'<button type="button" class="btn gold" id="iapu"'+(APBUSY?' disabled':'')+'>⬆ الترقية إلى مؤسسة'+(APR[SKU.ent[S.cycle]]?' — '+'<bdi dir="ltr">'+esc(APR[SKU.ent[S.cycle]].displayPrice)+'</bdi>':'')+'</button>':'')
    +'<button type="button" class="btn ghost" id="iapm">إدارة الاشتراك</button></div></div></div>';
   h+='<div class="card"><div class="h3">حدود باقتك</div>'
    +'<div class="lim"><span>مشرفون ومندوبون</span><b>'+(U.dlg||0)+' من '+L.dlg+'</b></div><div class="lim"><span>مشاريع نشطة</span><b>'+(U.projects||0)+' من '+L.projects+'</b></div><div class="lim"><span>فنيون</span><b>'+(U.tech||0)+' من '+L.tech+'</b></div>'
    +'<div class="lim"><span>الفروع</span><b>'+(L.branch>=99?'متعددة':L.branch)+'</b></div><div class="lim"><span>الخريطة اللايف</span><b>'+(L.map?'✓':'—')+'</b></div></div>';
   if(S.status!=='grace'){ var ah='';
     Object.keys(C.addons).forEach(function(k){ var a=C.addons[k]; if(!a.on||a.tiers.indexOf(S.tier)<0) return; var sku=SKU.addon[k], q=APR[sku], has=own.indexOf(sku)>-1;
-      ah+='<div class="row"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':'👥'))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+(q?esc(q.displayPrice)+' / شهر':'…')+'</div></div>'
+      ah+='<div class="row"><span class="ic">'+(k==='branch'?'📍':(k==='proj'?'💼':'👥'))+'</span><div style="flex:1;min-width:0"><b style="font-size:14px">'+esc(a.name)+'</b><div class="mu" style="font-size:12px">'+(q?'<bdi dir="ltr">'+esc(q.displayPrice)+'</bdi>'+' / شهر':'…')+'</div></div>'
        +(has?'<span class="pill p-g">✓ مفعّلة</span>':'<button type="button" class="btn sec" data-iapa="'+sku+'" style="padding:8px 14px"'+(APBUSY||!q?' disabled':'')+'>إضافة</button>')+'</div>'; });
     if(ah) h+='<div class="card"><div class="h3" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">الإضافات <span class="mu">اشتراك شهري يتجدد مع Apple، وإلغاؤه من «إدارة الاشتراك»</span></div>'+ah+iapLegal()+'</div>';
   }
