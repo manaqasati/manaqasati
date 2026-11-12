@@ -46,7 +46,7 @@
     + '#mqMore .mm-t small{font-size:10.5px;font-weight:700;color:#475569;line-height:1.4}'
     + '#mqMore .mm-t small.red{color:#b91c1c;font-weight:900}'
     + '#mqMore .mm-bd{position:absolute;top:8px;left:8px;background:#ef4444;color:#fff;font-size:10.5px;font-weight:900;border-radius:999px;padding:1px 7px;min-width:18px;text-align:center}'
-    + '#mqMore .mm-f{display:flex;gap:8px;margin-top:10px}'
+    + '#mqMore .mm-f{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}#mqMore .mm-f>*{min-width:30%}'
     + '#mqMore .mm-f button,#mqMore .mm-f a{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:1.5px solid var(--border,#dbe5f5);background:var(--white,#fff);color:var(--text,#334766);border-radius:13px;padding:11px 6px;font:900 13px Tajawal,sans-serif;text-decoration:none;cursor:pointer}'
     + '#mqMore .mm-out{display:block;width:100%;background:none;border:0;color:#dc2626;font:900 14px Tajawal,sans-serif;padding:12px;margin-top:4px;cursor:pointer}'
     + '#mqMore .c1{background:#dbeafe}#mqMore .c1 .mm-i{color:#1d4ed8}#mqMore .c2{background:#ede9fe}#mqMore .c2 .mm-i{color:#6d28d9}#mqMore .c3{background:#fee2e2}#mqMore .c3 .mm-i{color:#b91c1c}'
@@ -105,8 +105,8 @@
     var ch = esc(String(nm).trim().charAt(0) || 'م');
     var av = img && /^(https?:|\/)/.test(img) ? '<img src="' + esc(img) + '" alt="" onerror="this.parentNode.textContent=this.parentNode.getAttribute(\'data-ch\')">' : ch;
     if (PROV) {
-      var lvl = (p.badge === 'verified' || u.badge === 'verified') ? 'موثّق ✓' : 'مزوّد';
-      return '<div class="mm-me"><div class="mm-av" data-ch="' + ch + '">' + av + '</div><div class="mm-nm"><b>' + esc(nm) + '</b><small>' + lvl + (p.city || u.city ? ' · ' + esc(p.city || u.city) : '') + '</small></div><button type="button" class="mm-share" data-act="share">شارك الصفحة</button></div>';
+      var _vf = (p.badge === 'verified' || u.badge === 'verified'); var lvl = 'مزوّد'; var _mk = window.MNQ_MARK ? MNQ_MARK(p, _vf, 14) : '';
+      return '<div class="mm-me"><div class="mm-av" data-ch="' + ch + '">' + av + '</div><div class="mm-nm"><b>' + esc(nm) + _mk + '</b><small>' + lvl + (p.city || u.city ? ' · ' + esc(p.city || u.city) : '') + '</small></div><button type="button" class="mm-share" data-act="share">شارك الصفحة</button></div>';
     }
     return '<div class="mm-me"><div class="mm-av" data-ch="' + ch + '">' + av + '</div><div class="mm-nm"><b>' + esc(nm) + '</b><small>عميل' + (u.city ? ' · ' + esc(u.city) : '') + '</small></div></div>'
       + '<button type="button" class="mm-new" data-act="sh:new">+ انشر مشروع جديد</button>';
@@ -117,6 +117,7 @@
     var dark = D.documentElement.getAttribute('data-theme') === 'dark';
     return '<div class="mm-f">' + (PROV ? '' : '<button type="button" data-act="wa">💬 تواصل معنا</button>')
       + '<button type="button" data-act="theme">' + (dark ? '☀️ فاتح' : '🌙 ليلي') + '</button>'
+      + (W.MNQ_I18N ? '<button type="button" data-act="lang" class="notranslate" translate="no">🌐 ' + W.MNQ_I18N.names[W.MNQ_I18N.lang] + '</button>' : '')
       + (canSw ? '<button type="button" data-act="switch">⇄ ' + (PROV ? 'حساب العميل' : 'حساب المزوّد') + '</button>' : (PROV ? '' : '<button type="button" data-act="becomeprov">🧰 صير مزوّد</button>')) + '</div>'
       + '<button type="button" class="mm-out" data-act="out">تسجيل الخروج</button>';
   }
@@ -174,6 +175,7 @@
     if (a.indexOf('sh:') === 0) return go(function(){ if (typeof W.show === 'function') W.show(a.slice(3), null, a.slice(3)); });
     if (a.indexOf('url:') === 0) { close(true); location.href = a.slice(4); return; }
     if (a === 'wa') { close(true); location.href = 'https://wa.me/966594011313'; return; }
+    if (a === 'lang') { close(true); setTimeout(function(){ if (W.MNQ_I18N) W.MNQ_I18N.pick(); }, 60); return; }
     if (a === 'theme') { if (typeof W.toggleTheme === 'function') W.toggleTheme(); render(); return; }
     if (a === 'becomeprov') { go(function(){ if (typeof W.openBecomeProv === 'function') W.openBecomeProv(); else location.href = '/dashboard-client.html#becomeprov'; }); return; }
     if (a === 'switch') { var sw = D.getElementById('switchDash'); close(true); if (sw) sw.click(); else location.href = PROV ? '/dashboard-client.html' : '/dashboard-provider.html'; return; }

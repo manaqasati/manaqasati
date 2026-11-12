@@ -1545,6 +1545,7 @@ async function loadProfile(){
   var pg=_el('page-profile');if(!pg)return;
   pg.innerHTML=_skList(3);
   var p=await _api('/api/provider/profile');
+  if(p&&p.id)window._prof=Object.assign(window._prof||{},p);
   if(!p||!p.id){ _loadFail(pg,'loadProfile','الصفحة التعريفية'); return; }   // لا نعرض نموذج فاضي — لو حفظه ينمسح ملفه
   var reviews=await _api('/api/provider/reviews')||[];
   var projs=await _api('/api/provider/projects')||[];
@@ -1564,7 +1565,7 @@ async function loadProfile(){
     +'<div class="pf-avw"><div id="av-preview" class="pf-av" onclick="document.getElementById(&quot;av-inp&quot;).click()">'+avHtml+'</div>'
     +'<button class="pf-cam" aria-label="تغيير الصورة" onclick="document.getElementById(&quot;av-inp&quot;).click()"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></button>'
     +'<input type="file" id="av-inp" accept="image/*" style="display:none" onchange="_uploadAvatar(this)"></div>'
-    +'<div style="flex:1;min-width:0"><div class="pf-name">'+_esc(p.business_name||p.name||'المزود')+'</div>'
+    +'<div style="flex:1;min-width:0"><div class="pf-name">'+_esc(p.business_name||p.name||'المزود')+(window.MNQ_MARK?MNQ_MARK(p,p.badge==='verified',17):'')+'</div>'
     +'<div class="pf-badges"><span class="wp-mylb"></span></div>'
     +'<div class="pf-sub">'+[p.city?_esc(p.city):'',(p.specialties||[]).slice(0,2).map(_esc).join('، ')].filter(Boolean).join(' · ')+'</div></div></div>'
     +'<div class="pf-stats"><div><b>'+totalBids+'</b><span>عروض</span></div><div><b class="g">'+completed+'</b><span>مكتملة</span></div><div><b>'+avgR+(avgR!=='—'?' <i>★</i>':'')+'</b><span>'+(Array.isArray(reviews)&&reviews.length?reviews.length+' تقييم':'التقييم')+'</span></div></div>'

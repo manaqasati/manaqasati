@@ -86,7 +86,7 @@
     css += '@media(min-width:769px){body{padding-right:260px!important}.top{display:none!important}#pnvS{display:flex!important}#pnvB{display:none!important}.bar{right:260px!important}}'
       + '@media(max-width:768px){#pnvS{display:none!important}body.pnv-b{padding-bottom:96px!important}}'
       + '#pnvS{font-family:Tajawal,sans-serif;text-align:right}#pnvS .ni{text-decoration:none}#pnvB{font-family:Tajawal,sans-serif}';
-    var st = D.createElement('style'); st.id = 'pnv-css'; st.textContent = css; D.head.appendChild(st);
+    var st = D.createElement('style'); st.id = 'pnv-css'; st.textContent = css; D.head.appendChild(st); D.body.classList.add('mnq-pnv');
     // روابط: أقسام اللوحة ← /dashboard-provider.html#قسم
     function fix(root){ [].forEach.call(root.querySelectorAll('[onclick]'), function(b){ var oc = b.getAttribute('onclick') || ''; var m = /gotoPage\('([a-z]+)'\)/.exec(oc), u = /location\.href='([^']+)'/.exec(oc);
       var href = m ? '/dashboard-provider.html#' + m[1] : (u ? u[1] : null); b.removeAttribute('onclick'); if (href) b.addEventListener('click', function(){ location.href = href; }); }); }

@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/branch.js','/route.js','/pnav.js','/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/i18n.js','/i18n-en.js','/i18n-ur.js','/branch.js','/route.js','/pnav.js','/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -297,15 +297,33 @@ app.use(function(req, res, next){
       return _sf(p, Object.assign({ cacheControl: false }, o || {}), cb);
     };
     const _snd = res.send.bind(res);
-    res.send = function(body){ if (typeof body === 'string') body = _stampAssets(_injectUp(body)); return _snd(body); };
+    res.send = function(body){ if (typeof body === 'string') body = _stampAssets(_injectI18n(_injectUp(body), req)); return _snd(body); };
   }
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
 const _UP_VER = '16'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
+// العلامة الموحّدة (نفسها في كل الموقع): ذهبية للمشترك · زرقاء للموثّق — علامة وحدة بس
+function _sealSrv(k, sz){ if (!k) return ''; sz = sz || 17; const g = k === 'sub', t = g ? 'منشأة مشتركة' : 'موثّق';
+  return '<span title="' + t + '" style="display:inline-flex;vertical-align:-2px;margin-inline-start:4px"><svg width="' + sz + '" height="' + sz + '" viewBox="-2 -2 28 28" aria-label="' + t + '"><polygon points="12.00,0.60 14.28,3.50 17.70,2.13 18.22,5.78 21.87,6.30 20.50,9.72 23.40,12.00 20.50,14.28 21.87,17.70 18.22,18.22 17.70,21.87 14.28,20.50 12.00,23.40 9.72,20.50 6.30,21.87 5.78,18.22 2.13,17.70 3.50,14.28 0.60,12.00 3.50,9.72 2.13,6.30 5.78,5.78 6.30,2.13 9.72,3.50" fill="' + (g ? '#e3a008' : '#3897f0') + '" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.4 12.4 10.6 15.5 16.7 8.8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'; }
+const _SEAL_TAG = "<script>(function(W){var P='12.00,0.60 14.28,3.50 17.70,2.13 18.22,5.78 21.87,6.30 20.50,9.72 23.40,12.00 20.50,14.28 21.87,17.70 18.22,18.22 17.70,21.87 14.28,20.50 12.00,23.40 9.72,20.50 6.30,21.87 5.78,18.22 2.13,17.70 3.50,14.28 0.60,12.00 3.50,9.72 2.13,6.30 5.78,5.78 6.30,2.13 9.72,3.50';W.MNQ_SEAL=function(k,sz){if(!k)return '';sz=sz||18;var g=k==='sub',t=g?'منشأة مشتركة':'موثّق';return '<span class=\"mnq-seal mnq-seal-'+(g?'sub':'ver')+'\" title=\"'+t+'\" style=\"display:inline-flex;vertical-align:-2px;margin-inline-start:4px;flex-shrink:0\"><svg width=\"'+sz+'\" height=\"'+sz+'\" viewBox=\"-2 -2 28 28\" aria-label=\"'+t+'\"><polygon points=\"'+P+'\" fill=\"'+(g?'#e3a008':'#3897f0')+'\" stroke=\"#fff\" stroke-width=\"1.6\" stroke-linejoin=\"round\"/><path d=\"M7.4 12.4 10.6 15.5 16.7 8.8\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></span>';};W.MNQ_MARK=function(o,ver,sz){if(!o)return '';var s=!!(o.pro_sub||o.page_live);var v=ver!=null?!!ver:!!(o.provider_verified||o.verified===true||o.badge==='verified'||o.badge==='موثق');return W.MNQ_SEAL(s?'sub':(v?'ver':''),sz);};})(window);</script>";
 const _UP_TAG = '<script>window.__mqGateOn=1;window.addEventListener("popstate",function(e){try{if(window.__mqPopGate&&window.__mqPopGate(e))e.stopImmediatePropagation();}catch(_){}},true);</script><script src="/up.js?v=' + _UP_VER + '" defer></script><script src="/citypick.js?v=' + _CITY_VER + '" defer></script>';
-function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); return i === -1 ? h : h.slice(0, i) + _UP_TAG + h.slice(i); }
+// ── تعدد اللغات: نحقن /i18n.js أول شي في <head> (قبل أي سكربت) — ما عدا لوحة الإدارة والصفحات القانونية والعقود
+const _I18N_SKIP = /^\/(dashboard-admin\.html|terms(\.html)?|privacy(\.html)?|contracts(\/.*|\.html)?|admin.*)$/i;
+function _reqLang(req){ try { const m = /(?:^|;\s*)mnq_lang=(en|ur|ar)\b/.exec(String(req && req.headers && req.headers.cookie || '')); return m ? m[1] : 'ar'; } catch(e) { return 'ar'; } }
+function _injectI18n(h, req){
+  if (h.length < 200 || h.indexOf('/i18n.js') !== -1 || !/^\s*<(!doctype|html)/i.test(h)) return h;
+  const path = String(req && req.path || '');
+  if (_I18N_SKIP.test(path)) return h;
+  const m = /<head[^>]*>/i.exec(h); if (!m) return h;
+  const L = _reqLang(req), dv = L !== 'ar' ? _assetVer('i18n-' + L + '.js') : '';
+  let tag = '<script>window.__MNQ_I18N_V=' + JSON.stringify(dv || '1') + ';</script>';
+  if (L !== 'ar') tag += '<script src="/i18n-' + L + '.js?v=' + dv + '"></script>';
+  tag += '<script src="/i18n.js?v=' + _assetVer('i18n.js') + '"></script>';
+  const i = m.index + m[0].length; return h.slice(0, i) + tag + h.slice(i);
+}
+function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); if (i === -1) return h; h = h.slice(0, i) + _UP_TAG + h.slice(i); const m = /<head[^>]*>/i.exec(h); return m ? h.slice(0, m.index + m[0].length) + _SEAL_TAG + h.slice(m.index + m[0].length) : h; }
 // ملفات اللوحات المفصولة (dash-*.js/css): نضيف لرابطها بصمة المحتوى تلقائياً (?v=...)
 // → الجوال يخزّنها سنة، وأي تعديل على الملف يغيّر البصمة فيوصل التحديث فوراً بدون ما أحد يغيّر رقم يدوي
 const _assetVerCache = new Map();
@@ -481,7 +499,7 @@ app.use(express.static('.', {
       res.setHeader('Cache-Control', 'public, max-age=604800'); // أسبوع للصور والخطوط
     } else if (/\.html$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); // HTML لا يُخزَّن أبداً (تصل التحديثات فوراً)
-    } else if (/(^|[\/\\])dash-[a-z]+\.(js|css)$/i.test(filePath)) {
+    } else if (/(^|[\/\\])(dash-[a-z]+|i18n(-[a-z]+)?)\.(js|css)$/i.test(filePath)) {
       // برابط فيه بصمة (?v=) نخزّنه سنة؛ بدونها يتحقق كل مرة
       res.setHeader('Cache-Control', (res.req && res.req.query && res.req.query.v) ? 'public, max-age=31536000, immutable' : 'no-cache');
     } else if (/(^|[\/\\])sw\.js$/i.test(filePath)) {
@@ -697,7 +715,7 @@ async function notifyMatchingProviders(request, _force, _phase){
       [cats, city]);
     let sent=0;
     const link = SITE_URL + '/project/x-' + request.id + '?id=' + request.id;
-    // الذهبي والماسي يوصلهم المشروع قبل غيرهم بـ15 دقيقة — الباقين يرسلهم المؤقّت (_wpLateRun)
+    // الزمرّدي والماسي يوصلهم المشروع قبل غيرهم بـ15 دقيقة — الباقين يرسلهم المؤقّت (_wpLateRun)
     let rows = r.rows;
     const _gold = p => (parseInt(p.wp_level) || 0) >= 10;
     if (_phase === 'late') rows = rows.filter(p => !_gold(p));
@@ -768,7 +786,7 @@ function _proximity(reqCity, provCity, serviceCities, servesAll){
   return { prox: (ra && rb) || km != null ? 2 : null, prox_km: km, serves: servesAll ? 'all' : null };
 }
 function _wpRank(x){ const l = parseInt(x.wp_level) || 0; return l >= 5 ? l : 0; }
-// «مرشّح لك»: أول عرض لمزوّد ذهبي أو ماسي (واحد بس لكل مشروع)
+// «مرشّح لك»: أول عرض لمزوّد زمرّدي أو ماسي (واحد بس لكل مشروع)
 function _wpPick(rows){ const r = rows.find(x => (parseInt(x.wp_level) || 0) >= 10 && !x.low_rank && x.status !== 'rejected' && !x.is_hidden); if (r) r.wp_pick = true; return rows; }
 function _sortByProximity(rows, reqCity, cityKey){
   rows.forEach((x, i) => { Object.assign(x, _proximity(reqCity, x[cityKey || 'provider_city'], x._sc, x._sa)); delete x._sc; delete x._sa; x._i = i; });
@@ -1544,7 +1562,7 @@ app.get('/dalil/:cat/:city', async (req, res) => {
       const av = p.avg_rating ? `<span style="color:#F0A500">${seoStars(p.avg_rating)}</span> <span style="color:#64748b;font-size:12px">${(+p.avg_rating).toFixed(1)} (${p.review_count})</span>` : '<span style="color:#94a3b8;font-size:12px">جديد</span>';
       const slug = seoSlug(p.business_name || p.name || 'مزود') + '-' + p.id;
       const bio = p.bio ? `<p style="font-size:13px;color:#3a4c6b;margin:6px 0 0;line-height:1.7">${seoEsc(String(p.bio).slice(0,120))}</p>` : '';
-      return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:15px;margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><h3 style="margin:0;font-size:15px;color:#1e3a8a"><a href="/pro/${slug}" style="color:#1e3a8a;text-decoration:none">${nm}</a>${p.pro_sub ? ' <span style="display:inline-block;font-size:10.5px;font-weight:900;color:#1e3a8a;background:#eef3ff;border:1px solid #c7d6f5;border-radius:999px;padding:1px 8px;vertical-align:middle">🏢 منشأة</span>' : ''}</h3><div>${av}</div></div><div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${seoEsc(p.city||city)} · ${seoEsc(cat)}</div>${bio}<a href="/pro/${slug}" style="display:inline-block;margin-top:10px;font-size:12.5px;font-weight:700;color:#1e40af;text-decoration:none">عرض الملف ←</a></div>`;
+      return `<div style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:15px;margin-bottom:11px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:start"><h3 style="margin:0;font-size:15px;color:#1e3a8a"><a href="/pro/${slug}" style="color:#1e3a8a;text-decoration:none">${nm}</a>${_sealSrv(p.pro_sub ? 'sub' : ((p.badge === 'verified' || p.badge === 'موثق') ? 'ver' : ''))}</h3><div>${av}</div></div><div style="font-size:12px;color:#64748b;margin-top:3px">📍 ${seoEsc(p.city||city)} · ${seoEsc(cat)}</div>${bio}<a href="/pro/${slug}" style="display:inline-block;margin-top:10px;font-size:12.5px;font-weight:700;color:#1e40af;text-decoration:none">عرض الملف ←</a></div>`;
     }).join('') : `<p style="background:#fff;border:1px solid #e6eefb;border-radius:14px;padding:18px;color:#64748b"><strong>انشر مشروعك مجاناً</strong> — نوصّله لمزوّدين ${seoEsc(cat)} المناسبين في ${seoEsc(city)}، ويوصلك عروضهم وتختار الأنسب.</p>`;
 
     const otherCities = SEO_CITIES.filter(c=>c!==city).slice(0,10).map(c=>`<a href="/dalil/${seoSlug(cat)}/${seoSlug(c)}" style="display:inline-block;margin:3px;padding:5px 11px;background:#eef4ff;border:1px solid #cdddf9;border-radius:16px;color:#1e40af;text-decoration:none;font-size:12.5px">${seoEsc(cat)} ${seoEsc(c)}</a>`).join('');
@@ -1940,6 +1958,8 @@ async function sendEmail(to, subject, html, meta) {
     if (_ep && !_emailAllowed(_ep, meta)) return false;
     if (_ep) html = _epFooter(html, _ep.id, meta.cat, _ep);
   }
+  // لغة المستلم: نترجم العنوان والمحتوى (العربي يبقى كما هو)
+  try { const _lg = await _langOf(meta.uid, to); if (_lg !== 'ar') { subject = _trS(_lg, subject); html = _trHtml(_lg, html); } } catch(e) {}
   let logId = null;
   try { logId = (await pool.query('INSERT INTO email_log (user_id, to_email, subject, kind, status) VALUES ($1,$2,$3,$4,$5) RETURNING id', [meta.uid || null, String(to).slice(0,200), String(subject||'').slice(0,200), meta.kind || 'other', 'sending'])).rows[0].id; } catch(e) {}
   if (logId && meta.tid) pool.query('UPDATE ntrack SET email_id=$1 WHERE id=$2', [logId, meta.tid]).catch(()=>{});
@@ -2048,6 +2068,102 @@ function emailTpl(title, body, btnText, btnUrl, opts) {
 </body></html>`;
 }
 
+// ═══ ترجمة رسائل السيرفر (الإشعارات والإيميلات) حسب لغة الحساب — نفس قاموس الواجهة ═══
+const _mkT = (function(){
+  // ── محرّك الترجمة: مطابقة كاملة ← قالب أرقام ← عبارات كاملة ← مقاطع (بين الفواصل) ──
+  // أي مقطع ما نقدر نترجمه كامل يبقى مثل ما هو (غالباً اسم أو عنوان كتبه المستخدم) — ما نخلط كلمات
+  var SEP = /(\s*[·،,:|—–•«»“”"()\[\]!؟?\/…]+\s*)/;
+  function mkT(DICT, L){
+    var NK = Object.create(null), nk = function(t){ return t.replace(/[\u064B-\u065F\u0670\u0640]/g, ''); };
+    for (var k0 in DICT) if (Object.prototype.hasOwnProperty.call(DICT, k0)) { var n0 = nk(k0); if (NK[n0] == null) NK[n0] = DICT[k0]; }
+    function sg(o){ return L === 'en' && o ? String(o).replace(/(^|[^0-9.,])1 ((?:new|more|active|open|extra|verified|hidden|free|campaign) )?([a-z]+?)(ies|s)\b/g, function(m, a, j, w, e){ return /s$/.test(w) ? m : a + '1 ' + (j || '') + w + (e === 'ies' ? 'y' : ''); }) : o; }
+    function dk(t){ var v = DICT[t]; if (v == null) v = NK[nk(t)]; return v != null && /1/.test(t) ? sg(v) : v; }
+    var IDX = Object.create(null), TPL = Object.create(null), NUMS = '[0-9٠-٩]+(?:[.,٫٬][0-9٠-٩]+)*';
+    var NUM = new RegExp(NUMS, 'g'), HASN = new RegExp(NUMS), ARX = /[؀-ۿ]/;
+    for (var k in DICT) {
+      if (!Object.prototype.hasOwnProperty.call(DICT, k)) continue;
+      if (HASN.test(k)) { var ka = k.match(NUM) || [], va = String(DICT[k]).match(NUM) || []; var tk = k.replace(NUM, '#'); if (ka.length === va.length && !TPL[tk]) TPL[tk] = DICT[k]; }
+      if (k.length < 4 || k.indexOf(' ') === -1) continue;
+      var fw = k.split(' ')[0]; (IDX[fw] = IDX[fw] || []).push(k);
+    }
+    for (var f in IDX) IDX[f].sort(function(a, b){ return b.length - a.length; });
+    function tpl(t){ if (!HASN.test(t)) return null; var v = TPL[t.replace(NUM, '#')]; if (v == null) return null; var ns = t.match(NUM) || [], i = 0; var o = v.replace(NUM, function(m){ return i < ns.length ? ns[i++] : m; }); return sg(o); }
+    function full(t){   // كل الكلمات العربية لازم تتغطى بعبارات معروفة
+      var out = '', i = 0, n = t.length, any = false;
+      while (i < n) {
+        var j = t.indexOf(' ', i); if (j === -1) j = n;
+        var c = IDX[t.slice(i, j)], hit = null;
+        if (c) for (var q = 0; q < c.length; q++) { var p = c[q]; if (t.substr(i, p.length) === p) { var e = t.charAt(i + p.length); if (!e || !/[؀-ۿ\w]/.test(e)) { hit = p; break; } } }
+        if (hit) { out += DICT[hit]; i += hit.length; any = true; continue; }
+        var w = t.slice(i, j);
+        if (ARX.test(w)) return null; out += w;
+        if (j < n) out += ' '; i = j + 1;
+      }
+      return any ? out : null;
+    }
+    function one(t){   // مقطع واحد بدون فواصل
+      if (!ARX.test(t)) return t;
+      var m = /^([^؀-ۿ\w]*)([\s\S]*?)([^؀-ۿ\w.]*)$/.exec(t), a = m[1], core = m[2], z = m[3];
+      if (!core) return t;
+      var r = dk(core); if (r == null) r = tpl(core);
+      if (r == null) { var pm = /^(في|من|إلى|الى|لـ?)\s+(.+)$/.exec(core); if (pm) { var rr = dk(pm[2]); if (rr != null) { var pp = { 'في': ['in ', ' میں'], 'من': ['from ', ' سے'], 'إلى': ['to ', ' تک'], 'الى': ['to ', ' تک'], 'ل': ['for ', ' کے لیے'], 'لـ': ['for ', ' کے لیے'] }[pm[1]]; r = L === 'en' ? pp[0] + rr : rr + pp[1]; } } }
+      if (r == null && core.indexOf(' ') !== -1 && core.split(' ').length <= 6) r = full(core);
+      return r == null ? null : a + r + z;
+    }
+    return function T(s){
+      if (s == null) return s; s = String(s);
+      if (!ARX.test(s)) return s;
+      var lead = s.match(/^\s*/)[0], trail = s.match(/\s*$/)[0];
+      var t = s.slice(lead.length, s.length - trail.length).replace(/[ \t ]+/g, ' ');
+      if (!t) return s;
+      var r = dk(t); if (r == null) r = tpl(t);
+      if (r == null && t.indexOf('\n') !== -1) r = t.split('\n').map(function(x){ return T(x); }).join('\n');
+      if (r == null) {
+        var parts = t.split(SEP), ch = false;
+        if (parts.length === 1) { r = one(t); if (r == null) r = t; }
+        else {
+          for (var i = 0; i < parts.length; i++) {
+            if (i % 2) { if (L === 'en') parts[i] = parts[i].replace(/،/g, ',').replace(/؟/g, '?').replace(/«/g, '“').replace(/»/g, '”'); continue; }
+            var x = parts[i]; if (!x || !ARX.test(x)) continue;
+            var lw = x.match(/^\s*/)[0], tw = x.match(/\s*$/)[0], y = one(x.trim());
+            if (y != null) { parts[i] = lw + y + tw; ch = true; }
+          }
+          r = ch ? parts.join('') : t;
+        }
+      }
+      return lead + r + trail;
+    };
+  }
+  return mkT;
+})();
+const _TRS = {};
+function _trDict(L){
+  if (_TRS[L]) return _TRS[L];
+  let d = {};
+  try {
+    const txt = require('fs').readFileSync(__dirname + '/i18n-' + L + '.js', 'utf8');
+    const a = txt.indexOf('window.MNQ_DICT='), b = txt.indexOf(';window.MNQ_DICT_LANG');
+    if (a !== -1 && b > a) d = JSON.parse(txt.slice(a + 16, b));
+  } catch(e) { console.error('i18n dict', L, e.message); }
+  return (_TRS[L] = _mkT(d, L));
+}
+function _trS(L, s){
+  if (!s || (L !== 'en' && L !== 'ur')) return s;
+  try { return _trDict(L)(s); } catch(e) { return s; }
+}
+function _trHtml(L, h){
+  if (L !== 'en' && L !== 'ur') return h;
+  h = String(h).replace(/>([^<>]*[؀-ۿ][^<>]*)</g, (m, t) => '>' + _trS(L, t) + '<');
+  if (L === 'en') h = h.replace(/\bdir=(["'])rtl\1/gi, 'dir="ltr"').replace(/text-align:\s*right/gi, 'text-align:left').replace(/\blang=(["'])ar\1/gi, 'lang="en"');
+  return h;
+}
+async function _langOf(uid, email){
+  try {
+    const r = uid ? await pool.query('SELECT lang FROM users WHERE id=$1', [uid]) : (email ? await pool.query('SELECT lang FROM users WHERE lower(email)=lower($1) ORDER BY id LIMIT 1', [String(email)]) : { rows: [] });
+    const l = r.rows[0] && r.rows[0].lang; return (l === 'en' || l === 'ur') ? l : 'ar';
+  } catch(e) { return 'ar'; }
+}
+
 // ═══ PUSH ═══
 async function sendPush(userId, title, body, url, refType, refId) {
   const _st = { n: 0, ok: 0 };
@@ -2060,6 +2176,7 @@ async function sendPush(userId, title, body, url, refType, refId) {
       r.rows = keep;
     }
     if (!r.rows.length) return _st;
+    { const _lg = await _langOf(userId); if (_lg !== 'ar') { title = _trS(_lg, title || 'مناقصة'); body = _trS(_lg, body || ''); } }
     let badgeCount = 1;
     try {
       const badgeRes = await pool.query(`
@@ -3520,6 +3637,7 @@ async function setupDatabase() {
     // إثراء المحادثة: مرفقات · الرد على رسالة · حذف ناعم
     await _mig(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_url TEXT`);
     await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP`);
+    await _mig(`ALTER TABLE users ADD COLUMN IF NOT EXISTS lang TEXT`);
     // خصوصية السعر: 'client' = لصاحب المشروع فقط (الافتراضي) · 'public' = للجميع
     await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS price_visibility TEXT DEFAULT 'client'`);
     // ملف عرض السعر الرسمي (صورة/PDF) — يتبع رؤية السعر: يشوفه صاحب المشروع فقط إن كان السعر خاصاً
@@ -3724,7 +3842,7 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE work_proofs ADD COLUMN IF NOT EXISTS views INTEGER NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS opened_at TIMESTAMP, ADD COLUMN IF NOT EXISTS login_at TIMESTAMP, ADD COLUMN IF NOT EXISTS last_err VARCHAR(160), ADD COLUMN IF NOT EXISTS err_at TIMESTAMP, ADD COLUMN IF NOT EXISTS inapp BOOLEAN NOT NULL DEFAULT FALSE`);
       for (const c of ['work_id INTEGER','r_quality SMALLINT','r_time SMALLINT','r_deal SMALLINT'])
         await _mig(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS ${c}`);
-      // مستويات «وثّق أعمالك»: 1 أعمال موثّقة · 5 فضّي · 10 ذهبي · 20 ماسي (10 و20 يحسب فقط تقييمات 4★ فأعلى)
+      // مستويات «وثّق أعمالك»: 1 أعمال موثّقة · 5 فضّي · 10 زمرّدي · 20 ماسي (10 و20 يحسب فقط تقييمات 4★ فأعلى)
       // سلّم واحد: الأعمال الموثّقة + المشاريع اللي خلصت داخل المنصة وقيّمها العميل (بدل «نشط/مميّز/خبير»)
       await _mig(`CREATE OR REPLACE FUNCTION wp_stats(pid INTEGER, OUT n INTEGER, OUT hi INTEGER) LANGUAGE sql STABLE AS $f$
         SELECT (a.n + b.n)::int, (a.hi + b.hi)::int FROM
@@ -5350,6 +5468,13 @@ app.get('/api/admin/contract-stats', requirePermission('analytics.view'), async 
     res.json({ range: R, tot, all, top, users, names });
   } catch(e){ console.error('contract-stats:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// لغة الحساب (ar/en/ur) — تُستخدم في الإشعارات والإيميلات
+app.post('/api/me/lang', auth, async (req, res) => {
+  const l = String(req.body && req.body.lang || '');
+  if (!/^(ar|en|ur)$/.test(l)) return res.status(400).json({ message: 'لغة غير صحيحة' });
+  try { await pool.query('UPDATE users SET lang=$1 WHERE id=$2', [l === 'ar' ? null : l, req.user.id]); res.json({ ok: true, lang: l }); }
+  catch(e) { res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
 app.post('/api/me/mode', auth, async (req, res) => {
   try {
     const m = req.body && req.body.mode;
@@ -5497,7 +5622,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
 
 app.get('/api/provider/profile', auth, async (req, res) => {
   try {
-    const r = await pool.query(`SELECT id,name,company_profile_url,company_profile_name,email,phone,city,COALESCE(serves_all_cities,FALSE) as serves_all_cities,service_cities,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,COALESCE(can_request,FALSE) as can_request,COALESCE(can_provide,FALSE) as can_provide,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects FROM users WHERE id=$1`, [req.user.id]);
+    const r = await pool.query(`SELECT id,name,company_profile_url,company_profile_name,email,phone,city,COALESCE(serves_all_cities,FALSE) as serves_all_cities,service_cities,bio,badge,specialties,notify_categories,experience_years,portfolio_images,profile_image,business_name,last_bumped_at,COALESCE(website,'') as website,COALESCE(location_url,'') as location_url,COALESCE(instagram,'') as instagram,COALESCE(twitter,'') as twitter,COALESCE(snapchat,'') as snapchat,COALESCE(tiktok,'') as tiktok,COALESCE(youtube,'') as youtube,COALESCE(can_request,FALSE) as can_request,COALESCE(can_provide,FALSE) as can_provide,created_at,tier,COALESCE((SELECT AVG(rating) FROM reviews WHERE reviewed_id=users.id),0) as avg_rating,COALESCE((SELECT COUNT(*) FROM reviews WHERE reviewed_id=users.id),0) as review_count,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id) as total_bids,(SELECT COUNT(*) FROM bids WHERE provider_id=users.id AND status='accepted') as accepted_bids,(SELECT COUNT(*) FROM requests WHERE assigned_provider_id=users.id AND status='completed') as completed_projects, EXISTS(SELECT 1 FROM subs s WHERE s.user_id=users.id AND s.status IN ('trial','active','grace') AND (CASE WHEN s.status='grace' THEN s.grace_until ELSE s.period_end END) > NOW()) AS pro_sub FROM users WHERE id=$1`, [req.user.id]);
     if (!r.rows.length) return res.status(404).json({ message: 'غير موجود' });
     res.json(r.rows[0]);
   } catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -5530,10 +5655,10 @@ function _wpPh9(p){ const d = _asciiDigits(String(p || '')).replace(/\D/g, ''); 
 function _wpWho(n){ const w = String(n || '').replace(/\s+/g, ' ').trim().split(' '); return /^(أبو|ابو|أم|ام|بو)$/.test(w[0] || '') && w[1] ? w[0] + ' ' + w[1] : (w[0] || ''); }
 function _wpIp(req){ return String(req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim().slice(0, 64); }
 function _wpText(name, title, url){ return 'هلا ' + (name || '') + ' 👋\nهذا رابط مشروع «' + title + '» اللي نفذناه لك — ممكن تقيّمني؟ ما ياخذ دقيقة:\n' + url; }
-const _WP_LV = { 1: 'أعمال موثّقة', 5: 'موثّق فضّي', 10: 'موثّق ذهبي', 20: 'موثّق ماسي' };
+const _WP_LV = { 1: 'أعمال موثّقة', 5: 'موثّق فضّي', 10: 'موثّق زمرّدي', 20: 'موثّق ماسي' };
 async function _wpStats(pid){ try { const s = (await pool.query('SELECT * FROM wp_stats($1)', [pid])).rows[0]; return { count_all: s.n || 0, count_hi: s.hi || 0 }; } catch(e) { return { count_all: 0, count_hi: 0 }; } }
 // ترقية بالسلّم بعد تقييم (موثّق أو من مشروع داخل المنصة)
-const _WP_UP = { 1: '🏅 أخذت شارة «أعمال موثّقة ✓»', 5: '🥈 ترقّيت لـ«موثّق فضّي»', 10: '🥇 ترقّيت لـ«موثّق ذهبي»', 20: '💎 ترقّيت لـ«موثّق ماسي»' };
+const _WP_UP = { 1: '🏅 أخذت شارة «أعمال موثّقة ✓»', 5: '🥈 ترقّيت لـ«موثّق فضّي»', 10: '💚 ترقّيت لـ«موثّق زمرّدي»', 20: '💎 ترقّيت لـ«موثّق ماسي»' };
 const _WP_UPB = { 1: 'الشارة صارت تظهر على كل عرض تقدّمه', 5: 'عروضك صارت تطلع قبل المستويات الأقل', 10: 'عرضك يطلع للعميل «مرشّح لك» والمشاريع الجديدة توصلك قبل غيرك', 20: 'صرت تظهر في الصفحة الرئيسية «مزوّدين موثّقين»' };
 function _wpLevelUp(pid, lv0, lv1){ if (!(lv1 > lv0) || !_WP_UP[lv1]) return; notify(pid, _WP_UP[lv1], _WP_UPB[lv1], 'proof', null, { url: '/dashboard-provider.html#proof', kind: 'wp_level' }).catch(() => {}); }
 async function _wpLevel(pid){ try { return (await pool.query('SELECT wp_level($1) AS l', [pid])).rows[0].l || 0; } catch(e) { return 0; } }
@@ -5817,10 +5942,10 @@ app.get('/api/providers/verified-top', async (req, res) => {
     if (_wpTopCache && Date.now() < _wpTopCache.exp) return res.json(_wpTopCache.d);
     const r = await pool.query(`SELECT u.id, COALESCE(NULLIF(u.business_name,''), u.name) AS name, u.city, u.profile_image,
         COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0)::float AS rating,
-        (SELECT n FROM wp_stats(u.id)) AS works,
+        (SELECT n FROM wp_stats(u.id)) AS works, EXISTS(SELECT 1 FROM subs s WHERE s.user_id=u.id AND s.status IN ('trial','active','grace') AND (CASE WHEN s.status='grace' THEN s.grace_until ELSE s.period_end END) > NOW()) AS pro_sub,
         (SELECT w.images[1] FROM work_proofs w WHERE w.provider_id=u.id AND w.status='reviewed' AND NOT w.hidden ORDER BY w.reviewed_at DESC LIMIT 1) AS img
       FROM users u WHERE u.role='provider' AND u.is_active=TRUE AND wp_level(u.id) >= 20 ORDER BY works DESC, rating DESC LIMIT 8`);
-    const d = r.rows.map(x => ({ id: x.id, name: x.name, city: x.city, rating: x.rating, works: x.works,
+    const d = r.rows.map(x => ({ id: x.id, name: x.name, city: x.city, rating: x.rating, works: x.works, pro_sub: !!x.pro_sub,
       img: x.img && /^https:\/\//.test(x.img) ? x.img : null, av: x.profile_image && /^https:\/\//.test(x.profile_image) ? x.profile_image : null }));
     _wpTopCache = { d, exp: Date.now() + 10 * 60 * 1000 };
     res.json(d);
@@ -5953,7 +6078,7 @@ app.post('/api/w/:token/review', auth, async (req, res) => {
       [v.id, w.provider_id, rating, comment, (w.images || []).slice(0, 4), w.id, q, t, d]);
     await pool.query('UPDATE work_proofs SET review_id=$2 WHERE id=$1', [w.id, rv.rows[0].id]);
     const lv1 = await _wpLevel(w.provider_id);
-    const up = lv1 > lv0 ? { 1: ' — وأخذت شارة «أعمال موثّقة ✓» تظهر على عروضك', 5: ' — ترقّيت لـ«موثّق فضّي» وعروضك صارت تطلع قبل المستويات الأقل', 10: ' — ترقّيت لـ«موثّق ذهبي»: عرضك يطلع «مرشّح لك» والمشاريع توصلك قبل غيرك', 20: ' — ترقّيت لـ«موثّق ماسي»: تظهر في الصفحة الرئيسية' }[lv1] || '' : '';
+    const up = lv1 > lv0 ? { 1: ' — وأخذت شارة «أعمال موثّقة ✓» تظهر على عروضك', 5: ' — ترقّيت لـ«موثّق فضّي» وعروضك صارت تطلع قبل المستويات الأقل', 10: ' — ترقّيت لـ«موثّق زمرّدي»: عرضك يطلع «مرشّح لك» والمشاريع توصلك قبل غيرك', 20: ' — ترقّيت لـ«موثّق ماسي»: تظهر في الصفحة الرئيسية' }[lv1] || '' : '';
     notify(w.provider_id, (up ? '🏅 ' : '⭐ ') + (_wpWho(w.client_name) || 'عميلك') + ' قيّمك ' + rating + '/5', 'مشروع «' + w.title + '» صار موثّق في صفحتك' + up, 'proof', w.id, { url: '/dashboard-provider.html#proof' }).catch(() => {});
     res.json({ ok: true, rating });
   } catch(e) { console.error('POST /api/w/review:', e.message); res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
@@ -5965,7 +6090,7 @@ async function _wpAnnounce(){
     if (!own.rows.length) return;   // انرسل قبل (أو نسخة ثانية من السيرفر أخذته)
     const u = await pool.query("SELECT id, email FROM users WHERE role='provider' AND is_active=TRUE AND COALESCE(email,'') NOT ILIKE '%@manaqasa.local'");
     const title = '⭐ ميزة جديدة: وثّق أعمالك';
-    const body = 'أضفنا ميزة تحسّن صفحتك وتساعدك تفوز بالمشاريع: ارفع صور مشروع سويته وأرسل الرابط لصاحبه يقيّمك — تاخذ شارة «أعمال موثّقة ✓» على عروضك، وكل ما زادت مشاريعك الموثّقة ترتفع شارتك (فضّي ← ذهبي ← ماسي) وعروضك تطلع قبل غيرك.';
+    const body = 'أضفنا ميزة تحسّن صفحتك وتساعدك تفوز بالمشاريع: ارفع صور مشروع سويته وأرسل الرابط لصاحبه يقيّمك — تاخذ شارة «أعمال موثّقة ✓» على عروضك، وكل ما زادت مشاريعك الموثّقة ترتفع شارتك (فضّي ← زمرّدي ← ماسي) وعروضك تطلع قبل غيرك.';
     const url = '/dashboard-provider.html#proof';
     await _inChunks(u.rows, 10, x => notify(x.id, title, body, 'proof', null, { url, kind: 'wp_announce' }));
     const html = emailTpl(title, '<p>' + eEsc(body) + '</p><p style="color:#5b6b82">العميل لما يشوف شغل مشابه لمشروعه وأكّده صاحبه، يثق فيك أكثر ويختار عرضك.</p>', 'وثّق أول مشروع', SITE_URL + url);
@@ -16701,7 +16826,7 @@ app.get('/api/sub/:id', auth, providerOnly, async (req, res) => {
       out.offers = (await pool.query(`SELECT o.id, o.provider_id, o.price, o.days, o.note, o.status, o.created_at, COALESCE(NULLIF(u.business_name,''),u.name) AS name, u.phone, u.city, u.profile_image,
           COALESCE((SELECT ROUND(AVG(rating)::numeric,1) FROM reviews WHERE reviewed_id=u.id),0) AS rating, (SELECT COUNT(*)::int FROM bids b WHERE b.provider_id=u.id AND b.status='accepted') AS done,
           EXISTS(SELECT 1 FROM partners p WHERE p.owner_id=$2 AND p.partner_id=u.id) AS is_partner, ${_subRateSQL('u.id')} AS srate,
-          (u.badge IN ('verified','موثق')) AS verified, COALESCE(o.photos,'[]'::jsonb) AS photos
+          (u.badge IN ('verified','موثق')) AS verified, EXISTS(SELECT 1 FROM subs sx WHERE sx.user_id=u.id AND sx.status IN ('trial','active','grace') AND (CASE WHEN sx.status='grace' THEN sx.grace_until ELSE sx.period_end END) > NOW()) AS pro_sub, COALESCE(o.photos,'[]'::jsonb) AS photos
         FROM sub_offers o JOIN users u ON u.id=o.provider_id WHERE o.sub_id=$1 ORDER BY (o.status='accepted') DESC, is_partner DESC, o.price ASC`, [id, s.provider_id])).rows;
       // «👀 شاف عرضك»: أول ما يفتح صاحب الطلب التفاصيل (مو الإدارة)
       if (String(s.provider_id) === String(me)) pool.query('UPDATE sub_offers SET seen_at=NOW() WHERE sub_id=$1 AND seen_at IS NULL', [id]).catch(()=>{});

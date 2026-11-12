@@ -22,7 +22,7 @@
         var im = safe(p.img), av = safe(p.av), id = parseInt(p.id) || 0;
         return '<a class="wpt-c" href="/pro/x-' + id + '?id=' + id + '"><div class="wpt-im"' + (im ? ' style="background-image:url(\'' + esc(im) + '\')"' : '') + '></div>'
           + '<div class="wpt-b"><div class="wpt-av">' + (av ? '<img src="' + esc(av) + '" alt="" loading="lazy">' : esc(String(p.name || 'م').charAt(0))) + '</div><div style="min-width:0;flex:1">'
-          + '<div class="wpt-n">' + esc(p.name) + '</div><div class="wpt-m">' + (p.rating ? '★ ' + esc(p.rating) + ' · ' : '') + esc(p.works) + ' مشروع موثّق' + (p.city ? ' · ' + esc(p.city) : '') + '</div>'
+          + '<div class="wpt-n">' + esc(p.name) + (window.MNQ_MARK ? window.MNQ_MARK(p, true, 15) : '') + '</div><div class="wpt-m">' + (p.rating ? '★ ' + esc(p.rating) + ' · ' : '') + esc(p.works) + ' مشروع موثّق' + (p.city ? ' · ' + esc(p.city) : '') + '</div>'
           + '<span class="wpt-bd"><i>' + DIA + '</i>موثّق ماسي</span></div></div></a>';
       }).join('');
       sec.style.display = '';

@@ -300,7 +300,7 @@ body .pp-cta{background-image:linear-gradient(rgba(255,255,255,.05) 1px,transpar
 <script>
 // «وثّق أعمالك»: شارة المستوى بشكل معدني (شارة وحدة — الأعلى)
 function _wpLvPill(l){ l=parseInt(l)||0; var k=l>=20?20:l>=10?10:l>=5?5:l>=1?1:0; if(!k) return '';
-  var M={1:['أعمال موثّقة','linear-gradient(180deg,#3b8bf0,#1659c7)','#fff'],5:['موثّق فضّي','linear-gradient(180deg,#eef1f5,#b9c1cc 55%,#dfe4ea)','#2b3440'],10:['موثّق ذهبي','linear-gradient(180deg,#fbe7a5,#e0a82e 55%,#f3cf6b)','#5a3a00'],20:['موثّق ماسي','linear-gradient(180deg,#8c7cf7,#4b2fd0 55%,#7a62f2)','#fff']}[k];
+  var M={1:['أعمال موثّقة','linear-gradient(180deg,#3b8bf0,#1659c7)','#fff'],5:['موثّق فضّي','linear-gradient(180deg,#eef1f5,#b9c1cc 55%,#dfe4ea)','#2b3440'],10:['موثّق زمرّدي','linear-gradient(180deg,#6ee7b7,#059669 55%,#34d399)','#fff'],20:['موثّق ماسي','linear-gradient(180deg,#8c7cf7,#4b2fd0 55%,#7a62f2)','#fff']}[k];
   return '<span class="pp-pill" style="background:'+M[1]+';color:'+M[2]+';box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 2px rgba(0,0,0,.2)">'+'<span style="display:inline-flex;width:16px;height:16px;border-radius:50%;background:rgba(255,255,255,.3);align-items:center;justify-content:center;margin-inline-end:5px;vertical-align:-3px"><svg viewBox="0 0 24 24" width="10" height="10" aria-hidden="true">'+(k===1?'<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>':k===20?'<path d="M6 3.5h12l3.5 5.5L12 21 2.5 9z" fill="currentColor"/>':'<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor"/>')+'</svg></span>'+M[0]+'</span>';}
 </script>
 </head>
@@ -454,10 +454,10 @@ function render(p,rat){
   hero+='<div class="pp-hin"><div class="pp-av"><div class="im"'+(_safeUrl(p.profile_image)?' data-s="'+esc(_safeUrl(p.profile_image))+'"':'')+'>'+avHtml+'</div>'+(vrf?'<span class="vd" title="موثّق">'+_IC.chk+'</span>':'')+'</div>';
   hero+='<div style="min-width:0">';
   if(p.business_name&&p.name&&p.business_name!==p.name)hero+='<div class="pp-hbiz">'+esc(p.name)+'</div>';
-  hero+='<h1 class="pp-hname">'+esc(nm)+'</h1>';
+  hero+='<h1 class="pp-hname">'+esc(nm)+(window.MNQ_MARK?MNQ_MARK(p,vrf,20):'')+'</h1>';
   if(sp.length)hero+='<div class="pp-hsp">'+esc(sp.slice(0,4).join(' · '))+'</div>';
   var _vw=(Array.isArray(p.verified_works)?p.verified_works:[]).filter(function(w){return w&&(w.images||[]).length;});
-  var bd=(vrf?'<span class="pp-pill" style="background:rgba(255,255,255,.16);color:#fff">موثّق ✓</span>':'')+(p.page_live?'<span class="pp-pill" style="background:rgba(255,255,255,.16);color:#fff">🏢 منشأة</span>':'')+_wpLvPill(p.wp_level!=null?p.wp_level:(_vw.length?1:0));
+  var bd=((vrf&&p.page_live)?'<span class="pp-pill" style="background:rgba(255,255,255,.16);color:#fff">موثّق ✓ بأعماله</span>':'')+_wpLvPill(p.wp_level!=null?p.wp_level:(_vw.length?1:0));
   if(bd)hero+='<div class="pp-hb">'+bd+'</div>';
   hero+='</div></div>';
   var m=last?Math.floor((Date.now()-new Date(last))/60000):99999;

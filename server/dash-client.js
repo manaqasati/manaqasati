@@ -1116,7 +1116,7 @@ function loadBids(id){
         var proUrl=safeProvId?'/pro/'+safeSlug+'?id='+safeProvId:'#';
         var verified=(isImg(b.provider_image)&&rating>0&&reviews>0);
         var avHtml=isImg(b.provider_image)?'<img src="'+esc(_safeUrl(b.provider_image))+'" loading="lazy">':esc(safeName.charAt(0));
-        var vBadge=verified?'<span class="bid-verif" title="موثّق"><svg width="15" height="15" viewBox="-2 -2 28 28" aria-label="موثّق"><polygon points="12.00,0.60 14.28,3.50 17.70,2.13 18.22,5.78 21.87,6.30 20.50,9.72 23.40,12.00 20.50,14.28 21.87,17.70 18.22,18.22 17.70,21.87 14.28,20.50 12.00,23.40 9.72,20.50 6.30,21.87 5.78,18.22 2.13,17.70 3.50,14.28 0.60,12.00 3.50,9.72 2.13,6.30 5.78,5.78 6.30,2.13 9.72,3.50" fill="#3897f0" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.4 12.4 10.6 15.5 16.7 8.8" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>':'';
+        var vBadge=window.MNQ_MARK?MNQ_MARK(b,verified,15):'';
 
         var chips='';
         if(isAcc)chips+='<span class="bid-chip acc"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>مقبول</span>';
@@ -1146,7 +1146,7 @@ function loadBids(id){
           +'<div class="bid-top">'
             +'<div class="bid-av">'+avHtml+'</div>'
             +'<div class="bid-id">'
-              +'<div class="bid-name">'+esc(safeName)+vBadge+(window._proChip?_proChip(b):'')+_onlineDot(b.provider_last_seen)+'</div>'
+              +'<div class="bid-name">'+esc(safeName)+vBadge+_onlineDot(b.provider_last_seen)+'</div>'
               +'<div class="bid-stars">'+stars+'<span class="rn">'+(rating?rating.toFixed(1):'—')+'</span><span class="rc">('+reviews+' تقييم)</span>'+_wpBadge(b.wp_level!=null?b.wp_level:((parseInt(b.works_verified)||0)>0?1:0))+'</div>'
               +(b.provider_city?'<div class="bid-city"'+(b.prox===0?' style="color:#15803d;font-weight:800"':(b.prox===1?' style="color:#0f766e;font-weight:800"':''))+'><svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>'+(b.area_mode==='travel'&&b.prox===2?'يقدر ينتقل لمدينتك · من ':b.serves==='city'?'يخدم مدينتك · مقره ':(b.serves==='all'&&b.prox===2?'يخدم كل المدن · مقره ':(b.prox===0?'من مدينتك · ':(b.prox===1?'من منطقتك · ':''))))+esc(b.provider_city)+(b.prox===2&&b.serves!=='all'&&b.prox_km?' · تقريباً '+(Math.round(b.prox_km/50)*50||b.prox_km).toLocaleString('en-US')+' كم':'')+'</div>':'')
             +'</div>'
@@ -2650,7 +2650,7 @@ function _compareBids(){
 // «وثّق أعمالك»: شارة المستوى (معدني) — شارة وحدة بس: أعلى مستوى وصله
 var _WPL={1:['أعمال موثّقة','linear-gradient(180deg,#3b8bf0,#1659c7)','#fff','<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>'],
   5:['موثّق فضّي','linear-gradient(180deg,#eef1f5,#b9c1cc 55%,#dfe4ea)','#2b3440','<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor"/>'],
-  10:['موثّق ذهبي','linear-gradient(180deg,#fbe7a5,#e0a82e 55%,#f3cf6b)','#5a3a00','<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor"/>'],
+  10:['موثّق زمرّدي','linear-gradient(180deg,#6ee7b7,#059669 55%,#34d399)','#fff','<path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2 6.4 20.2l1.1-6.3L2.9 9.5l6.3-.9z" fill="currentColor"/>'],
   20:['موثّق ماسي','linear-gradient(180deg,#8c7cf7,#4b2fd0 55%,#7a62f2)','#fff','<path d="M6 3.5h12l3.5 5.5L12 21 2.5 9z" fill="currentColor"/>']};
 function _wpCss(){ if(document.getElementById('wp-lcss')) return; var st=document.createElement('style'); st.id='wp-lcss';
   st.textContent='.wp-lb{display:inline-flex;align-items:center;gap:5px;height:22px;border-radius:999px;padding:0 9px 0 4px;font-size:11px;font-weight:800;white-space:nowrap;vertical-align:middle;margin-inline-start:6px;position:relative;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 1px 2px rgba(0,0,0,.18)}'

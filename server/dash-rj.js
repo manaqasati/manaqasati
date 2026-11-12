@@ -453,7 +453,7 @@ window._nsoMount=function(radioName,reqId){
   W._bxGet=function(){ var S=W._bxSt, nd=(W._ndGet?W._ndGet():{}); if(!document.getElementById('bx-box')||!S.prof)return nd; var o={ show_profile: !!(S.on && S.prof && safe(S.prof.company_profile_url)), work_images: S.won ? S.imgs.slice(0,6) : [] };
     if(S.sub&&S.sub.live) o.quote_items=S.qon?S.qi.filter(function(x){ return String(x.t||'').trim().length>=2; }).map(function(x){ return {t:String(x.t).trim(),q:parseFloat(x.q)||1,p:parseFloat(x.p)||0}; }):[];
     return Object.assign(o,nd); };
-  W._proChip=function(b){ return b&&b.pro_sub?'<span class="pro-chip" title="منشأة مشتركة في مساعد الفوز">🏢 منشأة</span>':''; };
+  W._goldSeal=W.MNQ_SEAL?W.MNQ_SEAL('sub'):'';W._blueSeal=W.MNQ_SEAL?W.MNQ_SEAL('ver'):'';W._proChip=function(b){ return b&&b.pro_sub?W._goldSeal:''; };
 })();
 
 /* ═══ بعد إغلاق العميل لمشروعه: «عروضك باقية» + متى ترجع له (للمؤجّل) ═══ */
