@@ -10630,6 +10630,46 @@ async function _bkTechFree(pid, slotsByDay, slotMin){
     out[t0.getTime()] = n; }); });
   return out;
 }
+
+// ═══ حساب مراجعة أبل: مزوّد مؤسسة (تجربة) + فني مربوط + بيانات تجريبية — كلمات مرور جديدة كل ضغطة ═══
+const _RV_P = 'review.provider@manaqasa.com', _RV_T = 'review.tech@manaqasa.com';
+app.post('/api/admin/apple-review', requirePermission('settings.manage'), async (req, res) => {
+  try {
+    const pw = () => 'Mnq-' + crypto.randomBytes(4).toString('hex') + '-' + crypto.randomBytes(2).toString('hex');
+    const ppw = pw(), tpw = pw(); const ph = await bcrypt.hash(ppw, 10), th = await bcrypt.hash(tpw, 10);
+    // جوال الفني: رقم تجريبي ما يستخدمه أحد
+    let tphone = '0599990901'; for (let k = 901; k < 999; k++) { const c = '0599990' + k; const u = (await pool.query("SELECT id, email FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1", [c.slice(-9)])).rows[0]; if (!u || u.email === _RV_T) { tphone = c; break; } }
+    const up = async (email, name, role, hash, phone, extra) => { const ex = (await pool.query('SELECT id FROM users WHERE LOWER(email)=$1', [email])).rows[0];
+      if (ex) { await pool.query('UPDATE users SET name=$2, role=$3, password=$4, password_hash=$4, phone=$5, is_active=TRUE, email_verified=TRUE, locked_until=NULL, login_fail_n=0 WHERE id=$1', [ex.id, name, role, hash, phone]); return ex.id; }
+      return (await pool.query("INSERT INTO users (name, email, phone, password, password_hash, role, specialties, city, is_active, email_verified, created_at) VALUES ($1,$2,$3,$4,$4,$5,'{}',$6,TRUE,TRUE,NOW()) RETURNING id", [name, email, phone, hash, role, extra || null])).rows[0].id; };
+    const pid = await up(_RV_P, 'مؤسسة التجربة للتكييف', 'provider', ph, '0599990900', null);
+    await pool.query("UPDATE users SET business_name='مؤسسة التجربة للتكييف', bio='حساب تجريبي لمراجعة التطبيق' WHERE id=$1", [pid]);
+    const tid = await up(_RV_T, 'سامي (فني تجريبي)', 'client', th, tphone, 'الرياض');
+    // اشتراك مؤسسة (فترة تجربة) — يقدر المراجع يجرّب الشراء من داخل التطبيق
+    await pool.query("DELETE FROM subs WHERE user_id=$1", [pid]);
+    await pool.query("INSERT INTO subs(user_id,tier,cycle,status,period_start,period_end,auto_renew,cancel_at_end,addons,pay_method,trial_used,created_at,updated_at) VALUES ($1,'ent','m','trial',NOW(),NOW()+interval '30 days',FALSE,FALSE,'{}','trial',TRUE,NOW(),NOW())", [pid]);
+    const ts = String(await getSetting('subs_testers', '') || ''); if (!ts.split(/[\s,،]+/).map(x => parseInt(x)).includes(pid)) await setSetting('subs_testers', (ts ? ts + ', ' : '') + pid);
+    // تصفير البيانات التجريبية
+    await pool.query('DELETE FROM tech_shifts WHERE provider_id=$1', [pid]); await pool.query('DELETE FROM tech_leaves WHERE provider_id=$1', [pid]);
+    for (const t of ['bookings', 'jobs', 'provider_techs', 'provider_customers']) await pool.query(`DELETE FROM ${t} WHERE provider_id=$1`, [pid]);
+    const t1 = (await pool.query("INSERT INTO provider_techs (provider_id, user_id, name, phone, phone9, sched, rate) VALUES ($1,$2,'سامي',$3,$4,$5::jsonb,26) RETURNING id", [pid, tid, tphone, _ph9(tphone), JSON.stringify({ days: [0, 1, 2, 3, 4, 5, 6], from: '08:00', to: '20:00', grace: 15 })])).rows[0].id;
+    const t2 = (await pool.query("INSERT INTO provider_techs (provider_id, name, phone, phone9, sched, rate) VALUES ($1,'فهد','0599990999','599990999',$2::jsonb,24) RETURNING id", [pid, JSON.stringify({ days: [0, 1, 2, 3, 4, 5, 6], from: '08:00', to: '20:00', grace: 15 })])).rows[0].id;
+    const today = _ryYmd(), tom = _ryYmd(new Date(Date.now() + 864e5));
+    const J = async (title, cn, cp, addr, la, ln, at, tech, tasks) => { const tk = tasks.map((t, k) => ({ id: 't' + Date.now().toString(36) + k, t, done: false }));
+      const r = (await pool.query("INSERT INTO jobs (provider_id, client_name, client_phone, title, address, value, tasks, log, sched_at, tech_id, status, lat, lng, dur_min) VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8::jsonb,$9,$10,$11,$12,$13,120) RETURNING id",
+        [pid, cn, cp, title, addr, 650, JSON.stringify(tk), JSON.stringify([{ at: new Date(), t: 'أُنشئ المشروع' }]), at, tech, at && tech ? 'scheduled' : 'new', la, ln])).rows[0].id;
+      await _qCustomer(pid, { client_name: cn, client_phone: cp }, true); return r; };
+    await J('تنظيف 4 مكيفات سبليت', 'أبو خالد', '0599990101', 'حي الروضة، الرياض', 24.729, 46.772, _ryAt(today, 10 * 60), t1, ['تنظيف الفلاتر', 'غسيل الوحدات الخارجية', 'فحص الفريون']);
+    await J('تعبئة فريون', 'أبو فهد', '0599990102', 'حي النعيم، الرياض', 24.748, 46.738, _ryAt(today, 14 * 60), t1, ['فحص التسريب', 'تعبئة الفريون']);
+    await J('صيانة دورية فيلا', 'أم سعد', '0599990103', 'حي الصفا، الرياض', 24.705, 46.785, _ryAt(tom, 10 * 60), t2, ['فحص 6 مكيفات']);
+    await J('تركيب سبليت جديد', 'أبو ناصر', '0599990104', 'حي الملقا، الرياض', 24.81, 46.6, null, null, ['تركيب الوحدة', 'تمديد النحاس']);
+    await pool.query("UPDATE users SET price_list=$2::jsonb, tools_cfg=$3::jsonb WHERE id=$1", [pid, JSON.stringify([{ id: 'rv1a', t: 'تنظيف مكيف سبليت', u: 'مكيف', p: 120, book: true }, { id: 'rv1b', t: 'تعبئة فريون', u: 'مكيف', p: 180, book: true }]), JSON.stringify({ book: { on: 1, days: [0, 1, 2, 3, 4, 5, 6], from: '08:00', to: '20:00', slot: 120, cap: 2 } })]);
+    logAdmin(req, 'apple_review', 'settings', pid, 'reset').catch(() => {});
+    const notes = 'Sign in with the provider account (email + password) to review the subscription features: quotes, direct booking, customer book, branches, scheduling calendar (Menu > تقويم الجدولة) and team attendance (Menu > الحضور والانصراف). The account is on a free trial, so in-app subscriptions can be purchased from Menu > الاشتراك والباقة using a Sandbox Apple ID. '
+      + 'To see the technician side, sign out and sign in with the technician account: open «مهام الفني» to start the shift («بدأت دوامي»), see today\'s visits ordered by nearest route, and mark a visit as arrived. Location is used only when the technician taps these buttons. The app is in Arabic.';
+    res.json({ ok: true, provider: { email: _RV_P, password: ppw, id: pid }, tech: { email: _RV_T, password: tpw, phone: tphone }, notes });
+  } catch(e){ console.error('apple-review:', e.message); res.status(500).json({ message: 'تعذّر التجهيز: ' + e.message }); }
+});
 // ── العميل ──
 app.get('/api/my/jobs', auth, async (req, res) => {
   try { const r = await pool.query(`SELECT j.*, t.name AS tech_name, COALESCE(NULLIF(u.business_name,''),u.name) AS pname, u.phone AS pphone FROM jobs j LEFT JOIN provider_techs t ON t.id=j.tech_id JOIN users u ON u.id=j.provider_id WHERE j.client_id=$1 AND j.status<>'cancelled' ORDER BY j.updated_at DESC LIMIT 100`, [req.user.id]);
@@ -11586,7 +11626,7 @@ app.delete('/api/favorites/:providerId', auth, async (req, res) => {
 app.get('/api/providers', async (req, res) => {
   try {
     const { category, city, specialty, q: searchQ } = req.query;
-    let base = `FROM users WHERE role='provider' AND is_active=TRUE`;
+    let base = `FROM users WHERE role='provider' AND is_active=TRUE AND COALESCE(email,'') NOT LIKE 'review.%@manaqasa.com'`;
     const params = [];
     if (searchQ) {
       params.push(`%${String(searchQ).trim()}%`);
@@ -16346,7 +16386,7 @@ ${qr ? `<svg x="90" y="70" width="420" height="420" viewBox="${qr.vb}">${qr.path
 
 app.get('/sitemap.xml', async (req, res) => {
   try {
-    const providers=await pool.query(`SELECT id, name, business_name, created_at FROM users WHERE role='provider' AND is_active=TRUE ORDER BY created_at DESC`);
+    const providers=await pool.query(`SELECT id, name, business_name, created_at FROM users WHERE role='provider' AND is_active=TRUE AND COALESCE(email,'') NOT LIKE 'review.%@manaqasa.com' ORDER BY created_at DESC`);
     const now=new Date().toISOString().split('T')[0];
     let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${SITE_URL}/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>${now}</lastmod></url>\n  <url><loc>${SITE_URL}/contracts</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>`;
     try { Object.keys(_ctSeoData()).forEach(k => { xml += `\n  <url><loc>${SITE_URL}/contracts/${k}</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>`; }); } catch(e) {}
