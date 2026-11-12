@@ -408,6 +408,9 @@ window.addEventListener('popstate',function(){
 });
 
 function _skRow(){return '<div class="sk-box" style="display:flex;gap:10px;align-items:center"><div style="width:4px;height:44px;border-radius:4px;background:#e6e2d9"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div>';}
+// صيغ العدد العربية (1 · 2 · 3-10 جمع · 11+ مفرد منصوب · 100/200 مفرد) — عامة عشان تستخدمها كل الدوال
+function _plI(n){n=parseInt(n)||0;if(n===1)return 0;if(n===2)return 1;var m=n%100;if(m>=3&&m<=10)return 2;if(m>=11)return 3;return 4;}
+function _pl(n,a){n=parseInt(n)||0;var i=_plI(n);if(i<2)return a[i];return n+' '+(i===4?(a[4]||a[0]):a[i]);}
 function _skList(n){var h='<div class="card card-accent"><div class="sk sk-line" style="width:120px;margin-bottom:14px"></div>';for(var i=0;i<(n||4);i++)h+=_skRow();return h+'</div>';}
 
 var _PROV_REGIONS={
@@ -469,8 +472,6 @@ function _renderHome(data){
   var _now=new Date();
   var _monthBids=_myBids.filter(function(b){var d=new Date(b.created_at);return d.getFullYear()===_now.getFullYear()&&d.getMonth()===_now.getMonth();}).length;
   var _accVal=_myBids.filter(function(b){return b.status==='accepted';}).reduce(function(a,b){return a+(parseFloat(b.price)||0);},0);
-  function _plI(n){n=parseInt(n)||0;if(n===1)return 0;if(n===2)return 1;var m=n%100;if(m>=3&&m<=10)return 2;if(m>=11)return 3;return 4;}
-  function _pl(n,a){n=parseInt(n)||0;var i=_plI(n);if(i<2)return a[i];return n+' '+(i===4?(a[4]||a[0]):a[i]);}
   var _PRJ=['مشروع جديد','مشروعان جديدان','مشاريع جديدة','مشروعاً جديداً'];
   var _AVL=['متاح','متاحان','متاحة','متاحاً','متاح'], _FIT=['يناسبك','يناسبانك','تناسبك','تناسبك','يناسبك'];
   // ── الرئيسية (النموذج A — مركز القيادة): ترحيب · أهم شي اليوم · الأرقام · فرص تناسبك | ملفك · ارفع ترتيبك · نشاطك ──
