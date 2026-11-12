@@ -797,3 +797,127 @@
     t.style.visibility = 'hidden';
   }, true);
 })();
+
+/* ── سحب أي قائمة سفلية (شيت) لتحت للإغلاق — سلوك موحّد مثل iOS لكل شيتات المنصة ──
+   يتعرّف على الشيت تلقائياً: عنصر حوافه العلوية مدوّرة والسفلية لا، ملاصق لأسفل الشاشة، داخل طبقة ثابتة.
+   الشيت كله يتحرك مع الإصبع، الخلفية تخفت، سحبة سريعة أو طويلة تقفل، غير كذا يرجع بارتداد ناعم.
+   للإغلاق: نضغط الخلفية (مثل ما يسوي المستخدم)، وإذا ما قفل نضغط زر الإغلاق داخل الشيت، وإلا يرجع مكانه.
+   الشيت اللي عنده سحب خاص: data-mnq-ownsheet — وأي منطقة ما تبي سحب: data-mnq-nodrag */
+(function(){
+  if (window.__mqSheet) return; window.__mqSheet = true;
+  if (!('ontouchstart' in window)) return;
+  var D = document;
+  function px(v){ return parseFloat(v) || 0; }
+  function isSheet(el){
+    if (!el || el.nodeType !== 1 || el === D.body || el === D.documentElement) return false;
+    var cs = getComputedStyle(el);
+    if (px(cs.borderTopLeftRadius) < 8 || px(cs.borderBottomLeftRadius) > 1) return false;
+    var r = el.getBoundingClientRect(), H = innerHeight, W = innerWidth;
+    if (r.bottom < H - 6 || r.height < 120 || r.width < Math.min(W, 420) * 0.85) return false;
+    return true;
+  }
+  function fixedAnc(el){ for (var x = el; x && x !== D.body; x = x.parentElement) { if (getComputedStyle(x).position === 'fixed') return x; } return null; }
+  function findSheet(t){
+    for (var x = t; x && x !== D.body; x = x.parentElement) {
+      if (x.hasAttribute && (x.hasAttribute('data-mnq-ownsheet') || x.hasAttribute('data-mnq-nodrag'))) return null;
+      if (isSheet(x)) { var f = fixedAnc(x); if (f) return { sh: x, lay: f }; return null; }
+    }
+    return null;
+  }
+  // كل العناصر القابلة للتمرير بين الإصبع والشيت لازم تكون في أعلاها
+  function atTop(t, sh){
+    for (var x = t; x; x = x.parentElement) {
+      if (x.scrollTop > 0) { var o = getComputedStyle(x).overflowY; if (o === 'auto' || o === 'scroll') return false; }
+      if (x === sh) break;
+    }
+    return true;
+  }
+  function backdropOf(sh, lay){
+    // الخلفية: الطبقة الثابتة نفسها (لو الشيت جواها) أو عنصر شقيق يغطي الشاشة
+    if (lay !== sh) return lay;
+    var p = sh.parentElement; if (!p) return null;
+    for (var i = 0; i < p.children.length; i++) { var c = p.children[i]; if (c === sh) continue; var r = c.getBoundingClientRect(); if (r.width >= innerWidth - 2 && r.height >= innerHeight - 2) return c; }
+    return null;
+  }
+  function hid(el){ if (!el || !el.isConnected) return true; for (var x = el; x && x !== D.body; x = x.parentElement) { var cs = getComputedStyle(x); if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) < 0.05) return true; } return false; }
+  function goneS(st){ return hid(st.sh) || hid(st.lay); }
+  var CLOSE_TX = /^(✕|×|✖|x|X|إغلاق|اغلاق|إلغاء|الغاء|رجوع|Close|Cancel|بند|منسوخ|بند کریں|منسوخ کریں)$/;
+  function closeBtn(sh){
+    var bs = sh.querySelectorAll('button,[role=button],a,.x,[data-close]');
+    for (var i = 0; i < bs.length; i++) {
+      var b = bs[i], al = (b.getAttribute('aria-label') || '') + ' ' + (b.getAttribute('title') || ''), cl = String(b.className || '');
+      var tx = (b.textContent || '').trim();
+      if (b.hasAttribute('data-close') || /إغلاق|اغلاق|close/i.test(al) || /(^|[\s_-])(close|x|cls|sh-x)([\s_-]|$)/i.test(cl) || CLOSE_TX.test(tx)) return b;
+    }
+    return null;
+  }
+  var g = null;
+  D.addEventListener('touchstart', function(e){
+    g = null;
+    if (e.touches.length !== 1) return;
+    var t = e.target; if (t.closest && t.closest('input[type=range],textarea:focus,[contenteditable=true]')) return;
+    var f = findSheet(t); if (!f) return;
+    g = { sh: f.sh, lay: f.lay, t: t, y0: e.touches[0].clientY, x0: e.touches[0].clientX, top: atTop(t, f.sh), drag: false, pts: [] };
+  }, { passive: true, capture: true });
+  D.addEventListener('touchmove', function(e){
+    if (!g) return;
+    var y = e.touches[0].clientY, dy = y - g.y0, dx = e.touches[0].clientX - g.x0;
+    if (!g.drag) {
+      if (!g.top || !atTop(g.t, g.sh)) { g = null; return; }
+      if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
+      if (dy <= 0 || Math.abs(dx) > Math.abs(dy)) { g = null; return; }
+      g.drag = true; g.tr0 = g.sh.style.transition; g.tf0 = g.sh.style.transform;
+      g.bd = backdropOf(g.sh, g.lay); g.bdBg = null;
+      if (g.bd && g.bd !== g.sh) { g.bdOp = g.bd.style.opacity; g.bdTr = g.bd.style.transition; }
+      g.sh.style.transition = 'none'; g.sh.style.willChange = 'transform';
+      if (g.ae && D.activeElement && D.activeElement.blur) D.activeElement.blur();
+    }
+    if (e.cancelable) e.preventDefault();
+    g.pts.push([y, e.timeStamp]); if (g.pts.length > 5) g.pts.shift();
+    var d = Math.max(0, dy);
+    g.sh.style.transform = 'translate3d(0,' + d + 'px,0)';
+    if (g.bd && g.bd === g.lay && g.lay !== g.sh) {
+      // الخلفية = الطبقة الحاضنة: نخفّت لونها بدون ما نخفّت الشيت نفسه
+      if (g.bdBg == null) { g.bdBg = g.lay.style.backgroundColor; g.bgc = getComputedStyle(g.lay).backgroundColor; }
+      var m = /rgba?\(([^)]+)\)/.exec(g.bgc || ''); if (m) { var a = m[1].split(','); var al = a.length > 3 ? parseFloat(a[3]) : 1; var k = Math.max(0, 1 - d / (g.sh.offsetHeight * 1.1)); g.lay.style.transition = 'none'; g.lay.style.backgroundColor = 'rgba(' + a[0] + ',' + a[1] + ',' + a[2] + ',' + (al * k) + ')'; }
+    } else if (g.bd) { g.bd.style.transition = 'none'; g.bd.style.opacity = String(Math.max(0, 1 - d / (g.sh.offsetHeight * 1.1))); }
+  }, { passive: false, capture: true });
+  function restore(st, keepTf){
+    st.sh.style.transition = st.tr0 || ''; if (!keepTf) st.sh.style.transform = st.tf0 || ''; st.sh.style.willChange = '';
+    if (st.bd && st.bd === st.lay && st.lay !== st.sh) { st.lay.style.backgroundColor = st.bdBg || ''; st.lay.style.transition = ''; }
+    else if (st.bd) { st.bd.style.opacity = st.bdOp || ''; st.bd.style.transition = st.bdTr || ''; }
+  }
+  function end(e){
+    if (!g) return; var st = g; g = null; if (!st.drag) return;
+    var t = e.changedTouches && e.changedTouches[0], y = t ? t.clientY : st.y0, dy = Math.max(0, y - st.y0);
+    var p = st.pts, v = 0; if (p.length > 1) { var a0 = p[0], a1 = p[p.length - 1]; v = (a1[0] - a0[0]) / Math.max(1, a1[1] - a0[1]); }
+    var H = st.sh.offsetHeight, shut = dy > H * 0.28 || (v > 0.45 && dy > 24);
+    if (!shut) {
+      st.sh.style.transition = 'transform .38s cubic-bezier(.18,.89,.32,1.15)'; st.sh.style.transform = st.tf0 || '';
+      if (st.bd && st.bd === st.lay && st.lay !== st.sh) { st.lay.style.transition = 'background-color .3s'; st.lay.style.backgroundColor = st.bdBg || ''; }
+      else if (st.bd) { st.bd.style.transition = 'opacity .3s'; st.bd.style.opacity = st.bdOp || ''; }
+      setTimeout(function(){ restore(st); }, 400); return;
+    }
+    st.sh.style.transition = 'transform .2s cubic-bezier(.3,.6,.4,1)'; st.sh.style.transform = 'translate3d(0,' + (H + 40) + 'px,0)';
+    if (st.bd && st.bd === st.lay && st.lay !== st.sh) { st.lay.style.transition = 'background-color .2s'; st.lay.style.backgroundColor = 'rgba(0,0,0,0)'; }
+    else if (st.bd) { st.bd.style.transition = 'opacity .2s'; st.bd.style.opacity = '0'; }
+    setTimeout(function(){
+      // 1) نضغط الخلفية  2) زر الإغلاق  3) نرجعه مكانه
+      var tried = false;
+      if (st.bd) { tried = true; try { st.bd.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window })); } catch(_){} }
+      setTimeout(function(){
+        if (goneS(st)) { setTimeout(function(){ if (st.sh.isConnected) restore(st); }, 350); return; }
+        var b = closeBtn(st.sh); if (b) { b.click(); }
+        setTimeout(function(){
+          if (goneS(st)) { setTimeout(function(){ if (st.sh.isConnected) restore(st); }, 350); return; }
+          // ما يقفل (شيت إلزامي) — يرجع مكانه
+          st.sh.style.transition = 'transform .38s cubic-bezier(.18,.89,.32,1.15)'; st.sh.style.transform = st.tf0 || '';
+          if (st.bd && st.bd === st.lay && st.lay !== st.sh) { st.lay.style.transition = 'background-color .3s'; st.lay.style.backgroundColor = st.bdBg || ''; }
+          else if (st.bd) { st.bd.style.transition = 'opacity .3s'; st.bd.style.opacity = st.bdOp || ''; }
+          setTimeout(function(){ restore(st); }, 400);
+        }, 320);
+      }, 320);
+    }, 190);
+  }
+  D.addEventListener('touchend', end, { capture: true }); D.addEventListener('touchcancel', end, { capture: true });
+})();

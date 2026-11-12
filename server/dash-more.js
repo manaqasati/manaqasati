@@ -29,9 +29,9 @@
   var CSS = ''
     + '#mqMore{position:fixed;inset:0;z-index:99;display:none}#mqMore.on{display:block}'
     + '#mqMore .mm-dim{position:absolute;inset:0;background:rgba(11,31,77,.5);opacity:0;transition:opacity .2s}#mqMore.in .mm-dim{opacity:1}'
-    + '#mqMore .mm-sh{position:absolute;left:0;right:0;bottom:0;max-height:calc(100% - 40px);overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--white,#fff);border-radius:26px 26px 0 0;padding:10px 14px calc(104px + env(safe-area-inset-bottom,0px));box-shadow:0 -20px 50px rgba(0,0,0,.25);transform:translateY(100%);transition:transform .24s cubic-bezier(.2,.8,.2,1);direction:rtl;font-family:Tajawal,sans-serif}'
+    + '#mqMore .mm-sh{position:absolute;left:0;right:0;bottom:0;max-height:calc(100% - 40px);overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--white,#fff);border-radius:26px 26px 0 0;padding:10px 14px calc(104px + env(safe-area-inset-bottom,0px));box-shadow:0 -20px 50px rgba(0,0,0,.25);overscroll-behavior:contain;will-change:transform;transform:translateY(100%);transition:transform .24s cubic-bezier(.2,.8,.2,1);direction:rtl;font-family:Tajawal,sans-serif}'
     + '#mqMore.in .mm-sh{transform:none}'
-    + '#mqMore .mm-grip{width:44px;height:5px;border-radius:5px;background:#cbd5e1;margin:0 auto 10px}'
+    + '#mqMore .mm-grip{width:40px;height:5px;border-radius:5px;background:#cbd5e1;margin:0 auto 12px;position:relative}#mqMore .mm-grip::before{content:"";position:absolute;left:-60px;right:-60px;top:-14px;bottom:-12px}'
     + '#mqMore .mm-me{display:flex;align-items:center;gap:11px;border-radius:18px;padding:12px 13px;background:linear-gradient(135deg,#0b1f4d,#1e3a8a);color:#fff;margin-bottom:10px}'
     + '#mqMore .mm-av{width:44px;height:44px;border-radius:13px;background:#fff;color:#1e3a8a;font:900 19px Cairo,sans-serif;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}#mqMore .mm-av img{width:100%;height:100%;object-fit:cover}'
     + '#mqMore .mm-nm{flex:1;min-width:0}#mqMore .mm-nm b{display:block;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#mqMore .mm-nm small{font-size:12px;font-weight:800;color:#bfdbfe}'
@@ -127,15 +127,46 @@
     if (box) return;
     var st = D.createElement('style'); st.textContent = CSS; D.head.appendChild(st);
     box = D.createElement('div'); box.id = 'mqMore'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'المزيد');
-    box.innerHTML = '<div class="mm-dim"></div><div class="mm-sh"></div>';
+    box.innerHTML = '<div class="mm-dim"></div><div class="mm-sh" data-mnq-ownsheet></div>';
     D.body.appendChild(box);
     box.querySelector('.mm-dim').addEventListener('click', function(){ close(); });
     box.addEventListener('click', function(e){ var b = e.target.closest('[data-act]'); if (b) act(b.getAttribute('data-act')); });
-    // سحب لتحت للإغلاق
-    var sh = box.querySelector('.mm-sh'), y0 = null;
-    sh.addEventListener('touchstart', function(e){ if (sh.scrollTop <= 0) y0 = e.touches[0].clientY; }, { passive: true });
-    sh.addEventListener('touchmove', function(e){ if (y0 == null) return; var dy = e.touches[0].clientY - y0; if (dy > 0) sh.style.transform = 'translateY(' + dy + 'px)'; }, { passive: true });
-    sh.addEventListener('touchend', function(e){ if (y0 == null) return; var dy = (e.changedTouches[0].clientY - y0); y0 = null; sh.style.transform = ''; if (dy > 90) close(); });
+    // سحب لتحت للإغلاق — مثل شيتات iOS: الشيت كله يتحرك مع الإصبع، الخلفية تخفت، وسحبة سريعة تقفل
+    var sh = box.querySelector('.mm-sh'), dim = box.querySelector('.mm-dim'), g = null;
+    function setY(y){ sh.style.transform = y > 0 ? 'translate3d(0,' + y + 'px,0)' : ''; dim.style.opacity = y > 0 ? String(Math.max(0, 1 - y / (sh.offsetHeight * 1.1))) : ''; }
+    sh.addEventListener('touchstart', function(e){
+      if (e.touches.length !== 1) { g = null; return; }
+      g = { y0: e.touches[0].clientY, x0: e.touches[0].clientX, top: sh.scrollTop <= 0, drag: false, pts: [] };
+    }, { passive: true });
+    sh.addEventListener('touchmove', function(e){
+      if (!g) return;
+      var y = e.touches[0].clientY, dy = y - g.y0, dx = e.touches[0].clientX - g.x0;
+      if (!g.drag) {
+        if (!g.top || sh.scrollTop > 0) { g = null; return; }
+        if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
+        if (dy <= 0 || Math.abs(dx) > Math.abs(dy)) { g = null; return; }
+        g.drag = true;
+        sh.style.transition = 'none'; dim.style.transition = 'none';
+      }
+      if (e.cancelable) e.preventDefault();
+      g.pts.push([y, e.timeStamp]); if (g.pts.length > 5) g.pts.shift();
+      setY(dy < 0 ? 0 : dy);
+    }, { passive: false });
+    function end(e){
+      if (!g) return; var st = g; g = null; if (!st.drag) return;
+      var t = e.changedTouches && e.changedTouches[0], y = t ? t.clientY : st.y0, dy = Math.max(0, y - st.y0);
+      var p = st.pts, v = 0; if (p.length > 1) { var a0 = p[0], a1 = p[p.length - 1]; v = (a1[0] - a0[0]) / Math.max(1, a1[1] - a0[1]); }
+      var shut = dy > sh.offsetHeight * 0.28 || (v > 0.45 && dy > 24);
+      sh.style.transition = shut ? 'transform .2s cubic-bezier(.3,.6,.4,1)' : 'transform .38s cubic-bezier(.18,.89,.32,1.15)';
+      dim.style.transition = 'opacity .22s';
+      if (shut) {
+        sh.style.transform = 'translate3d(0,' + (sh.offsetHeight + 30) + 'px,0)'; dim.style.opacity = '0';
+        setTimeout(function(){ close(); setTimeout(function(){ sh.style.transform = ''; sh.style.transition = ''; dim.style.opacity = ''; dim.style.transition = ''; }, 260); }, 190);
+      } else {
+        setY(0); setTimeout(function(){ sh.style.transition = ''; dim.style.transition = ''; }, 400);
+      }
+    }
+    sh.addEventListener('touchend', end); sh.addEventListener('touchcancel', end);
   }
   function render(){
     box.querySelector('.mm-sh').innerHTML = '<div class="mm-grip"></div>' + head() + (PROV ? swH() : '') + '<div class="mm-g">' + (PROV ? tilesProv() : tilesCli()) + '</div>' + foot();

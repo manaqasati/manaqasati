@@ -963,6 +963,8 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
   .mob-right .mob-out{display:none}
 }
 @media(max-width:340px){ .mob-right .mob-av{display:none} }
+/* زر الخروج في الشريط العلوي يطلّع الشريط برّا الشاشة في الجوالات الكبيرة — الخروج موجود في «المزيد» */
+.mob-right .mob-out{display:none!important}
 
 /* مربعات المخطط الهندسي — هوية مناقصة على الخلفيات الكحلية */
 .pa-focus{background:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(120deg,#0b1f4d,#1d4ed8)!important;background-size:22px 22px,22px 22px,auto!important}

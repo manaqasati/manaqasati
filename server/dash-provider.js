@@ -469,8 +469,10 @@ function _renderHome(data){
   var _now=new Date();
   var _monthBids=_myBids.filter(function(b){var d=new Date(b.created_at);return d.getFullYear()===_now.getFullYear()&&d.getMonth()===_now.getMonth();}).length;
   var _accVal=_myBids.filter(function(b){return b.status==='accepted';}).reduce(function(a,b){return a+(parseFloat(b.price)||0);},0);
-  function _pl(n,a){n=parseInt(n)||0;if(n===1)return a[0];if(n===2)return a[1];if(n<=10)return n+' '+a[2];return n+' '+a[3];}
+  function _plI(n){n=parseInt(n)||0;if(n===1)return 0;if(n===2)return 1;var m=n%100;if(m>=3&&m<=10)return 2;if(m>=11)return 3;return 4;}
+  function _pl(n,a){n=parseInt(n)||0;var i=_plI(n);if(i<2)return a[i];return n+' '+(i===4?(a[4]||a[0]):a[i]);}
   var _PRJ=['مشروع جديد','مشروعان جديدان','مشاريع جديدة','مشروعاً جديداً'];
+  var _AVL=['متاح','متاحان','متاحة','متاحاً','متاح'], _FIT=['يناسبك','يناسبانك','تناسبك','تناسبك','يناسبك'];
   // ── الرئيسية (النموذج A — مركز القيادة): ترحيب · أهم شي اليوم · الأرقام · فرص تناسبك | ملفك · ارفع ترتيبك · نشاطك ──
   var _hr=new Date().getHours(), _gr=_hr<12?'صباح الخير':'مساء الخير';
   var _dt=''; try{ _dt=new Date().toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{weekday:'long',day:'numeric',month:'long'}); }catch(e){}
@@ -487,7 +489,7 @@ function _renderHome(data){
   var _pcPct=Math.round(_pcItems.filter(function(x){return x.d;}).length/_pcItems.length*100);
   var _fc;
   if(newCount>0&&_fresh){ var _fb=parseInt(_fresh.bid_count)||0;
-    _fc={t:_pl(newCount,_PRJ)+' '+(matchedBySpec?'تناسبك':'متاحة')+' — قدّم بدري، العميل يرد أكثر على أول العروض',s:'الأحدث «'+String(_fresh.title||'').slice(0,40)+'» نزل '+timeAgoP(_fresh.created_at)+' — '+(_fb===0?'ما وصله أي عرض للحين':(_fb===1?'فيه عرض واحد بس':'فيه '+_fb+' عروض')),b:'ابدأ بالأحدث ←',go:'_viewProj('+_fresh.id+')'}; }
+    _fc={t:_pl(newCount,_PRJ)+' '+(matchedBySpec?_FIT:_AVL)[_plI(newCount)]+' — قدّم بدري، العميل يرد أكثر على أول العروض',s:'الأحدث «'+String(_fresh.title||'').slice(0,40)+'» نزل '+timeAgoP(_fresh.created_at)+' — '+(_fb===0?'ما وصله أي عرض للحين':(_fb===1?'فيه عرض واحد بس':'فيه '+_pl(_fb,['عرض واحد','عرضين','عروض','عرضاً','عرض']))),b:'ابدأ بالأحدث ←',go:'_viewProj('+_fresh.id+')'}; }
   else if(_pcPct<100){ _fc={t:'أكمل ملفك — الملف الكامل يزيد قبول عروضك',s:'ناقصك: '+_pcItems.filter(function(x){return !x.d;}).map(function(x){return x.l;}).join('، '),b:'أكمل ملفك ←',go:'gotoPage(&quot;profile&quot;)'}; }
   else { _fc={t:'ما فيه مشاريع جديدة الحين',s:'يوصلك إشعار أول ما ينزل مشروع يناسب تخصصك ومدينتك',b:'تصفّح كل المشاريع ←',go:'gotoPage(&quot;browse&quot;)'}; }
   html+='<div class="pa-focus"><span class="pa-fi">⚡</span><div class="pa-ft"><small>أهم شي اليوم</small><b>'+_esc(_fc.t)+'</b><span>'+_esc(_fc.s)+'</span></div><button type="button" onclick="'+_fc.go+'">'+_fc.b+'</button></div>';
@@ -547,7 +549,7 @@ function _paRow(r,match){
   var bc=parseInt(r.bid_count||0)||0, did=(_myBids||[]).some(function(b){return b.request_id===r.id;}), ds=_tkDesc(r.description);
   return '<div class="pa-r" onclick="_viewProj('+r.id+')"><span class="pa-ri">'+catSvg(r.category,20)+'</span>'
     +'<div class="pa-rt"><b>'+_esc(r.title||'')+'</b>'+(ds?'<p>'+_esc(ds)+'</p>':'')
-      +'<div class="pa-rm"><span>📍 '+_esc(r.city||'—')+'</span><span>💬 '+(bc===0?'كن الأول':(bc===1?'عرض واحد':(bc===2?'عرضين':bc+' عروض')))+'</span><span>🕒 '+timeAgoP(r.created_at)+'</span></div>'
+      +'<div class="pa-rm"><span>📍 '+_esc(r.city||'—')+'</span><span>💬 '+(bc===0?'كن الأول':(bc===1?'عرض واحد':(bc===2?'عرضين':_pl(bc,['عرض واحد','عرضين','عروض','عرضاً','عرض']))))+'</span><span>🕒 '+timeAgoP(r.created_at)+'</span></div>'
       +'<div class="pa-rc">'+(match?'<span class="pa-ch g">✓ تخصصك ومدينتك</span>':'')+(r.has_plan?'<span class="pa-ch b">📐 فيه مخطط</span>':'')+'</div></div>'
     +'<div class="pa-rb"><small>الميزانية</small><b>'+(r.budget_max?fmtN(r.budget_max):'—')+'</b></div>'
     +(did?'<button type="button" class="pa-go done" onclick="event.stopPropagation();gotoPage(\'works\')">✓ قدّمت</button>':'<button type="button" class="pa-go" onclick="event.stopPropagation();openBidFormDirectly('+r.id+')">قدّم عرض</button>')
