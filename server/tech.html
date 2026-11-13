@@ -64,7 +64,7 @@ button,input,textarea,select{font-family:inherit}
 .stars{display:flex;gap:6px;justify-content:center}.stars button{border:0;background:none;font-size:34px;color:#e2e8f0;cursor:pointer;line-height:1}.stars button.on{color:#f59e0b}
 .wrap{max-width:680px}
 </style>
-<script src="/route.js?v=1"></script></head>
+<script src="/route.js?v=1"></script><script src="/jobtask.js?v=1"></script></head>
 <body>
 <div class="top"><b>مناقصة <i>•</i></b><span style="display:flex;gap:14px;align-items:center"><a href="#" class="notranslate" translate="no" data-mnq-lang style="display:inline-flex;gap:5px;align-items:center"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><span class="mnq-lang-cur"></span></a><a href="/">الرئيسية</a></span></div>
 <div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
@@ -75,7 +75,20 @@ var TOK=''; try{TOK=localStorage.getItem('token')||'';}catch(e){}
 var A=document.getElementById('app'), P=new URLSearchParams(location.search), S={items:[],j:null};
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function login(){ try{localStorage.setItem('_after_login',location.pathname+location.search);}catch(e){} location.href='/auth.html'; }
-if(!TOK){ A.innerHTML='<div class="card empty"><div style="font-size:40px">👷</div><b style="display:block;font-size:17px;margin-top:6px;color:#172554">مهام الفني</b><div class="mu" style="margin-top:8px;line-height:1.9">سجّل دخولك أو أنشئ حساباً <b>بنفس رقم جوالك</b> اللي أضافته المؤسسة، وتطلع لك مهامك هنا.</div><button class="btn pri" style="width:100%;margin-top:14px" id="lg">تسجيل الدخول</button></div>'; document.getElementById('lg').onclick=login; return; }
+var INV=(new URLSearchParams(location.search).get('inv')||'').replace(/[^a-f0-9]/g,'');
+if(!TOK&&INV){
+  // دعوة من المؤسسة: ترحيب رسمي + التسجيل جاهز باسمه وجواله
+  A.innerHTML='<div class="card empty"><div class="mu">جارٍ التحميل…</div></div>';
+  fetch('/api/tech-invite/'+INV).then(function(r){ return r.json().then(function(j){ if(!r.ok) throw new Error(j.message||'الرابط غير صحيح'); return j; }); }).then(function(d){
+    try{ localStorage.setItem('_after_login','/tech.html'); }catch(e){}
+    A.innerHTML='<div class="card" style="text-align:center;display:flex;flex-direction:column;gap:10px;padding:24px 18px"><div style="width:64px;height:64px;border-radius:20px;margin:0 auto;background:linear-gradient(135deg,#eff4ff,#dbe7ff);display:flex;align-items:center;justify-content:center;font-size:30px">👷</div>'
+     +'<b style="font-size:18px;color:#172554">مرحباً '+esc(d.name)+'</b><div class="mu" style="line-height:1.9">أضافتك <b style="color:#172554">'+esc(d.pname)+'</b> إلى فريق العمل بصفة <b>فني</b> على منصة مناقصة.<br>فعّل حسابك برقم جوالك <b dir="ltr">'+esc(d.phone)+'</b> وتوصلك مهامك ومواعيدك هنا.</div>'
+     +'<a class="btn pri" style="width:100%;padding:14px" href="/auth.html?inv='+INV+'">'+(d.registered?'تسجيل الدخول ومتابعة المهام':'تفعيل الحساب')+'</a>'
+     +(d.registered?'':'<a class="btn sec" style="width:100%" href="/auth.html?inv='+INV+'&login=1">عندي حساب — تسجيل الدخول</a>')+'</div>';
+  }).catch(function(e){ A.innerHTML='<div class="card empty"><div style="font-size:40px">⚠️</div><b style="display:block;margin-top:6px;color:#172554">'+esc(e.message)+'</b><a class="btn sec" style="width:100%;margin-top:14px" href="/auth.html">تسجيل الدخول</a></div>'; });
+  return;
+}
+else if(!TOK){ A.innerHTML='<div class="card empty"><div style="font-size:40px">👷</div><b style="display:block;font-size:17px;margin-top:6px;color:#172554">مهام الفني</b><div class="mu" style="margin-top:8px;line-height:1.9">سجّل دخولك أو أنشئ حساباً <b>بنفس رقم جوالك</b> اللي أضافته المؤسسة، وتطلع لك مهامك هنا.</div><button class="btn pri" style="width:100%;margin-top:14px" id="lg">تسجيل الدخول</button></div>'; document.getElementById('lg').onclick=login; return; }
 function api(p,o){o=o||{};o.headers=Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+TOK},o.headers||{});
   return fetch(p,o).then(function(r){ if(r.status===401){ login(); throw 0; } return r.json().then(function(j){ if(!r.ok){ var e=new Error(j.message||'حدث خطأ'); throw e; } return j; }); });}
 function toast(t){ var e=document.getElementById('toast'); e.textContent=t; e.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(function(){e.style.display='none';},2600); }
@@ -153,13 +166,14 @@ function draw(){
     else h+='<div class="card" style="background:#eff4ff;border-color:#bfd3fe;padding:12px 14px"><b style="color:#1e3a8a">📍 نشارك موقعك مع المؤسسة والعميل لين توصل</b><div class="mu" style="margin-top:3px">خلّ الصفحة مفتوحة · يوقف تلقائياً لما تضغط «وصلت»</div><div class="mu" id="shr" style="margin-top:3px">جاري تحديد موقعك…</div></div>';
     h+='<button class="btn" style="background:#16a34a;color:#fff;padding:14px;font-size:16px" id="arr" onclick="_tArr()">✓ وصلت الموقع</button>'; }
   else h+='<div class="pill p-g" style="align-self:flex-start;height:28px">📍 وصلت '+dt(j.arrived_at)+'</div>';
-  h+='<div class="card"><div class="row sb" style="margin-bottom:4px"><span class="h3">المهام</span><span class="pill p-b">'+dn+' من '+j.tasks.length+'</span></div>'+j.tasks.map(function(t){ return '<button class="ck'+(t.done?' done':'')+'" style="width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:right;cursor:pointer;font-family:inherit;color:inherit" '+(open?'onclick="_tTask(\''+esc(t.id)+'\')"':'disabled')+'><span class="b">'+(t.done?'✓':'')+'</span><span class="t" style="flex:1">'+esc(t.t)+'</span></button>'; }).join('')+'</div>';
+  h+='<div class="card"><div class="row sb" style="margin-bottom:10px"><span class="h3">المهام</span><span class="pill p-b" id="tk-n">'+dn+' من '+j.tasks.length+'</span></div><div id="t-tasks"></div><div class="mu" style="margin-top:8px">اضغط على المهمة لتفاصيلها — تقدر تضيف ملاحظة مكتوبة أو صوتية وترفق صور وملفات.</div></div>';
   h+='<div class="card"><div class="row sb"><span class="h3">الصور</span></div><div class="phs">'+j.photos.map(function(p){ return '<a href="'+esc(p.url)+'" target="_blank" rel="noopener" class="ph" style="background-image:url(&quot;'+esc(p.url)+'&quot;)"><span>'+(p.kind==='before'?'قبل':'بعد')+'</span></a>'; }).join('')+'</div>'+(open?'<div class="row" style="margin-top:10px;flex-wrap:nowrap"><label class="btn sec" style="flex:1;cursor:pointer">📷 صورة قبل<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_tPh(this,\'before\')"></label><label class="btn sec" style="flex:1;cursor:pointer">📷 صورة بعد<input type="file" accept="image/*" capture="environment" style="display:none" onchange="_tPh(this,\'after\')"></label></div>':'')+'</div>';
   (j.extras||[]).forEach(function(e){ h+='<div class="row sb card" style="padding:12px 14px;font-size:13.5px;font-weight:700"><span>عمل إضافي: '+esc(e.descr)+'</span><span class="pill '+({tech:'p-y',sent:'p-y',approved:'p-g',declined:'p-r',dropped:'p-gr'}[e.status]||'p-gr')+'">'+({tech:'عند المؤسسة',sent:'عند العميل',approved:'وافق العميل',declined:'رفض العميل',dropped:'ملغي'}[e.status]||'')+'</span></div>'; });
   if((j.costs||[]).length) h+='<div class="card"><span class="h3">مصاريفك على المشروع</span>'+j.costs.map(function(c){ return '<div class="row sb" style="padding:8px 0;border-top:1px solid #f1f5f9;font-size:13.5px;font-weight:700"><span>'+esc(c.title)+(c.photo?' · <a href="'+esc(c.photo)+'" target="_blank" rel="noopener" style="color:#1e3a8a">📎 الفاتورة</a>':'')+'</span><b>'+Number(c.amount).toLocaleString('en-US')+' ر.س</b></div>'; }).join('')+'</div>';
   if(open) h+='<button class="btn sec" style="padding:13px" onclick="_tCost()">+ مصروف (مواد، نقل…)</button>';
   if(open) h+='<button class="btn sec" style="padding:13px" onclick="_tDev()">+ سجّل جهاز عند العميل</button><button class="btn sec" style="padding:13px" onclick="_tExtra()">+ عمل إضافي (يحتاج موافقة)</button>'+(j.finished_at?'<div class="pill p-b" style="align-self:center;height:28px">🏁 بلّغت المؤسسة إنك خلّصت</div>':'<button class="btn pri" style="padding:14px;font-size:15px" onclick="_tFin()">خلّصت — أبلغ المؤسسة</button>');
   A.innerHTML=h;
+  var tkEl=document.getElementById('t-tasks'); if(tkEl&&window.MNQ_TASK) MNQ_TASK.mount(tkEl,{toast:toast,tasks:j.tasks,canEdit:false,closed:!open,me:j.me||'',act:act,onChange:function(L){ S.j.tasks=L; var n=document.getElementById('tk-n'); if(n) n.textContent=L.filter(function(t){return t.done;}).length+' من '+L.length; }});
   if(open&&j.enroute_at&&!j.arrived_at) startShare(); else stopShare();
 }
 function act(b){ return api('/api/tech/jobs/'+S.j.id,{method:'POST',body:JSON.stringify(b)}); }

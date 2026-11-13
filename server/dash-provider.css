@@ -58,7 +58,9 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .btn-new{background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;padding:9px 18px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;border:none;font-family:'Tajawal',sans-serif;display:flex;align-items:center;gap:6px;transition:all .18s;box-shadow:0 4px 14px rgba(29,78,216,.35)}
 .btn-new:hover{background:var(--p2);transform:translateY(-1px)}
 .content{padding:24px 28px;flex:1}
-.page{display:none}.page.on{display:block}
+.page{display:none}.page.on{display:block;animation:mnqPgIn .2s ease-out both}
+@keyframes mnqPgIn{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.page.on{animation:none}}
 .pghd{margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border)}
 .pg-t{font-family:'Cairo',sans-serif;font-size:22px;font-weight:900;color:var(--p);letter-spacing:-.5px}
 .pg-s{font-size:13px;color:var(--muted);font-weight:600;margin-top:5px}
@@ -954,7 +956,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
   [data-theme="dark"] .pa-gc .bump-row button{background:#1e3a8a}
 }
 /* الشريط العلوي في الجوالات الصغيرة (آيفون SE وأصغر): نصغّر المسافات، وزر الخروج موجود في «المزيد» */
-@media(max-width:400px){
+@media(max-width:430px){
   .mob-head{padding:0 10px}
   .mob-head .mob-logo{font-size:16.5px}
   .mob-right{gap:5px}
@@ -962,6 +964,12 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
   .mob-right .my-page-btn{padding:6px 9px;font-size:11.5px}
   .mob-right .mob-out{display:none}
 }
+/* الجوالات العادية (375–430): نضغط المسافات شوي عشان كل أزرار الشريط تدخل بدون ما يطلع شي برّا الشاشة */
+@media(max-width:430px){ .mob-right{gap:4px} .mob-head .mob-logo{font-size:15.5px} .mob-right .my-page-btn{padding:6px 8px;gap:4px;font-size:11px} .mob-right .mob-notif{padding:5px} }
+/* أندرويد (360–380): الوضع الليلي والجولة موجودين في «المزيد» — نشيلهم من الشريط عشان ما يطلع الشريط برّا الشاشة وتنزاح الصفحة كلها */
+@media(max-width:380px){ #tourQ,.mob-right .mob-notif[onclick*="toggleTheme"]{display:none} }
+/* حماية أخيرة: محتوى الشريط ما يوسّع الصفحة أبداً */
+.mob-head{overflow-x:clip}
 @media(max-width:340px){ .mob-right .mob-av{display:none} }
 /* زر الخروج في الشريط العلوي يطلّع الشريط برّا الشاشة في الجوالات الكبيرة — الخروج موجود في «المزيد» */
 .mob-right .mob-out{display:none!important}

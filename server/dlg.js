@@ -3,9 +3,9 @@
   var W = window, D = document;
   var LBL = { bids: ['العروض', 'تصفّح المشاريع وتقديم عروض وتعديلها'], chat: ['المحادثات', 'الرد على العملاء'], awarded: ['المشاريع المرسّاة', 'متابعة التنفيذ وتأكيد الإنجاز'],
     profile: ['الملف الشخصي', 'النبذة والتخصصات والصور'], proofs: ['وثّق أعمالك', 'رفع مشاريع وطلب تقييمها'], sub: ['مقاول باطن', 'طلب مقاولين ومتابعتهم'],
-    quotes: ['طلبات التسعيرة وعروض الأسعار', 'الرد على طلبات صفحتك وإرسال عروض الأسعار'], jobs: ['مشاريع العملاء والفريق', 'المواعيد والفنيين والتسليم'], customers: ['دفتر العملاء وخطط الصيانة', 'ملفات العملاء والأجهزة والخطط'], stats: ['الأرقام والتقارير', 'لوحة «الأرقام والتقارير» والتقرير الشهري'] };
+    quotes: ['طلبات التسعيرة وعروض الأسعار', 'الرد على طلبات صفحتك وإرسال عروض الأسعار'], jobs: ['مشاريع العملاء والفريق', 'المواعيد والفنيين والتسليم'], customers: ['دفتر العملاء وخطط الصيانة', 'ملفات العملاء والأجهزة والخطط'], campaigns: ['الحملات التسويقية بالإيميل', 'قوائم الإيميلات وإرسال الحملات لعملائك'], stats: ['الأرقام والتقارير', 'لوحة «الأرقام والتقارير» والتقرير الشهري'] };
   var ORDER0 = ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub'], ORDER = ORDER0;
-  var ROLES = { sales: ['مندوب مبيعات', ['bids', 'chat', 'quotes']], super: ['مشرف مشاريع', ['awarded', 'jobs', 'customers', 'chat']], manager: ['مدير الحساب', ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers', 'stats']], custom: ['مخصّص', null] };
+  var ROLES = { sales: ['مندوب مبيعات', ['bids', 'chat', 'quotes', 'campaigns']], super: ['مشرف مشاريع', ['awarded', 'jobs', 'customers', 'chat']], manager: ['مدير الحساب', ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers', 'campaigns', 'stats']], custom: ['مخصّص', null] };
   var LOCKED = ['حذف الحساب', 'تغيير الجوال والإيميل', 'كلمة السر', 'السعي والمدفوعات', 'إضافة مفوّض'];
   var S = { me: null, d: null, busy: false };
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
@@ -173,7 +173,7 @@
     var pg = D.getElementById('page-dlg'); if (!pg) return;
     if (S.me) { pg.innerHTML = '<div class="dl-c" style="text-align:center">هذي الصفحة لصاحب الحساب فقط</div>'; return; }
     pg.innerHTML = '<div class="loading">جاري التحميل...</div>';
-    ORDER = W._subsOpen ? ORDER0.concat(['quotes', 'jobs', 'customers', 'stats']) : ORDER0;
+    ORDER = W._subsOpen ? ORDER0.concat(['quotes', 'jobs', 'customers', 'campaigns', 'stats']) : ORDER0;
     api('/api/provider/delegates').then(function(r){ if (!r || r.message || !Array.isArray(r.items)) { pg.innerHTML = '<div class="dl-c" style="text-align:center">تعذّر التحميل — حاول مرة ثانية</div>'; return; }
       S.multi = r.limit > 1 || r.items.length > 1; S.L = r;
       if (S.multi) { S.view = 'list'; M.list(); } else { S.d = r.items[0] || null; render(); } });

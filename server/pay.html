@@ -44,6 +44,10 @@ body{font-family:Tajawal,sans-serif;background:#f0f5ff;color:#1e293b;min-height:
 .inp.bad{border-color:#dc2626}
 .inp input{flex:1;min-width:0;border:0;outline:0;font-family:inherit;font-size:16px;font-weight:700;padding:12px 0;background:transparent;direction:ltr;text-align:left;color:#1e293b}
 .inp input::placeholder{color:#94a3b8;font-weight:500}
+#cb:empty{display:none}.cbb{display:flex;animation:cbIn .22s ease-out}@keyframes cbIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:none}}
+.acc .logos svg{transition:opacity .2s}
+.cardpv{transition:background .35s}.cardpv.b-mada{background:linear-gradient(135deg,#0f3d2e,#1f7a4d 55%,#259bd6)!important}.cardpv.b-visa{background:linear-gradient(135deg,#0b1f6b,#1a1f71 50%,#2d5be3)!important}.cardpv.b-mc{background:linear-gradient(135deg,#1c1c1c,#3a2a1a 55%,#eb001b)!important}
+#pvb svg{filter:drop-shadow(0 2px 6px rgba(0,0,0,.25))}
 .row2{display:flex;gap:10px}.row2 .f{flex:1;min-width:0}
 .acc{display:flex;justify-content:space-between;align-items:center}
 .cardpv{width:270px;flex:none;aspect-ratio:1.586;border-radius:18px;padding:18px 20px;background:linear-gradient(135deg,#172554,#1d4ed8 70%,#38bdf8);color:#fff;position:relative;overflow:hidden;box-shadow:0 14px 30px rgba(30,58,138,.35);direction:ltr}
@@ -111,7 +115,10 @@ function goLogin(){ try{localStorage.removeItem('token');}catch(e){} location.hr
 function steps(c){var L=['المبلغ','الدفع','التأكيد'];return '<div class="steps">'+L.map(function(t,i){return '<div class="st '+(i<c?'ok':(i===c?'on':''))+'"><span class="n">'+(i<c?'✓':i+1)+'</span>'+t+(i<2?'<i></i>':'')+'</div>';}).join('')+'</div>';}
 function fail(msg){ app.innerHTML='<div class="center"><div class="card"><div style="font-size:38px">⚠️</div><div class="h1" style="margin:8px 0">'+esc(msg)+'</div><a class="btn2 b-pri" href="'+BACK+'">'+BACKT+'</a></div></div>'; }
 if(!REF){ fail('رابط الدفع غير صحيح'); return; }
-if(!TOK){ goLogin(); return; }
+if(!TOK){
+  // رجع من صفحة تحقق البنك في متصفح ما فيه دخول (مثلاً فتحها التطبيق القديم برّا): ما نطلّعه للدخول — نطمّنه إن العملية وصلت ونرجّعه للتطبيق
+  if(Q.get('id')){ app.innerHTML='<div class="center"><div class="card" style="max-width:420px;text-align:center"><div style="font-size:40px">✅</div><div class="h1" style="margin:8px 0">تم استلام عملية الدفع</div><div class="mu" style="line-height:1.9;margin-bottom:14px">يُفعَّل '+(SUB?'اشتراكك':'السداد')+' تلقائياً خلال لحظات، وتصلك الفاتورة بالبريد الإلكتروني.<br>يمكنك العودة إلى تطبيق مناقصة الآن.</div><a class="btn2 b-pri" href="manaqasa://" style="display:block;margin-bottom:8px">العودة إلى التطبيق</a><a href="/auth.html?redirect=pay&ref='+REF+(SUB?'&t=sub':'')+'&id='+encodeURIComponent(Q.get('id'))+'" class="btn2 b-sec" style="display:block">تسجيل الدخول ومتابعة هنا</a></div></div>'; return; }
+  goLogin(); return; }
 
 var OKN=SUB?'✓ يُفعَّل الاشتراك فور إتمام الدفع':'✓ يُعتمد السداد تلقائياً فور إتمام الدفع';
 function money(v){ return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
@@ -152,11 +159,21 @@ function render(){
  [].forEach.call(app.querySelectorAll('.opt'),function(b){ b.onclick=function(){ if(BUSY)return; M=b.getAttribute('data-m'); render(); }; });
  if(M==='card') wireCard(); else mountApple();
 }
-function brand(n){ if(/^4/.test(n))return 'visa'; if(/^(5[1-5]|2[2-7])/.test(n))return 'mc'; return ''; }
+var MADA=','+'588845,440647,440795,446404,457865,968208,588846,493428,539931,558848,557606,968210,636120,417633,468540,468541,468542,468543,968201,446393,588847,400861,409201,458456,484783,968205,462220,455708,588848,455036,968203,486094,486095,486096,504300,440533,489317,489318,489319,445564,968211,401757,410685,432328,428671,428672,428673,968206,446672,543357,434107,431361,604906,521076,588850,968202,535825,529415,543085,524130,554180,549760,588849,968209,524514,529741,537767,535989,536023,513213,585265,588983,588982,589005,508160,531095,530906,532013,588851,605141,968204,422817,422818,422819,428331,483010,483011,483012,589206,968207,419593,439954,407197,407395,520058,530060,531196,412565,506968,549400,542214,409843,400097,413005,428101,458452,470825,474491,489094,489095,557849,605181,627571,457997'+',';
+// نوع البطاقة من أول أرقامها: مدى (حسب البنوك السعودية) · فيزا · ماستركارد
+function brand(n){ if(n.length>=6&&MADA.indexOf(','+n.slice(0,6)+',')>=0)return 'mada'; if(/^4/.test(n))return 'visa'; if(/^(5[1-5]|2[2-7])/.test(n))return 'mc'; return ''; }
+var BNAME={mada:'مدى',visa:'فيزا',mc:'ماستركارد'};
 function luhn(n){var s=0,a=false;for(var i=n.length-1;i>=0;i--){var d=+n[i];if(a){d*=2;if(d>9)d-=9;}s+=d;a=!a;}return s%10===0;}
 function wireCard(){
  var cn=g('cn'),ce=g('ce'),cv=g('cv'),nm=g('nm');
- cn.oninput=function(){ var d=cn.value.replace(/\D/g,'').slice(0,19); cn.value=d.replace(/(.{4})/g,'$1 ').trim(); g('pvn').textContent=(d+'•'.repeat(Math.max(0,16-d.length))).replace(/(.{4})/g,'$1 ').trim(); bad('cn',0); showErr(''); };
+ cn.oninput=function(){ var d=cn.value.replace(/\D/g,'').slice(0,19); cn.value=d.replace(/(.{4})/g,'$1 ').trim(); g('pvn').textContent=(d+'•'.repeat(Math.max(0,16-d.length))).replace(/(.{4})/g,'$1 ').trim(); bad('cn',0); showErr(''); showBrand(brand(d)); };
+ function showBrand(b){ if(b===showBrand.b)return; showBrand.b=b;
+  // شعار النوع داخل الحقل وعلى البطاقة، والشعارات المقبولة يتظلّل غير المطابق منها
+  g('cb').innerHTML=b?'<span class="cbb" title="'+BNAME[b]+'">'+lg(b,40,26)+'</span>':'';
+  var pv=g('pvb'); if(pv) pv.innerHTML=b?lg(b,46,30):'';
+  var lgs=document.querySelectorAll('.acc .logos svg'), ks=['mada','visa','mc']; for(var i=0;i<lgs.length;i++) lgs[i].style.opacity=(!b||ks[i]===b)?'1':'.28';
+  var cp=document.querySelector('.cardpv'); if(cp){ cp.classList.remove('b-mada','b-visa','b-mc'); if(b) cp.classList.add('b-'+b); }
+ }
  ce.oninput=function(){ var d=ce.value.replace(/\D/g,'').slice(0,4); ce.value=d.length>2?d.slice(0,2)+' / '+d.slice(2):d; g('pve').textContent=d.length?(d.slice(0,2)+'/'+d.slice(2)):'MM/YY'; bad('ce',0); showErr(''); };
  cv.oninput=function(){ cv.value=cv.value.replace(/\D/g,'').slice(0,4); bad('cv',0); showErr(''); };
  nm.oninput=function(){ g('pvh').textContent=nm.value.toUpperCase()||'—'; bad('nm',0); showErr(''); };

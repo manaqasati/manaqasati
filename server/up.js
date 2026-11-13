@@ -921,3 +921,40 @@
   }
   D.addEventListener('touchend', end, { capture: true }); D.addEventListener('touchcancel', end, { capture: true });
 })();
+
+/* ── مساحة لمس مريحة: الأزرار الصغيرة (أقل من 40 بكسل) نكبّر منطقة الضغط حولها بدون ما يتغير شكلها أو مكانها ── */
+(function(){
+  if (window.__mqTapArea) return; window.__mqTapArea = true;
+  if (!('ontouchstart' in window)) return;
+  var D = document, st = D.createElement('style');
+  st.textContent = '.mnq-hit-a::after,.mnq-hit-b::before{content:"";position:absolute;top:var(--mh-y);bottom:var(--mh-y);left:var(--mh-l);right:var(--mh-r)}';
+  (D.head || D.documentElement).appendChild(st);
+  var SEL = 'button,a[href],[role=button],[onclick],label[for],summary';
+  function one(e){
+    if (e.__mqH) return; e.__mqH = 1;
+    var r = e.getBoundingClientRect(); if (!r.width || !r.height) { e.__mqH = 0; return; }
+    if (r.width >= 40 && r.height >= 40) return;
+    var cs = getComputedStyle(e);
+    if (cs.display === 'inline' && e.parentElement && /^(P|SPAN|SMALL|LI|TD|DIV)$/.test(e.parentElement.tagName) && (e.parentElement.textContent || '').trim().length > (e.textContent || '').trim().length + 20) return; // رابط داخل نص
+    var ax = getComputedStyle(e, '::after').content, bf = getComputedStyle(e, '::before').content, k;
+    if (!ax || ax === 'none' || ax === 'normal') k = 'mnq-hit-a'; else if (!bf || bf === 'none' || bf === 'normal') k = 'mnq-hit-b'; else return;
+    var dx = Math.min(8, Math.max(0, (40 - r.width) / 2)), dy = Math.min(8, Math.max(0, (40 - r.height) / 2));
+    // ما نطلّع منطقة الضغط برّا الشاشة أو برّا شريط يتمرّر بالعرض (عشان ما تصير الصفحة أعرض من الشاشة)
+    var dl = Math.max(0, Math.min(dx, r.left - 1)), dr = Math.max(0, Math.min(dx, innerWidth - r.right - 1));
+    for (var x = e.parentElement; x && x !== D.body; x = x.parentElement) { var ox = getComputedStyle(x).overflowX; if (ox === 'auto' || ox === 'scroll' || ox === 'hidden') { var pr = x.getBoundingClientRect(); dl = Math.max(0, Math.min(dl, r.left - pr.left)); dr = Math.max(0, Math.min(dr, pr.right - r.right)); break; } }
+    if (!dl && !dr && !dy) return;
+    if (cs.position === 'static') {
+      // لو فيه عنصر داخله مثبّت على أب أعلى (شارة مثلاً) ما نغيّر المرجع عشان ما يتحرك
+      var kids = e.getElementsByTagName('*'); for (var j = 0; j < kids.length; j++) { var p = getComputedStyle(kids[j]).position; if (p === 'absolute' || p === 'fixed') return; }
+      e.style.position = 'relative';
+    }
+    e.style.setProperty('--mh-l', (-dl) + 'px'); e.style.setProperty('--mh-r', (-dr) + 'px'); e.style.setProperty('--mh-y', (-dy) + 'px');
+    e.classList.add(k);
+  }
+  var tm = 0;
+  function scan(){ tm = 0; var a = D.querySelectorAll(SEL); for (var i = 0; i < a.length; i++) { try { one(a[i]); } catch(_){} } }
+  function later(){ if (!tm) tm = setTimeout(scan, 250); }
+  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', scan); else scan();
+  window.addEventListener('load', later);
+  new MutationObserver(later).observe(D.documentElement, { childList: true, subtree: true });
+})();

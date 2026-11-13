@@ -189,7 +189,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/i18n.js','/i18n-en.js','/i18n-ur.js','/branch.js','/route.js','/pnav.js','/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/geopick.js','/jobtask.js','/camp.js','/i18n.js','/i18n-en.js','/i18n-ur.js','/branch.js','/route.js','/pnav.js','/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -302,7 +302,7 @@ app.use(function(req, res, next){
   next();
 });
 // حقن سكربت نسبة الرفع في كل الصفحات (بدون ما نعدّل كل ملف HTML)
-const _UP_VER = '17'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
+const _UP_VER = '20'; // غيّره عند تعديل up.js (الـSW يخزّن الملفات الثابتة)
 const _CITY_VER = '3'; // غيّره عند تعديل citypick.js
 // العلامة الموحّدة (نفسها في كل الموقع): ذهبية للمشترك · زرقاء للموثّق — علامة وحدة بس
 function _sealSrv(k, sz){ if (!k) return ''; sz = sz || 17; const g = k === 'sub', t = g ? 'منشأة مشتركة' : 'موثّق';
@@ -323,7 +323,23 @@ function _injectI18n(h, req){
   tag += '<script src="/i18n.js?v=' + _assetVer('i18n.js') + '"></script>';
   const i = m.index + m[0].length; return h.slice(0, i) + tag + h.slice(i);
 }
-function _injectUp(h){ if (h.length < 200 || h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); if (i === -1) return h; h = h.slice(0, i) + _UP_TAG + h.slice(i); const m = /<head[^>]*>/i.exec(h); return m ? h.slice(0, m.index + m[0].length) + _SEAL_TAG + h.slice(m.index + m[0].length) : h; }
+// انتقال ناعم بين الصفحات (بدون ومض): نفس الصفحة القديمة تبقى ظاهرة لين ترسم الجديدة ثم تلاشي سريع (View Transitions)،
+// + الوضع الليلي يتطبّق قبل أول رسم، + تحميل مسبق للصفحة لما يضغط على رابط (Speculation Rules — تحميل بس، بدون تشغيل)
+const _NAV_TAG = '<script>try{if(localStorage.getItem("theme")==="dark")document.documentElement.setAttribute("data-theme","dark");}catch(e){}</script>'
+  + '<style>html{-webkit-text-size-adjust:100%;text-size-adjust:100%}:where(button,a,[role=button],[onclick],label,summary){-webkit-tap-highlight-color:transparent;touch-action:manipulation}:where(button,[role=button]){-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}:where(button,[role=button]):not(:disabled):active{opacity:.82}img{-webkit-user-drag:none}@view-transition{navigation:auto}::view-transition-old(root),::view-transition-new(root){animation-duration:.16s}@media(prefers-reduced-motion:reduce){@view-transition{navigation:none}}</style>'
+  + '<script type="speculationrules">{"prefetch":[{"where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":"/api/*"}},{"not":{"href_matches":"/logout*"}},{"not":{"selector_matches":"[data-act=out],[onclick*=Logout]"}}]},"eagerness":"moderate"}]}</script>';
+// الوضع الليلي الموحّد: أي لون فاتح باقي في الوضع الليلي (صفحات فرعية بدون وضع ليلي، أو أجزاء نسيها الوضع الليلي الخاص) يتحوّل تلقائياً قبل أول رسم،
+// ويرجع لأصله لما يطفّي الوضع الليلي — عشان ما يصير ومض فاتح/داكن بين الصفحات
+const _AUTODARK_TAG = '<script>' + "!function(r){var t=r.documentElement,o=0,e={IMG:1,SVG:1,svg:1,CANVAS:1,VIDEO:1,IFRAME:1,PICTURE:1,SCRIPT:1,STYLE:1,LINK:1,META:1,TITLE:1,HEAD:1,BR:1,PATH:1},a=0;function n(r){var t=/rgba?\\(([^)]+)\\)/.exec(r);if(!t)return null;var o=t[1].split(/[ ,\\/]+/).map(parseFloat);return{r:o[0]/255,g:o[1]/255,b:o[2]/255,a:o.length>3?o[3]:1}}function c(r){var t=Math.max(r.r,r.g,r.b),o=Math.min(r.r,r.g,r.b),e=(t+o)/2,a=0,n=0,c=t-o;return c&&(n=e>.5?c/(2-t-o):c/(t+o),a=t===r.r?(r.g-r.b)/c+(r.g<r.b?6:0):t===r.g?(r.b-r.r)/c+2:(r.r-r.g)/c+4,a*=60),[a,n,e]}function i(r,t,o,e){return\"hsla(\"+Math.round(r)+\",\"+Math.round(100*t)+\"%,\"+Math.round(100*o)+\"%,\"+(null==e?1:e)+\")\"}function d(r){if(1===r.nodeType&&!e[r.tagName]&&!r.closest(\"svg\")){var t=r.style;[\"background-color\",\"color\",\"border-color\",\"border-top-color\",\"border-bottom-color\",\"border-left-color\",\"border-right-color\"].forEach((function(o){\"important\"===t.getPropertyPriority(o)&&r.__mnqD&&r.__mnqD[o]&&t.removeProperty(o)}));var o,a,d=getComputedStyle(r),u=r.__mnqD={};if((o=n(d.backgroundColor))&&o.a>.35&&(a=c(o))[2]>.82&&(u[\"background-color\"]=1,t.setProperty(\"background-color\",i(a[0],.45*a[1],.1+.75*(1-a[2]),o.a),\"important\")),\"none\"!==d.backgroundImage&&/gradient/.test(d.backgroundImage)&&!/url\\(/.test(d.backgroundImage)){var g=d.backgroundImage.match(/rgba?\\([^)]+\\)/g)||[];if(g.length&&g.every((function(r){var t=n(r);return t&&c(t)[2]>.8}))&&(u[\"background-image\"]=1,t.setProperty(\"background-image\",\"none\",\"important\"),!u[\"background-color\"])){var l=c(n(g[0]));u[\"background-color\"]=1,t.setProperty(\"background-color\",i(l[0],.45*l[1],.13),\"important\")}}(o=n(d.color))&&o.a>.3&&(a=c(o))[2]<.5&&function(r){for(var t=r;t&&1===t.nodeType;t=t.parentElement){var o=n(getComputedStyle(t).backgroundColor);if(o&&o.a>.35)return.2126*o.r+.7152*o.g+.0722*o.b;var e=getComputedStyle(t).backgroundImage;if(e&&\"none\"!==e){var a=(e.match(/rgba?\\([^)]+\\)/)||[])[0];return a?.2126*(a=n(a)).r+.7152*a.g+.0722*a.b:0}}return 0}(r)<.5&&(u.color=1,t.setProperty(\"color\",i(a[0],Math.min(1,.9*a[1]),.93-.35*a[2],o.a),\"important\")),[\"Top\",\"Bottom\",\"Left\",\"Right\"].forEach((function(r){if(parseFloat(d[\"border\"+r+\"Width\"])>0){var o=n(d[\"border\"+r+\"Color\"]);if(o&&o.a>.2&&c(o)[2]>.78){var e=\"border-\"+r.toLowerCase()+\"-color\";u[e]=1,t.setProperty(e,\"rgba(148,163,184,.22)\",\"important\")}}}))}}function u(r){if(o&&r&&1===r.nodeType){d(r);for(var t=r.getElementsByTagName(\"*\"),e=0;e<t.length;e++)d(t[e])}}function g(){var e=\"dark\"===t.getAttribute(\"data-theme\");if(e!==!!o){a=1;try{e?(o=1,t.style.colorScheme=\"dark\",r.body&&u(r.body)):(o=0,t.style.colorScheme=\"\",function(){for(var t=r.getElementsByTagName(\"*\"),o=0;o<t.length;o++){var e=t[o],a=e.__mnqD;if(a){for(var n in a)e.style.removeProperty(n);e.__mnqD=null}}}())}finally{a=0}}}new MutationObserver((function(r){if(!a){a=1;try{r.forEach((function(r){\"attributes\"===r.type?r.target===t&&\"data-theme\"===r.attributeName?(a=0,g(),a=1):u(r.target):r.addedNodes.forEach(u)}))}finally{a=0}}})).observe(t,{childList:!0,subtree:!0,attributes:!0,attributeFilter:[\"class\",\"data-theme\"]}),g(),r.addEventListener(\"DOMContentLoaded\",(function(){a=1,u(r.body),a=0})),window.addEventListener(\"load\",(function(){a=1,u(r.body),a=0}))}(document);" + '</script>';
+// خطوط مستضافة عندنا بدل Google Fonts: ملف خطوط واحد لكل الصفحات (يتخزّن سنة) + تحميل مسبق للوزنين الأساسيين → ما يصير ومض للخط بين الصفحات
+const _FONT_PRE = ['tajawal-arabic-400','tajawal-arabic-500','tajawal-arabic-700','tajawal-arabic-800','tajawal-arabic-900','tajawal-latin-500','tajawal-latin-700','tajawal-latin-800'].map(f => '<link rel="preload" href="/fonts/' + f + '-normal.woff2" as="font" type="font/woff2" crossorigin>').join('') + '<link rel="preload" href="/fonts/cairo-arabic-wght-normal.woff2" as="font" type="font/woff2" crossorigin>';
+function _fontTag(){ return _FONT_PRE + '<link rel="stylesheet" href="/fonts/fonts.css?v=' + _assetVer('fonts/fonts.css') + '">'; }
+function _localFonts(h){ if (h.indexOf('fonts.googleapis.com') === -1) return h; let first = true;
+  h = h.replace(/<link[^>]*fonts\.googleapis\.com\/css2[^>]*>/g, () => { if (!first) return ''; first = false; return _fontTag(); });
+  return h.replace(/<link[^>]*rel=["']?(?:preconnect|dns-prefetch)["']?[^>]*fonts\.(?:googleapis|gstatic)\.com[^>]*>/g, '').replace(/<link[^>]*fonts\.(?:googleapis|gstatic)\.com[^>]*rel=["']?(?:preconnect|dns-prefetch)["']?[^>]*>/g, ''); }
+// الآيفون يكبّر الصفحة لما تضغط على حقل خطه أصغر من 16 — نمنع التكبير التلقائي بنفس إعداد الشاشة في كل الصفحات
+function _vp(h){ return h.replace(/<meta name="viewport" content="([^"]*)">/i, (m, c) => /maximum-scale/.test(c) ? m : '<meta name="viewport" content="' + c.replace(/\s+/g, '') + ',maximum-scale=1">'); }
+function _injectUp(h){ if (h.length < 200) return h; h = _vp(_localFonts(h)); if (h.indexOf('/up.js') !== -1) return h; const i = h.indexOf('</head>'); if (i === -1) return h; h = h.slice(0, i) + _UP_TAG + h.slice(i); const m = /<head[^>]*>/i.exec(h); const dk = _AUTODARK_TAG; return m ? h.slice(0, m.index + m[0].length) + _NAV_TAG + dk + _SEAL_TAG + h.slice(m.index + m[0].length) : h; }
 // ملفات اللوحات المفصولة (dash-*.js/css): نضيف لرابطها بصمة المحتوى تلقائياً (?v=...)
 // → الجوال يخزّنها سنة، وأي تعديل على الملف يغيّر البصمة فيوصل التحديث فوراً بدون ما أحد يغيّر رقم يدوي
 const _assetVerCache = new Map();
@@ -495,7 +511,10 @@ app.use(express.static('.', {
   etag: true,
   lastModified: true,
   setHeaders: (res, filePath) => {
-    if (/\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf)$/i.test(filePath)) {
+    if (/[\/\\]fonts[\/\\][a-z0-9-]+\.(woff2|css)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable'); // الخطوط: ملفاتها ما تتغير (ونغيّر ?v= لو تغيّر fonts.css)
+      if (/\.woff2$/i.test(filePath)) res.setHeader('Access-Control-Allow-Origin', '*');
+    } else if (/\.(png|jpg|jpeg|gif|svg|ico|webp|woff2?|ttf)$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'public, max-age=604800'); // أسبوع للصور والخطوط
     } else if (/\.html$/i.test(filePath)) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate'); // HTML لا يُخزَّن أبداً (تصل التحديثات فوراً)
@@ -3514,8 +3533,8 @@ function auth(req, res, next) {
   }).catch(() => { if (payload.role === 'admin') return res.status(503).json({ message: 'تعذّر التحقق من الحساب — حاول بعد لحظة' }); next(); });
 }
 // ═══ المفوّض ═══
-const DLG_PERMS = { bids: 'العروض', chat: 'المحادثات', awarded: 'المشاريع المرسّاة', profile: 'الملف الشخصي', proofs: 'وثّق أعمالك', sub: 'مقاول باطن', quotes: 'طلبات التسعيرة وعروض الأسعار', jobs: 'مشاريع العملاء والفريق', customers: 'دفتر العملاء وخطط الصيانة', stats: 'الأرقام والتقارير' };
-const DLG_ROLES = { sales: { name: 'مندوب مبيعات', perms: ['bids', 'chat', 'quotes'] }, super: { name: 'مشرف مشاريع', perms: ['awarded', 'jobs', 'customers', 'chat'] }, manager: { name: 'مدير الحساب', perms: ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers', 'stats'] } };
+const DLG_PERMS = { bids: 'العروض', chat: 'المحادثات', awarded: 'المشاريع المرسّاة', profile: 'الملف الشخصي', proofs: 'وثّق أعمالك', sub: 'مقاول باطن', quotes: 'طلبات التسعيرة وعروض الأسعار', jobs: 'مشاريع العملاء والفريق', customers: 'دفتر العملاء وخطط الصيانة', campaigns: 'الحملات التسويقية بالإيميل', stats: 'الأرقام والتقارير' };
+const DLG_ROLES = { sales: { name: 'مندوب مبيعات', perms: ['bids', 'chat', 'quotes', 'campaigns'] }, super: { name: 'مشرف مشاريع', perms: ['awarded', 'jobs', 'customers', 'chat'] }, manager: { name: 'مدير الحساب', perms: ['bids', 'chat', 'awarded', 'profile', 'proofs', 'sub', 'quotes', 'jobs', 'customers', 'campaigns', 'stats'] } };
 const _dlgState = new Map();
 async function _dlgStateOf(id){
   const hit = _dlgState.get(id); if (hit && Date.now() < hit.exp) return hit.d;
@@ -3528,7 +3547,7 @@ async function _dlgStateOf(id){
 function _dlgDrop(id){ _dlgState.delete(id); }
 // وش يقدر يسوي المفوّض: الحساس لصاحب الحساب بس، والباقي حسب الصلاحيات، وأي شي ما نعرفه يُرفض
 const _DLG_NEVER = /^\/api\/(account|admin|client\/|auth\/(change-password|logout-all|verify-code|resend-verification)|me\/(enable-provider|enable-request|mode|email-prefs)|provider\/(saai|delegate|warnings)|sub\/saai|subs\/(?!open$)|pay\/)/;
-const _DLG_GET_DENY = { chat: /^\/api\/(messages|provider\/conversations)/, quotes: /^\/api\/(quotes|provider\/qreqs)(\/|$)/, jobs: /^\/api\/(jobs|team)(\/|$)/, customers: /^\/api\/(customers|plans)(\/|$)/, stats: /^\/api\/provider\/stats(\/|$)/ };
+const _DLG_GET_DENY = { chat: /^\/api\/(messages|provider\/conversations)/, quotes: /^\/api\/(quotes|provider\/qreqs)(\/|$)/, jobs: /^\/api\/(jobs|team)(\/|$)/, customers: /^\/api\/(customers|plans)(\/|$)/, campaigns: /^\/api\/campaigns(\/|$)/, stats: /^\/api\/provider\/stats(\/|$)/ };
 const _DLG_FREE = /^\/api\/(me\/dlg(\/|$)|push|push-token|notifications|me\/ping|me\/provider-hint|live\/ping|hit|lk\/event|csp-report|demo\/ev|tour|pro\/\d+\/view|requests\/\d+\/(view|revisit|watch-open)$|saved-requests\/|drafts\/save|upload\/attachment|support\/|reports$|blocks\/|auth\/refresh$)/;
 const _DLG_GROUPS = [
   ['bids', /^\/api\/(requests\/\d+\/(bids|questions)$|bids\/\d+$|accept-asks\/\d+\/respond$|provider\/bump$)/],
@@ -3540,6 +3559,7 @@ const _DLG_GROUPS = [
   ['quotes', /^\/api\/(quotes|provider\/qreqs)(\/|$)/],
   ['jobs', /^\/api\/(jobs|team|branches|cal|att)(\/|$)/],
   ['customers', /^\/api\/(customers|plans)(\/|$)/],
+  ['campaigns', /^\/api\/campaigns(\/|$)/],
 ];
 const _DLG_NO = 'هذي العملية لصاحب الحساب فقط';
 function _dlgGuard(req){
@@ -4162,6 +4182,7 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
       await _mig(`ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
       // الدوام والحضور + التقويم
+      await _mig(`ALTER TABLE provider_techs ADD COLUMN IF NOT EXISTS email VARCHAR(160), ADD COLUMN IF NOT EXISTS inv_token VARCHAR(40), ADD COLUMN IF NOT EXISTS invited_at TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS inv_email_at TIMESTAMPTZ`);
       await _mig(`ALTER TABLE provider_techs ADD COLUMN IF NOT EXISTS sched JSONB, ADD COLUMN IF NOT EXISTS rate NUMERIC(8,2) DEFAULT 0, ADD COLUMN IF NOT EXISTS late_alert BOOLEAN DEFAULT TRUE`);
       await _mig(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS dur_min INTEGER DEFAULT 120`);
       await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS quote_items JSONB`);
@@ -4170,6 +4191,8 @@ async function setupDatabase() {
       await _mig(`CREATE TABLE IF NOT EXISTS tech_leaves (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, tech_id INTEGER REFERENCES provider_techs(id) ON DELETE CASCADE, d1 DATE NOT NULL, d2 DATE NOT NULL, reason VARCHAR(200), status VARCHAR(10) DEFAULT 'pending', by_tech BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW(), decided_at TIMESTAMPTZ)`);
       await _mig(`CREATE TABLE IF NOT EXISTS att_alerts (tech_id INTEGER, day DATE, PRIMARY KEY (tech_id, day))`);
       await _mig(`CREATE TABLE IF NOT EXISTS campaigns (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, branch_id INTEGER, audience VARCHAR(12), subject VARCHAR(120), body TEXT, sent_n INTEGER DEFAULT 0, status VARCHAR(10) DEFAULT 'sending', created_at TIMESTAMPTZ DEFAULT NOW())`);
+      await _mig('ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS grp VARCHAR(60)'); await _mig('ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS image TEXT'); await _mig('ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS cta VARCHAR(10)'); await _mig('ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS cta_text VARCHAR(40)'); await _mig('ALTER TABLE campaigns ADD COLUMN IF NOT EXISTS cta_url VARCHAR(400)');
+      await _mig(`CREATE TABLE IF NOT EXISTS camp_contacts (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, grp VARCHAR(60) NOT NULL, email VARCHAR(160) NOT NULL, name VARCHAR(80), unsub BOOLEAN DEFAULT FALSE, consent_at TIMESTAMPTZ, created_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(provider_id, grp, email))`);
       await _mig(`CREATE TABLE IF NOT EXISTS ideas (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, title VARCHAR(120) NOT NULL, body TEXT, cat VARCHAR(20) DEFAULT 'other', status VARCHAR(12) DEFAULT 'review', merged_into INTEGER, reply TEXT, reject_reason TEXT, votes INTEGER DEFAULT 0, created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW(), approved_at TIMESTAMPTZ, done_at TIMESTAMPTZ)`);
       await _mig(`CREATE TABLE IF NOT EXISTS idea_votes (idea_id INTEGER REFERENCES ideas(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at TIMESTAMPTZ DEFAULT NOW(), PRIMARY KEY (idea_id, user_id))`);
       await _mig(`CREATE TABLE IF NOT EXISTS idea_comments (id SERIAL PRIMARY KEY, idea_id INTEGER REFERENCES ideas(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, body TEXT NOT NULL, admin BOOLEAN DEFAULT FALSE, hidden BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW())`);
@@ -9689,6 +9712,32 @@ async function _jobGeo(id){
   } catch(e){ console.error('job-geo:', e.message); } }
 setInterval(() => _jobLock('job_geo', async () => { const r = (await pool.query("SELECT id FROM jobs WHERE lat IS NULL AND status IN ('new','scheduled','active') AND (maps IS NOT NULL OR client_phone IS NOT NULL) ORDER BY id DESC LIMIT 100")).rows; for (const x of r) await _jobGeo(x.id); }), 30 * 60 * 1000);
 
+// ═══════════ اختيار الموقع على الخريطة (بحث عنوان · عنوان من النقطة · قراءة رابط قوقل ماب) ═══════════
+// نمر عبر السيرفر: نخزّن النتائج يوم كامل ونحترم حد خدمة الخرائط المفتوحة (OpenStreetMap)
+const _osmCache = new Map(); let _geoLast = 0;
+async function _osm(path){ const k = path; const c = _osmCache.get(k); if (c && Date.now() - c.at < 86400000) return c.v;
+  const wait = Math.max(0, _geoLast + 1100 - Date.now()); _geoLast = Date.now() + wait; if (wait) await new Promise(r => setTimeout(r, wait));
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 7000);
+  try { const r = await fetch('https://nominatim.openstreetmap.org' + path, { headers: { 'User-Agent': 'Manaqasa/1.0 (support@manaqasa.com)', 'Accept-Language': 'ar,en' }, signal: ctl.signal });
+    const v = r.ok ? await r.json() : null; if (v) { _osmCache.set(k, { at: Date.now(), v }); if (_osmCache.size > 3000) _osmCache.delete(_osmCache.keys().next().value); } return v; } finally { clearTimeout(tm); } }
+function _osmName(a){ a = a || {}; return [a.road, a.neighbourhood || a.suburb || a.quarter || a.city_district, a.city || a.town || a.village || a.state].filter(Boolean).filter((x, i, arr) => arr.indexOf(x) === i).join('، '); }
+app.get('/api/geo/search', auth, rateLimiter(40, 60000), async (req, res) => {
+  try { const q = _cleanTxt(String(req.query.q || ''), 120); if (q.length < 2) return res.json({ items: [] });
+    const v = await _osm('/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=sa&q=' + encodeURIComponent(q)) || [];
+    res.json({ items: v.map(x => ({ lat: +(+x.lat).toFixed(6), lng: +(+x.lon).toFixed(6), name: x.name || _osmName(x.address) || x.display_name, sub: _osmName(x.address) || x.display_name })).filter(x => _geoOk(x.lat, x.lng)) });
+  } catch(e){ res.json({ items: [] }); }
+});
+app.get('/api/geo/reverse', auth, rateLimiter(60, 60000), async (req, res) => {
+  try { const la = parseFloat(req.query.lat), ln = parseFloat(req.query.lng); if (!_geoOk(la, ln)) return res.json({});
+    const v = await _osm('/reverse?format=jsonv2&addressdetails=1&zoom=17&lat=' + la.toFixed(5) + '&lon=' + ln.toFixed(5)) || {};
+    const a = v.address || {}; res.json({ address: _osmName(a), district: a.neighbourhood || a.suburb || a.quarter || '', city: a.city || a.town || a.village || '' });
+  } catch(e){ res.json({}); }
+});
+app.get('/api/geo/resolve', auth, rateLimiter(30, 60000), async (req, res) => {
+  try { const g = await _geoResolve(String(req.query.u || '').slice(0, 500)); if (!g) return res.status(400).json({ message: 'ما قدرنا نقرأ الموقع من الرابط — افتح الموقع في قوقل ماب واضغط «مشاركة» ثم «نسخ الرابط»' }); res.json(g); }
+  catch(e){ res.status(400).json({ message: 'ما قدرنا نقرأ الرابط' }); }
+});
+
 // ═══════════ أدوات المشترك: قائمة الأسعار · المتابعة الآلية · الحجز المباشر · تكلفة المشروع · الحملات ═══════════
 const TOOLS_DEF = { fu: { quote: 1, visit: 1, rate: 0 }, book: { on: 0, days: [6, 0, 1, 2, 3, 4], from: '08:00', to: '18:00', slot: 120, cap: 1 } };
 async function _toolsCfg(pid){
@@ -9861,7 +9910,8 @@ app.get('/u/:cid/:t', async (req, res) => {
   await pool.query('UPDATE provider_customers SET unsub=TRUE WHERE id=$1', [cid]).catch(() => {});
   res.send('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إلغاء الاشتراك</title></head><body style="font-family:Tajawal,Arial,sans-serif;background:#f0f5ff;display:flex;align-items:center;justify-content:center;min-height:90vh"><div style="background:#fff;border-radius:18px;padding:28px;max-width:420px;text-align:center"><div style="font-size:40px">✅</div><h2 style="color:#172554">تم إلغاء اشتراكك</h2><p style="color:#475467;font-weight:700">ما توصلك رسائل تسويقية من هذا المزوّد بعد الحين. رسائل مواعيدك وعروضك تستمر عادي.</p></div></body></html>');
 });
-async function _campAud(req, aud){
+async function _campAud(req, aud, grp){
+  if (aud === 'grp') return { grp: true, w: "k.provider_id=$1 AND k.grp=$2 AND NOT k.unsub", a: [req.user.id, String(grp || '')] };
   const a = [req.user.id]; let w = "c.provider_id=$1 AND c.email IS NOT NULL AND c.email<>'' AND NOT COALESCE(c.unsub,FALSE)";
   w += _brSql(await _brCtx(req), 'c.branch_id', a);
   if (aud === 'repeat') w += " AND (SELECT COUNT(*) FROM jobs j WHERE j.provider_id=c.provider_id AND j.client_id IS NOT DISTINCT FROM c.client_id AND c.client_id IS NOT NULL AND j.status='done') >= 2";
@@ -9869,34 +9919,116 @@ async function _campAud(req, aud){
   if (aud === 'plans') w += " AND EXISTS (SELECT 1 FROM maint_plans m WHERE m.customer_id=c.id AND m.status='active')";
   return { w, a };
 }
+async function _campList(req, aud, grp, lim){
+  const x = await _campAud(req, aud, grp);
+  if (x.grp) return (await pool.query(`SELECT 'k' || k.id AS id, k.name, k.email FROM camp_contacts k WHERE ${x.w} ORDER BY k.id DESC LIMIT ${lim | 0}`, x.a)).rows;
+  return (await pool.query(`SELECT c.id::text AS id, c.name, c.email FROM provider_customers c WHERE ${x.w} ORDER BY c.last_at DESC LIMIT ${lim | 0}`, x.a)).rows;
+}
 async function _campQuota(pid){ const L = (await _subLimits(pid)).limits; const used = (await pool.query("SELECT COALESCE(SUM(sent_n),0)::int n FROM campaigns WHERE provider_id=$1 AND created_at >= date_trunc('month', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'", [pid])).rows[0].n; return { limit: L.emails || 0, used }; }
+const _EMAIL_RX = /^[^\s@<>"',;]+@[^\s@<>"',;]+\.[a-z]{2,}$/i;
+const _CAMP_CTA = { book: 'احجز موعدك', wa: 'تواصل واتساب', page: 'تواصل معنا', url: '', none: '' };
+// يبني محتوى الحملة (نفس الشكل للمعاينة والتجربة والإرسال الفعلي)
+function _campIn(b){
+  const cta = Object.prototype.hasOwnProperty.call(_CAMP_CTA, b.cta) ? b.cta : 'page';
+  const img = typeof b.image === 'string' && /^https?:\/\//.test(b.image) ? (_safeUrl(b.image) || '') : (process.env.NODE_ENV !== 'production' && /^data:image\/(png|jpe?g|webp);base64,/.test(String(b.image || '')) && String(b.image).length < 300000 ? b.image : '');
+  return { subj: _cleanTxt(b.subject || '', 120), body: _cleanML(b.body || '', 2000), image: img, cta, cta_text: _cleanTxt(b.cta_text || '', 30), cta_url: cta === 'url' ? (_safeUrl(b.cta_url || '') || '') : '' };
+}
+function _campHtml(m, u, bk, who){
+  const nm = who && who.name ? String(who.name).trim() : '';
+  const hasTok = /\{الاسم\}/.test(m.body);
+  const body = eEsc(m.body).replace(/\{الاسم\}/g, eEsc(nm || 'عميلنا العزيز'));
+  let url = '', txt = '';
+  if (m.cta === 'book') { url = SITE_URL + '/pro/' + u.id + (bk ? '?book=1' : ''); txt = bk ? _CAMP_CTA.book : _CAMP_CTA.page; }
+  else if (m.cta === 'wa' && u.phone) { url = 'https://wa.me/' + String(u.phone).replace(/\D/g, '').replace(/^0/, '966'); txt = _CAMP_CTA.wa; }
+  else if (m.cta === 'page' || (m.cta === 'wa' && !u.phone)) { url = SITE_URL + '/pro/' + u.id; txt = _CAMP_CTA.page; }
+  else if (m.cta === 'url' && m.cta_url) { url = m.cta_url; txt = m.cta_text || 'التفاصيل'; }
+  if (m.cta_text && m.cta !== 'none' && url) txt = m.cta_text;
+  const imgH = m.image ? (url ? `<a href="${eEsc(url)}" style="display:block;margin:0 0 18px">` : '<div style="margin:0 0 18px">') + `<img src="${eEsc(m.image)}" alt="${eEsc(m.subj)}" width="520" style="display:block;width:100%;max-width:520px;height:auto;border-radius:14px;border:0">` + (url ? '</a>' : '</div>') : '';
+  const unsub = who && who.unsub ? `<p style="margin-top:18px;font-size:11px;color:#98a2b3">وصلتك هذي الرسالة لأنك من عملاء ${eEsc(u.n || '')}. <a href="${who.unsub}" style="color:#98a2b3">إلغاء الاشتراك</a></p>` : '';
+  return emailTpl(eEsc(m.subj), imgH + (hasTok ? '' : `<p>مرحباً ${eEsc(nm || 'عميلنا العزيز')}،</p>`) + `<div style="white-space:pre-wrap;line-height:1.9">${body}</div><p style="margin-top:14px;color:#64748b;font-size:13px">— ${eEsc(u.n || '')}</p>` + unsub, txt || null, url || null);
+}
+async function _campUser(pid){ return (await pool.query("SELECT id, COALESCE(NULLIF(business_name,''),name) AS n, phone, email FROM users WHERE id=$1", [pid])).rows[0]; }
+function _campUnsub(id){ id = String(id); return id[0] === 'k' ? SITE_URL + '/uk/' + id.slice(1) + '/' + _unsubTok('k' + id.slice(1)) : SITE_URL + '/u/' + id + '/' + _unsubTok(parseInt(id)); }
+app.get('/uk/:id/:t', async (req, res) => {
+  const id = parseInt(req.params.id) || 0; if (!id || req.params.t !== _unsubTok('k' + id)) return res.status(404).send('الرابط غير صحيح');
+  await pool.query('UPDATE camp_contacts SET unsub=TRUE WHERE id=$1', [id]).catch(() => {});
+  res.send('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>إلغاء الاشتراك</title></head><body style="font-family:Tajawal,Arial,sans-serif;background:#f0f5ff;display:flex;align-items:center;justify-content:center;min-height:90vh"><div style="background:#fff;border-radius:18px;padding:28px;max-width:420px;text-align:center"><div style="font-size:40px">✅</div><h2 style="color:#172554">تم إلغاء اشتراكك</h2><p style="color:#475467;font-weight:700">ما توصلك رسائل تسويقية من هذا المزوّد بعد الحين.</p></div></body></html>');
+});
 app.get('/api/campaigns', auth, providerOnly, async (req, res) => {
   try { const qd = await _campQuota(req.user.id); const cnt = {};
     for (const k of ['all', 'repeat', 'idle', 'plans']) { const x = await _campAud(req, k); cnt[k] = (await pool.query(`SELECT COUNT(*)::int n FROM provider_customers c WHERE ${x.w}`, x.a)).rows[0].n; }
     const tot = (await pool.query('SELECT COUNT(*)::int n FROM provider_customers WHERE provider_id=$1', [req.user.id])).rows[0].n;
-    const hist = (await pool.query('SELECT id, subject, audience, sent_n, status, created_at FROM campaigns WHERE provider_id=$1 ORDER BY id DESC LIMIT 20', [req.user.id])).rows;
-    const cfg = await _subCfg(); const L = await _subLimits(req.user.id);
-    res.json(Object.assign(qd, { counts: cnt, total: tot, history: hist, addon: cfg.addons.emails && cfg.addons.emails.on && cfg.addons.emails.tiers.includes(L.tier) ? cfg.addons.emails.p : null }));
+    const groups = (await pool.query('SELECT grp AS name, COUNT(*) FILTER (WHERE NOT unsub)::int n, COUNT(*) FILTER (WHERE unsub)::int unsub_n, MAX(created_at) AS at FROM camp_contacts WHERE provider_id=$1 GROUP BY grp ORDER BY MAX(created_at) DESC', [req.user.id])).rows;
+    const hist = (await pool.query('SELECT id, subject, audience, grp, sent_n, status, image, created_at FROM campaigns WHERE provider_id=$1 ORDER BY id DESC LIMIT 20', [req.user.id])).rows;
+    const cfg = await _subCfg(); const L = await _subLimits(req.user.id); const u = await _campUser(req.user.id);
+    res.json(Object.assign(qd, { counts: cnt, total: tot, groups, history: hist, me_email: req.user.dlg ? '' : (u && u.email && !/@manaqasa\.local$/i.test(u.email) ? u.email : ''), has_phone: !!(u && u.phone), book: !!(await _bkOpen(req.user.id)), addon: cfg.addons.emails && cfg.addons.emails.on && cfg.addons.emails.tiers.includes(L.tier) ? cfg.addons.emails.p : null }));
   } catch(e){ console.error('camps:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// قائمة إيميلات خاصة (لصق أو ملف Excel/CSV) — تنحفظ كمجموعة باسم
+app.post('/api/campaigns/contacts', auth, providerOnly, rateLimiter(30, 3600000), async (req, res) => {
+  try { if (!(await _qGate(req, res))) return; const b = req.body || {};
+    const grp = _cleanTxt(b.grp || '', 60); if (grp.length < 2) return res.status(400).json({ message: 'اكتب اسم للقائمة (مثال: عملاء معرض الرياض)' });
+    if (b.consent !== true) return res.status(400).json({ message: 'أكّد إن أصحاب الإيميلات عملاؤك ووافقوا يستلمون رسائلك' });
+    const items = Array.isArray(b.items) ? b.items.slice(0, 5000) : []; const seen = new Set(); let invalid = 0; const ok = [];
+    for (const it of items) { const em = String((it && it.email) || '').trim().toLowerCase().slice(0, 160); if (!_EMAIL_RX.test(em)) { invalid++; continue; } if (seen.has(em)) continue; seen.add(em); ok.push([em, _cleanTxt((it && it.name) || '', 80) || null]); }
+    if (!ok.length) return res.status(400).json({ message: 'ما لقينا إيميلات صحيحة' + (invalid ? ' (' + invalid + ' غير صحيح)' : '') });
+    const have = (await pool.query('SELECT COUNT(*)::int n FROM camp_contacts WHERE provider_id=$1', [req.user.id])).rows[0].n;
+    if (have + ok.length > 20000) return res.status(409).json({ message: 'الحد 20,000 إيميل في القوائم — احذف قائمة قديمة أول' });
+    let added = 0;
+    for (let i = 0; i < ok.length; i += 500) { const ch = ok.slice(i, i + 500); const a = [req.user.id, grp]; const v = ch.map(x => { a.push(x[0], x[1]); return `($1,$2,$${a.length - 1},$${a.length},NOW())`; }).join(',');
+      added += (await pool.query(`INSERT INTO camp_contacts (provider_id, grp, email, name, consent_at) VALUES ${v} ON CONFLICT (provider_id, grp, email) DO UPDATE SET name=COALESCE(EXCLUDED.name, camp_contacts.name) RETURNING (xmax = 0) AS ins`, a)).rows.filter(r => r.ins).length; }
+    const n = (await pool.query('SELECT COUNT(*) FILTER (WHERE NOT unsub)::int n FROM camp_contacts WHERE provider_id=$1 AND grp=$2', [req.user.id, grp])).rows[0].n;
+    res.json({ ok: true, grp, added, dup: ok.length - added, invalid, n, message: 'انحفظت القائمة «' + grp + '» — ' + n + ' إيميل' });
+  } catch(e){ console.error('camp-contacts:', e.message); res.status(500).json({ message: 'تعذّر الحفظ' }); }
+});
+app.post('/api/campaigns/contacts/del', auth, providerOnly, async (req, res) => {
+  try { const b = req.body || {}; const grp = String(b.grp || ''); 
+    const r = b.email ? await pool.query('DELETE FROM camp_contacts WHERE provider_id=$1 AND grp=$2 AND email=$3', [req.user.id, grp, String(b.email).toLowerCase()]) : await pool.query('DELETE FROM camp_contacts WHERE provider_id=$1 AND grp=$2', [req.user.id, grp]);
+    res.json({ ok: true, n: r.rowCount }); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.get('/api/campaigns/contacts', auth, providerOnly, async (req, res) => {
+  try { const r = await pool.query('SELECT email, name, unsub FROM camp_contacts WHERE provider_id=$1 AND grp=$2 ORDER BY id DESC LIMIT 300', [req.user.id, String(req.query.grp || '')]); res.json({ items: r.rows }); } catch(e){ res.json({ items: [] }); }
+});
+// صورة / بوستر الإعلان (رابط عام لأنه يُعرض داخل الإيميل)
+app.post('/api/campaigns/image', auth, providerOnly, rateLimiter(30, 3600000), async (req, res) => {
+  try { const d = String((req.body || {}).data || ''); if (!/^data:image\/(png|jpe?g|webp|gif);base64,/.test(d)) return res.status(400).json({ message: 'ارفع صورة (JPG أو PNG)' });
+    if (Buffer.byteLength(d.split(',')[1] || '', 'base64') > 5 * 1024 * 1024) return res.status(400).json({ message: 'الصورة أكبر من 5 ميجا' });
+    let u = await uploadToCloud(d, 'manaqasa/camp').catch(() => null);
+    if (!(u && /^https?:/.test(u)) && process.env.NODE_ENV !== 'production' && d.length < 300000) u = d;
+    if (!u) return res.status(500).json({ message: 'تعذّر رفع الصورة' }); res.json({ ok: true, url: u });
+  } catch(e){ res.status(500).json({ message: 'تعذّر رفع الصورة' }); }
+});
+app.post('/api/campaigns/preview', auth, providerOnly, async (req, res) => {
+  try { const m = _campIn(req.body || {}); const u = await _campUser(req.user.id); const bk = await _bkOpen(req.user.id);
+    res.json({ html: _campHtml(Object.assign(m, { subj: m.subj || 'عنوان الحملة', body: m.body || 'نص الرسالة يظهر هنا…' }), u, bk, { name: 'محمد', unsub: '#' }), from: (u.n || '') }); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+});
+app.post('/api/campaigns/test', auth, providerOnly, rateLimiter(8, 3600000), async (req, res) => {
+  try { if (!(await _qGate(req, res))) return; const b = req.body || {}; const m = _campIn(b);
+    if (m.subj.length < 4 || m.body.length < 10) return res.status(400).json({ message: 'اكتب العنوان والرسالة أول' });
+    const to = String(b.to || '').trim().toLowerCase(); if (!_EMAIL_RX.test(to)) return res.status(400).json({ message: 'اكتب إيميل صحيح للتجربة' });
+    const u = await _campUser(req.user.id); const bk = await _bkOpen(req.user.id);
+    const okS = await sendEmail(to, '[تجربة] ' + m.subj + ' — ' + (u.n || ''), _campHtml(m, u, bk, { name: 'محمد', unsub: '#' }), { uid: null, kind: 'campaign_test' });
+    if (okS === false && process.env.NODE_ENV === 'production') return res.status(502).json({ message: 'تعذّر إرسال التجربة' });
+    res.json({ ok: true, message: 'أرسلنا نسخة تجربة إلى ' + to + ' ✅ (ما تنحسب من رصيدك)' });
+  } catch(e){ console.error('camp-test:', e.message); res.status(500).json({ message: 'تعذّر إرسال التجربة' }); }
+});
 app.post('/api/campaigns', auth, providerOnly, rateLimiter(10, 3600000), async (req, res) => {
-  try { if (!(await _qGate(req, res))) return; const b = req.body || {}; const aud = ['all', 'repeat', 'idle', 'plans'].includes(b.audience) ? b.audience : 'all';
-    const subj = _cleanTxt(b.subject || '', 120), body = _cleanML(b.body || '', 2000);
-    if (subj.length < 4 || body.length < 10) return res.status(400).json({ message: 'اكتب العنوان والرسالة' });
-    const x = await _campAud(req, aud); const list = (await pool.query(`SELECT c.id, c.name, c.email FROM provider_customers c WHERE ${x.w} ORDER BY c.last_at DESC LIMIT 5000`, x.a)).rows;
-    if (!list.length) return res.status(400).json({ message: 'ما فيه عملاء عندهم إيميل في هذي الفئة' });
+  try { if (!(await _qGate(req, res))) return; const b = req.body || {}; const aud = ['all', 'repeat', 'idle', 'plans', 'grp'].includes(b.audience) ? b.audience : 'all';
+    const m = _campIn(b); const grp = aud === 'grp' ? _cleanTxt(b.grp || '', 60) : null;
+    if (m.subj.length < 4 || m.body.length < 10) return res.status(400).json({ message: 'اكتب العنوان والرسالة' });
+    if (m.cta === 'url' && !m.cta_url) return res.status(400).json({ message: 'رابط الزر غير صحيح — لازم يبدأ بـ https://' });
+    const list = await _campList(req, aud, grp, 5000);
+    if (!list.length) return res.status(400).json({ message: aud === 'grp' ? 'القائمة فاضية' : 'ما فيه عملاء عندهم إيميل في هذي الفئة' });
     const qd = await _campQuota(req.user.id); const left = qd.limit - qd.used;
     if (left <= 0) return res.status(409).json({ code: 'quota', message: 'خلص رصيد الإيميلات لهذا الشهر — أضف «500 إيميل» من الاشتراك والباقة' });
-    if (list.length > left && !b.partial) return res.status(409).json({ code: 'partial', left, n: list.length, message: 'رصيدك ' + left + ' إيميل والفئة فيها ' + list.length + ' — نرسل لأحدث ' + left + ' عميل؟' });
+    if (list.length > left && !b.partial) return res.status(409).json({ code: 'partial', left, n: list.length, message: 'رصيدك ' + left + ' إيميل والفئة فيها ' + list.length + ' — نرسل لأحدث ' + left + '؟' });
     const send = list.slice(0, left);
-    const u = (await pool.query("SELECT id, COALESCE(NULLIF(business_name,''),name) AS n, phone FROM users WHERE id=$1", [req.user.id])).rows[0];
-    const bk = await _bkOpen(req.user.id);
-    const cp = (await pool.query('INSERT INTO campaigns (provider_id, branch_id, audience, subject, body, sent_n) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id', [req.user.id, (await _brCtx(req)).forced || null, aud, subj, body, send.length])).rows[0];
+    const u = await _campUser(req.user.id); const bk = await _bkOpen(req.user.id);
+    const cp = (await pool.query('INSERT INTO campaigns (provider_id, branch_id, audience, grp, subject, body, image, cta, cta_text, cta_url, sent_n) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id', [req.user.id, (await _brCtx(req)).forced || null, aud, grp, m.subj, m.body, m.image && /^https?:/.test(m.image) ? m.image : null, m.cta, m.cta_text || null, m.cta_url || null, send.length])).rows[0];
     (async () => { let k = 0; for (const c of send) { try {
-        const html = emailTpl(subj, `<p>مرحباً ${eEsc(c.name || '')}،</p><div style="white-space:pre-wrap;line-height:1.9">${eEsc(body)}</div><p style="margin-top:14px;color:#64748b;font-size:13px">— ${eEsc(u.n || '')}</p><p style="margin-top:18px;font-size:11px;color:#98a2b3">وصلتك هذي الرسالة لأنك من عملاء ${eEsc(u.n || '')}. <a href="${SITE_URL}/u/${c.id}/${_unsubTok(c.id)}" style="color:#98a2b3">إلغاء الاشتراك</a></p>`, bk ? 'احجز موعدك' : 'تواصل معنا', SITE_URL + '/pro/' + u.id);
-        await sendEmail(c.email, subj + ' — ' + (u.n || ''), html, { uid: null, kind: 'campaign' }); k++; } catch(e){} if (k % 20 === 0) await new Promise(r => setTimeout(r, 500)); }
+        await sendEmail(c.email, m.subj + ' — ' + (u.n || ''), _campHtml(m, u, bk, { name: c.name, unsub: _campUnsub(c.id) }), { uid: null, kind: 'campaign' }); k++; } catch(e){} if (k % 20 === 0) await new Promise(r => setTimeout(r, 500)); }
       await pool.query("UPDATE campaigns SET status='sent' WHERE id=$1", [cp.id]).catch(() => {}); })().catch(() => {});
-    res.json({ ok: true, id: cp.id, sent: send.length, message: 'جارٍ الإرسال لـ ' + send.length + ' عميل ✅' });
+    res.json({ ok: true, id: cp.id, sent: send.length, message: 'جارٍ الإرسال لـ ' + send.length + ' ✅' });
   } catch(e){ console.error('camp-send:', e.message); res.status(500).json({ message: 'تعذّر الإرسال' }); }
 });
 
@@ -10316,13 +10448,68 @@ async function _saaiAdjust(saaiId, newVal, title){
       await pool.query(`INSERT INTO saai_ledger (request_id, provider_id, contract_value, saai_amount, status, source, self_title, self_reason, edits_log) VALUES (NULL,$1,$2,$3,'pending','quote',$4,'فرق قيمة بعد الاتفاق','[]'::jsonb)`, [r.provider_id, d, Math.round(d * SAAI_RATE), title + ' — فرق']); }
   } catch(e){ console.error('saai-adjust:', e.message); }
 }
+// ── تفاصيل المهام: وصف + ملاحظات متعددة (نص أو صوت) + مرفقات (صور، PDF، ملفات) — داخلية للمؤسسة والفني فقط ──
+const _TK_MAX_NOTES = 40, _TK_MAX_FILES = 20, _TK_FILE_MAX = 15 * 1024 * 1024;
+async function _jobFile(data, folder, name){
+  if (typeof data !== 'string' || !data.startsWith('data:')) return null;
+  const mm = data.match(/^data:([^;,]*)(?:;[^;,]*)*?;base64,(.+)$/); if (!mm) return null;
+  if (Buffer.byteLength(mm[2], 'base64') > _TK_FILE_MAX) return { err: 'الملف أكبر من 15 ميجا' };
+  const u = await uploadPrivate(data, folder, name).catch(() => null);
+  if (u && (/^https?:/.test(u) || u.startsWith('r2p:'))) return { url: u };
+  if (process.env.NODE_ENV !== 'production' && data.length < 700000) {   // بيئة الاختبار بدون تخزين
+    const ct = String(mm[1]).toLowerCase(), fe = (String(name || '').toLowerCase().match(/\.([a-z0-9]+)$/) || [])[1];
+    if (UPLOAD_TYPES[ct] || (fe && UPLOAD_EXT_TYPES[fe])) return { url: data };
+  }
+  return { err: 'نوع الملف غير مدعوم أو تعذّر رفعه' };
+}
+function _taskOut(t, who){
+  if (who === 'client') return { id: t.id, t: t.t, done: !!t.done, at: t.at || null };
+  return Object.assign({}, t, { d: t.d || '', notes: (t.notes || []).map(n => Object.assign({}, n, n.v ? { v: _pf(n.v) } : {})), files: (t.files || []).map(f => Object.assign({}, f, { url: _pf(f.url) })) });
+}
+// يرجّع المهام بعد التعديل، أو { err } — who: 'prov' | 'tech'
+async function _taskAct(j, b, act, byName){
+  const tasks = (j.tasks || []).map(x => Object.assign({}, x)); const tk = tasks.find(x => x.id === b.tid);
+  if (!tk) return { err: 'المهمة غير موجودة', code: 404 };
+  const nid = () => 'n' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex');
+  if (act === 'task_edit') {
+    if (b.t !== undefined) { const t = _cleanTxt(b.t || '', 120); if (t.length < 2) return { err: 'اكتب المهمة' }; tk.t = t; }
+    if (b.d !== undefined) tk.d = _cleanML(b.d || '', 1500) || '';
+  } else if (act === 'task_note') {
+    const nn = (tk.notes || []).slice(); if (nn.length >= _TK_MAX_NOTES) return { err: 'وصلت الحد (' + _TK_MAX_NOTES + ' ملاحظة للمهمة)' };
+    const n = { id: nid(), by: byName, at: new Date() };
+    if (b.voice) { if (!/^data:audio\//.test(String(b.voice))) return { err: 'التسجيل غير صالح' };
+      const r = await _jobFile(b.voice, 'jobv', 'voice.' + ((String(b.voice).match(/^data:audio\/(webm|ogg|mp4|mpeg|wav|x-m4a|aac)/) || [])[1] || 'webm').replace('mp4', 'm4a').replace('x-m4a', 'm4a').replace('mpeg', 'mp3'));
+      if (!r || r.err) return { err: (r && r.err) || 'تعذّر حفظ التسجيل' }; n.v = r.url; n.dur = Math.max(1, Math.min(600, parseInt(b.dur) || 1)); }
+    const t = _cleanML(b.t || '', 1000); if (t) n.t = t;
+    if (!n.t && !n.v) return { err: 'اكتب الملاحظة أو سجّلها بصوتك' };
+    nn.push(n); tk.notes = nn;
+  } else if (act === 'task_note_del') {
+    const n = (tk.notes || []).find(x => x.id === b.nid); if (!n) return { err: 'الملاحظة غير موجودة', code: 404 };
+    if (byName && n.by !== byName && j._who === 'tech') return { err: 'تقدر تحذف ملاحظاتك فقط', code: 403 };
+    tk.notes = (tk.notes || []).filter(x => x.id !== b.nid);
+  } else if (act === 'task_file') {
+    const ff = (tk.files || []).slice(); if (ff.length >= _TK_MAX_FILES) return { err: 'وصلت الحد (' + _TK_MAX_FILES + ' مرفق للمهمة)' };
+    const name = _cleanTxt(String(b.name || 'ملف').replace(/[\\/:*?"<>|]+/g, '-'), 120) || 'ملف';
+    const r = await _jobFile(b.data, 'jobf', name); if (!r || r.err) return { err: (r && r.err) || 'تعذّر رفع الملف' };
+    const ct = (String(b.data).match(/^data:([^;,]*)/) || [])[1] || '';
+    ff.push({ id: nid(), url: r.url, name, type: /^image\//.test(ct) ? 'img' : ct === 'application/pdf' ? 'pdf' : /^audio\//.test(ct) ? 'audio' : 'file', size: Math.round(Buffer.byteLength(String(b.data).split(',')[1] || '', 'base64')), by: byName, at: new Date() });
+    tk.files = ff;
+  } else if (act === 'task_file_del') {
+    const f = (tk.files || []).find(x => x.id === b.fid); if (!f) return { err: 'المرفق غير موجود', code: 404 };
+    if (byName && f.by !== byName && j._who === 'tech') return { err: 'تقدر تحذف مرفقاتك فقط', code: 403 };
+    tk.files = (tk.files || []).filter(x => x.id !== b.fid);
+  } else return { err: 'إجراء غير معروف' };
+  await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [j.id, JSON.stringify(tasks)]);
+  return { tasks };
+}
+const _TASK_ACTS = ['task_edit', 'task_note', 'task_note_del', 'task_file', 'task_file_del'];
 async function _jobGate(req, res){ return _qGate(req, res); }
 function _jobOut(j, who){
-  const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, enroute_at: j.enroute_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: j.tasks || [], photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, dur_min: parseInt(j.dur_min) || 120, created_at: j.created_at, updated_at: j.updated_at };
+  const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, enroute_at: j.enroute_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: (j.tasks || []).map(t => _taskOut(t, who)), photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, dur_min: parseInt(j.dur_min) || 120, created_at: j.created_at, updated_at: j.updated_at };
   if (who !== 'tech') Object.assign(o, { value: parseFloat(j.value) || 0, extra_total: parseFloat(j.extra_total) || 0 });
   if (j.lat != null && j.lng != null) { o.lat = j.lat; o.lng = j.lng; if (!o.maps) o.maps = 'https://www.google.com/maps/search/?api=1&query=' + j.lat + ',' + j.lng; }
   if (who === 'prov') Object.assign(o, { client_phone: j.client_phone, client_id: j.client_id, tech_id: j.tech_id, tech_name: j.tech_name || null, branch_id: j.branch_id || null });
-  if (who === 'tech') Object.assign(o, { client_phone: j.client_phone, provider_name: j.pname });
+  if (who === 'tech') Object.assign(o, { client_phone: j.client_phone, provider_name: j.pname, me: j.tech_name || 'الفني' });
   if (who === 'client') Object.assign(o, { provider_id: j.provider_id, provider_name: j.pname, provider_phone: j.pphone, tech_name: j.tech_name || null });
   return o;
 }
@@ -10337,7 +10524,7 @@ async function _jobPhoto(data){
 // ── الفريق (الفنيين) ──
 app.get('/api/team', auth, providerOnly, async (req, res) => {
   try { const c = await _brCtx(req), a = [req.user.id]; const w = _brSql(c, 't.branch_id', a);
-    const r = await pool.query(`SELECT t.id, t.name, t.phone, t.user_id, t.active, t.branch_id, (SELECT COUNT(*)::int FROM jobs j WHERE j.tech_id=t.id AND j.status IN ('new','scheduled','active')) AS open_n FROM provider_techs t WHERE t.provider_id=$1 AND t.active${w} ORDER BY t.id`, a);
+    const r = await pool.query(`SELECT t.id, t.name, t.phone, t.email, t.inv_token, t.invited_at, t.user_id, t.active, t.branch_id, (SELECT COUNT(*)::int FROM jobs j WHERE j.tech_id=t.id AND j.status IN ('new','scheduled','active')) AS open_n FROM provider_techs t WHERE t.provider_id=$1 AND t.active${w} ORDER BY t.id`, a);
     const L = await _subLimits(req.user.id); const used = (await pool.query('SELECT COUNT(*)::int n FROM provider_techs WHERE provider_id=$1 AND active', [req.user.id])).rows[0].n;
     res.json({ items: r.rows, limit: L.limits.tech || 0, used }); } catch(e){ res.json({ items: [], limit: 0 }); }
 });
@@ -10345,6 +10532,9 @@ app.post('/api/team', auth, providerOnly, async (req, res) => {
   try { if (!(await _jobGate(req, res))) return;
     const name = _cleanTxt(req.body && req.body.name || '', 80), phone = String(req.body && req.body.phone || '').replace(/[^\d+]/g, '').slice(0, 15), p9 = _ph9(phone);
     if (name.length < 2 || p9.length !== 9) return res.status(400).json({ message: 'اكتب اسم الفني ورقم جواله' });
+    const email = String(req.body && req.body.email || '').trim().toLowerCase().slice(0, 160);
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return res.status(400).json({ message: 'الإيميل غير صحيح' });
+    const invTok = require('crypto').randomBytes(16).toString('hex');
     const L = await _subLimits(req.user.id); const n = (await pool.query('SELECT COUNT(*)::int n FROM provider_techs WHERE provider_id=$1 AND active', [req.user.id])).rows[0].n;
     const ex = (await pool.query('SELECT id, active FROM provider_techs WHERE provider_id=$1 AND phone9=$2', [req.user.id, p9])).rows[0];
     if (ex && ex.active) return res.status(409).json({ message: 'هذا الفني مضاف مسبقاً' });
@@ -10352,12 +10542,46 @@ app.post('/api/team', auth, providerOnly, async (req, res) => {
     const u = (await pool.query("SELECT id FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1 ORDER BY id LIMIT 1", [p9])).rows[0];
     if (u && String(u.id) === String(req.user.id)) return res.status(400).json({ message: 'هذا رقمك أنت' });
     const br = await _brPick(req, req.body && req.body.branch_id);
-    const t = ex ? (await pool.query('UPDATE provider_techs SET active=TRUE, name=$2, phone=$3, user_id=COALESCE(user_id,$4), branch_id=$5 WHERE id=$1 RETURNING *', [ex.id, name, phone, u ? u.id : null, br])).rows[0]
-      : (await pool.query('INSERT INTO provider_techs (provider_id, user_id, name, phone, phone9, branch_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [req.user.id, u ? u.id : null, name, phone, p9, br])).rows[0];
+    const t = ex ? (await pool.query('UPDATE provider_techs SET active=TRUE, name=$2, phone=$3, user_id=COALESCE(user_id,$4), branch_id=$5, email=COALESCE(NULLIF($6,\'\'),email), inv_token=COALESCE(inv_token,$7) WHERE id=$1 RETURNING *', [ex.id, name, phone, u ? u.id : null, br, email, invTok])).rows[0]
+      : (await pool.query('INSERT INTO provider_techs (provider_id, user_id, name, phone, phone9, branch_id, email, inv_token) VALUES ($1,$2,$3,$4,$5,$6,NULLIF($7,\'\'),$8) RETURNING *', [req.user.id, u ? u.id : null, name, phone, p9, br, email, invTok])).rows[0];
     const pn = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS n FROM users WHERE id=$1", [req.user.id])).rows[0].n;
     if (t.user_id) try { await notify(t.user_id, '👷 أضافتك ' + pn + ' كفني', 'مهامك توصلك في «مهام الفني»', 'tech', null, { url: '/tech.html' }); } catch(e){}
     res.json({ ok: true, tech: t, linked: !!t.user_id, invite: SITE_URL + '/tech.html', pname: pn });
   } catch(e){ console.error('team-add:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// دعوة الفني: رابط خاص يفتح له التسجيل جاهز باسمه وجواله، يوصله بالإيميل (من هنا) أو بالواتساب/نسخ الرابط (من الجوال)
+function _techInvUrl(t){ return SITE_URL + '/tech.html?inv=' + t.inv_token; }
+async function _techInvTok(id){ const t = (await pool.query('SELECT * FROM provider_techs WHERE id=$1', [id])).rows[0]; if (t && !t.inv_token) { t.inv_token = require('crypto').randomBytes(16).toString('hex'); await pool.query('UPDATE provider_techs SET inv_token=$2 WHERE id=$1', [id, t.inv_token]); } return t; }
+app.post('/api/team/:id/invite', auth, providerOnly, async (req, res) => {
+  try { if (!(await _jobGate(req, res))) return;
+    const id = parseInt(req.params.id) || 0;
+    const own = (await pool.query('SELECT id FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [id, req.user.id])).rows[0];
+    if (!own) return res.status(404).json({ message: 'الفني غير موجود' });
+    const via = String(req.body && req.body.via || 'link');
+    if (req.body && req.body.email !== undefined) { const em = String(req.body.email || '').trim().toLowerCase().slice(0, 160); if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return res.status(400).json({ message: 'الإيميل غير صحيح' }); await pool.query('UPDATE provider_techs SET email=NULLIF($2,\'\') WHERE id=$1', [id, em]); }
+    const t = await _techInvTok(id);
+    const pn = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS n FROM users WHERE id=$1", [req.user.id])).rows[0].n;
+    const url = _techInvUrl(t);
+    if (via === 'email') {
+      if (!t.email) return res.status(400).json({ code: 'no_email', message: 'أضف إيميل الفني أولاً' });
+      if (t.inv_email_at && Date.now() - new Date(t.inv_email_at).getTime() < 120000) return res.status(429).json({ message: 'أرسلنا الدعوة قبل شوي — انتظر دقيقتين' });
+      const body = '<p style="margin:0 0 12px">مرحباً ' + eEsc(t.name) + '،</p><p style="margin:0 0 12px">قامت <b>' + eEsc(pn) + '</b> بإضافتك إلى فريق العمل بصفة <b>فني</b> على منصة مناقصة.</p><p style="margin:0 0 12px">من خلال حسابك ستصلك المهام المسندة إليك ومواعيدها وعناوين العملاء، ويمكنك تحديث حالة كل مهمة وتسجيل الحضور والانصراف.</p><p style="margin:0;color:#64748b;font-size:13px">لتفعيل حسابك اضغط الزر وأكمل بياناتك برقم جوالك المسجّل لدى المؤسسة.</p>';
+      const ok = await sendEmail(t.email, 'دعوة للانضمام إلى فريق ' + pn + ' على مناقصة', emailTpl('دعوة للانضمام إلى فريق العمل', body, 'تفعيل الحساب ومتابعة المهام', url), { uid: req.user.id });
+      if (!ok && process.env.NODE_ENV === 'production') return res.status(502).json({ message: 'تعذّر إرسال الإيميل — جرّب الواتساب أو نسخ الرابط' });
+      await pool.query('UPDATE provider_techs SET invited_at=NOW(), inv_email_at=NOW() WHERE id=$1', [id]);
+      return res.json({ ok: true, via: 'email', email: t.email });
+    }
+    await pool.query('UPDATE provider_techs SET invited_at=NOW() WHERE id=$1', [id]);
+    res.json({ ok: true, via, url, pname: pn, name: t.name });
+  } catch(e){ console.error('team-invite:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
+});
+// صفحة الدعوة (بدون دخول): بيانات التسجيل الجاهزة — الرابط نفسه هو الصلاحية
+app.get('/api/tech-invite/:t', rateLimiter(30, 60000), async (req, res) => {
+  try { const tk = String(req.params.t || '').replace(/[^a-f0-9]/g, '').slice(0, 40); if (tk.length < 32) return res.status(404).json({ message: 'الرابط غير صحيح' });
+    const r = (await pool.query("SELECT t.name, t.phone, t.email, t.user_id, COALESCE(NULLIF(u.business_name,''),u.name) AS pname FROM provider_techs t JOIN users u ON u.id=t.provider_id WHERE t.inv_token=$1 AND t.active", [tk])).rows[0];
+    if (!r) return res.status(404).json({ message: 'الدعوة منتهية — اطلب من المؤسسة ترسلها لك من جديد' });
+    res.json({ name: r.name, phone: r.phone, email: r.email || '', pname: r.pname, registered: !!r.user_id });
+  } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.delete('/api/team/:id', auth, providerOnly, async (req, res) => {
   try { const id = parseInt(req.params.id) || 0;
@@ -10426,9 +10650,10 @@ app.post('/api/jobs/:id', auth, providerOnly, async (req, res) => {
         if (tu) try { await notify(tu, '🧰 مهمة جديدة: ' + (j.title || ''), (sched ? fmt(sched) + ' · ' : '') + (r.address || ''), 'tech', id, { url: '/tech.html?id=' + id }); } catch(e){} }
       return res.json({ ok: true });
     }
-    if (act === 'task_add') { const t = _cleanTxt(b.t || '', 120); if (t.length < 2) return res.status(400).json({ message: 'اكتب المهمة' }); const tasks = (j.tasks || []).concat([{ id: 't' + Date.now().toString(36), t, done: false }]).slice(0, 60); await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(tasks)]); return res.json({ ok: true, tasks }); }
-    if (act === 'task_del') { const tasks = (j.tasks || []).filter(x => x.id !== b.tid); await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(tasks)]); return res.json({ ok: true, tasks }); }
-    if (act === 'task') { const tasks = (j.tasks || []).map(x => x.id === b.tid ? Object.assign({}, x, { done: !x.done, by: x.done ? null : 'المؤسسة', at: x.done ? null : new Date() }) : x); await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(tasks)]); return res.json({ ok: true, tasks }); }
+    if (_TASK_ACTS.includes(act)) { const r = await _taskAct(j, b, act, 'المؤسسة'); if (r.err) return res.status(r.code || 400).json({ message: r.err }); return res.json({ ok: true, tasks: r.tasks.map(t => _taskOut(t, 'prov')) }); }
+    if (act === 'task_add') { const t = _cleanTxt(b.t || '', 120); const d = _cleanML(b.d || '', 1500); if (t.length < 2) return res.status(400).json({ message: 'اكتب المهمة' }); const tasks = (j.tasks || []).concat([Object.assign({ id: 't' + Date.now().toString(36), t, done: false }, d ? { d } : {})]).slice(0, 60); await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(tasks)]); return res.json({ ok: true, tasks: tasks.map(x => _taskOut(x, 'prov')) }); }
+    if (act === 'task_del') { const tasks = (j.tasks || []).filter(x => x.id !== b.tid); await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(tasks)]); return res.json({ ok: true, tasks: tasks.map(x => _taskOut(x, 'prov')) }); }
+    if (act === 'task') { const tasks = (j.tasks || []).map(x => x.id === b.tid ? Object.assign({}, x, { done: !x.done, by: x.done ? null : 'المؤسسة', at: x.done ? null : new Date() }) : x); await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(tasks)]); return res.json({ ok: true, tasks: tasks.map(x => _taskOut(x, 'prov')) }); }
     if (act === 'photo') { const u = await _jobPhoto(b.data); if (!u) return res.status(400).json({ message: 'تعذّر رفع الصورة' }); const ph = (j.photos || []).concat([{ url: u, kind: b.kind === 'before' ? 'before' : 'after', by: 'المؤسسة', at: new Date() }]).slice(-30); await pool.query('UPDATE jobs SET photos=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(ph)]); return res.json({ ok: true, photos: ph }); }
     if (act === 'deliver') {
       if (!['scheduled', 'active', 'new'].includes(j.status)) return res.status(409).json({ message: 'المشروع مسلّم مسبقاً' });
@@ -10508,9 +10733,10 @@ app.post('/api/tech/jobs/:id', auth, rateLimiter(300, 600000), async (req, res) 
       try { await notify(j.provider_id, '📍 ' + tn + ' وصل الموقع', j.title || '', 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
       if (j.client_id) try { await notify(j.client_id, '📍 الفني ' + tn + ' وصل', (j.title || '') + ' — ' + j.pname, 'job', id, { url: '/job.html?id=' + id }); } catch(e){}
       return res.json({ ok: true }); }
+    if (_TASK_ACTS.includes(act) && act !== 'task_edit') { j._who = 'tech'; const r = await _taskAct(j, b, act, tn); if (r.err) return res.status(r.code || 400).json({ message: r.err }); return res.json({ ok: true, tasks: r.tasks.map(t => _taskOut(t, 'tech')) }); }
     if (act === 'task') { let nm = ''; const tasks = (j.tasks || []).map(x => { if (x.id !== b.tid) return x; nm = x.t; return Object.assign({}, x, { done: !x.done, by: x.done ? null : tn, at: x.done ? null : new Date() }); });
       await pool.query("UPDATE jobs SET tasks=$2::jsonb, status=CASE WHEN status IN ('new','scheduled') THEN 'active' ELSE status END, updated_at=NOW() WHERE id=$1", [id, JSON.stringify(tasks)]);
-      const t = tasks.find(x => x.id === b.tid); if (t && t.done) await _jobLog(id, tn + ' أنهى «' + nm + '»'); return res.json({ ok: true, tasks }); }
+      const t = tasks.find(x => x.id === b.tid); if (t && t.done) await _jobLog(id, tn + ' أنهى «' + nm + '»'); return res.json({ ok: true, tasks: tasks.map(x => _taskOut(x, 'tech')) }); }
     if (act === 'photo') { const u = await _jobPhoto(b.data); if (!u) return res.status(400).json({ message: 'تعذّر رفع الصورة' }); const ph = (j.photos || []).concat([{ url: u, kind: b.kind === 'before' ? 'before' : 'after', by: tn, at: new Date() }]).slice(-30); await pool.query('UPDATE jobs SET photos=$2::jsonb, updated_at=NOW() WHERE id=$1', [id, JSON.stringify(ph)]); return res.json({ ok: true, photos: ph }); }
     if (act === 'extra') { const d = _cleanTxt(b.descr || '', 200); if (d.length < 3) return res.status(400).json({ message: 'اكتب وش العمل الإضافي' });
       const ph = b.photo ? await _jobPhoto(b.photo) : null;

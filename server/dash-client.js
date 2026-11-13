@@ -341,7 +341,9 @@ function applyAvatar(img){
 // ═══════════════════════════════════
 var _pageTitles={home:'الرئيسية',requests:'المشاريع',new:'مشروع جديد',notifs:'الإشعارات',detail:'تفاصيل المشروع',profile:'إعدادات الحساب',chat:'المحادثات'};
 var curRequestId=null;
+var _cScr={};
 function show(pg,el,key){
+  if(window._cPg)_cScr[window._cPg]=window.scrollY||0;
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
   document.querySelectorAll('.ni').forEach(function(m){m.className='ni';});
   document.querySelectorAll('.bni').forEach(function(m){m.className='bni';});
@@ -368,7 +370,9 @@ function show(pg,el,key){
       else { history.pushState({pg:pg},'',hash); }
     }
   }
-  window.scrollTo(0,0);
+  // الرجوع (زر الرجوع) يرجّعك لنفس مكانك، والتنقّل الجديد يبدأ من فوق
+  var _y=(window._skipHash&&_cScr[pg])||0; window._cPg=pg; window.scrollTo(0,_y);
+  if(_y)[120,400].forEach(function(ms){setTimeout(function(){if(window._cPg===pg&&Math.abs(window.scrollY-_y)>4)window.scrollTo(0,_y);},ms);});
 }
 // زر رجوع المتصفّح: يرجّع للقسم السابق داخل اللوحة بدل الخروج منها
 window.addEventListener('popstate',function(ev){

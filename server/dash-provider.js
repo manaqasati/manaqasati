@@ -362,7 +362,8 @@ function prefetchPage(page){
   },150);
 }
 
-function gotoPage(page){_lb.start();setTimeout(function(){_gotoPageInner(page);},30);}
+var _scrY={};
+function gotoPage(page){if(window._curPage!==undefined&&_curPage)_scrY[_curPage]=window.scrollY||0;_lb.start();setTimeout(function(){_gotoPageInner(page);},30);}
 function _gotoPageInner(page){
   document.querySelectorAll('.page').forEach(function(p){p.className='page';});
   var pg=_el('page-'+page);if(pg)pg.className='page on';
@@ -380,7 +381,8 @@ function _gotoPageInner(page){
       else{history.pushState({pg:page},'',hash);}
     }
   }
-  window.scrollTo(0,0);
+  // الرجوع يرجّعك لنفس مكانك في القسم، والتنقّل الجديد يبدأ من فوق
+  var _y=(window._pBack&&_scrY[page])||0;window._pBack=false;window.scrollTo(0,_y);if(_y)[120,400].forEach(function(ms){setTimeout(function(){if(_curPage===page&&Math.abs(window.scrollY-_y)>4)window.scrollTo(0,_y);},ms);});
   if(page==='home')loadHome();
   else if(page==='browse')loadBrowse();
   else if(page==='works')loadWorks();
@@ -404,7 +406,7 @@ window.addEventListener('popstate',function(){
   if(h==='sub'&&_curPage==='sub'&&window.SubC&&SubC.list){ SubC.list(); return; }
   var known=['home','browse','works','reviews','notifs','profile','chat','saai','sub','proof','dlg','dlgme'];
   var target=known.indexOf(h)>=0?h:'home';
-  window._pSkipHash=true; gotoPage(target); window._pSkipHash=false;
+  window._pSkipHash=true; window._pBack=true; gotoPage(target); window._pSkipHash=false;
 });
 
 function _skRow(){return '<div class="sk-box" style="display:flex;gap:10px;align-items:center"><div style="width:4px;height:44px;border-radius:4px;background:#e6e2d9"></div><div style="flex:1"><div class="sk sk-line md" style="margin-bottom:7px"></div><div class="sk sk-line sm"></div></div><div class="sk sk-line" style="width:60px"></div></div>';}
@@ -1451,7 +1453,7 @@ function _renderProjs(list){
 }
 
 async function loadReviews(){
-  var pg=_el('page-reviews');if(!pg)return;pg.innerHTML=_skList(4);
+  var pg=_el('page-reviews');if(!pg)return;if(!pg.dataset.ld){pg.innerHTML=_skList(4);pg.dataset.ld='1';}
   var list=null;try{list=await _api('/api/provider/reviews');}catch(e){}
   if(!Array.isArray(list)){ _loadFail(pg,'loadReviews','التقييمات'); return; }
   var avg=list.length?(list.reduce(function(s,r){return s+(r.rating||0);},0)/list.length).toFixed(1):'—';
@@ -1546,7 +1548,7 @@ function _loadFail(pg,fnName,title){ if(!pg)return; pg.innerHTML=(title?'<div cl
 // ═══ PROFILE — مُصلح: dangerZone مُعرَّف قبل insertBefore ═══
 async function loadProfile(){
   var pg=_el('page-profile');if(!pg)return;
-  pg.innerHTML=_skList(3);
+  if(!pg.dataset.ld){pg.innerHTML=_skList(3);pg.dataset.ld='1';}
   var p=await _api('/api/provider/profile');
   if(p&&p.id)window._prof=Object.assign(window._prof||{},p);
   if(!p||!p.id){ _loadFail(pg,'loadProfile','الصفحة التعريفية'); return; }   // لا نعرض نموذج فاضي — لو حفظه ينمسح ملفه

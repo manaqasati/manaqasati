@@ -12,7 +12,7 @@
     var p=new URLSearchParams(location.search);
     if(p.get('mode')==='logout'||p.get('force')) return;   // إعادة دخول متعمّدة
     // روابط لازم تنعالج بالصفحة (دخول سحري/استعادة كلمة مرور/عرض/بطاقة/إحالة) — لا نحوّل
-    if(p.get('magic')||p.get('reset')||p.get('redirect')||p.get('t')||p.get('card')||p.get('ref')) return;
+    if(p.get('magic')||p.get('reset')||p.get('redirect')||p.get('t')||p.get('card')||p.get('ref')||p.get('inv')) return;
     var _m=''; try{_m=(localStorage.getItem('activeMode')||((JSON.parse(localStorage.getItem('user')||'{}')||{}).last_mode)||'')||'';}catch(e){}
     var _eff = (u.role==='admin') ? 'admin'
       : ((_m==='provider' && (u.role==='provider' || u.can_provide)) ? 'provider'
@@ -792,6 +792,25 @@ document.addEventListener('keydown',function(e){
 // ═══ مقاول جا من رابط دعوة عميل (project.html?inv=1 يحفظ mnq_inv_<id>) — أحدث دعوة خلال 30 يوم ═══
 function _invRef(){ try{ var best=0,id=null; for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i), m=k&&k.match(/^mnq_inv_(\d+)$/); if(!m)continue; var t=parseInt(localStorage.getItem(k)||'0'); if(t>best&&(Date.now()-t)<30*864e5){best=t;id=m[1];} } return id?'inv'+id:null; }catch(e){ return null; } }
 // ═══ قدوم من الكرت الرقمي (?ref=card&t=TOKEN) ═══
+// ═══ دعوة فني من مؤسسة (?inv=) — التسجيل جاهز باسمه وجواله وإيميله، وبعد الدخول يروح لـ«مهام الفني» ═══
+(function(){
+  var qs=new URLSearchParams(location.search), inv=(qs.get('inv')||'').replace(/[^a-f0-9]/g,'');
+  if(!inv)return;
+  try{localStorage.setItem('_after_login','/tech.html');}catch(e){}
+  fetch(API+'/api/tech-invite/'+inv).then(function(r){return r.ok?r.json():null;}).then(function(d){
+    if(!d)return;
+    var login=qs.get('login')||d.registered;
+    try{selRole('client');}catch(e){}
+    try{setMode(login?'login':'register');}catch(e){}
+    var ph=String(d.phone||'').replace(/[^0-9]/g,''); if(ph.indexOf('966')===0)ph='0'+ph.slice(3);
+    var set=function(id,val){var e=document.getElementById(id);if(e&&val&&!e.value)e.value=val;};
+    set('i-name',d.name); set('i-reg-phone',ph); set('i-phone',ph); set('i-email',d.email);
+    var box=document.querySelector('.card,.auth-card,form'); var n=document.createElement('div');
+    n.style.cssText='background:#eff4ff;border:1px solid #c7d6f5;border-radius:14px;padding:12px 14px;margin:0 0 14px;font-size:13.5px;line-height:1.8;color:#172554;text-align:right';
+    n.innerHTML='👷 دعوة من <b>'+String(d.pname).replace(/[<>&]/g,'')+'</b> للانضمام لفريق العمل بصفة فني — '+(login?'سجّل دخولك':'أكمل بياناتك')+' برقم جوالك المسجّل لدى المؤسسة.';
+    if(box&&box.parentNode) box.parentNode.insertBefore(n,box);
+  }).catch(function(){});
+})();
 (function(){
   var qs=new URLSearchParams(location.search);
   var t=qs.get('t')||qs.get('card');

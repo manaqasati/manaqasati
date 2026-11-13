@@ -108,6 +108,10 @@
       if (r && r.open) ['ni-plan', 'ni-mypage', 'ni-quotes', 'ni-jobs', 'ni-cal', 'ni-att', 'ni-cust', 'ni-branches'].forEach(function(id){ var e = sd.querySelector('#' + id); if (e && !(dl && e.style.display === 'none' && id !== 'ni-plan')) e.style.display = dl && id === 'ni-plan' ? 'none' : ''; });
       if (dl) { var p = dl.perms || []; if (p.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (p.indexOf('jobs') < 0) { hide('ni-jobs'); hide('ni-cal'); hide('ni-att'); } if (p.indexOf('customers') < 0) hide('ni-cust'); }
     }).catch(function(){}).then(function(){ arrange(sd.querySelector('.nav'), cur); });
+    // «‹ لوحة التحكم»: لو جاي من اللوحة نرجع لها بنفس حالتها (رجوع) بدل ما نفتحها من جديد
+    D.addEventListener('click', function(e){ var a = e.target.closest && e.target.closest('a[href="/dashboard-provider.html"],a[href="dashboard-provider.html"]'); if (!a || e.metaKey || e.ctrlKey) return;
+      var ref = ''; try { ref = new URL(D.referrer).origin === location.origin ? new URL(D.referrer).pathname : ''; } catch(_){ }
+      if (/dashboard-provider/.test(ref) && history.length > 1) { e.preventDefault(); history.back(); } }, true);
     // الجوال: نفس الشريط السفلي — «المزيد» يفتح قائمة اللوحة
     if (bnav) { var bn = D.importNode(bnav, true); fix(bn); bn.id = 'pnvB'; bn.classList.remove('bnav');
       [].forEach.call(bn.querySelectorAll('.bni'), function(b){ b.classList.remove('on'); });
