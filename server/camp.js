@@ -164,20 +164,19 @@
       + '<div id="im-p"><textarea id="im-x" style="min-height:140px;direction:ltr;text-align:left" placeholder="name@example.com&#10;محمد أحمد, mohammed@mail.com&#10;…"></textarea><div class="cp-nt">إيميل بكل سطر، أو الاسم ثم الإيميل. نلقط الإيميلات تلقائياً حتى لو نسختها من جدول.</div></div>'
       + '<div id="im-f" style="display:none"><label class="cp-drop">📊 اختر ملف Excel أو CSV<small>نقرأ عمود الإيميل والاسم تلقائياً — أول ورقة وما بعدها</small><input type="file" id="im-fi" accept=".xlsx,.xls,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" style="display:none"></label><div id="im-fn" class="cp-nt" style="margin-top:6px"></div></div>'
       + '<div id="im-r"></div>'
-      + '<label class="cp-ok"><input type="checkbox" id="im-c"><span>أؤكد إن أصحاب هذي الإيميلات عملائي أو تعاملوا معي ووافقوا يستلمون رسائلي. الإرسال لإيميلات ما وافقت يعرّض حسابك للإيقاف، وكل إيميل فيه رابط إلغاء اشتراك.</span></label>'
+      + '<div class="cp-nt">كل إيميل يوصل فيه رابط «إلغاء الاشتراك»، واللي يلغي ما توصله حملاتك بعدها.</div>'
       + '<button type="button" class="cp-bt go" id="im-go" disabled>حفظ القائمة</button>');
-    var x = o.querySelector('#im-x'), R = o.querySelector('#im-r'), go = o.querySelector('#im-go'), c = o.querySelector('#im-c');
+    var x = o.querySelector('#im-x'), R = o.querySelector('#im-r'), go = o.querySelector('#im-go');
     function upd(){ var r = P.res; R.innerHTML = r && (r.ok.length || r.bad || r.dup) ? '<div class="cp-sum"><div class="g"><b>' + n2(r.ok.length) + '</b><span>إيميل صحيح</span></div><div><b>' + n2(r.dup) + '</b><span>مكرر</span></div><div class="r"><b>' + n2(r.bad) + '</b><span>غير صحيح</span></div></div>'
         + (r.ok.length ? '<table class="cp-tbl">' + r.ok.slice(0, 5).map(function(z){ return '<tr><td>' + esc(z.name || '—') + '</td><td>' + esc(z.email) + '</td></tr>'; }).join('') + '</table>' + (r.ok.length > 5 ? '<div class="cp-nt">و' + n2(r.ok.length - 5) + ' غيرهم…</div>' : '') : '') : '';
-      go.disabled = !(r && r.ok.length && c.checked); go.textContent = r && r.ok.length ? 'حفظ ' + n2(r.ok.length) + ' إيميل' : 'حفظ القائمة'; }
+      go.disabled = !(r && r.ok.length); go.textContent = r && r.ok.length ? 'حفظ ' + n2(r.ok.length) + ' إيميل' : 'حفظ القائمة'; }
     var tT; x.oninput = function(){ clearTimeout(tT); tT = setTimeout(function(){ P.res = parseRows(x.value.split(/\r?\n/)); upd(); }, 200); };
-    c.onchange = upd;
     o.querySelectorAll('[data-t]').forEach(function(b){ b.onclick = function(){ P.tab = b.getAttribute('data-t'); o.querySelectorAll('[data-t]').forEach(function(z){ z.classList.toggle('on', z === b); }); o.querySelector('#im-p').style.display = P.tab === 'paste' ? '' : 'none'; o.querySelector('#im-f').style.display = P.tab === 'file' ? '' : 'none'; P.res = P.tab === 'paste' && x.value ? parseRows(x.value.split(/\r?\n/)) : (P.fileRes || null); upd(); }; });
     o.querySelector('#im-fi').onchange = function(){ var f = this.files && this.files[0]; this.value = ''; if (!f) return; var fn = o.querySelector('#im-fn'); fn.textContent = 'جاري قراءة «' + f.name + '»…';
       readFile(f).then(function(rows){ P.fileRes = P.res = parseRows(rows); fn.textContent = '📄 ' + f.name; upd(); if (!P.res.ok.length) toast('ما لقينا إيميلات في الملف'); }).catch(function(e){ fn.textContent = ''; toast((e && e.message) || 'تعذّر قراءة الملف'); }); };
     go.onclick = function(){ var name = grp || (o.querySelector('#im-n').value || '').trim(); if (name.length < 2) { toast('اكتب اسم للقائمة'); o.querySelector('#im-n').focus(); return; }
       go.disabled = true; go.textContent = 'جاري الحفظ…';
-      post('/api/campaigns/contacts', { grp: name, items: P.res.ok, consent: c.checked }).then(function(r){ o.remove(); toast(r.message + (r.dup ? ' (' + r.dup + ' موجود من قبل)' : '')); S.aud = 'grp'; S.grp = r.grp; load(true); })
+      post('/api/campaigns/contacts', { grp: name, items: P.res.ok, consent: true }).then(function(r){ o.remove(); toast(r.message + (r.dup ? ' (' + r.dup + ' موجود من قبل)' : '')); S.aud = 'grp'; S.grp = r.grp; load(true); })
         .catch(function(e){ upd(); if (e) toast(e.message); }); };
   }
   function gview(){ api('/api/campaigns/contacts?grp=' + encodeURIComponent(S.grp)).then(function(r){

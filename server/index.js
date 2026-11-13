@@ -9968,7 +9968,6 @@ app.get('/api/campaigns', auth, providerOnly, async (req, res) => {
 app.post('/api/campaigns/contacts', auth, providerOnly, rateLimiter(30, 3600000), async (req, res) => {
   try { if (!(await _qGate(req, res))) return; const b = req.body || {};
     const grp = _cleanTxt(b.grp || '', 60); if (grp.length < 2) return res.status(400).json({ message: 'اكتب اسم للقائمة (مثال: عملاء معرض الرياض)' });
-    if (b.consent !== true) return res.status(400).json({ message: 'أكّد إن أصحاب الإيميلات عملاؤك ووافقوا يستلمون رسائلك' });
     const items = Array.isArray(b.items) ? b.items.slice(0, 5000) : []; const seen = new Set(); let invalid = 0; const ok = [];
     for (const it of items) { const em = String((it && it.email) || '').trim().toLowerCase().slice(0, 160); if (!_EMAIL_RX.test(em)) { invalid++; continue; } if (seen.has(em)) continue; seen.add(em); ok.push([em, _cleanTxt((it && it.name) || '', 80) || null]); }
     if (!ok.length) return res.status(400).json({ message: 'ما لقينا إيميلات صحيحة' + (invalid ? ' (' + invalid + ' غير صحيح)' : '') });
