@@ -851,7 +851,7 @@
 .hx-trust{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;font-weight:700;color:#c9d8ff}
 .hx-trust span{display:inline-flex;align-items:center;gap:5px}
 .hx-trust svg{color:#4ade80}
-.hx-prov{align-self:flex-start;background:none;border:0;padding:0;color:#dbe6ff;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:5px;text-decoration-color:rgba(219,230,255,.4)}
+.hx-prov{align-self:flex-start;background:none;border:0;padding:8px 0;min-height:36px;color:#dbe6ff;font-family:'Tajawal',sans-serif;font-size:14px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:5px;text-decoration-color:rgba(219,230,255,.4)}
 .hx-prov:hover{color:#fff}
 .hx-feed{background:var(--card,#fff);color:var(--text,#0f172a);border-radius:24px;padding:20px 22px;box-shadow:0 24px 50px rgba(8,20,60,.35);min-height:120px}
 .hx-fh{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;font-size:15.5px;font-weight:900}
@@ -1335,12 +1335,12 @@ body.os-ios .appx .only-and,body.os-and .appx .only-ios{display:none}
     <button class="lv-tab" onclick="fStatus('done',this)">تم الترسية</button>
   </div>
   <div class="lv-row">
-    <input type="text" id="fq" class="lv-inp" placeholder="ابحث في المشاريع..." oninput="applyAll()">
-    <select id="fcat" class="lv-sel" onchange="applyAll()">
+    <input type="text" id="fq" class="lv-inp" aria-label="ابحث في المشاريع" placeholder="ابحث في المشاريع..." oninput="applyAll()">
+    <select id="fcat" class="lv-sel" aria-label="التخصص" onchange="applyAll()">
       <option value="">كل التخصصات</option>
       <option>تبريد وتكييف</option><option>كهرباء</option><option>سباكة</option><option>نجارة</option><option>تنظيف</option><option>نقل عفش</option><option>حدادة</option><option>ألمنيوم</option><option>كلادينج وواجهات</option><option>مسابح</option><option>كاميرات مراقبة</option><option>شبكات وإنترنت</option><option>مظلات وسواتر</option><option>عزل حراري</option><option>مكافحة حشرات</option><option>بناء</option><option>جبس</option><option>كشف تسربات المياه</option><option>تنظيف خزانات</option><option>دهانات وديكور</option><option>تركيب مطابخ</option><option>تنسيق حدائق</option><option>زجاج ومرايا</option><option>بلاط ورخام</option><option>تركيب أثاث</option><option>أرضيات خشبية وباركيه</option><option>تنظيف سجاد وكنب</option><option>تركيب وصيانة مصاعد</option><option>أبواب وبوابات</option><option>هدم</option><option>ترميم مبانٍ</option><option>تنظيف واجهات المباني</option><option>حفر آبار ومضخات</option><option>أنظمة الحريق والسلامة</option><option>تخطيط المواقف والسلامة المرورية</option><option>معدات ثقيلة</option><option>عوازل مائية</option><option>أنظمة شمسية</option><option>صيانة عامة</option><option>إنشاءات معدنية وهناجر</option><option>أعمال الطرق والأسفلت</option><option>انترلوك وبلدورات</option><option>صرف صحي وبيارات</option><option>أرضيات إيبوكسي</option><option>تحلية ومعالجة مياه</option><option>تشطيبات ومقاولات عامة</option><option>مكاتب هندسية</option><option>تصاريح ورخص المشاريع</option><option>أعمال GRC</option><option>أعمال الحجر والواجهات</option><option>أعمال ستانلس ستيل</option><option>معدات مطاعم ومقاهي ومطابخ مركزية</option><option>أخرى</option>
     </select>
-    <select id="fc" class="lv-sel" onchange="applyAll()">
+    <select id="fc" class="lv-sel" aria-label="المدينة" onchange="applyAll()">
       <option value="">كل المدن</option>
       <optgroup label="منطقة الرياض"><option>الرياض</option><option>الخرج</option><option>الدوادمي</option><option>المجمعة</option><option>القويعية</option><option>الزلفي</option><option>الدرعية</option><option>الدلم</option><option>المزاحمية</option><option>الحريق</option><option>حوطة بني تميم</option><option>وادي الدواسر</option><option>السليل</option><option>الأفلاج</option><option>الغاط</option><option>ثادق</option><option>حريملاء</option><option>مرات</option><option>ضرما</option><option>شقراء</option><option>عفيف</option><option>ضرماء</option><option>رماح</option></optgroup>
       <optgroup label="منطقة مكة المكرمة"><option>جدة</option><option>مكة المكرمة</option><option>الطائف</option><option>رابغ</option><option>القنفذة</option><option>الليث</option><option>خليص</option><option>تربة</option><option>المويه</option><option>الخرمة</option><option>رنية</option><option>الجموم</option><option>الكامل</option><option>أضم</option><option>بحرة</option></optgroup>

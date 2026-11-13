@@ -104,12 +104,12 @@
   }
   function pause(){
     if (S.busy || !S.d) return; var p = !S.d.paused;
-    if (p && !confirm('توقف ' + (S.d.name || 'المفوّض') + ' مؤقتاً؟ يطلع من الحساب لين ترجّعه.')) return;
+    var __go=()=>{
     S.busy = true; busy('dl-pause', 1, '...');
     api('/api/provider/delegate/pause', { method: 'POST', body: JSON.stringify({ paused: p }) }).then(function(r){ S.busy = false;
       if (!r || !r.ok) { busy('dl-pause', 0); return toast((r && r.message) || 'تعذّر — حاول مرة ثانية', 'error'); }
       S.d = r.delegate; render(); toast(p ? '⏸ أوقفته مؤقتاً' : '▶ رجّع يشتغل', 'success'); });
-  }
+  }; if((p)){ MQ.ask('توقف ' + (S.d.name || 'المفوّض') + ' مؤقتاً؟ يطلع من الحساب لين ترجّعه.').then((__y)=>{ if(__y)__go(); }); return; } return __go();}
   // ─── «إعدادات الحساب» للمفوّض ───
   function loadMe(){
     var pg = D.getElementById('page-dlgme'); if (!pg) return; css();
@@ -164,11 +164,11 @@
       if (!r || !r.ok) return toast((r && r.message) || 'تعذّر الإرسال', 'error'); toast('✓ أرسلنا الرابط على إيميله', 'success'); });
   }
   function del(){
-    if (S.busy || !confirm('تشيل ' + (S.d && S.d.name || 'المفوّض') + '؟ يطلع من الحساب على طول.')) return;
+    var __go=()=>{
     S.busy = true; busy('dl-del', 1, '...');
     api('/api/provider/delegate', { method: 'DELETE' }).then(function(r){ S.busy = false;
       if (!r || !r.ok) { busy('dl-del', 0); return toast('تعذّر — حاول مرة ثانية', 'error'); } S.d = null; render(); toast('✓ انشال المفوّض', 'success'); });
-  }
+  }; if(!(S.busy)){ MQ.ask('تشيل ' + (S.d && S.d.name || 'المفوّض') + '؟ يطلع من الحساب على طول.').then((__y)=>{ if(__y)__go(); }); return; } return __go();}
   function load(){
     var pg = D.getElementById('page-dlg'); if (!pg) return;
     if (S.me) { pg.innerHTML = '<div class="dl-c" style="text-align:center">هذي الصفحة لصاحب الحساب فقط</div>'; return; }
@@ -222,12 +222,12 @@
       S.busy = true; busy('dl-msave', 1, 'جاري الحفظ...');
       api('/api/provider/delegates/' + d.id, { method: 'PUT', body: JSON.stringify({ perms: perms, role: S.role, branch_id: brv() }) }).then(function(r){ S.busy = false; busy('dl-msave', 0);
         if (!r || !r.ok) return toast((r && r.message) || 'تعذّر الحفظ', 'error'); toast('✓ انحفظ', 'success'); load(); }); });
-    on('dl-mpause', function(){ if (S.busy) return; var p = !d.paused; if (p && !confirm('توقف ' + (d.name || 'المفوّض') + ' مؤقتاً؟')) return; S.busy = true;
-      api('/api/provider/delegates/' + d.id + '/pause', { method: 'POST', body: JSON.stringify({ paused: p }) }).then(function(r){ S.busy = false; if (!r || !r.ok) return toast((r && r.message) || 'تعذّر', 'error'); toast(p ? '⏸ أوقفته مؤقتاً' : '▶ رجّع يشتغل', 'success'); load(); }); });
+    on('dl-mpause', function(){ if (S.busy) return; var p = !d.paused; var __go=()=>{ S.busy = true;
+      api('/api/provider/delegates/' + d.id + '/pause', { method: 'POST', body: JSON.stringify({ paused: p }) }).then(function(r){ S.busy = false; if (!r || !r.ok) return toast((r && r.message) || 'تعذّر', 'error'); toast(p ? '⏸ أوقفته مؤقتاً' : '▶ رجّع يشتغل', 'success'); load(); }); }; if((p)){ MQ.ask('توقف ' + (d.name || 'المفوّض') + ' مؤقتاً؟').then((__y)=>{ if(__y)__go(); }); return; } return __go();});
     on('dl-mresend', function(){ if (S.busy) return; S.busy = true; busy('dl-mresend', 1, 'جاري الإرسال...');
       api('/api/provider/delegates/' + d.id + '/resend', { method: 'POST' }).then(function(r){ S.busy = false; busy('dl-mresend', 0); if (!r || !r.ok) return toast((r && r.message) || 'تعذّر الإرسال', 'error'); toast('✓ أرسلنا الرابط على إيميله', 'success'); }); });
-    on('dl-mdel', function(){ if (S.busy || !confirm('تشيل ' + (d.name || 'المفوّض') + '؟ يطلع من الحساب على طول.')) return; S.busy = true;
-      api('/api/provider/delegates/' + d.id, { method: 'DELETE' }).then(function(r){ S.busy = false; if (!r || !r.ok) return toast('تعذّر — حاول مرة ثانية', 'error'); toast('✓ انشال المفوّض', 'success'); load(); }); });
+    on('dl-mdel', function(){ var __go=()=>{ S.busy = true;
+      api('/api/provider/delegates/' + d.id, { method: 'DELETE' }).then(function(r){ S.busy = false; if (!r || !r.ok) return toast('تعذّر — حاول مرة ثانية', 'error'); toast('✓ انشال المفوّض', 'success'); load(); }); }; if(!(S.busy)){ MQ.ask('تشيل ' + (d.name || 'المفوّض') + '؟ يطلع من الحساب على طول.').then((__y)=>{ if(__y)__go(); }); return; } return __go();});
   };
   function init(){
     var u = null; try { u = JSON.parse(localStorage.getItem('user') || 'null'); } catch(e) {}

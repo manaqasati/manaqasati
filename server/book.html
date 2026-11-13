@@ -87,7 +87,7 @@ function load(){ api('/api/my/bookings/'+id).then(function(k){ var s=ST[k.status
   else if(k.status==='declined') h+='<a class="btn sec" href="/pro/'+k.provider_id+'">احجز وقتاً ثانياً أو اطلب تسعيرة</a>';
   A.innerHTML=h;
   var ac=document.getElementById('ac'); if(ac) ac.onclick=function(){ api('/api/my/bookings/'+id,{method:'POST',body:JSON.stringify({act:'accept'})}).then(function(r){ toast('تأكد موعدك ✅'); setTimeout(function(){ location.href='/job.html?id='+r.job_id; },800); }).catch(function(e){ if(e)toast(e.message); }); };
-  var cx=document.getElementById('cx'); if(cx) cx.onclick=function(){ if(!confirm('تلغي الحجز؟'))return; api('/api/my/bookings/'+id,{method:'POST',body:JSON.stringify({act:'cancel'})}).then(function(){ toast('انلغى'); load(); }).catch(function(e){ if(e)toast(e.message); }); };
+  var cx=document.getElementById('cx'); if(cx) cx.onclick=function(){ MQ.ask('تلغي الحجز؟').then((__y)=>{ if(!__y)return; api('/api/my/bookings/'+id,{method:'POST',body:JSON.stringify({act:'cancel'})}).then(function(){ toast('انلغى'); load(); }).catch(function(e){ if(e)toast(e.message); }); });};
 }).catch(function(e){ if(e) A.innerHTML='<div class="card empty"><b>'+esc(e.message)+'</b></div>'; }); }
 load();
 })();

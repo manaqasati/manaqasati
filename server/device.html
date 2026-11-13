@@ -90,7 +90,7 @@ function draw(){
   var b=document.getElementById('rq'); if(b) b.onclick=req;
 }
 function req(){
-  if(!TOK){ try{localStorage.setItem('_after_login',location.pathname);}catch(e){} if(confirm('سجّل دخولك عشان نرسل طلبك للمزوّد')) location.href='/auth.html'; return; }
+  if(!TOK){ try{localStorage.setItem('_after_login',location.pathname);}catch(e){} MQ.ask({title:'سجّل دخولك عشان نرسل طلبك للمزوّد',ok:'تسجيل الدخول',icon:'🔐'}).then(function(y){ if(y) location.href='/auth.html'; }); return; }
   var o=document.createElement('div'); o.className='sheet-ov'; o.id='sh'; o.onclick=function(e){ if(e.target===o)o.remove(); };
   o.innerHTML='<div class="sheet f"><b style="font-size:17px;color:#172554">صيانة '+esc(D.device.name)+'</b><div><label for="rd">وش المشكلة؟ (اختياري)</label><textarea id="rd" maxlength="600" placeholder="مثال: المكيف ما يبرد وفيه صوت"></textarea></div><div><label for="rw">الموعد المناسب (اختياري)</label><input id="rw" maxlength="40" placeholder="مثال: بكرة بعد العصر"></div><div class="err" id="re" style="display:none;padding:10px 12px;border-radius:12px;background:#fef3f2;color:#b42318;font-size:13px;font-weight:800"></div><button class="btn pri" id="rg">أرسل الطلب</button><button class="btn" style="background:transparent;color:#64748b" onclick="document.getElementById(\'sh\').remove()">رجوع</button></div>';
   document.body.appendChild(o);

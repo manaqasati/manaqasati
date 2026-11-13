@@ -450,7 +450,7 @@ function startNew(provId,provName){
   api('/api/requests/my').then(function(rs){
     var open=(Array.isArray(rs)?rs:[]).filter(function(r){return r.status==='open'||r.status==='in_progress';});
     if(!open.length){
-      if(confirm('لبدء محادثة تحتاج مشروعاً منشوراً.\nهل تريد نشر مشروع الآن؟')) location.href='/dashboard-client.html#new';
+      MQ.ask({title:'لبدء محادثة تحتاج مشروعاً منشوراً',msg:'هل تريد نشر مشروع الآن؟',ok:'نشر مشروع',icon:'📝'}).then(function(y){ if(y) location.href='/dashboard-client.html#new'; });
       return;
     }
     if(open.length===1){ location.href='/chat?req='+open[0].id+'&with='+provId+'&name='+encodeURIComponent(provName); return; }
@@ -694,10 +694,10 @@ function cancelReply(){ replyCtx=null; var b=document.getElementById('replyBar')
 
 /* ═══ حذف ═══ */
 function delMsg(id){
-  if(!confirm('حذف هذه الرسالة؟'))return;
+  MQ.ask('حذف هذه الرسالة؟').then((__y)=>{ if(!__y)return;
   api('/api/messages/'+id,{method:'DELETE'}).then(function(){ loadMsgs(); toast('تم الحذف','ok'); })
     .catch(function(){ toast('تعذّر الحذف (خلال ساعة فقط)','err'); });
-}
+});}
 
 /* ═══ إرفاق ═══ */
 // ===== موجة صوتية حقيقية =====
@@ -885,11 +885,11 @@ function checkBlock(){
 }
 function toggleBlock(){
   if(!curWith)return;
-  if(!blocked && !confirm('حظر '+(curName||'هذا المستخدم')+'؟\nلن تصلك رسائله ولن تصله رسائلك.'))return;
+  var __go=()=>{
   api('/api/blocks/'+curWith,{method:blocked?'DELETE':'POST'})
     .then(function(d){ paintBlock(!!d.blocked); toast(d.blocked?'تم الحظر':'تم فك الحظر','ok'); })
     .catch(function(){ toast('تعذّر التنفيذ','err'); });
-}
+}; if((!blocked)){ MQ.ask('حظر '+(curName||'هذا المستخدم')+'؟\nلن تصلك رسائله ولن تصله رسائلك.').then((__y)=>{ if(__y)__go(); }); return; } return __go();}
 function paintBlock(b){
   blocked=b;
   var btn=document.getElementById('blockBtn');

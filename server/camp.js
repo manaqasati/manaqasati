@@ -183,5 +183,5 @@
       var o = sheet('<b style="font-size:17px;color:#172554">📋 ' + esc(S.grp) + '</b><div style="max-height:56vh;overflow:auto"><table class="cp-tbl">' + r.items.map(function(z){ return '<tr><td>' + esc(z.name || '—') + (z.unsub ? ' <span class="mu">(ألغى الاشتراك)</span>' : '') + '</td><td>' + esc(z.email) + '</td><td style="width:30px"><button class="cp-lk r" data-e="' + esc(z.email) + '" aria-label="حذف">×</button></td></tr>'; }).join('') + '</table>' + (r.items.length >= 300 ? '<div class="cp-nt">نعرض أحدث 300</div>' : '') + '</div><button class="cp-bt" data-x="1">إغلاق</button>');
       o.addEventListener('click', function(e){ if (e.target.closest('[data-x]')) { o.remove(); return; } var b = e.target.closest('[data-e]'); if (!b) return; post('/api/campaigns/contacts/del', { grp: S.grp, email: b.getAttribute('data-e') }).then(function(){ b.closest('tr').remove(); load(true); }).catch(function(e2){ if (e2) toast(e2.message); }); });
     }).catch(function(e){ if (e) toast(e.message); }); }
-  window.MNQ_CAMP = { open: open };
+  window.MNQ_CAMP = { open: open, readRows: readFile, loadXLSX: loadXLSX };
 })();

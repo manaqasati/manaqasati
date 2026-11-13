@@ -243,8 +243,8 @@ function _clFull(card){
     +(c.value?'<button type="button" class="cl-b" data-a="value">صحيح، بس القيمة مختلفة</button>':'')
     +'<div style="display:flex;gap:8px"><button type="button" class="cl-b" data-a="not_done">لسا ما خلص</button><button type="button" class="cl-b" data-a="denied" style="color:#b91c1c;border-color:#fecaca">ما تعاملت معه</button></div>';
   card.querySelectorAll('[data-a]').forEach(function(b){ b.onclick=function(){ var a=b.getAttribute('data-a');
-    if(a==='value'){ var v=prompt('اكتب القيمة الصحيحة للمشروع (ر.س)', c.value||''); if(v===null)return; v=parseInt(String(v).replace(/[^0-9]/g,'')); if(!(v>0)){_msg('اكتب رقم صحيح');return;} _clAnswer(c,'done',v,card); }
-    else if(a==='denied'){ if(!confirm('متأكد إنك ما تعاملت مع '+(c.provider_name||'هذا المزوّد')+' على هذا المشروع؟'))return; _clAnswer(c,'denied',null,card); }
+    if(a==='value'){ MQ.prompt({title:'القيمة الصحيحة للمشروع (ر.س)',value:c.value||'',numeric:true,ltr:true,ok:'حفظ'}).then((v)=>{ if(v===null)return; v=parseInt(String(v).replace(/[^0-9]/g,'')); if(!(v>0)){_msg('اكتب رقم صحيح');return;} _clAnswer(c,'done',v,card); });}
+    else if(a==='denied'){ MQ.ask('متأكد إنك ما تعاملت مع '+(c.provider_name||'هذا المزوّد')+' على هذا المشروع؟').then((__y)=>{ if(!__y)return; _clAnswer(c,'denied',null,card); });}
     else _clAnswer(c,a,null,card);
   };});
 }

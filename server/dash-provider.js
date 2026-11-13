@@ -306,13 +306,13 @@ var _lb={t:null,v:0,
 
 var _tTimer;
 function enableRequestRole(btn){
-  if(!confirm('تفعيل نشر المشاريع؟ ستقدر تنشر مشاريعك وتستقبل عروضاً من نفس الحساب.'))return;
+  MQ.ask('تفعيل نشر المشاريع؟ ستقدر تنشر مشاريعك وتستقبل عروضاً من نفس الحساب.').then((__y)=>{ if(!__y)return;
   btn.disabled=true; var _t=btn.textContent; btn.textContent='جارٍ التفعيل...';
   _api('/api/me/enable-request',{method:'POST',body:JSON.stringify({})}).then(function(r){
     if(r&&r.ok){ try{var _u=JSON.parse(localStorage.getItem('user')||'{}');_u.can_request=true;localStorage.setItem('user',JSON.stringify(_u));}catch(e){} showToast('تم التفعيل! تقدر تنشر مشاريع الآن','success'); setTimeout(function(){ location.href='/dashboard-client.html'; },900); }
     else { btn.disabled=false; btn.textContent=_t; showToast((r&&r.message)||'تعذّر التفعيل','error'); }
   }).catch(function(){ btn.disabled=false; btn.textContent=_t; showToast('تعذّر التفعيل','error'); });
-}
+});}
 function showToast(msg,type){
   var el=_el('toast'),ic=_el('tIc'),tm=_el('tMsg');if(!el)return;
   ic.textContent=type==='success'?'':type==='error'?'':'i';
@@ -326,7 +326,7 @@ function showToast(msg,type){
 function openModal(title,body,foot){_el('mTit').textContent=title;_el('mBd').innerHTML=body;_el('mFt').innerHTML=foot||'';_el('ov').classList.add('show');}
 function closeModal(){_el('ov').classList.remove('show');window._bidAttach=null;}
 document.addEventListener('DOMContentLoaded',function(){
-  _el('ov').addEventListener('click',function(e){ if(e.target!==this)return; var _p=_el('bid-price'),_n=_el('bid-note'); var _dirty=(_p&&_p.value.trim())||(_n&&_n.value.trim().length>5)||window._bidAttach; if(_dirty&&!confirm('تطلع بدون ما ترسل العرض؟ اللي كتبته بيروح'))return; closeModal(); });
+  _el('ov').addEventListener('click',function(e){ if(e.target!==this)return; var _p=_el('bid-price'),_n=_el('bid-note'); var _dirty=(_p&&_p.value.trim())||(_n&&_n.value.trim().length>5)||window._bidAttach; var __go=()=>{ closeModal(); }; if((_dirty)){ MQ.ask('تطلع بدون ما ترسل العرض؟ اللي كتبته بيروح').then((__y)=>{ if(__y)__go(); }); return; } return __go();});
 });
 
 function _setAvatar(img){
@@ -588,7 +588,7 @@ function _copyText(txt){
   function ok(){ if(typeof showToast==='function')showToast('تم نسخ رابط المشاركة ✓','success'); }
   function fail(){
     // آخر بديل: أظهر الرابط ليتم نسخه يدوياً
-    try{ prompt('انسخ الرابط:', txt); }catch(e){ if(typeof showToast==='function')showToast('تعذّر النسخ — انسخ الرابط يدوياً','error'); }
+    try{ MQ.prompt({title:'انسخ الرابط',value:txt,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); }catch(e){ if(typeof showToast==='function')showToast('تعذّر النسخ — انسخ الرابط يدوياً','error'); }
   }
   if(navigator.clipboard&&window.isSecureContext){
     navigator.clipboard.writeText(txt).then(ok).catch(function(){ _legacyCopy(txt)?ok():fail(); });
@@ -970,7 +970,7 @@ function _lkWatch(id,btn){
     document.body.appendChild(o);
   }).catch(function(){ if(btn){btn.disabled=false;btn.textContent='🔔 نبّهني إذا انفتح';} showToast('تعذّر — حاول مرة ثانية','error'); });
 }
-function _lkCopy(rid){ _lkLog('copy',rid); var id=(_me&&_me.id)||''; var u=location.origin+'/pro/'+id; try{ navigator.clipboard.writeText(u).then(function(){ showToast('نُسخ رابط صفحتك ✓ — شاركه مع عملائك','success'); },function(){ prompt('انسخ رابط صفحتك:',u); }); }catch(e){ prompt('انسخ رابط صفحتك:',u); } }
+function _lkCopy(rid){ _lkLog('copy',rid); var id=(_me&&_me.id)||''; var u=location.origin+'/pro/'+id; try{ navigator.clipboard.writeText(u).then(function(){ showToast('نُسخ رابط صفحتك ✓ — شاركه مع عملائك','success'); },function(){ MQ.prompt({title:'انسخ رابط صفحتك',value:u,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); }); }catch(e){ MQ.prompt({title:'انسخ رابط صفحتك',value:u,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); } }
 function _renderBrowseList(list){
   if(!list||!list.length)return _empty('ما فيه مشاريع هنا الحين','غيّر الفلتر أو تفقّد لاحقاً — يوصلك إشعار أول ما ينزل مشروع يناسبك');
   var bidOn={}; (_myBids||[]).forEach(function(b){ bidOn[b.request_id]=1; });
@@ -1086,7 +1086,7 @@ function _onBidFile(inp){
   var rd=new FileReader();rd.onload=function(){window._bidAttach=rd.result;if(lbl){lbl.textContent='✓ '+f.name;lbl.style.display='block';}};rd.readAsDataURL(f);
 }
 function _toggleBidTip(){var b=document.getElementById('bid-tip-body'),a=document.getElementById('bid-tip-ar');if(!b)return;var o=b.style.display!=='none';b.style.display=o?'none':'block';if(a)a.textContent=o?'▾':'▴';}
-function _useBidTemplate(){var t=document.getElementById('bid-note');if(!t)return;if(t.value.trim()&&!confirm('استبدال ما كتبته بالقالب؟'))return;t.value='لدي خبرة (عدد) سنوات في هذا المجال.\nسأنفّذ المشروع كالتالي: (اشرح طريقتك باختصار).\nالمواد المستخدمة: (نوعها وجودتها).\nأبدأ خلال (عدد) أيام، وأقدّم ضماناً لمدة (اذكر المدة).';t.focus();}
+function _useBidTemplate(){var t=document.getElementById('bid-note');if(!t)return;var __go=()=>{t.value='لدي خبرة (عدد) سنوات في هذا المجال.\nسأنفّذ المشروع كالتالي: (اشرح طريقتك باختصار).\nالمواد المستخدمة: (نوعها وجودتها).\nأبدأ خلال (عدد) أيام، وأقدّم ضماناً لمدة (اذكر المدة).';t.focus();}; if((t.value.trim())){ MQ.ask('استبدال ما كتبته بالقالب؟').then((__y)=>{ if(__y)__go(); }); return; } return __go();}
 async function _submitBid(projId){
   var priceStr=(_el('bid-price')||{}).value;var daysStr=(_el('bid-days')||{}).value;var note=((_el('bid-note')||{}).value||'').trim();
   var priceNum=_pNum(priceStr);var daysNum=Math.round(_pNum(daysStr));
@@ -1425,10 +1425,10 @@ function _renderBids(list){
   }).join('');
 }
 
-async function _delBid(id){if(!confirm('سحب هذا العرض؟'))return;var r=await _api('/api/bids/'+id,{method:'DELETE'});
+async function _delBid(id){MQ.ask('سحب هذا العرض؟').then(async (__y)=>{ if(!__y)return;var r=await _api('/api/bids/'+id,{method:'DELETE'});
   // نتأكد إن السحب نجح فعلاً قبل رسالة النجاح
   if(!r||!r.ok){showToast((r&&r.message)||'تعذّر سحب العرض — حاول مرة ثانية','error');return;}
-  showToast('تم سحب العرض','success');loadWorks();}
+  showToast('تم سحب العرض','success');loadWorks();});}
 // تعديل العرض: نجيب بيانات العرض من _myBids بدل ما نحطها داخل onclick
 function _editBidById(id){var b=(_myBids||[]).find(function(x){return String(x.id)===String(id);});if(!b)return;
   _editBid(b.id,b.price||0,b.days||0,String(b.note||'').replace(/\n/g,' '),b.price_visibility||'client',b.materials||'');}
@@ -1447,7 +1447,9 @@ function _renderProjs(list){
     if(typeof _clmProjHtml==='function')h+=_clmProjHtml(r);
     h+='<div class="card-actions"><button onclick="_viewProj('+r.id+')" class="ca-btn ca-view">عرض التفاصيل</button>';
     if(r.client_id)h+='<button class="_pchat ca-btn ca-chat" data-rid="'+r.id+'" data-cid="'+r.client_id+'">محادثة</button>';
-    h+='</div></div>';
+    h+='</div>';
+    if(isProg)h+='<button type="button" class="wd-link" onclick="_wdAward('+r.id+')">ما تقدر تكمّل؟ اعتذر عن التنفيذ</button>';
+    h+='</div>';
     return h;
   }).join('');
 }
@@ -1514,14 +1516,14 @@ function _pNotifSnooze(id){
 }
 // حذف كل الإشعارات (المزوّد)
 function _deleteAllNotifs(){
-  if(!confirm('حذف كل الإشعارات نهائياً؟'))return;
+  MQ.ask('حذف كل الإشعارات نهائياً؟').then((__y)=>{ if(!__y)return;
   _api('/api/notifications',{method:'DELETE'}).then(function(){
     _cacheSet('notifs',[]);
     if(_curPage==='notifs')loadNotifs();
     ['nb-notif','mob-nb'].forEach(function(id){var el=_el(id);if(el)el.style.display='none';});
     if(typeof showToast==='function')showToast('تم حذف كل الإشعارات','success');
   }).catch(function(){if(typeof showToast==='function')showToast('تعذّر الحذف — تحقّق من اتصالك','error');});
-}
+});}
 async function _markRead(){
   await _api('/api/notifications/read',{method:'PUT'});
   ['nb-notif','mob-nb'].forEach(function(id){var el=_el(id);if(el)el.style.display='none';});
@@ -1880,14 +1882,14 @@ async function _saveProfile(){
 
 function _newSess(d){ if(!d||!d.token)return; try{ localStorage.setItem('token',d.token); }catch(e){} try{ token=d.token; }catch(e){} try{ _token=d.token; }catch(e){} try{ if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_SAVE',token:d.token,user:localStorage.getItem('user')||''})); }catch(e){} }
 function logoutAllDevices(btn){
-  if(!confirm('نطلّع حسابك من كل الأجهزة الثانية (الجوالات والمتصفحات)؟ هذا الجهاز يبقى داخل.'))return;
+  MQ.ask('نطلّع حسابك من كل الأجهزة الثانية (الجوالات والمتصفحات)؟ هذا الجهاز يبقى داخل.').then((__y)=>{ if(!__y)return;
   if(btn){btn.disabled=true;}
   var tk=localStorage.getItem('token')||'';
   fetch(API+'/api/auth/logout-all',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk}}).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
     if(btn)btn.disabled=false; if(!res.ok){ showToast((res.d&&res.d.message)||'تعذّر','error'); return; }
     _newSess(res.d); showToast(res.d.message||'تم ✓','success');
   }).catch(function(){ if(btn)btn.disabled=false; showToast('تعذّر الاتصال','error'); });
-}
+});}
 async function _changePw(){
   var o=(_el('pw-old')||{}).value;var n=(_el('pw-new')||{}).value;
   if(!o||!n){showToast('اكمل الحقلين','error');return;}if(n.length<6){showToast('كلمة المرور 6 أحرف على الأقل','error');return;}
@@ -2025,7 +2027,7 @@ function _openNewChatSearch(){
   },200);
 }
 
-function _saaiSubNo(id){ var n=prompt('ما تم الاتفاق مع المقاول؟ اكتب السبب باختصار (يوصل المقاول يأكّد):'); if(n===null)return; _api('/api/sub/saai/'+id+'/nodeal',{method:'POST',body:JSON.stringify({note:n})}).then(function(r){ if(r&&r.ok){ showToast('وصل المقاول — ننتظر تأكيده','success'); loadSaai(); } else showToast((r&&r.message)||'تعذّر','error'); }); }
+function _saaiSubNo(id){ MQ.prompt({title:'ما تم الاتفاق مع المقاول؟',msg:'اكتب السبب باختصار — يوصل المقاول يأكّد',multiline:true,required:true,ok:'إرسال'}).then((n)=>{ if(n===null)return; _api('/api/sub/saai/'+id+'/nodeal',{method:'POST',body:JSON.stringify({note:n})}).then(function(r){ if(r&&r.ok){ showToast('وصل المقاول — ننتظر تأكيده','success'); loadSaai(); } else showToast((r&&r.message)||'تعذّر','error'); }); });}
 // الدفع الإلكتروني: هل السداد بالبطاقة فقط لهذا المزوّد؟ (التحويل البنكي يفتحه المشرف للمبالغ الكبيرة)
 window._payCfg=null;
 // «الاشتراك والباقة» يظهر لما تفتح الإدارة الاشتراكات (أو للمزوّدين المختارين للتجربة)
@@ -2297,14 +2299,14 @@ async function _pToggleBlock(uid){
   if(!uid)return;
   var btn=document.getElementById('p-chat-block');
   var isBlocked=btn&&btn.getAttribute('data-blocked')==='1';
-  if(!isBlocked && !confirm('حظر هذا المستخدم؟\nلن تصلك رسائله ولن تصله رسائلك.'))return;
+  var __go=async ()=>{
   try{
     var d=await _api('/api/blocks/'+uid,{method:isBlocked?'DELETE':'POST'});
     if(d===null)throw new Error();
     _pPaintBlockBtn(!!d.blocked);
     if(typeof showToast==='function')showToast(d.blocked?'تم الحظر':'تم فك الحظر','success');
   }catch(e){ if(typeof showToast==='function')showToast('تعذّر التنفيذ — تحقّق من اتصالك','error'); }
-}
+}; if((!isBlocked)){ MQ.ask('حظر هذا المستخدم؟\nلن تصلك رسائله ولن تصله رسائلك.').then((__y)=>{ if(__y)__go(); }); return; } return __go();}
 function _pPaintBlockBtn(blocked){
   var btn=document.getElementById('p-chat-block'); if(!btn)return;
   btn.setAttribute('data-blocked',blocked?'1':'0');
@@ -2528,14 +2530,14 @@ function _pReplyTo(id,preview,who){
 }
 function _pCancelReply(){ _pReplyCtx=null; var bar=_el('p-reply-bar'); if(bar){bar.style.display='none';bar.innerHTML='';} }
 function _pDeleteMsg(id){
-  if(!confirm('حذف هذه الرسالة؟'))return;
+  MQ.ask('حذف هذه الرسالة؟').then((__y)=>{ if(!__y)return;
   _api('/api/messages/'+id,{method:'DELETE'}).then(function(r){
     if(!r||r.message)throw new Error();
     if(typeof showToast==='function')showToast('تم الحذف','success');
     // نحدّث الرسائل بعد الحذف (أي خطأ هنا ما يعني إن الحذف فشل)
     try{ if(_chatReqId&&typeof _renderChatMsgs==='function'){ _api('/api/messages/'+_chatReqId+'?with='+_chatReceiverId).then(function(msgs){ if(Array.isArray(msgs)){_chatMsgs=msgs;_renderChatMsgs();} }).catch(function(){}); } }catch(e){}
   }).catch(function(){ if(typeof showToast==='function')showToast('تعذّر الحذف (خلال ساعة فقط)','error'); });
-}
+});}
 // إرفاق ملف (المزوّد)
 var _pPendingAttach=null;
 function _pAttachFile(inp){
@@ -2653,12 +2655,11 @@ function cfClose(val){
 
 
 function openReply(reviewId){
-  var reply=prompt('اكتب ردك على هذا التقييم:');
-  if(reply===null||!reply.trim())return;
+  MQ.prompt({title:'ردك على التقييم',msg:'يظهر تحت التقييم في صفحتك',multiline:true,ok:'نشر الرد',icon:'💬'}).then((reply)=>{ if(reply===null||!reply.trim())return;
   _api('/api/reviews/'+reviewId+'/reply',{method:'POST',body:JSON.stringify({reply:reply.trim()})})
     .then(function(){if(window.showToast)showToast('تم نشر ردك','success');loadReviews();})
     .catch(function(){if(window.showToast)showToast('تعذر النشر','error');});
-}
+});}
 function _viewImg(src){
   if(window.mqGallery&&mqGallery.openFrom(null,src))return;
   var o=document.createElement('div');
@@ -2959,3 +2960,21 @@ function _paShare(why){
   if(!p||!p.iat||(Date.now()/1000-p.iat)<2*86400) return;
   setTimeout(function(){ fetch(API+'/api/auth/refresh',{method:'POST',headers:{'Authorization':'Bearer '+t,'Content-Type':'application/json'}}).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d&&d.token&&localStorage.getItem('token')===t) _newSess(d); }).catch(function(){}); },2500);
 }catch(e){} })();
+
+// ═══ الاعتذار عن تنفيذ مشروع ترسّى عليك ═══
+(function(){ var st=document.createElement('style'); st.textContent='.wd-link{display:block;margin:8px auto 0;background:none;border:0;color:var(--muted,#64748b);font-family:inherit;font-size:12px;font-weight:700;text-decoration:underline;cursor:pointer;padding:6px}.wd-link:hover{color:#b42318}'
+  +'.wd-r{display:flex;flex-direction:column;gap:6px;text-align:right;margin-top:4px}.wd-r label{display:flex;align-items:center;gap:10px;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-weight:700;font-size:14px;cursor:pointer}.wd-r label:has(input:checked){border-color:#b42318;background:#fef3f2}.wd-r input{accent-color:#b42318;width:18px;height:18px}'; document.head.appendChild(st); })();
+window._wdAward=function(id){ var p=(_myProjs||[]).filter(function(x){return x.id===id;})[0]||{};
+  var R=[['emergency','ظرف طارئ'],['terms','ما اتفقنا على السعر أو التفاصيل'],['client','العميل ما تجاوب'],['scope','الشغل أكبر أو غير مناسب لتخصصي'],['other','سبب آخر']];
+  var ov=document.createElement('div'); ov.className='mq-ov'; ov.setAttribute('data-noback','');
+  ov.innerHTML='<div class="mq-dg" role="dialog" aria-modal="true"><div class="ic dg">↩️</div><div class="tt">تعتذر عن تنفيذ «'+_esc(p.title||'المشروع')+'»؟</div><div class="ms">المشروع يرجع مفتوح للعميل، والعروض الثانية ترجع، والسعي ينلغي. الاعتذار ينحسب على التزامك — استخدمه لما ما تقدر تكمّل فعلاً.</div>'
+    +'<div class="wd-r">'+R.map(function(x){ return '<label><input type="radio" name="wdr" value="'+x[0]+'">'+x[1]+'</label>'; }).join('')+'</div>'
+    +'<textarea class="in" id="wd-n" maxlength="400" placeholder="ملاحظة للعميل (اختياري)"></textarea>'
+    +'<div class="bt"><button type="button" class="no">رجوع</button><button type="button" class="yes dg" id="wd-go" disabled>اعتذر عن التنفيذ</button></div></div>';
+  document.body.appendChild(ov);
+  var go=ov.querySelector('#wd-go'); ov.addEventListener('change',function(){ go.disabled=!ov.querySelector('input[name=wdr]:checked'); });
+  ov.addEventListener('click',function(e){ if(e.target===ov||e.target.closest('.no')) ov.remove(); });
+  go.onclick=function(){ var why=(ov.querySelector('input[name=wdr]:checked')||{}).value, n=ov.querySelector('#wd-n').value; go.disabled=true; go.textContent='جاري…';
+    _api('/api/requests/'+id+'/withdraw-award',{method:'POST',body:JSON.stringify({reason:why,note:n})}).then(function(r){ if(r&&r.ok){ ov.remove(); if(window.showToast)showToast(r.message||'تم','success'); try{ sessionStorage.removeItem('home_data'); }catch(e){} loadWorks(); } else { go.disabled=false; go.textContent='اعتذر عن التنفيذ'; if(window.showToast)showToast((r&&r.message)||'تعذّر','error'); } }).catch(function(){ go.disabled=false; go.textContent='اعتذر عن التنفيذ'; });
+  };
+};

@@ -34,13 +34,13 @@
   }
   function after(uid){ load(); if (uid) userCard(uid); }
   function pause(id, p, uid){
-    if (p && !confirm('توقف هالمفوّض؟ يطلع من الحساب على طول ويوصل صاحب الحساب إشعار.')) return;
+    var __go=()=>{
     req('/api/admin/delegates/' + id + '/pause', { method: 'POST', body: JSON.stringify({ paused: !!p }) }).then(function(r){ if (!r || !r.ok) return W.toast((r && r.message) || 'تعذّر', 'error'); W.toast(p ? 'تم الإيقاف' : 'تم التشغيل', 'success'); after(uid); });
-  }
+  }; if((p)){ MQ.ask('توقف هالمفوّض؟ يطلع من الحساب على طول ويوصل صاحب الحساب إشعار.').then((__y)=>{ if(__y)__go(); }); return; } return __go();}
   function del(id, uid){
-    if (!confirm('تشيل هالمفوّض نهائياً؟')) return;
+    MQ.ask('تشيل هالمفوّض نهائياً؟').then((__y)=>{ if(!__y)return;
     req('/api/admin/delegates/' + id, { method: 'DELETE' }).then(function(r){ if (!r || !r.ok) return W.toast((r && r.message) || 'تعذّر', 'error'); W.toast('تمت الإزالة', 'success'); after(uid); });
-  }
+  });}
   // بطاقة المفوّض داخل «عرض بيانات المستخدم»
   function more(uid){ var r = D.getElementById('adl-r' + uid); if (!r) return; var on = r.style.display === 'none'; r.style.display = on ? '' : 'none'; if (on) userCard(uid, 'adl-x' + uid); }
   function userCard(uid, elId){

@@ -222,10 +222,10 @@ function saveCard(){
     .catch(function(e){toast((e&&e.message)||'تعذّر الحفظ');});
 }
 function removeCard(){
-  if(!confirm('إخفاء صفحتك نهائياً؟ لن تكون متاحة بالرابط.'))return;
+  MQ.ask('إخفاء صفحتك نهائياً؟ لن تكون متاحة بالرابط.').then((__y)=>{ if(!__y)return;
   fetch('/api/card/'+TOKEN,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({k:K,unpublish:true,links:(_data&&_data.links)||{}})})
     .then(function(r){return r.json().then(function(j){if(!r.ok)throw j;return j;});}).then(function(){location.reload();}).catch(function(e){toast((e&&e.message)||'تعذّر');});
-}
+});}
 fetch('/api/card/'+TOKEN+(K?'?k='+encodeURIComponent(K):'')).then(function(r){
   if(r.status===410){document.getElementById('app').innerHTML='<div class="state">🚫 هذي الصفحة غير متاحة حالياً.</div>';throw 0;}
   if(!r.ok){document.getElementById('app').innerHTML='<div class="state">لم نجد هذا الكرت. تأكّد من الرابط.</div>';throw 0;}

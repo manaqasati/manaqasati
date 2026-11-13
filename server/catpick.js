@@ -112,7 +112,7 @@
           + '<span style="flex:1">'+esc(c)+(i===0?' <span style="font-size:10.5px;font-weight:900;color:#fff;background:#1d4ed8;border-radius:6px;padding:1px 7px">رئيسي</span>':(on?' <span style="font-size:10.5px;font-weight:900;color:#1e3a8a;background:#dbeafe;border-radius:6px;padding:1px 7px">إضافي</span>':''))+'</span>'
           + '<span style="width:22px;height:22px;border-radius:7px;flex-shrink:0;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:13px;'+(on?'background:#1d4ed8;color:#fff':'border:2px solid #cbd5e1')+'">'+(on?'✓':'')+'</span></button>';
       });
-      h += '<button type="button" data-cp="sheet" style="'+BTN+'background:none;border:0;color:#1d4ed8;font-size:12.5px;font-weight:800;padding:4px">ولا واحد منها؟ اختر من كل التخصصات</button>';
+      h += '<button type="button" data-cp="sheet" style="'+BTN+'background:none;border:0;color:#1d4ed8;font-size:12.5px;font-weight:800;padding:8px 4px;min-height:34px">ولا واحد منها؟ اختر من كل التخصصات</button>';
       if (set.length) h += '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:9px 11px;font-size:12.5px;font-weight:800;color:#166534">يوصل مشروعك لمزوّدين: '+set.map(esc).join(' + ')+'</div>';
       h += '</div>';
     } else if (p){
@@ -134,7 +134,7 @@
     } else if (hasT){
       h += '<div style="display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #dbe5f5;border-radius:14px;padding:11px 13px"><div style="flex:1;font-size:13px;font-weight:800;color:#5b6b85">ما قدرنا نحدد التخصص من العنوان</div><button type="button" data-cp="sheet" style="'+BTN+'background:#1d4ed8;border:0;color:#fff;border-radius:10px;padding:9px 14px;font-size:13px;font-weight:800">اختر التخصص</button></div>';
     } else {
-      h += '<div style="font-size:12px;font-weight:700;color:#5b6b85">اكتب بكلامك وبنحدد التخصص تلقائياً — مثل «تركيب مكيفات» أو «ترميم حمام» · <button type="button" data-cp="sheet" style="'+BTN+'background:none;border:0;color:#1d4ed8;font-weight:800;font-size:12px;padding:0;text-decoration:underline">أو اختر بنفسك</button></div>';
+      h += '<div style="font-size:12px;font-weight:700;color:#5b6b85">اكتب بكلامك وبنحدد التخصص تلقائياً — مثل «تركيب مكيفات» أو «ترميم حمام» · <button type="button" data-cp="sheet" style="'+BTN+'background:none;border:0;color:#1d4ed8;font-weight:800;font-size:12px;padding:8px 2px;min-height:34px;text-decoration:underline">أو اختر بنفسك</button></div>';
     }
     box.innerHTML = h;
   }

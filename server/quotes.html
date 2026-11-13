@@ -209,7 +209,7 @@ window._qRec=function(i){ S.q.options.forEach(function(o,k){o.rec=k===i;}); draw
 window._qAddIt=function(i){ S.q.options[i].items.push({t:'',q:1,p:''}); draw(); var L=document.querySelectorAll('input[data-o="'+i+'"][data-k="t"]'); if(L.length)L[L.length-1].focus(); };
 window._qDelIt=function(i,j){ var it=S.q.options[i].items; it.splice(j,1); if(!it.length)it.push({t:'',q:1,p:''}); draw(); };
 window._qBack=function(){ S.view='list'; load().then(list); };
-window._qDel=function(){ if(!confirm('تحذف المسودة؟'))return; api('/api/quotes/'+S.q.id,{method:'DELETE'}).then(function(){ toast('انحذفت'); _qBack(); }).catch(function(e){ if(e)toast(e.message); }); };
+window._qDel=function(){ MQ.ask('تحذف المسودة؟').then((__y)=>{ if(!__y)return; api('/api/quotes/'+S.q.id,{method:'DELETE'}).then(function(){ toast('انحذفت'); _qBack(); }).catch(function(e){ if(e)toast(e.message); }); });};
 window._qSave=function(send){
   var q=S.q, b=document.getElementById(send?'b-send':'b-draft'); if(b){ b.disabled=true; }
   var body={id:q.id||undefined, qreq_id:q.qreq_id||undefined, client_name:q.client_name, client_phone:q.client_phone, title:q.title, notes:q.notes, deposit_pct:q.deposit_pct, valid_days:q.valid_days, send:!!send, vat:!!q.vat, branch_id:!q.id?MNQ_BR.val('q-b'):undefined,
@@ -229,7 +229,7 @@ function shareSheet(q, upd){
     +'<button class="btn sec" onclick="_qCopy(\''+esc(q.link)+'\')">نسخ الرابط</button><a class="btn sec" target="_blank" rel="noopener" href="/q/'+esc(q.token)+'">معاينة العرض</a><button class="btn" style="background:transparent;color:#64748b" onclick="document.getElementById(\'sh\').remove()">تم</button></div>';
   document.body.appendChild(o);
 }
-window._qCopy=function(u){ (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){toast('انسخ الرابط');}).catch(function(){ prompt('انسخ الرابط:',u); }); };
+window._qCopy=function(u){ (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){toast('انسخ الرابط');}).catch(function(){ MQ.prompt({title:'انسخ الرابط',value:u,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); }); };
 window._qReprice=function(){ var q=JSON.parse(JSON.stringify(S.items.find(function(x){return x.id===S.cur;})||{})); if(!q.id)return; q._reprice=true; edit(q); };
 // عرض منتهي (وافق/اعتذر)
 function view(q){
@@ -254,6 +254,6 @@ MNQ_BR.load().then(load).then(function(){
 }).catch(function(){});
 })();
 </script>
-<script src="/pnav.js?v=2" defer></script>
+<script src="/pnav.js?v=3" defer></script>
 </body>
 </html>

@@ -126,3 +126,62 @@
       tick(); setInterval(tick, 600); W.addEventListener('resize', tick); }
   }).catch(function(){});
 })();
+
+/* ═══ بحث شامل للمزوّد: العملاء والمشاريع وعروض الأسعار والفنيين — من أي صفحة (🔍 أو Ctrl/⌘+K أو /) ═══ */
+(function(){
+  var W = window, D = document; if (W.MQ_SRCH) return;
+  var ICON = { cust: '👥', job: '🧰', quote: '📄', tech: '👷' }, KIND = { cust: 'العملاء', job: 'المشاريع', quote: 'عروض الأسعار', tech: 'الفريق' };
+  var QUICK = [['📄', 'عرض سعر جديد', '/quotes.html?new=1'], ['🧰', 'مشروع يدوي', '/jobs.html?new=1'], ['👥', 'دفتر العملاء', '/customers.html'], ['🗓', 'تقويم الجدولة', '/cal.html'], ['⏱', 'الحضور والانصراف', '/att.html']];
+  function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+  function tok(){ try { return localStorage.getItem('token') || ''; } catch(e){ return ''; } }
+  function recent(){ try { return JSON.parse(localStorage.getItem('mnq_srch') || '[]'); } catch(e){ return []; } }
+  function remember(it){ try { var r = recent().filter(function(x){ return x.u !== it.u; }); r.unshift({ k: it.k, t: it.t, s: it.s, u: it.u }); localStorage.setItem('mnq_srch', JSON.stringify(r.slice(0, 6))); } catch(e){} }
+  var css = '.msr-ov{position:fixed;inset:0;z-index:2147483400;background:rgba(15,23,42,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);display:flex;justify-content:center;align-items:flex-start;padding:max(12px,env(safe-area-inset-top)) 12px 12px;direction:rtl;font-family:Tajawal,system-ui,sans-serif;animation:msrF .15s ease-out}'
+    + '@keyframes msrF{from{opacity:0}to{opacity:1}}@keyframes msrU{from{transform:translateY(-8px);opacity:0}to{transform:none;opacity:1}}'
+    + '.msr{background:#fff;width:min(620px,100%);border-radius:22px;box-shadow:0 30px 70px -20px rgba(0,0,0,.5);overflow:hidden;display:flex;flex-direction:column;max-height:min(80vh,640px);margin-top:min(8vh,70px);animation:msrU .18s cubic-bezier(.2,.8,.2,1)}'
+    + '@media(max-width:640px){.msr{margin-top:0;max-height:88vh}}'
+    + '.msr-h{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #eef2f7}.msr-h span{font-size:18px}'
+    + '.msr-h input{flex:1;min-width:0;border:0;outline:0;font-family:inherit;font-size:17px;font-weight:700;color:#0f172a;background:transparent;padding:6px 0}.msr-h input::placeholder{color:#94a3b8}'
+    + '.msr-x{border:0;background:#f1f5f9;border-radius:10px;height:34px;padding:0 12px;font-family:inherit;font-weight:800;font-size:12.5px;color:#475467;cursor:pointer}'
+    + '.msr-b{overflow:auto;padding:6px 8px 10px}.msr-g{font-size:11.5px;font-weight:900;color:#64748b;padding:10px 8px 4px}'
+    + '.msr-i{display:flex;align-items:center;gap:11px;padding:10px 10px;border-radius:13px;text-decoration:none;color:#0f172a;cursor:pointer}.msr-i:hover,.msr-i.on{background:#eff4ff}'
+    + '.msr-i .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:18px}.msr-i.on .ic{background:#fff}'
+    + '.msr-i .tx{flex:1;min-width:0}.msr-i b{display:block;font-size:14.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.msr-i small{display:block;font-size:12px;font-weight:700;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+    + '.msr-i mark{background:#fef08a;color:inherit;border-radius:3px;padding:0 1px}.msr-e{padding:26px 12px;text-align:center;color:#64748b;font-weight:700;font-size:13.5px;line-height:1.8}'
+    + '.msr-k{display:flex;gap:12px;justify-content:center;padding:8px;border-top:1px solid #eef2f7;font-size:11.5px;font-weight:700;color:#94a3b8}@media(max-width:640px){.msr-k{display:none}}.msr-k kbd{background:#f1f5f9;border-radius:5px;padding:1px 6px;font-family:inherit;color:#475467}'
+    + '.msr-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:11px;border:0;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;margin-inline-start:auto;margin-inline-end:10px}.msr-btn svg{width:18px;height:18px}';
+  var st = D.createElement('style'); st.textContent = css; (D.head || D.documentElement).appendChild(st);
+  var SVG = '<svg fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
+  function hl(t, q){ t = esc(t); if (!q) return t; var i = t.toLowerCase().indexOf(esc(q).toLowerCase()); return i < 0 ? t : t.slice(0, i) + '<mark>' + t.slice(i, i + esc(q).length) + '</mark>' + t.slice(i + esc(q).length); }
+  function open(){
+    if (D.querySelector('.msr-ov')) return;
+    var ov = D.createElement('div'); ov.className = 'msr-ov'; ov.setAttribute('data-noback', '');
+    ov.innerHTML = '<div class="msr" role="dialog" aria-modal="true" aria-label="بحث"><div class="msr-h"><span aria-hidden="true">🔍</span><input type="search" placeholder="ابحث بالاسم أو رقم الجوال أو رقم العرض…" aria-label="بحث" autocomplete="off" enterkeyhint="search"><button type="button" class="msr-x">إغلاق</button></div><div class="msr-b" role="listbox"></div><div class="msr-k"><span><kbd>↑</kbd><kbd>↓</kbd> تنقّل</span><span><kbd>Enter</kbd> فتح</span><span><kbd>Esc</kbd> إغلاق</span></div></div>';
+    D.body.appendChild(ov); var inp = ov.querySelector('input'), box = ov.querySelector('.msr-b'), L = [], sel = 0, tm = 0, seq = 0;
+    function close(){ ov.remove(); D.removeEventListener('keydown', key, true); }
+    function paint(items, q){ L = items; sel = 0;
+      if (!q) { var r = recent(); var h = (r.length ? '<div class="msr-g">آخر ما فتحته</div>' + r.map(function(x, i){ return row(x, i, ''); }).join('') : '') + '<div class="msr-g">اختصارات</div>';
+        L = r.concat(QUICK.map(function(x){ return { k: 'q', ic: x[0], t: x[1], u: x[2] }; }));
+        h += L.slice(r.length).map(function(x, i){ return row(x, r.length + i, ''); }).join(''); box.innerHTML = h; mark(); return; }
+      if (!items.length) { box.innerHTML = '<div class="msr-e">ما لقينا شي باسم «' + esc(q) + '»<br><span style="font-size:12.5px">جرّب جزء من الاسم أو آخر 4 أرقام من الجوال</span></div>'; return; }
+      var h2 = '', last = ''; items.forEach(function(x, i){ if (x.k !== last) { h2 += '<div class="msr-g">' + KIND[x.k] + '</div>'; last = x.k; } h2 += row(x, i, q); }); box.innerHTML = h2; mark(); }
+    function row(x, i, q){ return '<a class="msr-i" role="option" data-i="' + i + '" href="' + esc(x.u) + '"><span class="ic" aria-hidden="true">' + (x.ic || ICON[x.k] || '•') + '</span><span class="tx"><b>' + hl(x.t, q) + '</b>' + (x.s ? '<small>' + hl(x.s, q) + '</small>' : '') + '</span></a>'; }
+    function mark(){ [].forEach.call(box.querySelectorAll('.msr-i'), function(a){ var on = +a.getAttribute('data-i') === sel; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); if (on && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' }); }); }
+    function go(i){ var x = L[i]; if (!x) return; if (x.k !== 'q') remember(x); location.href = x.u; }
+    function search(){ var q = inp.value.trim(); clearTimeout(tm); if (q.length < 2) { paint([], ''); return; }
+      tm = setTimeout(function(){ var k = ++seq; box.innerHTML = box.innerHTML || '<div class="msr-e">جاري البحث…</div>';
+        fetch('/api/provider/search?q=' + encodeURIComponent(q), { headers: { 'Authorization': 'Bearer ' + tok() } }).then(function(r){ return r.ok ? r.json() : { items: [] }; }).then(function(d){ if (k === seq) paint(d.items || [], q); }).catch(function(){ if (k === seq) box.innerHTML = '<div class="msr-e">تعذّر البحث — تأكد من النت</div>'; }); }, 220); }
+    function key(e){ if (e.key === 'Escape') { e.preventDefault(); close(); } else if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(L.length - 1, sel + 1); mark(); } else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); mark(); } else if (e.key === 'Enter' && D.activeElement === inp) { e.preventDefault(); go(sel); } }
+    inp.addEventListener('input', search); D.addEventListener('keydown', key, true);
+    ov.addEventListener('click', function(e){ if (e.target === ov || e.target.closest('.msr-x')) { close(); return; } var a = e.target.closest('.msr-i'); if (a) { e.preventDefault(); go(+a.getAttribute('data-i')); } });
+    paint([], ''); setTimeout(function(){ inp.focus(); }, 30);
+  }
+  W.MQ_SRCH = { open: open };
+  D.addEventListener('keydown', function(e){ var t = e.target, typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+    if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); open(); } else if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey) { e.preventDefault(); open(); } });
+  // زر 🔍: بالشريط العلوي لصفحات الأدوات، وبرأس لوحة المزوّد بالجوال
+  function addBtn(){ if (D.querySelector('.msr-btn, #mob-srch')) return;
+    var top = D.querySelector('.top'); if (top && top.querySelector('a[href="/dashboard-provider.html"]')) { var b = D.createElement('button'); b.type = 'button'; b.className = 'msr-btn'; b.setAttribute('aria-label', 'بحث'); b.innerHTML = SVG; b.onclick = open; top.insertBefore(b, top.querySelector('a[href="/dashboard-provider.html"]')); return; }
+    var mr = D.querySelector('.mob-right'); if (mr) { var n = mr.querySelector('.mob-notif'); var b2 = D.createElement('button'); b2.type = 'button'; b2.className = 'mob-notif'; b2.id = 'mob-srch'; b2.setAttribute('aria-label', 'بحث'); b2.innerHTML = SVG.replace('<svg', '<svg width="20" height="20"'); b2.onclick = open; mr.insertBefore(b2, n || mr.firstChild); } }
+  if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', addBtn); else addBtn();
+})();

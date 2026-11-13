@@ -90,7 +90,7 @@ function fmtAt(x){ try{ return new Date(x).toLocaleString('ar-SA-u-nu-latn-ca-gr
 var BKS={pending:['بانتظار تأكيدك','p-y'],proposed:['اقترحت وقتاً — بانتظار العميل','p-b'],confirmed:['تأكد · صار مشروع','p-g'],declined:['اعتذرت','p-gr'],cancelled:['ألغاه العميل','p-gr'],expired:['فات موعده','p-gr']};
 function books(){ var h='';
   if(!S.tl||!S.tl.book||!S.tl.book.on) h+='<div class="card" style="background:#f5f8ff;border:1px dashed #c7d6f5"><b>الحجز المباشر مقفل</b><div class="mu" style="margin-top:4px">فعّله من «الحجز والمتابعة» — يطلع زر «احجز موعد» في صفحتك جنب «اطلب تسعيرة».</div><button class="btn sec" style="margin-top:10px" onclick="_mpTab(\'tools\')">الإعدادات</button></div>';
-  if(!S.bk.length) return h+'<div class="card empty"><div style="font-size:38px">📅</div><b style="display:block;margin-top:6px">ما فيه حجوزات للحين</b></div>';
+  if(!S.bk.length) return h+'<div class="card empty"><div style="font-size:38px">📅</div><b style="display:block;margin-top:6px">ما فيه حجوزات للحين</b><div class="mu" style="margin-top:6px">لما يحجز عميل موعد من صفحتك يظهر هنا وتأكده بضغطة.</div></div>';
   S.bk.forEach(function(k){ var s=BKS[k.status]||['','p-gr'];
     h+='<div class="card qr'+(k.status==='pending'?' new':'')+'"><div class="row" style="justify-content:space-between"><b style="font-size:15.5px;color:#172554">'+esc(k.title)+(k.qty>1?' × '+k.qty:'')+'</b><span class="pill '+s[1]+'">'+s[0]+'</span></div>'
       +'<div class="meta"><span>👤 '+esc(k.client_name||'عميل')+'</span><span>📅 '+esc(fmtAt(k.status==='proposed'?k.alt_at:k.at))+'</span>'+(k.district||k.city?'<span>📍 '+esc([k.district,k.city].filter(Boolean).join('، '))+'</span>':'')+'<span>💰 '+Number(k.total).toLocaleString('en-US')+' ر.س</span>'+(MNQ_BR.multi?'<span>🏢 '+esc(MNQ_BR.name(k.branch_id))+'</span>':'')+'</div>'
@@ -98,7 +98,7 @@ function books(){ var h='';
       +(k.status==='pending'?'<div class="row"><button class="btn pri" onclick="_bkAct('+k.id+',\'confirm\')">تأكيد الموعد</button><button class="btn sec" onclick="_bkProp('+k.id+')">اقتراح وقت ثاني</button>'+(k.client_phone?'<a class="btn wa" href="https://wa.me/'+wa(k.client_phone)+'" target="_blank" rel="noopener">واتساب</a>':'')+'<button class="btn" style="background:transparent;color:#b42318" onclick="_bkAct('+k.id+',\'decline\')">اعتذار</button></div>':'')
       +(k.status==='confirmed'&&k.job_id?'<a class="btn sec" href="/jobs.html?id='+k.job_id+'">افتح المشروع — حدّد الفني</a>':'')+'</div>'; });
   return h; }
-window._bkAct=function(id,act){ var body={act:act}; if(act==='decline'){ var w=prompt('سبب الاعتذار (يوصل العميل):','غير متاح في هذا الموعد'); if(w===null)return; body.reason=w; }
+window._bkAct=function(id,act){ var body={act:act}; if(act==='decline'&&!window.__bkR){ MQ.prompt({title:'سبب الاعتذار',msg:'يوصل للعميل',value:'غير متاح في هذا الموعد',ok:'إرسال الاعتذار'}).then(function(w){ if(w===null)return; window.__bkR=w; try{ _bkAct(id,act); } finally { window.__bkR=null; } }); return; } if(act==='decline') body.reason=window.__bkR;
   api('/api/provider/bookings/'+id,{method:'POST',body:JSON.stringify(body)}).then(function(r){ toast(act==='confirm'?'تأكد الموعد ✅ وصار مشروع':'تم'); load(); if(act==='confirm'&&r.job_id) setTimeout(function(){ location.href='/jobs.html?id='+r.job_id; },900); }).catch(function(e){ if(e)toast(e.message); }); };
 window._bkProp=function(id){ var o=document.createElement('div'); o.className='sheet-ov'; o.onclick=function(e){ if(e.target===o)o.remove(); };
   o.innerHTML='<div class="sheet f" style="display:flex;flex-direction:column;gap:12px"><b style="font-size:17px;color:#172554">اقتراح وقت ثاني</b><input id="bk-at" type="datetime-local"><button class="btn pri" id="bk-go">إرسال للعميل</button></div>'; document.body.appendChild(o);
@@ -112,6 +112,7 @@ function tools(){ var T=S.tl; if(!T) return '<div class="card"><b>تعذّر ا�
     +'<div><label>أيام العمل</label><div class="row" style="gap:5px">'+[6,0,1,2,3,4,5].map(function(d){ var on=B.days.indexOf(d)>=0; return '<button type="button" class="btn '+(on?'pri':'sec')+'" data-day="'+d+'" style="padding:7px 10px;font-size:12.5px">'+DN[d]+'</button>'; }).join('')+'</div></div>'
     +'<div class="row" style="gap:10px;flex-wrap:nowrap"><div style="flex:1"><label>من</label><input id="bk-f" type="time" value="'+B.from+'"></div><div style="flex:1"><label>إلى</label><input id="bk-t" type="time" value="'+B.to+'"></div></div>'
     +'<div class="row" style="gap:10px;flex-wrap:nowrap"><div style="flex:1"><label>مدة الموعد</label><select id="bk-s">'+[[60,'ساعة'],[90,'ساعة ونص'],[120,'ساعتين'],[180,'3 ساعات'],[240,'4 ساعات']].map(function(x){return '<option value="'+x[0]+'"'+(B.slot===x[0]?' selected':'')+'>'+x[1]+'</option>';}).join('')+'</select></div><div style="flex:1"><label>حجوزات بنفس الوقت</label><select id="bk-c">'+[1,2,3,4,5,6,8,10].map(function(n){return '<option'+(B.cap===n?' selected':'')+'>'+n+'</option>';}).join('')+'</select></div></div>'
+    +'<div><label for="bk-ch">الإلغاء أو تغيير الموعد مجاناً قبل</label><select id="bk-ch">'+[[0,'أي وقت (بدون سياسة)'],[2,'ساعتين'],[6,'6 ساعات'],[12,'12 ساعة'],[24,'يوم'],[48,'يومين']].map(function(x){ var cv=B.cancel_h==null?6:B.cancel_h; return '<option value="'+x[0]+'"'+(cv===x[0]?' selected':'')+'>'+x[1]+'</option>'; }).join('')+'</select><div class="mu" style="margin-top:4px">تظهر للعميل وقت الحجز. الإلغاء بعدها يتسجّل «إلغاء متأخر» في دفتر العملاء.</div></div>'
     +'<div><label>الخدمات اللي تنحجز مباشرة</label>'+(PL.length?PL.map(function(x,i){ return '<label class="row sb" style="cursor:pointer;flex-wrap:nowrap;padding:8px 0;border-top:1px solid #f1f5f9"><span><input type="checkbox" data-bi="'+i+'"'+(x.book?' checked':'')+' style="width:20px;height:20px;accent-color:#1e3a8a;vertical-align:middle"> <b style="font-size:14px">'+esc(x.t)+'</b></span><b>'+Number(x.p).toLocaleString('en-US')+' ر.س</b></label>'; }).join('')+'<div class="mu">الخدمات غير المختارة تبقى «اطلب تسعيرة»</div>':'<div class="mu">أضف خدماتك وأسعارها أول من <a href="/quotes.html?tab=prices" style="color:#1e3a8a">عروض الأسعار ← قائمة الأسعار</a></div>')+'</div></div>';
   h+='<div class="card"><div class="h3" style="font-size:16px">🔔 المتابعة الآلية</div><div class="mu" style="margin-top:2px">مناقصة تتابع عملاءك عنك — إشعار باسم منشأتك</div>'
     +tg('fu-q',F.quote,'تذكير بالعرض اللي ما انرد عليه','بعد 3 أيام من الإرسال، مرة وحدة')+tg('fu-v',F.visit,'تذكير العميل بموعد الزيارة','قبل الموعد بيوم، فيه اسم الفني والوقت')+tg('fu-r',F.rate,'طلب تقييم بعد التسليم','إذا العميل ما أكّد الاستلام خلال يومين')+'</div>';
@@ -120,7 +121,7 @@ function tools(){ var T=S.tl; if(!T) return '<div class="card"><b>تعذّر ا�
   return h; }
 window._tlSave=function(){ var T=S.tl, days=[].map.call(document.querySelectorAll('[data-day].pri'),function(b){return parseInt(b.getAttribute('data-day'));});
   var PL=(T.price_list||[]).map(function(x,i){ var c=document.querySelector('[data-bi="'+i+'"]'); return Object.assign({},x,{book:c?c.checked:!!x.book}); });
-  api('/api/tools',{method:'PUT',body:JSON.stringify({price_list:PL,book:{on:document.getElementById('bk-on').checked,days:days,from:document.getElementById('bk-f').value,to:document.getElementById('bk-t').value,slot:parseInt(document.getElementById('bk-s').value),cap:parseInt(document.getElementById('bk-c').value)},fu:{quote:document.getElementById('fu-q').checked,visit:document.getElementById('fu-v').checked,rate:document.getElementById('fu-r').checked}})})
+  api('/api/tools',{method:'PUT',body:JSON.stringify({price_list:PL,book:{on:document.getElementById('bk-on').checked,days:days,from:document.getElementById('bk-f').value,to:document.getElementById('bk-t').value,slot:parseInt(document.getElementById('bk-s').value),cap:parseInt(document.getElementById('bk-c').value),cancel_h:parseInt((document.getElementById('bk-ch')||{}).value||6)},fu:{quote:document.getElementById('fu-q').checked,visit:document.getElementById('fu-v').checked,rate:document.getElementById('fu-r').checked}})})
     .then(function(r){ S.tl.book=r.book; S.tl.fu=r.fu; S.tl.price_list=r.price_list; toast('انحفظ ✅'); draw(); }).catch(function(e){ if(e)toast(e.message); }); };
 function reqs(){
   var h='', P=S.pg;
@@ -138,10 +139,10 @@ function reqs(){
   return h;
 }
 window._mpSeen=function(id,draw1){ var q=S.items.find(function(x){return x.id===id;}); if(!q||q.status!=='new')return; api('/api/provider/qreqs/'+id,{method:'POST',body:JSON.stringify({act:'seen'})}).then(function(){ q.status='seen'; if(draw1){ draw(); toast('تم'); } else setTimeout(draw,400); }).catch(function(e){ if(e)toast(e.message); }); };
-window._mpRep=function(id){ var why=prompt('وش المشكلة في الطلب؟ (يوصل لفريق مناقصة فقط)','طلب غير جاد / بيانات غير صحيحة'); if(why===null)return;
-  api('/api/provider/qreqs/'+id,{method:'POST',body:JSON.stringify({act:'report',reason:why})}).then(function(){ var q=S.items.find(function(x){return x.id===id;}); if(q){q.status='declined';q.decline_reason=why;} draw(); toast('وصل البلاغ لفريق مناقصة — شكراً'); }).catch(function(e){ if(e)toast(e.message); }); };
-window._mpDecl=function(id){ var why=prompt('سبب الاعتذار (يوصل للعميل):','غير متاح لهذا الطلب حالياً'); if(why===null)return;
-  api('/api/provider/qreqs/'+id,{method:'POST',body:JSON.stringify({act:'decline',reason:why})}).then(function(){ var q=S.items.find(function(x){return x.id===id;}); if(q){q.status='declined';q.decline_reason=why;} draw(); toast('أبلغنا العميل'); }).catch(function(e){ if(e)toast(e.message); }); };
+window._mpRep=function(id){ MQ.prompt({title:'وش المشكلة في الطلب؟',msg:'يوصل لفريق مناقصة فقط',value:'طلب غير جاد / بيانات غير صحيحة',ok:'إرسال البلاغ',icon:'🚩'}).then((why)=>{ if(why===null)return;
+  api('/api/provider/qreqs/'+id,{method:'POST',body:JSON.stringify({act:'report',reason:why})}).then(function(){ var q=S.items.find(function(x){return x.id===id;}); if(q){q.status='declined';q.decline_reason=why;} draw(); toast('وصل البلاغ لفريق مناقصة — شكراً'); }).catch(function(e){ if(e)toast(e.message); }); });};
+window._mpDecl=function(id){ MQ.prompt({title:'سبب الاعتذار',msg:'يوصل للعميل',value:'غير متاح لهذا الطلب حالياً',ok:'إرسال الاعتذار'}).then((why)=>{ if(why===null)return;
+  api('/api/provider/qreqs/'+id,{method:'POST',body:JSON.stringify({act:'decline',reason:why})}).then(function(){ var q=S.items.find(function(x){return x.id===id;}); if(q){q.status='declined';q.decline_reason=why;} draw(); toast('أبلغنا العميل'); }).catch(function(e){ if(e)toast(e.message); }); });};
 
 function page(){
   var P=S.pg, cv=S.cover;
@@ -161,7 +162,7 @@ window._mpCover=function(inp){
   function send(v){ toast('جارٍ الرفع…'); api('/api/provider/page',{method:'PUT',body:JSON.stringify({services:S.sv,cover:v})}).then(function(r){ S.cover=r.cover||null; draw(); toast(v?'تم رفع الغلاف':'أزلنا الغلاف'); }).catch(function(e){ if(e)toast(e.message); }); }
   if(!inp){ send(null); return; } var f=inp.files&&inp.files[0]; if(!f)return; if(f.size>10*1024*1024){ toast('الصورة أكبر من 10 ميجا'); return; }
   var rd=new FileReader(); rd.onload=function(){ var im=new Image(); im.onload=function(){ var w=Math.min(1600,im.width), c=document.createElement('canvas'); c.width=w; c.height=Math.round(im.height*w/im.width); c.getContext('2d').drawImage(im,0,0,c.width,c.height); send(c.toDataURL('image/jpeg',.85)); }; im.onerror=function(){ toast('الصورة غير مدعومة'); }; im.src=rd.result; }; rd.readAsDataURL(f); };
-window._mpCopy=function(){ var u=S.pg.url; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){toast('تم نسخ الرابط');}).catch(function(){ prompt('انسخ الرابط:',u); }); };
+window._mpCopy=function(){ var u=S.pg.url; (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){toast('تم نسخ الرابط');}).catch(function(){ MQ.prompt({title:'انسخ الرابط',value:u,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); }); };
 var QRL=null;
 function qr(){ var box=document.getElementById('qrbox'); if(!box)return; var u=S.pg.url+'?src=qr';
   function fb(){ box.innerHTML='<img alt="QR" crossorigin="anonymous" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data='+encodeURIComponent(u)+'">'; }
@@ -172,6 +173,6 @@ window._mpQrDl=function(){ var s=document.querySelector('#qrbox svg'); if(!s){ v
 MNQ_BR.load().then(load);
 })();
 </script>
-<script src="/pnav.js?v=2" defer></script>
+<script src="/pnav.js?v=3" defer></script>
 </body>
 </html>

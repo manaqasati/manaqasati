@@ -689,6 +689,7 @@ function _bkOpen(){
         :'<div style="padding:10px;border-radius:12px;background:#fef3f2;color:#b42318;font-weight:800">ما فيه أوقات متاحة قريبة — اطلب تسعيرة</div>')
       +'<div><label for="bk-n">ملاحظة (اختياري)</label><textarea id="bk-n" maxlength="500" placeholder="مثال: الوحدات في السطح">'+esc(S.note||'')+'</textarea></div>'
       +'<div style="padding:10px 12px;border-radius:12px;background:#ecfdf3;color:#067647;font-weight:800;font-size:13.5px">التقدير: '+Number(it.p*S.qty).toLocaleString('en-US')+' ر.س · المزوّد يأكد موعدك خلال يوم</div>'
+      +(_BK.cancel_h?'<div style="font-size:12.5px;font-weight:700;color:var(--muted)">↺ الإلغاء أو تغيير الموعد مجاناً قبل الموعد بـ'+({2:'ساعتين',6:'6 ساعات',12:'12 ساعة',24:'يوم',48:'يومين'}[_BK.cancel_h]||(_BK.cancel_h+' ساعات'))+'</div>':'')
       +'<div id="bk-e" style="display:none;padding:10px 12px;border-radius:12px;background:#fef3f2;color:#b42318;font-size:13px;font-weight:800"></div>'
       +'<button type="button" class="pp-qbtn" id="bk-go"'+(S.at?'':' disabled style="opacity:.55"')+'>طلب الحجز</button><button type="button" id="bk-x" style="border:0;background:transparent;font-family:inherit;font-weight:800;color:var(--muted);padding:6px;cursor:pointer">إلغاء</button></div>';
     var keep=function(){ S.qty=parseInt(document.getElementById('bk-q').value)||1; S.dist=document.getElementById('bk-d').value; S.note=document.getElementById('bk-n').value; var c=document.getElementById('bk-c'); if(c)S.city=c.value; };
@@ -708,10 +709,10 @@ function _bkOpen(){
   document.body.appendChild(o); draw();
 }
 function _askLogin(){
-  if(confirm('سجّل دخولك عشان يظهر رقم المزوّد وتتواصل معه.\nالتسجيل ياخذ أقل من دقيقة.')){
+  MQ.ask({title:'سجّل دخولك عشان يظهر رقم المزوّد وتتواصل معه',msg:'التسجيل ياخذ أقل من دقيقة.',ok:'تسجيل الدخول',icon:'🔐'}).then(function(y){ if(!y)return;
     try{ localStorage.setItem('_after_login', location.href); }catch(e){}
     location.href='/auth.html';
-  }
+  });
   return false;
 }
 </script>

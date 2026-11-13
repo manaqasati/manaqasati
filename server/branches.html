@@ -104,11 +104,11 @@ window._bEdit=function(id){ var b=(S.items||[]).filter(function(x){return x.id==
   document.getElementById('b-go').onclick=function(){ var t=this; t.disabled=true; var body=JSON.stringify({name:document.getElementById('b-n').value,city:document.getElementById('b-c').value,phone:document.getElementById('b-p').value});
     api('/api/branches'+(b.id?'/'+b.id:''),{method:b.id?'PUT':'POST',body:body}).then(function(){ o.remove(); toast('انحفظ'); load(); }).catch(function(e){ t.disabled=false; if(e)toast(e.message); }); };
 };
-window._bDel=function(id){ var b=(S.items||[]).filter(function(x){return x.id===id;})[0]; if(!b||!confirm('تحذف «'+b.name+'»؟ فنيوه ومشاريعه وعملاؤه ينتقلون للفرع الرئيسي، ومشرفوه يصيرون على الرئيسي.'))return;
-  api('/api/branches/'+id,{method:'DELETE'}).then(function(){ toast('انحذف'); try{ if(parseInt(localStorage.getItem('mnq_br'))===id) localStorage.removeItem('mnq_br'); }catch(e){} load(); }).catch(function(e){ if(e)toast(e.message); }); };
+window._bDel=function(id){ var b=(S.items||[]).filter(function(x){return x.id===id;})[0]; var __go=()=>{
+  api('/api/branches/'+id,{method:'DELETE'}).then(function(){ toast('انحذف'); try{ if(parseInt(localStorage.getItem('mnq_br'))===id) localStorage.removeItem('mnq_br'); }catch(e){} load(); }).catch(function(e){ if(e)toast(e.message); }); }; if(!(!b)){ MQ.ask('تحذف «'+b.name+'»؟ فنيوه ومشاريعه وعملاؤه ينتقلون للفرع الرئيسي، ومشرفوه يصيرون على الرئيسي.').then((__y)=>{ if(__y)__go(); }); return; } return __go();};
 load();
 })();
 </script>
-<script src="/pnav.js?v=2" defer></script>
+<script src="/pnav.js?v=3" defer></script>
 </body>
 </html>

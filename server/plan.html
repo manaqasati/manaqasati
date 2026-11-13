@@ -185,7 +185,7 @@ function sheet(title,sub,body){
    var p=document.getElementById('shp'); if(p)p.onclick=function(){ checkout(body,p); };
  });
 }
-function change(act,extra,confirmMsg){ if(confirmMsg&&!confirm(confirmMsg))return; api('/api/subs/change',{method:'POST',body:JSON.stringify(Object.assign({act:act},extra||{}))}).then(function(r){ toast(r.message||(r.ok?'تم ✓':'تعذّر')); if(r.ok)load(); }); }
+function change(act,extra,confirmMsg){ var __go=()=>{ api('/api/subs/change',{method:'POST',body:JSON.stringify(Object.assign({act:act},extra||{}))}).then(function(r){ toast(r.message||(r.ok?'تم ✓':'تعذّر')); if(r.ok)load(); }); }; if((confirmMsg)){ MQ.ask(confirmMsg).then((__y)=>{ if(__y)__go(); }); return; } return __go();}
 function manage(){
  var S=D.sub, C=D.cfg, live=S&&['active','trial','grace'].indexOf(S.status)>-1;
  var st=S.status==='trial'?'<span class="pill" style="background:rgba(251,191,36,.25);color:#fde68a">تجربة مجانية</span>':(S.status==='grace'?'<span class="pill" style="background:rgba(239,68,68,.25);color:#fecaca">مهلة دفع</span>':'<span class="pill" style="background:rgba(34,197,94,.2);color:#bbf7d0">● فعّال</span>');
@@ -250,7 +250,7 @@ function render(){
  on('udnb',function(){ change('undowngrade'); });
  on('canb',function(){ change('cancel',null,'سيتوقف الاشتراك بنهاية الفترة الحالية، وتبقى المزايا متاحة حتى ذلك التاريخ. لا يوجد استرداد للمبالغ المدفوعة. متابعة؟'); });
  on('resb',function(){ change('resume'); });
- on('refc',function(){ var l=(D.ref||{}).link||''; try{ navigator.clipboard.writeText(l).then(function(){ toast('نُسخ رابط الدعوة ✓'); }); }catch(e){ prompt('انسخ الرابط:',l); } });
+ on('refc',function(){ var l=(D.ref||{}).link||''; try{ navigator.clipboard.writeText(l).then(function(){ toast('نُسخ رابط الدعوة ✓'); }); }catch(e){ MQ.prompt({title:'انسخ الرابط',value:l,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); } });
  [].forEach.call(app.querySelectorAll('[data-add]'),function(b){ b.onclick=function(){ var k=b.getAttribute('data-add'); sheet('إضافة: '+D.cfg.addons[k].name,'تُفعَّل فوراً وتُحتسب عن الأيام المتبقية من فترتك',{kind:'addon',addon:k,qty:1}); }; });
  [].forEach.call(app.querySelectorAll('[data-less]'),function(b){ b.onclick=function(){ change('addon_less',{addon:b.getAttribute('data-less')},'تبقى الإضافة متاحة حتى نهاية الفترة المدفوعة، ولن تُجدَّد. متابعة؟'); }; });
 }
@@ -328,6 +328,6 @@ var rf=''; try{ rf=localStorage.getItem('mnq_ref')||''; }catch(e){}
 (rf?api('/api/subs/ref',{method:'POST',body:JSON.stringify({code:rf})}).then(function(r){ try{localStorage.removeItem('mnq_ref');}catch(e){} if(r.ok)toast('تم ربط رمز الدعوة ✓ — تحصل على مكافأة الدعوة عند أول اشتراك'); }).catch(function(){}):Promise.resolve()).then(load).catch(function(e){ if(e&&e.message!=='auth')app.innerHTML='<div class="card">تعذّر التحميل، يُرجى تحديث الصفحة</div>'; });
 })();
 </script>
-<script src="/pnav.js?v=2" defer></script>
+<script src="/pnav.js?v=3" defer></script>
 </body>
 </html>

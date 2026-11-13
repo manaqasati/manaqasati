@@ -216,7 +216,7 @@
       if (a === 'pub') { close(true); location.href = u; return; }
       var txt = 'شوف أعمالنا وتقييمات عملائنا على منصة مناقصة 👇';
       if (navigator.share) { navigator.share({ title: 'صفحتي على مناقصة', text: txt + '\n' + u }).catch(function(){}); return; }
-      try { navigator.clipboard.writeText(txt + '\n' + u).then(function(){ var b = box.querySelector('.mm-share'); if (b) { b.textContent = '✓ نسخت الرابط'; setTimeout(function(){ b.textContent = 'شارك الصفحة'; }, 2000); } }); } catch(e){ prompt('انسخ الرابط:', u); }
+      try { navigator.clipboard.writeText(txt + '\n' + u).then(function(){ var b = box.querySelector('.mm-share'); if (b) { b.textContent = '✓ نسخت الرابط'; setTimeout(function(){ b.textContent = 'شارك الصفحة'; }, 2000); } }); } catch(e){ MQ.prompt({title:'انسخ الرابط',value:u,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); }
     }
   }
 

@@ -1224,11 +1224,11 @@ function acceptBid(bidId,reqId){
   var _b=(window._curBids||[]).find(function(x){return String(x.id)===String(bidId);})||{};
   var _oth=(window._curBids||[]).filter(function(x){return String(x.id)!==String(bidId)&&x.status!=='rejected'&&!x.is_hidden;}).length;
   if(window.mnqAwardConfirm){ mnqAwardConfirm({name:_b.provider_business_name||_b.provider_name,price:_b.price,unit:_b.price_unit,days:_b.days,others:_oth,note:(_q&&_q!=='هل تؤكد قبول هذا العرض؟')?_q:''}).then(function(ok){ if(ok)_go(); }); }
-  else if(confirm(_q||'هل تؤكد قبول هذا العرض؟')) _go();
+  else MQ.ask(_q||'هل تؤكد قبول هذا العرض؟').then(function(y){ if(y)_go(); });
 }
 function rejectBid(bidId,reqId){
   var b=(window._curBids||[]).find(function(x){return String(x.id)===String(bidId);})||{};
-  if(typeof _rjOpen!=='function'){ if(!confirm('هل تؤكد رفض هذا العرض؟'))return; fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr())).then(function(){loadBids(reqId);}); return; }
+  if(typeof _rjOpen!=='function'){ MQ.ask('هل تؤكد رفض هذا العرض؟').then((__y)=>{ if(!__y)return; fetch(API+'/api/bids/'+bidId+'/reject',Object.assign({method:'PUT'},hdr())).then(function(){loadBids(reqId);}); return; });}
   _rjOpen({bidId:bidId,name:b.provider_business_name||b.provider_name,price:b.price,unit:b.price_unit||'total',improved:!!b.improved_at,onDone:function(){loadBids(reqId);}});
 }
 
@@ -1270,7 +1270,7 @@ function _detPageUrl(r){ return '/project/x-'+r.id+'?id='+r.id; }
 function _detShare(id){
   var r=window._curReq||{}; var url=location.origin+_detPageUrl(r); var t='مشروعي على مناقصة: '+(r.title||'');
   if(navigator.share){ navigator.share({title:t,text:t,url:url}).catch(function(){}); return; }
-  try{ navigator.clipboard.writeText(url); showToast('✓ نسخت رابط المشروع','success'); }catch(e){ prompt('انسخ الرابط',url); }
+  try{ navigator.clipboard.writeText(url); showToast('✓ نسخت رابط المشروع','success'); }catch(e){ MQ.prompt({title:'انسخ الرابط',value:url,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); }
 }
 function _detMenu(btn,id){
   var old=document.getElementById('dh-menu'); if(old){ old.remove(); return; }
@@ -1463,12 +1463,12 @@ function shareAchievement(id){
   else if(navigator.clipboard){navigator.clipboard.writeText(msg).then(function(){showToast('تم نسخ رسالة المشاركة','success');});}
 }
 function repostReq(id){
-  if(!confirm('إعادة نشر هذا المشروع ليستقبل عروضاً جديدة؟'))return;
+  MQ.ask('إعادة نشر هذا المشروع ليستقبل عروضاً جديدة؟').then((__y)=>{ if(!__y)return;
   fetch(API+'/api/requests/'+id+'/repost',Object.assign({method:'PUT'},hdr()))
     .then(function(r){return r.json();})
     .then(function(d){ if(d&&d.ok){showToast('تم إعادة نشر المشروع','success');loadActions(id);loadHome();if(window.track)track('StartPost');} else showToast((d&&d.message)||'تعذر إعادة النشر','error'); })
     .catch(function(){showToast('تعذّر الاتصال بالخادم — تحقّق من الإنترنت','error');});
-}
+});}
 function markNotDone(id){
   fetch(API+'/api/requests/'+id+'/not-done',Object.assign({method:'PUT'},hdr()))
     .then(function(r){return r.json();})
@@ -2336,14 +2336,14 @@ function saveClientProfile(btn){
 }
 function _newSess(d){ if(!d||!d.token)return; try{ localStorage.setItem('token',d.token); }catch(e){} try{ token=d.token; }catch(e){} try{ _token=d.token; }catch(e){} try{ if(window.ReactNativeWebView&&window.ReactNativeWebView.postMessage) window.ReactNativeWebView.postMessage(JSON.stringify({type:'AUTH_SAVE',token:d.token,user:localStorage.getItem('user')||''})); }catch(e){} }
 function logoutAllDevices(btn){
-  if(!confirm('نطلّع حسابك من كل الأجهزة الثانية (الجوالات والمتصفحات)؟ هذا الجهاز يبقى داخل.'))return;
+  MQ.ask('نطلّع حسابك من كل الأجهزة الثانية (الجوالات والمتصفحات)؟ هذا الجهاز يبقى داخل.').then((__y)=>{ if(!__y)return;
   if(btn){btn.disabled=true;}
   var tk=localStorage.getItem('token')||'';
   fetch(API+'/api/auth/logout-all',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk}}).then(function(r){return r.json().then(function(d){return {ok:r.ok,d:d};});}).then(function(res){
     if(btn)btn.disabled=false; if(!res.ok){ showToast((res.d&&res.d.message)||'تعذّر','error'); return; }
     _newSess(res.d); showToast(res.d.message||'تم ✓','success');
   }).catch(function(){ if(btn)btn.disabled=false; showToast('تعذّر الاتصال','error'); });
-}
+});}
 function changeClientPw(){
   var oldEl=document.getElementById('old-pw');
   var oldPw=oldEl?(oldEl.value||''):'';
@@ -2455,14 +2455,14 @@ function markAllRead(){
   }).catch(function(){});
 }
 function deleteAllNotifs(){
-  if(!confirm('حذف كل الإشعارات نهائياً؟'))return;
+  MQ.ask('حذف كل الإشعارات نهائياً؟').then((__y)=>{ if(!__y)return;
   fetch(API+'/api/notifications',Object.assign({method:'DELETE'},hdr())).then(function(r){
     if(!r.ok)throw new Error();
     var el=document.getElementById('notifs-list'); if(el)el.innerHTML=emptyH('لا توجد إشعارات','نعلمك هنا عند وصول عرض أو رسالة أو تحديث على مشروعك');
     ['notifBadge','mob-notif-badge'].forEach(function(id){var b=document.getElementById(id);if(b)b.style.display='none';});
     showToast('تم حذف كل الإشعارات','success');
   }).catch(function(){showToast('تعذّر الحذف، حاول مجدداً','error');});
-}
+});}
 
 // ═══════════════════════════════════
 // CHAT
@@ -2757,8 +2757,8 @@ function toggleBlockUser(uid,name){
   var btn=document.getElementById('chatBlockBtn');
   var isBlocked=btn&&btn.getAttribute('data-blocked')==='1';
   if(!isBlocked){
-    if(!confirm('حظر '+(name||'هذا المستخدم')+'؟\nلن تصلك رسائله ولن تصله رسائلك.'))return;
-  }
+    MQ.ask('حظر '+(name||'هذا المستخدم')+'؟\nلن تصلك رسائله ولن تصله رسائلك.').then((__y)=>{ if(!__y)return;
+  });}
   var method=isBlocked?'DELETE':'POST';
   fetch(API+'/api/blocks/'+uid,Object.assign({method:method},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
@@ -2944,12 +2944,12 @@ function _replyTo(id,preview,who){
 function _cancelReply(){ _replyCtx=null; var bar=document.getElementById('replyBar'); if(bar){bar.style.display='none';bar.innerHTML='';} }
 // حذف رسالة
 function _deleteMsg(id){
-  if(!confirm('حذف هذه الرسالة؟'))return;
+  MQ.ask('حذف هذه الرسالة؟').then((__y)=>{ if(!__y)return;
   fetch(API+'/api/messages/'+id,Object.assign({method:'DELETE'},hdr()))
     .then(function(r){if(!r.ok)throw new Error();return r.json();})
     .then(function(){ loadChatMsgs(); showToast('تم الحذف','success'); })
     .catch(function(){ showToast('تعذّر الحذف (يمكن حذف الرسائل خلال ساعة فقط)','error'); });
-}
+});}
 // إرفاق ملف/صورة (يُضغط الصور تلقائياً ثم يُرسل)
 var _pendingAttach=null;
 function _attachFile(inp){
@@ -3112,20 +3112,20 @@ function _phDecideHead(){
 window._phDecideHead=_phDecideHead;
 function _askApprove(id){
   var a=_phAsks.find(function(x){return x.id===id;}); if(!a)return;
-  if(!confirm('اعتماد عرض «'+(a.provider_name||'المزوّد')+'» بـ '+(parseFloat(a.price)||0).toLocaleString('en-US')+' ر.س؟ يتحول المشروع لـ«قيد التنفيذ».'))return;
+  MQ.ask('اعتماد عرض «'+(a.provider_name||'المزوّد')+'» بـ '+(parseFloat(a.price)||0).toLocaleString('en-US')+' ر.س؟ يتحول المشروع لـ«قيد التنفيذ».').then((__y)=>{ if(!__y)return;
   fetch(API+'/api/bids/'+a.bid_id+'/accept',Object.assign({method:'PUT'},hdr())).then(function(r){return r.json().catch(function(){return {};});}).then(function(d){
     if(d&&d.ok){ showToast('تم اعتماد العرض ✓','success'); _phAsks=_phAsks.filter(function(x){return x.id!==id;}); _phTopPaint(); try{loadHome();}catch(e){} }
     else showToast((d&&d.message)||'تعذّر الاعتماد','error');
   }).catch(function(){ showToast('تعذّر الاتصال','error'); });
-}
+});}
 function _askRespondAll(rid,act){
   var L=_phAsks.filter(function(x){return String(x.request_id)===String(rid);}); if(!L.length)return;
-  if(act==='declined'&&!confirm(L.length>1?'ما اتفقت مع أي واحد منهم على هذا المشروع؟':'ما اتفقت معه على هذا المشروع؟'))return;
+  var __go=()=>{
   Promise.all(L.map(function(a){return jFetch('/api/accept-asks/'+a.id+'/respond',{method:'POST',body:JSON.stringify({action:act})}).catch(function(){});})).then(function(){
     _phAsks=_phAsks.filter(function(x){return String(x.request_id)!==String(rid);}); _phTopPaint();
     if(act==='other'){ showToast('اختر العرض اللي اتفقت عليه واعتمده','info'); try{openDetail(rid);}catch(e){} } else showToast('تمام، بلّغنا المزوّدين','success');
   });
-}
+}; if((act==='declined')){ MQ.ask(L.length>1?'ما اتفقت مع أي واحد منهم على هذا المشروع؟':'ما اتفقت معه على هذا المشروع؟').then((__y)=>{ if(__y)__go(); }); return; } return __go();}
 function _askRespond(id,act){
   var a=_phAsks.find(function(x){return x.id===id;}); if(!a)return;
   jFetch('/api/accept-asks/'+id+'/respond',{method:'POST',body:JSON.stringify({action:act})}).then(function(d){
@@ -3353,10 +3353,10 @@ function _pzOpen(id,ext,pre){
   };
 }
 function _pzResume(id,btn){
-  if(!confirm('نرجّع مشروعك يستقبل عروض؟ يطلع للمزوّدين من جديد، ويوصل اللي قدّموا إشعار.'))return;
+  MQ.ask('نرجّع مشروعك يستقبل عروض؟ يطلع للمزوّدين من جديد، ويوصل اللي قدّموا إشعار.').then((__y)=>{ if(!__y)return;
   if(btn)btn.disabled=true;
   fetch(API+'/api/requests/'+id+'/resume',Object.assign({method:'POST'},hdr())).then(function(r){return r.json();}).then(function(d){ showToast(d&&d.ok?'🔄 رجع مشروعك يستقبل عروض':'تعذّر', d&&d.ok?'success':'error'); openDetail(id); }).catch(function(){ if(btn)btn.disabled=false; showToast('تعذّر الاتصال','error'); });
-}
+});}
 
 function _planUp(){ var p=document.getElementById('n-plans'); if(!p) return; var bx=p.closest('.up-box'); if(bx){ try{bx.scrollIntoView({behavior:'smooth',block:'center'});}catch(e){} bx.classList.remove('flash'); void bx.offsetWidth; bx.classList.add('flash'); } showToast('ارفع المخطط هنا ثم انشر','success'); setTimeout(function(){ try{p.click();}catch(e){} },300); }
 // التعهّد بدل مربع «أوافق» القديم في نافذة «قبل النشر»
@@ -3385,7 +3385,7 @@ function _invCard(req){
 }
 function _invShare(){ var d=window._invD; if(!d)return; window.open('https://wa.me/?text='+encodeURIComponent(d.wa_text),'_blank'); }
 function _invCopy(){ var d=window._invD; if(!d)return; var t=d.link;
-  try{ navigator.clipboard.writeText(t).then(function(){ showToast('نسخنا رابط مشروعك ✓','success'); },function(){ prompt('انسخ الرابط:',t); }); }catch(e){ prompt('انسخ الرابط:',t); } }
+  try{ navigator.clipboard.writeText(t).then(function(){ showToast('نسخنا رابط مشروعك ✓','success'); },function(){ MQ.prompt({title:'انسخ الرابط',value:t,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); }); }catch(e){ MQ.prompt({title:'انسخ الرابط',value:t,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); } }
 
 // ═══ تجديد الجلسة تلقائياً (التوكن ينتهي بعد 30 يوم — نجدّده لو عمره أكثر من يومين) ═══
 (function(){ try{

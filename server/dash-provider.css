@@ -76,7 +76,7 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 .ch-l{display:flex;align-items:center;gap:8px}
 .ch-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .ch h3{font-family:'Cairo',sans-serif;font-size:15.5px;font-weight:800;color:var(--p);letter-spacing:-.3px}
-.ch-link{font-size:12.5px;color:var(--p);font-weight:700;background:var(--p-light);border:none;cursor:pointer;font-family:'Tajawal',sans-serif;padding:6px 12px;border-radius:8px;transition:all .2s var(--ease,ease);display:inline-flex;align-items:center;gap:4px}
+.ch-link{font-size:12.5px;color:var(--p);font-weight:700;background:var(--p-light);border:none;cursor:pointer;font-family:'Tajawal',sans-serif;padding:6px 12px;min-height:34px;border-radius:8px;transition:all .2s var(--ease,ease);display:inline-flex;align-items:center;gap:4px}
 .ch-link:hover{background:var(--p-mid)}
 .tag{padding:5px 12px;border-radius:20px;font-size:10px;font-weight:800;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .tag::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
@@ -967,7 +967,8 @@ body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-r
 /* الجوالات العادية (375–430): نضغط المسافات شوي عشان كل أزرار الشريط تدخل بدون ما يطلع شي برّا الشاشة */
 @media(max-width:430px){ .mob-right{gap:4px} .mob-head .mob-logo{font-size:15.5px} .mob-right .my-page-btn{padding:6px 8px;gap:4px;font-size:11px} .mob-right .mob-notif{padding:5px} }
 /* أندرويد (360–380): الوضع الليلي والجولة موجودين في «المزيد» — نشيلهم من الشريط عشان ما يطلع الشريط برّا الشاشة وتنزاح الصفحة كلها */
-@media(max-width:380px){ #tourQ,.mob-right .mob-notif[onclick*="toggleTheme"]{display:none} }
+@media(max-width:430px){ .mob-right .mob-notif[onclick*="toggleTheme"]{display:none} }
+@media(max-width:380px){ #tourQ{display:none} }
 /* حماية أخيرة: محتوى الشريط ما يوسّع الصفحة أبداً */
 .mob-head{overflow-x:clip}
 @media(max-width:340px){ .mob-right .mob-av{display:none} }

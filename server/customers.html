@@ -61,7 +61,7 @@ button,input,textarea,select{font-family:inherit}
 .hr{display:flex;gap:11px;align-items:center;padding:11px 0;border-top:1px solid #f1f5f9}.hr .c{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}.hr b{font-size:14px;color:#172554}.hi{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
 @media(max-width:820px){.kp{flex-wrap:wrap}.kp .k{flex:1 1 40%}.kp .v{font-size:20px}}
 </style>
-<script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script><script src="/branch.js?v=1"></script><script src="/camp.js?v=2"></script></head>
+<script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script><script src="/branch.js?v=1"></script><script src="/camp.js?v=3"></script></head>
 <body>
 <div class="top"><b>مناقصة <i>•</i></b><a href="/dashboard-provider.html">‹ لوحة التحكم</a></div>
 <div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
@@ -89,10 +89,10 @@ function list(){
   api('/api/customers'+qs).then(function(r){ S.items=r.items||[]; S.live=!!r.live; S.total=r.total||0; draw(); }).catch(function(e){ if(e) A.innerHTML='<div class="card empty"><b>'+esc(e.message)+'</b></div>'; });
 }
 function draw(){
-  var h='<div class="row sb"><div class="h1">دفتر العملاء <span class="mu">('+S.total+')</span></div>'+(S.live?'<div class="row"><button class="btn sec" onclick="_cmp()">✉️ حملة لعملائك</button><button class="btn pri" onclick="_cAdd()">+ عميل</button></div>':'')+'</div><div id="brbar" style="display:none"></div>'+ro();
+  var h='<div class="row sb"><div class="h1">دفتر العملاء <span class="mu">('+S.total+')</span></div>'+(S.live?'<div class="row"><button class="btn sec" onclick="_cmp()">✉️ حملة لعملائك</button><button class="btn sec" onclick="_cImp()">📊 استيراد</button><button class="btn pri" onclick="_cAdd()">+ عميل</button></div>':'')+'</div><div id="brbar" style="display:none"></div>'+ro();
   h+='<input id="cq" type="search" maxlength="40" placeholder="🔍 بحث بالاسم أو الجوال" value="'+esc(S.q)+'" style="width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:11px 13px;font-size:15px;font-family:inherit;background:#fff">';
   h+='<div class="tabs">'+[['','الكل'],['repeat','متكررين'],['open','عندهم مشروع مفتوح'],['idle','ما تعاملوا من 6 شهور']].map(function(t){ return '<button class="'+(S.f===t[0]?'on':'')+'" onclick="_cF(\''+t[0]+'\')">'+t[1]+'</button>'; }).join('')+'</div>';
-  if(!S.items.length) h+='<div class="card empty"><div style="font-size:38px">👥</div><b style="display:block;margin-top:6px">'+(S.total?'ما فيه نتائج':'دفترك فاضي')+'</b><div class="mu" style="margin-top:6px">كل عميل ترسل له عرض سعر أو تسوي له مشروع ينضاف تلقائياً.</div></div>';
+  if(!S.items.length) h+='<div class="card empty"><div style="font-size:38px">👥</div><b style="display:block;margin-top:6px">'+(S.total?'ما فيه نتائج':'دفترك فاضي')+'</b><div class="mu" style="margin-top:6px">كل عميل ترسل له عرض سعر أو تسوي له مشروع ينضاف تلقائياً.</div>'+(!S.total&&S.live?'<div class="row" style="justify-content:center;margin-top:14px"><button class="btn pri" onclick="_cAdd()">+ أضف أول عميل</button><button class="btn sec" onclick="_cImp()">📊 استورد من Excel</button></div>':'')+'</div>';
   else h+='<div class="ql">'+S.items.map(function(c,i){ var tag=c.open_n?'<span class="pill p-y">مشروع مفتوح</span>':(c.q_wait?'<span class="pill p-b">عرض بانتظاره</span>':(c.jobs_n>=2?'<span class="pill p-g">متكرر</span>':''));
     var sub=(c.jobs_n?c.jobs_n+' مشروع':'')+(c.total?' · '+m(c.total)+' ر.س':'')+(c.last_at?' · آخر تعامل '+d(c.last_at):'');
     return '<button class="qi" onclick="_cOpen('+c.id+')">'+av(c.name,i)+'<div class="c"><b>'+esc(c.name||'عميل')+MNQ_BR.tag(c.branch_id)+'</b><span class="mu">'+(sub.replace(/^ · /,'')||(c.manual?'أُضيف يدوي':''))+'</span></div>'+tag+'</button>'; }).join('')+'</div>';
@@ -100,6 +100,30 @@ function draw(){
   var q=document.getElementById('cq'), t; q.oninput=function(){ clearTimeout(t); t=setTimeout(function(){ S.q=q.value.trim(); list(); setTimeout(function(){ var n=document.getElementById('cq'); if(n){ n.focus(); n.setSelectionRange(n.value.length,n.value.length); } },60); },350); };
 }
 window._cF=function(f){ S.f=f; list(); };
+// ───── استيراد العملاء (Excel / CSV / لصق) ─────
+function _cParse(rows){ var seen={}, ok=[], bad=0, dup=0; var PH=/(?:\+?966|00966|0)?\s*5[\d\s-]{8,11}/;
+  rows.forEach(function(row){ var cells=(Array.isArray(row)?row:String(row).split(/[,;\t]/)).map(function(c){ return String(c==null?'':c).replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);}).trim(); }).filter(Boolean); if(!cells.length)return;
+    var ph='', em='', nm='', ad='';
+    cells.forEach(function(c){ var d=c.replace(/[^\d]/g,''); if(!ph&&PH.test(c)&&d.length>=9&&d.length<=14&&/5\d{8}$/.test(d)){ ph=d.slice(-9); return; }
+      if(!em&&/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(c)){ em=c.toLowerCase(); return; }
+      if(/^[\d\s+()-]+$/.test(c)) return;
+      if(!nm&&c.length<=60) nm=c; else if(!ad) ad=c; });
+    if(!ph){ if(cells.some(function(c){ return /\d{6,}/.test(c.replace(/\D/g,'')); })) bad++; return; }
+    if(seen[ph]){ dup++; return; } seen[ph]=1; ok.push({name:nm, phone:'0'+ph, email:em, address:ad}); });
+  return {ok:ok,bad:bad,dup:dup}; }
+window._cImp=function(){ var P={res:null};
+  var o=sheet('<b style="font-size:17px;color:#172554">استيراد عملاء</b><div class="mu" style="line-height:1.8">ملف Excel أو CSV من جهازك (أو انسخ من جدول والصقه). نقرأ الاسم والجوال والإيميل والعنوان تلقائياً، والرقم المكرر ينضاف مرة وحدة.</div>'
+    +'<label class="btn sec" style="padding:16px;border:2px dashed #93b4fd;background:#f8faff;color:#1e3a8a;cursor:pointer;flex-direction:column;gap:2px">📊 اختر ملف Excel أو CSV<small style="font-weight:600;color:#64748b">xlsx · xls · csv</small><input type="file" id="ci-f" accept=".xlsx,.xls,.csv,text/csv" style="display:none"></label>'
+    +'<div id="ci-fn" class="mu"></div><textarea id="ci-x" style="min-height:96px;border:1.5px solid #d3deef;border-radius:12px;padding:10px 12px;font-family:inherit;font-size:14px" placeholder="أو الصق هنا: محمد، 0551234567، عنوانه…"></textarea><div id="ci-r"></div><button class="btn pri" id="ci-go" style="padding:13px" disabled>استيراد</button>');
+  var R=o.querySelector('#ci-r'), go=o.querySelector('#ci-go'), x=o.querySelector('#ci-x');
+  function upd(){ var r=P.res; R.innerHTML=r?'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center"><div style="background:#ecfdf3;border-radius:12px;padding:8px"><b style="display:block;font-size:20px;color:#067647">'+r.ok.length+'</b><span class="mu">عميل جاهز</span></div><div style="background:#f8fafc;border-radius:12px;padding:8px"><b style="display:block;font-size:20px">'+r.dup+'</b><span class="mu">مكرر</span></div><div style="background:#fef3f2;border-radius:12px;padding:8px"><b style="display:block;font-size:20px;color:#b42318">'+r.bad+'</b><span class="mu">رقم غير صحيح</span></div></div>'
+      +(r.ok.length?'<div style="margin-top:8px;font-size:12.5px;font-weight:700">'+r.ok.slice(0,4).map(function(z){ return '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-top:1px solid #f1f5f9"><span>'+esc(z.name||'—')+'</span><span dir="ltr" style="color:#1e3a8a">'+esc(z.phone)+'</span></div>'; }).join('')+(r.ok.length>4?'<div class="mu">و'+(r.ok.length-4)+' غيرهم…</div>':'')+'</div>':''):'';
+    go.disabled=!(r&&r.ok.length); go.textContent=r&&r.ok.length?'استيراد '+r.ok.length+' عميل':'استيراد'; }
+  var t; x.oninput=function(){ clearTimeout(t); t=setTimeout(function(){ P.res=x.value.trim()?_cParse(x.value.split(/\r?\n/)):null; upd(); },200); };
+  o.querySelector('#ci-f').onchange=function(){ var f=this.files&&this.files[0]; this.value=''; if(!f)return; var fn=o.querySelector('#ci-fn'); fn.textContent='جاري قراءة «'+f.name+'»…';
+    (window.MNQ_CAMP&&MNQ_CAMP.readRows?MNQ_CAMP.readRows(f):Promise.reject(new Error('تعذّر'))).then(function(rows){ fn.textContent='📄 '+f.name; P.res=_cParse(rows); upd(); if(!P.res.ok.length) toast('ما لقينا أرقام جوالات في الملف'); }).catch(function(e){ fn.textContent=''; toast((e&&e.message)||'تعذّر قراءة الملف'); }); };
+  go.onclick=function(){ go.disabled=true; go.textContent='جاري الاستيراد…'; api('/api/customers/import',{method:'POST',body:JSON.stringify({items:P.res.ok})}).then(function(r){ o.remove(); toast(r.message||'تم'); S.f=''; S.q=''; list(); }).catch(function(e){ upd(); if(e)toast(e.message); }); };
+};
 // ───── الحملات بالإيميل ─────
 window._cmp=function(){ setUrl('camp=1'); if(!window.MNQ_CAMP){ toast('جاري التحميل…'); return; } MNQ_CAMP.open(A,{api:api,toast:toast,back:function(){ _cBack(); }}); };
 window._cMv=function(el){ var to=parseInt(el.value); if(!to)return; api('/api/branches/move',{method:'POST',body:JSON.stringify({kind:'customer',id:S.c.customer.id,to:to})}).then(function(r){ toast(r.message||'انتقل'); _cOpen(S.c.customer.id); }).catch(function(e){ if(e)toast(e.message); el.value=''; }); };
@@ -112,7 +136,7 @@ var QST={sent:['بانتظار العميل','p-b'],change:['طلب تعديل',
 function prof(){
   var R=S.c, c=R.customer, st=R.stats;
   var h='<div class="row" style="gap:8px"><button class="btn sec" style="padding:7px 11px" onclick="_cBack()">‹ دفتر العملاء</button></div>'+ro();
-  h+='<div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">'+av(c.name,c.id,60)+'<div style="flex:1;min-width:180px"><div class="h1">'+esc(c.name)+'</div><div class="mu" style="margin-top:3px"><span dir="ltr">'+esc(c.phone)+'</span>'+(c.email?' · <a href="mailto:'+esc(c.email)+'" dir="ltr" style="color:#1e3a8a">'+esc(c.email)+'</a>':'')+(c.address?' · '+esc(c.address):'')+' · عميل من '+d(c.created_at)+(MNQ_BR.multi?' · 📍 '+esc(MNQ_BR.name(c.branch_id)):'')+'</div>'+(MNQ_BR.multi&&!MNQ_BR.forced&&S.live?'<div style="margin-top:6px"><select class="mnq-br-sel" style="padding:6px 8px;font-size:12px" onchange="_cMv(this)" aria-label="نقل لفرع"><option value="">نقل العميل لفرع…</option>'+MNQ_BR.list.filter(function(b){return b.id!==MNQ_BR.of(c.branch_id)&&!b.paused;}).map(function(b){return '<option value="'+b.id+'">'+esc(b.name)+'</option>';}).join('')+'</select></div>':'')+'<div class="row" style="gap:6px;margin-top:6px">'+(st.jobs_n>=2?'<span class="pill p-g">عميل متكرر</span>':'')+(c.client_id?'<span class="pill p-b">له حساب في مناقصة</span>':'')+'</div></div><div class="row"><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+wa(c.phone)+'">واتساب</a><a class="btn sec" href="tel:'+esc(c.phone)+'">اتصال</a>'+(S.live?'<a class="btn pri" href="/quotes.html?new=1&n='+encodeURIComponent(c.name)+'&p='+encodeURIComponent(c.phone)+'">+ عرض سعر</a>':'')+'</div></div>';
+  h+='<div class="card" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">'+av(c.name,c.id,60)+'<div style="flex:1;min-width:180px"><div class="h1">'+esc(c.name)+(c.late_n?' <span class="pill p-y" style="vertical-align:middle">⚠️ إلغاء متأخر ×'+c.late_n+'</span>':'')+(c.noshow_n?' <span class="pill p-y" style="vertical-align:middle">🚪 ما كان موجود ×'+c.noshow_n+'</span>':'')+'</div><div class="mu" style="margin-top:3px"><span dir="ltr">'+esc(c.phone)+'</span>'+(c.email?' · <a href="mailto:'+esc(c.email)+'" dir="ltr" style="color:#1e3a8a">'+esc(c.email)+'</a>':'')+(c.address?' · '+esc(c.address):'')+' · عميل من '+d(c.created_at)+(MNQ_BR.multi?' · 📍 '+esc(MNQ_BR.name(c.branch_id)):'')+'</div>'+(MNQ_BR.multi&&!MNQ_BR.forced&&S.live?'<div style="margin-top:6px"><select class="mnq-br-sel" style="padding:6px 8px;font-size:12px" onchange="_cMv(this)" aria-label="نقل لفرع"><option value="">نقل العميل لفرع…</option>'+MNQ_BR.list.filter(function(b){return b.id!==MNQ_BR.of(c.branch_id)&&!b.paused;}).map(function(b){return '<option value="'+b.id+'">'+esc(b.name)+'</option>';}).join('')+'</select></div>':'')+'<div class="row" style="gap:6px;margin-top:6px">'+(st.jobs_n>=2?'<span class="pill p-g">عميل متكرر</span>':'')+(c.client_id?'<span class="pill p-b">له حساب في مناقصة</span>':'')+'</div></div><div class="row"><a class="btn wa" target="_blank" rel="noopener" href="https://wa.me/'+wa(c.phone)+'">واتساب</a><a class="btn sec" href="tel:'+esc(c.phone)+'">اتصال</a>'+(S.live?'<a class="btn pri" href="/quotes.html?new=1&n='+encodeURIComponent(c.name)+'&p='+encodeURIComponent(c.phone)+'">+ عرض سعر</a>':'')+'</div></div>';
   h+='<div class="kp">'+[['إجمالي التعامل',m(st.total),'ر.س (مشاريع مكتملة)'],['المشاريع',st.jobs_n,st.done_n+' مكتملة'+(st.open_n?' · '+st.open_n+' مفتوحة':'')],['عروض الأسعار',st.quotes_n,st.quotes_ok+' موافقة'],['تقييمه لك',st.rating?st.rating+' ★':'—',st.rating_n?'من '+st.rating_n+' تقييم':'ما قيّم للحين']].map(function(k){ return '<div class="card k"><span class="mu">'+k[0]+'</span><div class="v">'+k[1]+'</div><span class="mu">'+k[2]+'</span></div>'; }).join('')+'</div>';
   h+='<div class="ed"><div class="main">';
   // السجل
@@ -142,7 +166,7 @@ window._dEd=function(id,kind){ var x=id?S.c.devices.find(function(z){return z.id
   var g=function(i){ var e=document.getElementById(i); return e?e.value:undefined; };
   document.getElementById('d-go').onclick=function(){ var b=this; b.disabled=true; var cid=S.c.customer.id;
     api('/api/customers/'+cid+'/devices'+(id?'/'+id:''),{method:id?'PUT':'POST',body:JSON.stringify({kind:kind,name:g('d-n'),brand:g('d-b'),qty:g('d-q'),place:g('d-p'),last_service:g('d-l'),maps:g('d-m'),notes:g('d-x')})}).then(function(){ o.remove(); toast('انحفظ'); _cOpen(cid); }).catch(function(e){ b.disabled=false; if(e)toast(e.message); }); };
-  if(id) document.getElementById('d-del').onclick=function(){ if(!confirm('تحذف؟'))return; var cid=S.c.customer.id; api('/api/customers/'+cid+'/devices/'+id,{method:'DELETE'}).then(function(){ o.remove(); _cOpen(cid); }).catch(function(e){ if(e)toast(e.message); }); };
+  if(id) document.getElementById('d-del').onclick=function(){ MQ.ask('تحذف؟').then((__y)=>{ if(!__y)return; var cid=S.c.customer.id; api('/api/customers/'+cid+'/devices/'+id,{method:'DELETE'}).then(function(){ o.remove(); _cOpen(cid); }).catch(function(e){ if(e)toast(e.message); }); });};
 };
 // ───── خطط الصيانة ─────
 function addM(d0,m){ var x=new Date(d0); var day=x.getDate(); x.setMonth(x.getMonth()+m); if(x.getDate()<day)x.setDate(0); return x; }
@@ -179,7 +203,7 @@ window._pOpen=function(pid){ setUrl('plan='+pid); api('/api/plans/'+pid).then(fu
     if(p.renewed_to) h+='<button class="btn sec" onclick="_pOpen('+p.renewed_to+')">الخطة المجدّدة ›</button>';
     if(p.status==='offered'||p.status==='active') h+='<button class="btn" style="background:transparent;color:#b42318" onclick="_pAct(\'cancel\')">إلغاء الخطة</button>'; }
   h+='</div></div>'; A.innerHTML=h; }).catch(function(e){ if(e){ toast(e.message); list(); } }); };
-window._pAct=function(a){ if(a==='cancel'&&!confirm('تلغي الخطة؟ الزيارات القادمة تنلغى.'))return; api('/api/plans/'+S.p.id,{method:'POST',body:JSON.stringify({act:a})}).then(function(){ toast('تم'); _pOpen(S.p.id); }).catch(function(e){ if(e)toast(e.message); }); };
+window._pAct=function(a){ var __go=()=>{ api('/api/plans/'+S.p.id,{method:'POST',body:JSON.stringify({act:a})}).then(function(){ toast('تم'); _pOpen(S.p.id); }).catch(function(e){ if(e)toast(e.message); }); }; if((a==='cancel')){ MQ.ask('تلغي الخطة؟ الزيارات القادمة تنلغى.').then((__y)=>{ if(__y)__go(); }); return; } return __go();};
 window._pMove=function(vid){ var v=document.getElementById('mv'+vid).value; if(!v){ toast('اختر التاريخ'); return; } api('/api/plans/'+S.p.id,{method:'POST',body:JSON.stringify({act:'move',visit_id:vid,due_at:v})}).then(function(){ toast('تغيّر الموعد'); _pOpen(S.p.id); }).catch(function(e){ if(e)toast(e.message); }); };
 window._pRenew=function(direct){ var pr=String(document.getElementById('rn-p').value||'').replace(/[٠-٩]/g,function(c){return '٠١٢٣٤٥٦٧٨٩'.indexOf(c);}).replace(/[^\d.]/g,''); api('/api/plans/'+S.p.id,{method:'POST',body:JSON.stringify({act:'renew',direct:direct,price:pr})}).then(function(r){ toast('تم التجديد'); _pOpen(r.id); }).catch(function(e){ if(e)toast(e.message); }); };
 var id=parseInt(P.get('id')), ph=P.get('ph'), pl=parseInt(P.get('plan'));
@@ -192,6 +216,6 @@ else list();
 });
 })();
 </script>
-<script src="/pnav.js?v=2" defer></script>
+<script src="/pnav.js?v=3" defer></script>
 </body>
 </html>

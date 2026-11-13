@@ -115,7 +115,7 @@ function onLeave(tid,y){ return (S.D.leaves||[]).some(function(l){ return l.tech
 function tname(id){ var t=(S.D.techs||[]).filter(function(x){return x.id===id;})[0]; return t?t.name:''; }
 function load(){ var days=S.view==='week'?7:1; history.replaceState(null,'','?d='+S.from+(S.view==='week'?'&v=week':''));
   return api('/api/cal?from='+S.from+'&days='+days).then(function(d){ S.D=d; draw(); }).catch(function(e){ if(e&&e.j&&e.j.code==='sub'){ A.innerHTML='<div class="card" style="max-width:600px;display:flex;flex-direction:column;gap:10px"><div style="font-size:38px">📅</div><div class="h1">تقويم الجدولة من مزايا الاشتراك</div><div class="mu" style="line-height:1.9">اسحب المشروع للفني والوقت، وتشوف يوم فريقك كامل، والنظام ينبّهك على التداخل والإجازات والمسافة.</div><a class="btn pri" href="/plan.html" style="align-self:flex-start">اعرض الباقات</a></div>'; return; } if(e) A.innerHTML='<div class="card empty">'+esc(e.message)+'</div>'; }); }
-function range(){ var lo=8*60, hi=18*60; (S.D.techs||[]).forEach(function(t){ lo=Math.min(lo,hmn(t.sched.from)); hi=Math.max(hi,hmn(t.sched.to)); });
+function range(){ var lo=8*60, hi=18*60; (S.D.techs||[]).forEach(function(t){ lo=Math.min(lo,hmn(t.sched.from)); hi=Math.max(hi,hmn(t.sched.to2||t.sched.to)); });
   (S.D.jobs||[]).concat(S.D.bookings||[]).forEach(function(j){ var m=minOf(j.at); lo=Math.min(lo,m); hi=Math.max(hi,m+(j.dur||60)); });
   return [Math.max(0,Math.floor(lo/60)), Math.min(24,Math.ceil(hi/60))]; }
 function evH(j,h0,lab){ var m=minOf(j.at), top=(m-h0*60)/60*RH, ht=Math.max(26,(j.dur||60)/60*RH-4);
@@ -203,6 +203,6 @@ window._cOpen=function(id,want){ var j=jobOf(id); if(!j) return; want=want||{}; 
 MNQ_BR.load().then(load);
 })();
 </script>
-<script src="/pnav.js?v=2" defer></script>
+<script src="/pnav.js?v=3" defer></script>
 </body>
 </html>
