@@ -80,7 +80,8 @@ function d(x){ if(!x)return ''; x=new Date(x); return x.getDate()+'/'+(x.getMont
 function wa(ph){ ph=String(ph||'').replace(/\D/g,''); if(ph.indexOf('05')===0)ph='966'+ph.slice(1); else if(ph.length===9&&ph[0]==='5')ph='966'+ph; return ph; }
 function setUrl(q){ try{ history.replaceState(null,'',q?'?'+q:location.pathname); }catch(e){} }
 var COL=['#1e3a8a','#0e9384','#6941c6','#c4320a','#475467'];
-function av(n,i,sz){ sz=sz||38; return '<span style="width:'+sz+'px;height:'+sz+'px;border-radius:'+Math.round(sz/3.2)+'px;background:'+COL[i%5]+';color:#fff;font-weight:900;font-size:'+Math.round(sz/2.4)+'px;display:flex;align-items:center;justify-content:center;flex:none">'+esc((n||'ع')[0])+'</span>'; }
+function av(n,i,sz){ sz=sz||38; return '<span style="width:'+sz+'px;height:'+sz+'px;border-radius:'+Math.round(sz/3.2)+'px;background:'+COL[i%5]+';color:#fff;font-weight:900;font-size:'+Math.round(sz/2.4)+'px;display:flex;align-items:center;justify-content:center;flex:none">'+esc(_ini(n))+'</span>'; }
+function _ini(n){ var c=String(n||'ع').trim().charAt(0)||'ع'; return c==='ه'?'هـ':c; }
 function ro(){ return S.live?'':'<div class="card" style="background:#fffaeb;border-color:#fde68a;padding:12px 16px"><b style="color:#b54708">دفترك محفوظ — للعرض فقط</b><div class="mu" style="margin-top:3px">الإضافة والتعديل مع الاشتراك. <a href="/plan.html" style="color:#1e3a8a">الاشتراك والباقة</a></div></div>'; }
 // ───── القائمة ─────
 function list(){
@@ -91,7 +92,7 @@ function list(){
 function draw(){
   var h='<div class="row sb"><div class="h1">دفتر العملاء <span class="mu">('+S.total+')</span></div>'+(S.live?'<div class="row"><button class="btn sec" onclick="_cmp()">✉️ حملة لعملائك</button><button class="btn sec" onclick="_cImp()">📊 استيراد</button><button class="btn pri" onclick="_cAdd()">+ عميل</button></div>':'')+'</div><div id="brbar" style="display:none"></div>'+ro();
   h+='<input id="cq" type="search" maxlength="40" placeholder="🔍 بحث بالاسم أو الجوال" value="'+esc(S.q)+'" style="width:100%;border:1.5px solid #e2e8f0;border-radius:12px;padding:11px 13px;font-size:15px;font-family:inherit;background:#fff">';
-  h+='<div class="tabs">'+[['','الكل'],['repeat','متكررين'],['open','عندهم مشروع مفتوح'],['idle','ما تعاملوا من 6 شهور']].map(function(t){ return '<button class="'+(S.f===t[0]?'on':'')+'" onclick="_cF(\''+t[0]+'\')">'+t[1]+'</button>'; }).join('')+'</div>';
+  h+='<div class="tabs" style="-webkit-mask-image:linear-gradient(to left,transparent 0,#000 28px);mask-image:linear-gradient(to left,transparent 0,#000 28px)">'+[['','الكل'],['repeat','متكررين'],['open','عندهم مشروع مفتوح'],['idle','ما تعاملوا من 6 شهور']].map(function(t){ return '<button class="'+(S.f===t[0]?'on':'')+'" onclick="_cF(\''+t[0]+'\')">'+t[1]+'</button>'; }).join('')+'</div>';
   if(!S.items.length) h+='<div class="card empty"><div style="font-size:38px">👥</div><b style="display:block;margin-top:6px">'+(S.total?'ما فيه نتائج':'دفترك فاضي')+'</b><div class="mu" style="margin-top:6px">كل عميل ترسل له عرض سعر أو تسوي له مشروع ينضاف تلقائياً.</div>'+(!S.total&&S.live?'<div class="row" style="justify-content:center;margin-top:14px"><button class="btn pri" onclick="_cAdd()">+ أضف أول عميل</button><button class="btn sec" onclick="_cImp()">📊 استورد من Excel</button></div>':'')+'</div>';
   else h+='<div class="ql">'+S.items.map(function(c,i){ var tag=c.open_n?'<span class="pill p-y">مشروع مفتوح</span>':(c.q_wait?'<span class="pill p-b">عرض بانتظاره</span>':(c.jobs_n>=2?'<span class="pill p-g">متكرر</span>':''));
     var sub=(c.jobs_n?c.jobs_n+' مشروع':'')+(c.total?' · '+m(c.total)+' ر.س':'')+(c.last_at?' · آخر تعامل '+d(c.last_at):'');
@@ -211,11 +212,12 @@ MNQ_BR.load().then(function(){
 if(pl) _pOpen(pl);
 else if(id) _cOpen(id);
 else if(P.get('camp')) _cmp();
+else if(P.get('new')){ list(); var _nw=setInterval(function(){ if(document.querySelector('[onclick="_cAdd()"]')){ clearInterval(_nw); _cAdd(); } },200); setTimeout(function(){ clearInterval(_nw); },6000); }
 else if(ph) api('/api/customers/by-phone/'+encodeURIComponent(ph)).then(function(r){ _cOpen(r.id); }).catch(function(e){ if(e)toast(e.message); list(); });
 else list();
 });
 })();
 </script>
-<script src="/pnav.js?v=3" defer></script>
+<script src="/pnav.js?v=5" defer></script>
 </body>
 </html>

@@ -646,10 +646,11 @@ function _renderDash(o){
   if(fd){
     var FL={outside_region:'عرض خارج المنطقة',out_of_scope:'عروض خارج نطاق خدمته',spam_speed:'عروض سريعة متتالية',spam_spread:'عروض في مناطق كثيرة',contact_share:'رقم تواصل في العرض'};
     var rows=(o.feed||[]).map(function(x){
-      var dot={request:'#1d4ed8',bid:'#16a34a',award:'#f59e0b',flag:'#dc2626',close:'#64748b'}[x.k]||'#94a3b8', t='';
+      var dot={request:'#1d4ed8',bid:'#16a34a',award:'#f59e0b',flag:'#dc2626',close:'#64748b',done:'#15803d'}[x.k]||'#94a3b8', t='';
       if(x.k==='request') t='<b>'+esc(x.who)+'</b> نشر مشروع «'+esc(x.what)+'»';
       else if(x.k==='bid') t='<b>'+esc(x.who)+'</b> قدّم عرض '+fmtNum(x.amount)+' ر.س'+(x.unit&&x.unit!=='total'?(x.unit==='meter'?' للمتر':' للوحدة'):'')+' على «'+esc(x.what)+'»';
       else if(x.k==='award') t='<b>'+esc(x.who)+'</b> اختار «'+esc(x.what)+'»';
+      else if(x.k==='done') t=x.unit==='auto'?'<b>«'+esc(x.what)+'»</b> اكتمل تلقائياً <span style="color:#64748b;font-weight:800">· العميل ما ردّ</span>':'<b>'+esc(x.who)+'</b> أكّد إتمام «'+esc(x.what)+'»';
       else if(x.k==='close') t='<b>'+esc(x.who)+'</b> قفل مشروعه «'+esc(x.what)+'»'+(x.unit?' — <span style="color:'+(x.unit==='chose_outside'?'#dc2626':'#64748b')+';font-weight:800">'+esc((typeof _RO_REASONS!=='undefined'&&_RO_REASONS[x.unit])||x.unit)+'</span>':'')+(parseInt(x.amount)?' · كان عنده '+_fuN(parseInt(x.amount),'عرض واحد','عرضين','عروض','عرض'):' · بدون عروض');
       else t='رصد: '+esc(FL[x.what]||x.what||'مخالفة')+' — <b>'+esc(x.who)+'</b>';
       return '<div class="ad-row" onclick="gsOpenReq('+(x.rid||0)+')"><i class="ad-dot" style="background:'+dot+'"></i><span style="min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t+'</span><span class="t">'+_adAgo(x.at)+'</span></div>';
@@ -4715,7 +4716,7 @@ var _crF='all';
 function _crCat(p){ var r=p.close_reason||''; if(r==='completed')return 'done'; if(r==='deal_cancelled')return 'deal'; if(r==='postponed')return 'post'; if(r.indexOf('auto_')===0)return 'auto'; return 'client'; }
 // مجموعة السبب الفعلي (للفلاتر والألوان)
 function _crG(p){ var r=p.close_reason||''; if(r==='completed')return 'done'; if(r==='deal_cancelled')return 'deal'; if(r==='price_high'||(r==='no_suitable_offers'&&p.close_missing==='price'))return 'price'; if(r==='chose_outside')return 'outside'; if(r==='postponed')return 'post'; if(r.indexOf('auto_')===0)return 'auto'; return 'other'; }
-var _CRG={all:['الكل',''],price:['💰 السعر','#dc2626'],outside:['🤝 برا المنصة','#b91c1c'],post:['⏸ أجّل','#a16207'],other:['✍️ سبب آخر','#64748b'],auto:['⏱ تلقائي','#475569'],deal:['🚫 انلغى بعد الترسية','#7f1d1d'],done:['✓ تمت الترسية','#15803d']};
+var _CRG={all:['الكل',''],price:['💰 السعر','#dc2626'],outside:['🤝 برا المنصة','#b91c1c'],post:['⏸ أجّل','#a16207'],other:['✍️ سبب آخر','#64748b'],auto:['⏱ تلقائي','#475569'],deal:['🚫 انلغى بعد الترسية','#7f1d1d'],done:['✓ اكتمل','#15803d']};
 var _CW_N={nego:'فاوضهم',reprice:'يعيد فتحه بميزانيته',scope:'قسّم المشروع',budget_ask:'شكر + ميزانيته',far:'مزوّدين أقرب',few:'مزوّدين أكثر',weak:'وضّح مشروعك',outside:'مبروك + وش الناقص',later:'متى تبدأ',back_offers:'ارجع لعروضك',reopen:'نعيد فتحه',missing:'وش الناقص'};
 var _crQ='';
 function _crCss(){ if(document.getElementById('cr-css'))return; var st=document.createElement('style'); st.id='cr-css'; st.textContent=
@@ -4739,14 +4740,14 @@ function _crCss(){ if(document.getElementById('cr-css'))return; var st=document.
 function _crCard2(p){
   var g=_crG(p), col=_CRG[g][1]||'#64748b', ci=p.close_info||{};
   var lbl=(g==='other'&&p.close_reason==='no_suitable_offers')?('ما لقى عرض مناسب'+(p.close_missing&&_CR_MISS[p.close_missing]?' · '+_CR_MISS[p.close_missing].replace(/^\S+\s/,''):'')):(CR_LABELS[p.close_reason]||_CRG[g][0]).replace(/^العميل: /,'').replace(/^تلقائي: /,'تلقائي — ');
-  if(g==='deal')lbl='الاتفاق انلغى بعد الترسية'; if(g==='done')lbl='تمت الترسية';
+  if(g==='deal')lbl='الاتفاق انلغى بعد الترسية'; if(g==='done')lbl=ci.short||'اكتمل';
   var fd=function(d){ return new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory',{day:'numeric',month:'short'}); };
   var bn=parseInt(p.bid_count)||0;
   var meta='<span><b>'+esc(p.client_name||'عميل')+'</b>'+(p.city?' · '+esc(p.city):'')+(p.category?' · '+esc(p.category):'')+'</span>'
     +'<span>📨 '+(bn?(bn===1?'عرض واحد':(bn===2?'عرضين':bn+' عرض'))+(p.min_price?' · أقل '+fmtNum(p.min_price):''):'بدون عروض')+'</span>'
     +(ci.open_days!=null?'<span>⏱ ظل مفتوح '+(ci.open_days<=1?'يوم':(ci.open_days===2?'يومين':ci.open_days+' أيام'))+'</span>':'')
-    +(p.closed_at?'<span>🔒 '+fd(p.closed_at)+' '+_crTime(p)+'</span>':'');
-  var note=p.close_reason_note?'<div class="cr-nt">'+(g==='deal'?'ملاحظة المزوّد: ':'ملاحظة العميل: ')+'«'+esc(p.close_reason_note)+'»</div>':((ci.by==='auto'&&ci.text)?'<div class="cr-nt">'+esc(ci.text)+'</div>':'');
+    +(p.closed_at?'<span>'+(g==='done'?'✅ اكتمل ':'🔒 ')+fd(p.closed_at)+' '+_crTime(p)+'</span>':'');
+  var note=p.close_reason_note?'<div class="cr-nt">'+(g==='deal'?'ملاحظة المزوّد: ':'ملاحظة العميل: ')+'«'+esc(p.close_reason_note)+'»</div>':(((ci.by==='auto'||ci.by==='done')&&ci.text)?'<div class="cr-nt">'+esc(ci.text)+'</div>':'');
   var fu=[];
   if(p.close_help&&!p.close_help_done)fu.push('<span style="color:#1d4ed8">🙋 يبي مساعدة فريق مناقصة</span>');
   if(p.last_wa)fu.push('<span style="color:#1d4ed8">💬 انرسل له «'+esc(_CW_N[p.last_wa.tpl]||p.last_wa.tpl)+'» '+_adAgo(p.last_wa.at)+'</span>');
@@ -8942,7 +8943,7 @@ setTimeout(function(){ try{ fetch(API+'/api/admin/ideas?st=review',hdr()).then(f
 function _hlAgo(d){ if(!d)return ''; var s=(Date.now()-new Date(d).getTime())/1000; if(s<60)return 'الآن'; if(s<3600)return 'قبل '+Math.floor(s/60)+' د'; if(s<86400)return 'قبل '+Math.floor(s/3600)+' س'; return 'قبل '+Math.floor(s/86400)+' يوم'; }
 function _hlDur(s){ var d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60); return (d?d+' يوم ':'')+(h?h+' س ':'')+(d?'':m+' د'); }
 function _hlLoad(){ var bx=document.getElementById('health-root'); if(!bx)return; if(!bx.innerHTML)bx.innerHTML='<div class="card"><div class="card-body" style="color:var(--muted);font-weight:700">جاري الفحص…</div></div>';
-  fetch(API+'/api/admin/health',hdr()).then(function(r){return r.json();}).then(function(d){ if(!d||!d.st){ bx.innerHTML='<div class="card"><div class="card-body">'+esc((d&&d.message)||'تعذّر الفحص')+'</div></div>'; return; }
+  fetch(API+'/api/admin/apphealth',hdr()).then(function(r){return r.json();}).then(function(d){ if(!d||!d.st){ bx.innerHTML='<div class="card"><div class="card-body">'+esc((d&&d.message)||'تعذّر الفحص')+'</div></div>'; return; }
     var C={ok:['#ecfdf3','#067647','#abefc6','سليم'],warn:['#fffaeb','#b54708','#fedf89','يحتاج نظرة'],bad:['#fef3f2','#b42318','#fecdca','مشكلة']};
     function tile(k,ic,t,big,sub){ var c=C[d.st[k]]; return '<div style="background:#fff;border:1.5px solid '+c[2]+';border-radius:16px;padding:14px 16px;display:flex;flex-direction:column;gap:4px"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">'+ic+'</span><b style="font-size:13.5px;flex:1">'+t+'</b><span style="background:'+c[0]+';color:'+c[1]+';border-radius:99px;padding:2px 9px;font-size:11.5px;font-weight:800">'+c[3]+'</span></div><div style="font-size:24px;font-weight:900;color:'+c[1]+'">'+big+'</div><div style="font-size:12px;color:var(--muted);font-weight:700">'+sub+'</div></div>'; }
     var bad=['server','js','pay','email','speed'].filter(function(k){return d.st[k]!=='ok';}).length;

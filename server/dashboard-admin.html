@@ -655,7 +655,7 @@ function _showProxyDone(link,wa){document.getElementById('pd-link').value=link;_
 function _clientLoginLink(id){fetch(API+'/api/admin/requests/'+id+'/magic-link',hdr()).then(function(r){return r.json();}).then(function(d){if(!d||!d.ok||!d.magic_link){toast((d&&d.message)||'تعذّر توليد الرابط','error');return;}var wa='https://wa.me/'+d.phone_norm+'?text='+encodeURIComponent('السلام عليكم'+(d.client_name?' '+d.client_name:'')+'، للدخول لحسابك في منصة مناقصة ومتابعة مشروعك «'+d.title+'» والعروض، افتح الرابط التالي وسجّل دخولك:\n'+d.magic_link);_showProxyDone(d.magic_link,wa);}).catch(function(){toast('تعذّر الاتصال','error');});}
 </script>
 
-<script src="/dash-admin.js"></script><script src="/adm-dlg.js?v=2"></script>
+<script src="/dash-admin.js"></script><script src="/adm-dlg.js?v=6"></script>
 
 <div class="cf-overlay" id="confirmOverlay">
   <div class="cf-box">

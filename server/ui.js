@@ -46,6 +46,18 @@
   W.MQ.alert = function(o){ return dialog(split(norm(o, {})), 'alert'); };
   W.MQ.prompt = function(o, v){ if (typeof o === 'string') o = { title: o, value: v }; return dialog(norm(o, {}), 'prompt'); };
   W.MQ.toast = toast; W.MQ.empty = empty; W.MQ.esc = esc;
+  // نافذة «وصلت حد باقتك»: الخيارات بدل رسالة نصية — ترجع true لو عرضتها
+  var LIMT = { proj: ['💼', 'المشاريع النشطة', 'مشروع نشط', 'المشروع يطلع من العدد لما تسلّمه أو تلغيه.'], tech: ['👷', 'الفنيين', 'فني', 'الفني الموقوف ما ينحسب — تقدر توقف اللي ما يشتغل معك.'], dlg: ['👥', 'المشرفين والمندوبين', 'مشرف', ''], branch: ['📍', 'الفروع', 'فرع', ''] };
+  W.MQ.limit = function(j, o){ j = j || {}; o = o || {}; if (j.code !== 'limit' || !LIMT[j.k]) return false; var t = LIMT[j.k], btn = [];
+    if (j.addon) btn.push(['pri', '➕ أضف ' + esc(j.addon.name), j.addon.p + ' ر.س شهرياً', '/plan.html?add=' + j.k]);
+    if (j.up) btn.push([j.addon ? 'sec' : 'pri', (j.tier === 'free' ? '⭐ اشترك في ' : '⬆️ رقِّ إلى ') + esc(j.up.name), j.up.lim + ' ' + esc(t[2]) + ' · ' + j.up.m + ' ر.س شهرياً', '/plan.html']);
+    if (j.k === 'proj' && j.stale > 0 && o.onReview) btn.push(['sec', '📋 راجع المشاريع الواقفة', j.stale + ' مشروع ما تحرّك من 30 يوم', '#review']);
+    var ov = D.createElement('div'); ov.className = 'mq-ov'; ov.setAttribute('data-noback', '');
+    ov.innerHTML = '<div class="mq-dg" role="dialog" aria-modal="true" aria-labelledby="mq-lt"><div class="ic wr" aria-hidden="true">' + t[0] + '</div><div class="tt" id="mq-lt">' + (j.tier === 'free' ? esc(t[1]) + ' متاحة مع الاشتراك' : 'وصلت حد ' + esc(t[1]) + ' في باقتك (' + (j.lim || 0) + ')') + '</div>'
+      + (t[3] && j.tier !== 'free' ? '<div class="ms">' + esc(t[3]) + '</div>' : '') + '<div class="bt" style="flex-direction:column">' + btn.map(function(b, i){ return '<button type="button" class="' + (b[0] === 'pri' ? 'yes' : 'no') + '" data-u="' + esc(b[3]) + '" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 12px;line-height:1.35"><span>' + b[1] + '</span><small style="font-size:12.5px;font-weight:700;opacity:.8">' + esc(b[2]) + '</small></button>'; }).join('') + '<button type="button" class="no" data-u="" style="width:100%;background:transparent">لاحقاً</button></div></div>';
+    var fin = function(){ ov.remove(); open--; };
+    ov.addEventListener('click', function(e){ if (e.target === ov) return fin(); var b = e.target.closest('[data-u]'); if (!b) return; var u = b.getAttribute('data-u'); fin(); if (u === '#review') o.onReview(); else if (u) location.href = u; });
+    (D.body || D.documentElement).appendChild(ov); open++; return true; };
   W.MQ.isOpen = function(){ return open > 0; };
   // أخطاء جافاسكربت → لوحة «صحة المنصة» (5 بالحد لكل صفحة، بدون تكرار)
   (function(){ var sent = {}, n = 0;

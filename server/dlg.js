@@ -217,7 +217,7 @@
       if (name.length < 2) return toast('اكتب اسم المفوّض', 'error'); if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return toast('الإيميل غير صحيح', 'error'); if (!perms.length) return toast('اختر صلاحية وحدة على الأقل', 'error');
       S.busy = true; busy('dl-madd', 1, 'جاري الإرسال...');
       api('/api/provider/delegates', { method: 'POST', body: JSON.stringify({ name: name, email: email, perms: perms, role: S.role, branch_id: brv() }) }).then(function(r){ S.busy = false; busy('dl-madd', 0);
-        if (!r || !r.ok) return toast((r && r.message) || 'تعذّر الإرسال — حاول مرة ثانية', 'error'); toast('✓ أرسلنا الدعوة على إيميله', 'success'); load(); }); });
+        if (!r || !r.ok) { if (r && W.MQ && W.MQ.limit && W.MQ.limit(r)) return; return toast((r && r.message) || 'تعذّر الإرسال — حاول مرة ثانية', 'error'); } toast('✓ أرسلنا الدعوة على إيميله', 'success'); load(); }); });
     on('dl-msave', function(){ if (S.busy) return; var perms = selPerms(D.getElementById('dl-perms')); if (!perms.length) return toast('اختر صلاحية وحدة على الأقل', 'error');
       S.busy = true; busy('dl-msave', 1, 'جاري الحفظ...');
       api('/api/provider/delegates/' + d.id, { method: 'PUT', body: JSON.stringify({ perms: perms, role: S.role, branch_id: brv() }) }).then(function(r){ S.busy = false; busy('dl-msave', 0);

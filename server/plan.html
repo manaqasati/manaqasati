@@ -252,6 +252,7 @@ function render(){
  on('resb',function(){ change('resume'); });
  on('refc',function(){ var l=(D.ref||{}).link||''; try{ navigator.clipboard.writeText(l).then(function(){ toast('نُسخ رابط الدعوة ✓'); }); }catch(e){ MQ.prompt({title:'انسخ الرابط',value:l,ltr:true,ok:'تم',cancel:'إغلاق',icon:'🔗'}); } });
  [].forEach.call(app.querySelectorAll('[data-add]'),function(b){ b.onclick=function(){ var k=b.getAttribute('data-add'); sheet('إضافة: '+D.cfg.addons[k].name,'تُفعَّل فوراً وتُحتسب عن الأيام المتبقية من فترتك',{kind:'addon',addon:k,qty:1}); }; });
+ try{ var _ak=new URLSearchParams(location.search).get('add'); if(_ak&&!window._akDone){ window._akDone=1; var _ab=app.querySelector('[data-add="'+_ak+'"]'); if(_ab) setTimeout(function(){ _ab.scrollIntoView({block:'center'}); _ab.click(); },300); } }catch(e){}
  [].forEach.call(app.querySelectorAll('[data-less]'),function(b){ b.onclick=function(){ change('addon_less',{addon:b.getAttribute('data-less')},'تبقى الإضافة متاحة حتى نهاية الفترة المدفوعة، ولن تُجدَّد. متابعة؟'); }; });
 }
 // ═══ الشراء داخل تطبيق الأيفون عن طريق Apple (النسخة الجديدة من التطبيق) ═══
@@ -328,6 +329,6 @@ var rf=''; try{ rf=localStorage.getItem('mnq_ref')||''; }catch(e){}
 (rf?api('/api/subs/ref',{method:'POST',body:JSON.stringify({code:rf})}).then(function(r){ try{localStorage.removeItem('mnq_ref');}catch(e){} if(r.ok)toast('تم ربط رمز الدعوة ✓ — تحصل على مكافأة الدعوة عند أول اشتراك'); }).catch(function(){}):Promise.resolve()).then(load).catch(function(e){ if(e&&e.message!=='auth')app.innerHTML='<div class="card">تعذّر التحميل، يُرجى تحديث الصفحة</div>'; });
 })();
 </script>
-<script src="/pnav.js?v=3" defer></script>
+<script src="/pnav.js?v=5" defer></script>
 </body>
 </html>

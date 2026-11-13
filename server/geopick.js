@@ -10,6 +10,7 @@
   var TOK = function(){ try { return localStorage.getItem('token') || ''; } catch(e){ return ''; } };
   function api(p){ return fetch(p, { headers: { Authorization: 'Bearer ' + TOK() } }).then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error(j.message || 'حدث خطأ'); return j; }); }); }
   function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function mqb(m,o){ var W=window,D=document; function go(){ if(W.MQMAP) W.MQMAP.base(m,o); else L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(m); } if(W.MQMAP) return go(); if(!W._mqmP) W._mqmP=new Promise(function(ok){ var s=D.createElement('script'); s.src='/mqmap.js?v=1'; s.onload=ok; s.onerror=ok; D.head.appendChild(s); }); W._mqmP.then(go); }
   function ll(){ if (W.L) return Promise.resolve(); if (W._llP) return W._llP; W._llP = new Promise(function(ok, no){ var c = D.createElement('link'); c.rel = 'stylesheet'; c.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css'; D.head.appendChild(c); var s = D.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js'; s.onload = ok; s.onerror = function(){ W._llP = null; no(); }; D.head.appendChild(s); }); return W._llP; }
   function murl(la, ln){ return 'https://www.google.com/maps/search/?api=1&query=' + la + ',' + ln; }
   function parse(u){ u = String(u || ''); try { u = decodeURIComponent(u); } catch(e){}
@@ -54,7 +55,7 @@
       ll().then(function(){
         var c = st.lat ? [st.lat, st.lng] : (CTY[o.city] || CTY['الرياض']);
         mp = L.map($('.gpk-map'), { zoomControl: false, attributionControl: true }).setView(c, st.lat ? 17 : 12);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mp);
+        mqb(mp, { def: 'sat' });
         mp.on('movestart', function(){ $('.gpk-m').classList.add('mv'); }); mp.on('moveend', function(){ $('.gpk-m').classList.remove('mv'); reverse(); });
         if (st.lat) reverse(); else if (!o.city && navigator.geolocation) locate(true);
       }).catch(function(){ $('.gpk-map').innerHTML = '<div style="padding:24px;font-weight:800;color:#172554">تعذّر تحميل الخريطة — جرّب «موقعي الحالي» أو الصق رابط قوقل ماب</div>'; });
@@ -94,7 +95,7 @@
       var b = el.querySelectorAll('[data-a]'); [].forEach.call(b, function(x){ x.onclick = function(){ var a = x.getAttribute('data-a'); if (a === 'pick' || a === 'link') go(a === 'link'); else if (a === 'open') W.open(st.maps || murl(st.lat, st.lng), '_blank'); else if (a === 'clr'){ st = {}; render(); if (o.onChange) o.onChange(null); } }; });
       if (st.lat) ll().then(function(){ var m = el.querySelector('.gfd-mm'); if (!m) return; if (mini) { try { mini.remove(); } catch(_){} }
         mini = L.map(m, { zoomControl: false, attributionControl: false, dragging: false, scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false, tap: false, touchZoom: false }).setView([st.lat, st.lng], 16);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mini); }).catch(function(){});
+        mqb(mini, { def: 'sat', ctl: false }); }).catch(function(){});
     }
     function go(link){ pick({ lat: st.lat, lng: st.lng, address: st.address, city: typeof o.city === 'function' ? o.city() : o.city }).then(function(r){ if (!r) return; st = r; render(); if (o.onChange) o.onChange(r); });
       if (link === true) setTimeout(function(){ var b = D.querySelector('.gpk .gpk-ln'); if (b) b.click(); }, 60); }

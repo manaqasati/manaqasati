@@ -131,7 +131,14 @@
 (function(){
   var W = window, D = document; if (W.MQ_SRCH) return;
   var ICON = { cust: '👥', job: '🧰', quote: '📄', tech: '👷' }, KIND = { cust: 'العملاء', job: 'المشاريع', quote: 'عروض الأسعار', tech: 'الفريق' };
-  var QUICK = [['📄', 'عرض سعر جديد', '/quotes.html?new=1'], ['🧰', 'مشروع يدوي', '/jobs.html?new=1'], ['👥', 'دفتر العملاء', '/customers.html'], ['🗓', 'تقويم الجدولة', '/cal.html'], ['⏱', 'الحضور والانصراف', '/att.html']];
+  // نفس شكل مربعات «المزيد» (ألوان فاتحة + أيقونة خطية بمربع أبيض + عنوان + وصف) عشان التناسق
+  var QSV = { doc: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M9 13h6M9 17h4"/>', box: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2M3 12h18"/>',
+    uplus: '<circle cx="10" cy="8" r="4"/><path d="M2 21c0-4 4-6 8-6 1.6 0 3.1.3 4.4.9M19 14v6M16 17h6"/>', cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>', clock: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/>',
+    mega: '<path d="M3 11v2a1 1 0 001 1h2l5 4V6L6 10H4a1 1 0 00-1 1zM15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"/>', team: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5"/><circle cx="17" cy="9" r="2.8"/><path d="M16.5 14.6c3 .2 5 2 5 5"/>',
+    book: '<path d="M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5z"/><path d="M4 19.5A2.5 2.5 0 006.5 22H20v-5"/>', map: '<path d="M12 22s7-6.4 7-12a7 7 0 10-14 0c0 5.6 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>' };
+  var QUICK = [['doc', 'عرض سعر جديد', '/quotes.html?new=1', 'c1', 'PDF باسمك للعميل'], ['box', 'مشروع يدوي', '/jobs.html?new=1', 'c6', 'عميل · فني · موعد'], ['uplus', 'عميل جديد', '/customers.html?new=1', 'c2', 'ضيفه لدفتر عملائك'],
+    ['cal', 'التقويم', '/cal.html', 'c5', 'مواعيد الفنيين'], ['clock', 'الحضور', '/att.html', 'c4', 'مين حاضر اليوم'], ['mega', 'تعميم للفريق', '/att.html#posts', 'c3', 'رسالة لكل الفنيين'],
+    ['team', 'الفريق', '/jobs.html?tab=team', 'c7', 'الفنيين والدعوات'], ['book', 'دفتر العملاء', '/customers.html', 'c8', 'كل عملائك ومشاريعهم'], ['map', 'خريطة المشاريع', '/jobs.html?map=1', 'c6', 'وين مشاريعك وفنيينك']];
   function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
   function tok(){ try { return localStorage.getItem('token') || ''; } catch(e){ return ''; } }
   function recent(){ try { return JSON.parse(localStorage.getItem('mnq_srch') || '[]'); } catch(e){ return []; } }
@@ -147,6 +154,10 @@
     + '.msr-i{display:flex;align-items:center;gap:11px;padding:10px 10px;border-radius:13px;text-decoration:none;color:#0f172a;cursor:pointer}.msr-i:hover,.msr-i.on{background:#eff4ff}'
     + '.msr-i .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:18px}.msr-i.on .ic{background:#fff}'
     + '.msr-i .tx{flex:1;min-width:0}.msr-i b{display:block;font-size:14.5px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.msr-i small{display:block;font-size:12px;font-weight:700;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+    + '.msr-q{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:4px 2px 6px}.msr-q .msr-i{flex-direction:column;align-items:flex-start;gap:5px;padding:11px 10px;min-height:92px;border-radius:16px;text-align:right;transition:transform .12s}.msr-q .msr-i:active{transform:scale(.96)}.msr-q .msr-i.on{background-image:none}.msr-ov.kb .msr-q .msr-i.on{outline:2px solid #1d4ed8;outline-offset:1px}'
+    + '.msr-q .msr-i .ic{width:34px;height:34px;border-radius:11px;background:#fff!important}.msr-q .msr-i .tx{flex:none;width:100%}.msr-q .msr-i b{font-size:13px;font-weight:900;color:#0f2544;white-space:normal;line-height:1.35}.msr-q .msr-i small{font-size:10.5px;font-weight:700;color:#475569;white-space:normal;line-height:1.4;margin-top:2px}'
+    + '.msr-q .c1{background:#dbeafe}.msr-q .c1 .ic{color:#1d4ed8}.msr-q .c2{background:#ede9fe}.msr-q .c2 .ic{color:#6d28d9}.msr-q .c3{background:#fee2e2}.msr-q .c3 .ic{color:#b91c1c}.msr-q .c4{background:#fef3c7}.msr-q .c4 .ic{color:#b45309}.msr-q .c5{background:#e0f2fe}.msr-q .c5 .ic{color:#0369a1}.msr-q .c6{background:#dcfce7}.msr-q .c6 .ic{color:#15803d}.msr-q .c7{background:#fef9c3}.msr-q .c7 .ic{color:#a16207}.msr-q .c8{background:#f1f5f9}.msr-q .c8 .ic{color:#334766}'
+    + '.msr-hint{font-size:12.5px;font-weight:700;color:#64748b;padding:8px 10px 2px}'
     + '.msr-i mark{background:#fef08a;color:inherit;border-radius:3px;padding:0 1px}.msr-e{padding:26px 12px;text-align:center;color:#64748b;font-weight:700;font-size:13.5px;line-height:1.8}'
     + '.msr-k{display:flex;gap:12px;justify-content:center;padding:8px;border-top:1px solid #eef2f7;font-size:11.5px;font-weight:700;color:#94a3b8}@media(max-width:640px){.msr-k{display:none}}.msr-k kbd{background:#f1f5f9;border-radius:5px;padding:1px 6px;font-family:inherit;color:#475467}'
     + '.msr-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:11px;border:0;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;margin-inline-start:auto;margin-inline-end:10px}.msr-btn svg{width:18px;height:18px}';
@@ -156,22 +167,23 @@
   function open(){
     if (D.querySelector('.msr-ov')) return;
     var ov = D.createElement('div'); ov.className = 'msr-ov'; ov.setAttribute('data-noback', '');
-    ov.innerHTML = '<div class="msr" role="dialog" aria-modal="true" aria-label="بحث"><div class="msr-h"><span aria-hidden="true">🔍</span><input type="search" placeholder="ابحث بالاسم أو رقم الجوال أو رقم العرض…" aria-label="بحث" autocomplete="off" enterkeyhint="search"><button type="button" class="msr-x">إغلاق</button></div><div class="msr-b" role="listbox"></div><div class="msr-k"><span><kbd>↑</kbd><kbd>↓</kbd> تنقّل</span><span><kbd>Enter</kbd> فتح</span><span><kbd>Esc</kbd> إغلاق</span></div></div>';
+    ov.innerHTML = '<div class="msr" role="dialog" aria-modal="true" aria-label="بحث وإجراءات سريعة"><div class="msr-h"><span aria-hidden="true">🔍</span><input type="search" placeholder="ابحث عن عميل أو مشروع أو عرض سعر…" aria-label="بحث" autocomplete="off" enterkeyhint="search"><button type="button" class="msr-x">إغلاق</button></div><div class="msr-b" role="listbox"></div><div class="msr-k"><span><kbd>↑</kbd><kbd>↓</kbd> تنقّل</span><span><kbd>Enter</kbd> فتح</span><span><kbd>Esc</kbd> إغلاق</span></div></div>';
     D.body.appendChild(ov); var inp = ov.querySelector('input'), box = ov.querySelector('.msr-b'), L = [], sel = 0, tm = 0, seq = 0;
     function close(){ ov.remove(); D.removeEventListener('keydown', key, true); }
     function paint(items, q){ L = items; sel = 0;
-      if (!q) { var r = recent(); var h = (r.length ? '<div class="msr-g">آخر ما فتحته</div>' + r.map(function(x, i){ return row(x, i, ''); }).join('') : '') + '<div class="msr-g">اختصارات</div>';
-        L = r.concat(QUICK.map(function(x){ return { k: 'q', ic: x[0], t: x[1], u: x[2] }; }));
-        h += L.slice(r.length).map(function(x, i){ return row(x, r.length + i, ''); }).join(''); box.innerHTML = h; mark(); return; }
+      if (!q) { var r = recent().slice(0, 4); L = QUICK.map(function(x){ return { k: 'q', sv: x[0], t: x[1], u: x[2], c: x[3], s: x[4] }; }).concat(r);
+        var h = '<div class="msr-g">⚡ إجراءات سريعة</div><div class="msr-q">' + L.slice(0, QUICK.length).map(function(x, i){ return row(x, i, ''); }).join('') + '</div>'
+          + (r.length ? '<div class="msr-g">آخر ما فتحته</div>' + r.map(function(x, i){ return row(x, QUICK.length + i, ''); }).join('') : '<div class="msr-hint">🔍 اكتب فوق اسم عميل أو رقم جواله أو رقم عرض سعر أو اسم فني</div>');
+        box.innerHTML = h; mark(); return; }
       if (!items.length) { box.innerHTML = '<div class="msr-e">ما لقينا شي باسم «' + esc(q) + '»<br><span style="font-size:12.5px">جرّب جزء من الاسم أو آخر 4 أرقام من الجوال</span></div>'; return; }
       var h2 = '', last = ''; items.forEach(function(x, i){ if (x.k !== last) { h2 += '<div class="msr-g">' + KIND[x.k] + '</div>'; last = x.k; } h2 += row(x, i, q); }); box.innerHTML = h2; mark(); }
-    function row(x, i, q){ return '<a class="msr-i" role="option" data-i="' + i + '" href="' + esc(x.u) + '"><span class="ic" aria-hidden="true">' + (x.ic || ICON[x.k] || '•') + '</span><span class="tx"><b>' + hl(x.t, q) + '</b>' + (x.s ? '<small>' + hl(x.s, q) + '</small>' : '') + '</span></a>'; }
+    function row(x, i, q){ return '<a class="msr-i' + (x.c ? ' ' + x.c : '') + '" role="option" data-i="' + i + '" href="' + esc(x.u) + '"><span class="ic" aria-hidden="true">' + (x.sv ? '<svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">' + QSV[x.sv] + '</svg>' : (x.ic || ICON[x.k] || '•')) + '</span><span class="tx"><b>' + hl(x.t, q) + '</b>' + (x.s ? '<small>' + hl(x.s, q) + '</small>' : '') + '</span></a>'; }
     function mark(){ [].forEach.call(box.querySelectorAll('.msr-i'), function(a){ var on = +a.getAttribute('data-i') === sel; a.classList.toggle('on', on); a.setAttribute('aria-selected', on); if (on && a.scrollIntoView) a.scrollIntoView({ block: 'nearest' }); }); }
     function go(i){ var x = L[i]; if (!x) return; if (x.k !== 'q') remember(x); location.href = x.u; }
     function search(){ var q = inp.value.trim(); clearTimeout(tm); if (q.length < 2) { paint([], ''); return; }
       tm = setTimeout(function(){ var k = ++seq; box.innerHTML = box.innerHTML || '<div class="msr-e">جاري البحث…</div>';
         fetch('/api/provider/search?q=' + encodeURIComponent(q), { headers: { 'Authorization': 'Bearer ' + tok() } }).then(function(r){ return r.ok ? r.json() : { items: [] }; }).then(function(d){ if (k === seq) paint(d.items || [], q); }).catch(function(){ if (k === seq) box.innerHTML = '<div class="msr-e">تعذّر البحث — تأكد من النت</div>'; }); }, 220); }
-    function key(e){ if (e.key === 'Escape') { e.preventDefault(); close(); } else if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(L.length - 1, sel + 1); mark(); } else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); mark(); } else if (e.key === 'Enter' && D.activeElement === inp) { e.preventDefault(); go(sel); } }
+    function key(e){ if (e.key === 'Escape') { e.preventDefault(); close(); } else if (e.key === 'ArrowDown') { ov.classList.add('kb'); e.preventDefault(); sel = Math.min(L.length - 1, sel + 1); mark(); } else if (e.key === 'ArrowUp') { ov.classList.add('kb'); e.preventDefault(); sel = Math.max(0, sel - 1); mark(); } else if (e.key === 'Enter' && D.activeElement === inp) { e.preventDefault(); go(sel); } }
     inp.addEventListener('input', search); D.addEventListener('keydown', key, true);
     ov.addEventListener('click', function(e){ if (e.target === ov || e.target.closest('.msr-x')) { close(); return; } var a = e.target.closest('.msr-i'); if (a) { e.preventDefault(); go(+a.getAttribute('data-i')); } });
     paint([], ''); setTimeout(function(){ inp.focus(); }, 30);
@@ -181,7 +193,7 @@
     if ((e.key === 'k' || e.key === 'K') && (e.metaKey || e.ctrlKey)) { e.preventDefault(); open(); } else if (e.key === '/' && !typing && !e.metaKey && !e.ctrlKey) { e.preventDefault(); open(); } });
   // زر 🔍: بالشريط العلوي لصفحات الأدوات، وبرأس لوحة المزوّد بالجوال
   function addBtn(){ if (D.querySelector('.msr-btn, #mob-srch')) return;
-    var top = D.querySelector('.top'); if (top && top.querySelector('a[href="/dashboard-provider.html"]')) { var b = D.createElement('button'); b.type = 'button'; b.className = 'msr-btn'; b.setAttribute('aria-label', 'بحث'); b.innerHTML = SVG; b.onclick = open; top.insertBefore(b, top.querySelector('a[href="/dashboard-provider.html"]')); return; }
+    var top = D.querySelector('.top'); if (top && top.querySelector('a[href="/dashboard-provider.html"]')) { var b = D.createElement('button'); b.type = 'button'; b.className = 'msr-btn'; b.setAttribute('aria-label', 'بحث وإجراءات سريعة'); b.title = 'بحث وإجراءات سريعة'; b.innerHTML = SVG; b.onclick = open; top.insertBefore(b, top.querySelector('a[href="/dashboard-provider.html"]')); return; }
     var mr = D.querySelector('.mob-right'); if (mr) { var n = mr.querySelector('.mob-notif'); var b2 = D.createElement('button'); b2.type = 'button'; b2.className = 'mob-notif'; b2.id = 'mob-srch'; b2.setAttribute('aria-label', 'بحث'); b2.innerHTML = SVG.replace('<svg', '<svg width="20" height="20"'); b2.onclick = open; mr.insertBefore(b2, n || mr.firstChild); } }
   if (D.readyState === 'loading') D.addEventListener('DOMContentLoaded', addBtn); else addBtn();
 })();

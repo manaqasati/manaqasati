@@ -203,7 +203,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/ui.js','/slotpick.js','/geopick.js','/jobtask.js','/camp.js','/i18n.js','/i18n-en.js','/i18n-ur.js','/branch.js','/route.js','/pnav.js','/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/ui.js','/slotpick.js','/geopick.js','/mqmap.js','/jobtask.js','/camp.js','/i18n.js','/i18n-en.js','/i18n-ur.js','/branch.js','/route.js','/pnav.js','/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -232,7 +232,7 @@ app.post('/api/jserr', rateLimiter(20, 60000), express.json({ limit: '6kb' }), a
     res.status(204).end(); } catch(e){ res.status(204).end(); }
 });
 // ═══ لوحة صحة المنصة (للإدارة) ═══
-app.get('/api/admin/health', requirePermission('settings.manage'), async (req, res) => {
+app.get('/api/admin/apphealth', requirePermission('settings.manage'), async (req, res) => {
   try { const q = async (sql, a) => { try { return (await pool.query(sql, a || [])).rows; } catch(e){ return []; } };
     const p95 = a => { if (!a.length) return 0; const s = a.slice().sort((x, y) => x - y); return Math.round(s[Math.min(s.length - 1, Math.floor(s.length * .95))]); };
     const routes = [..._HL.routes.entries()].map(([k, r]) => ({ k, n: r.n, avg: Math.round(r.sum / r.n), p95: p95(r.s), max: Math.round(r.max), slow: r.slow, e5: r.e5 }));
@@ -2060,11 +2060,16 @@ app.put('/api/me/email-prefs', auth, async (req, res) => {
     res.json({ ok: true });
   } catch(e) { console.error('PUT email-prefs:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// تنظيف الإيميل: حروف مخفية (اتجاه الكتابة/مسافات صفرية) + أرقام عربية + مسافات → يمنع رفض Resend «non-ASCII»
+const _AR_DIG = { '٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9','۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9' };
+function _cleanEmail(v){ return String(v == null ? '' : v).replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF\u00A0\s]/g, '').replace(/[٠-٩۰-۹]/g, d => _AR_DIG[d]).replace(/＠/g, '@').toLowerCase(); }
 async function sendEmail(to, subject, html, meta) {
   meta = meta || {};
   if (_softOn() && to && await _softQ(meta.uid || null, 'e', [to, subject, html, meta], '', to)) return true;
   if (!RESEND_KEY) { console.warn(' RESEND_KEY not set — skipping email to', to); return false; }
-  if (!to || /@manaqasa\.local$/i.test(String(to))) return false;
+  to = _cleanEmail(to);
+  if (!to || /@manaqasa\.local$/i.test(to)) return false;
+  if (/[^\x21-\x7E]/.test(to) || !/^[^@]+@[^@]+\.[a-z]{2,}$/.test(to)) { console.warn('email skipped (invalid address):', to.replace(/^(.{2}).*@/, '$1***@')); return false; }
   // إيميلات غير أساسية (مشاريع/باطن/تذكيرات/أخبار): نحترم إعداد المستخدم + رابط إيقاف بضغطة
   let _ep = null;
   if (meta.cat && _EP_CATS[meta.cat]) {
@@ -4378,7 +4383,9 @@ async function setupDatabase() {
     await _mig(`CREATE INDEX IF NOT EXISTS idx_close_wa_req ON close_wa_log(request_id)`);
     await _mig(`CREATE TABLE IF NOT EXISTS contract_downloads (id SERIAL PRIMARY KEY, user_id INTEGER, slug VARCHAR(60), created_at TIMESTAMP DEFAULT NOW())`);
     await _mig('ALTER TABLE requests ADD COLUMN IF NOT EXISTS nobid_at TIMESTAMPTZ');
-    await _mig('ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS late_n INTEGER DEFAULT 0'); await _mig('ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS noshow_n INTEGER DEFAULT 0');
+    await _mig('ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS late_n INTEGER DEFAULT 0');
+    // تنظيف الإيميلات المخزّنة: حروف مخفية/أرقام عربية/مسافات (كانت ترفضها Resend) — بدون تكرار لو فيه حساب بنفس الإيميل النظيف
+    await _mig("UPDATE users u SET email = x.ce FROM (SELECT id, lower(translate(regexp_replace(email, '[\\s\\u00A0\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\uFEFF]', '', 'g'), '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹', '01234567890123456789')) AS ce FROM users WHERE email ~ '[^\\x21-\\x7E]') x WHERE u.id = x.id AND x.ce <> u.email AND NOT EXISTS (SELECT 1 FROM users o WHERE lower(o.email) = x.ce AND o.id <> u.id)"); await _mig('ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS noshow_n INTEGER DEFAULT 0');
     await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS att_cfg JSONB'); await _mig('ALTER TABLE tech_shifts ADD COLUMN IF NOT EXISTS in_far_m INTEGER'); await _mig('ALTER TABLE tech_shifts ADD COLUMN IF NOT EXISTS in_photo TEXT'); await _mig('ALTER TABLE tech_shifts ADD COLUMN IF NOT EXISTS perm_id INTEGER');
     await _mig('ALTER TABLE tech_shifts ADD COLUMN IF NOT EXISTS in2_at TIMESTAMPTZ'); await _mig('ALTER TABLE tech_shifts ADD COLUMN IF NOT EXISTS out2_at TIMESTAMPTZ'); await _mig('ALTER TABLE tech_shifts ADD COLUMN IF NOT EXISTS late2_min INTEGER DEFAULT 0');
     await _mig(`CREATE TABLE IF NOT EXISTS team_posts (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, branch_id INTEGER, text TEXT NOT NULL, by_name VARCHAR(80), created_at TIMESTAMPTZ DEFAULT NOW())`);
@@ -4537,7 +4544,7 @@ async function _verifyAppleToken(idToken){
     const t = jwt.verify(idToken, pem, { algorithms: ['RS256'], issuer: 'https://appleid.apple.com', audience: APPLE_AUDS });
     if (!t || !t.sub) return null;
     const ev = t.email_verified === true || t.email_verified === 'true';
-    return { sub: String(t.sub), email: (t.email && ev) ? String(t.email).trim().toLowerCase() : null, name: '' };
+    return { sub: String(t.sub), email: (t.email && ev) ? _cleanEmail(t.email) : null, name: '' };
   } catch(e) { console.error('apple verify:', e.message); return null; }
 }
 async function _verifyGoogleToken(idToken){
@@ -4552,7 +4559,7 @@ async function _verifyGoogleToken(idToken){
     if (!t.exp || parseInt(t.exp) * 1000 < Date.now()) return null;
     if (!(t.email_verified === true || t.email_verified === 'true')) return null;
     if (!t.sub || !t.email) return null;
-    return { sub: String(t.sub), email: String(t.email).trim().toLowerCase(), name: _cleanTxt(t.name || '', 80), picture: t.picture || null };
+    return { sub: String(t.sub), email: _cleanEmail(t.email), name: _cleanTxt(t.name || '', 80), picture: t.picture || null };
   } catch(e) { console.error('google verify:', e.message); return null; }
 }
 // دخول المفوّض بإيميله: يرجع null لو الإيميل مو لمفوّض (أو كلمة السر لحساب عادي بنفس الإيميل)
@@ -4659,12 +4666,13 @@ async function _registerHandler(req, res) {
   try {
     if (req._g) { req.body.email = req._g.email; req.body.password = require('crypto').randomBytes(18).toString('hex'); if (!req.body.name) req.body.name = req._g.name || ''; } // تسجيل عن طريق Google: البريد من Google وما يحتاج كلمة مرور
     if (req.body.name != null) req.body.name = _cleanTxt(req.body.name, 80);
-    if (req.body.email != null) req.body.email = String(req.body.email).trim().toLowerCase(); // الإيميل يتخزّن بحروف صغيرة
+    if (req.body.email != null) req.body.email = _cleanEmail(req.body.email); // الإيميل يتخزّن بحروف صغيرة
     if (req.body.business_name) req.body.business_name = _cleanTxt(req.body.business_name, 100);
     const { name, email, phone, password, role, specialties, city, bio } = req.body;
     if (!name || !email || !password || !role) return res.status(400).json({ message: 'البيانات ناقصة' });
     if (String(password).length < 6) return res.status(400).json({ message: 'كلمة المرور قصيرة (6 أحرف على الأقل)' });
     if (!['client', 'provider'].includes(role)) return res.status(400).json({ message: 'نوع المستخدم غير صحيح' });
+    if (/[^\x21-\x7E]/.test(email) || !/^[^@]+@[^@]+\.[a-z]{2,}$/.test(email)) return res.status(400).json({ message: 'اكتب إيميل صحيح بالحروف الإنجليزية — مثال: name@gmail.com' });
     const existing = await pool.query('SELECT id FROM users WHERE LOWER(email)=LOWER($1)', [email]);
     if (existing.rows.length) return res.status(400).json({ message: 'الإيميل مستخدم مسبقاً' });
     // منع تكرار الجوال (يقارن الصيغة الخام والموحّدة) — يمنع حرمان صاحب الرقم من الدخول واختطاف ربط المستهدفين
@@ -5659,9 +5667,9 @@ async function _profGuard(req){
   const b = req.body || {};
   // تغيير البريد = يحتاج كلمة المرور الحالية (لو أحد مسك جلسة مفتوحة ما يقدر يغيّر البريد ثم «نسيت كلمة المرور» ويستولي على الحساب)
   if (Object.prototype.hasOwnProperty.call(b, 'email') && String(b.email || '').trim()) {
-    const ne = String(b.email).trim().toLowerCase();
+    const ne = _cleanEmail(b.email);
     const cu = (await pool.query('SELECT email, password, password_hash, google_sub, apple_sub FROM users WHERE id=$1', [req.user.id])).rows[0];
-    if (cu && ne !== String(cu.email || '').trim().toLowerCase()) {
+    if (cu && ne !== _cleanEmail(cu.email || '')) {
       const proxy = /@manaqasa\.local$/i.test(String(cu.email || ''));   // حساب أنشأته الإدارة بدون بريد حقيقي
       const social = !!(cu.google_sub || cu.apple_sub);
       const fresh = req.user.iat && (Date.now() / 1000 - req.user.iat) < 30 * 60;   // دخل قبل أقل من 30 دقيقة
@@ -5721,7 +5729,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
   try {
     { const _g = await _profGuard(req); if (_g) return res.status(400).json(typeof _g === 'object' ? _g : { message: _g }); }
     if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
-      const newEmail = String(req.body.email||'').trim().toLowerCase();
+      const newEmail = _cleanEmail(req.body.email||'');
       if (!newEmail||!newEmail.includes('@')||!newEmail.includes('.')) return res.status(400).json({ message: 'بريد إلكتروني غير صحيح' });
       const dup = await pool.query('SELECT id FROM users WHERE LOWER(email)=$1 AND id<>$2', [newEmail, req.user.id]);
       if (dup.rows.length) return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
@@ -5734,7 +5742,7 @@ app.put('/api/client/profile', auth, async (req, res) => {
         let val = req.body[key];
         if (key==='name') { if (val&&_cleanTxt(val,80)) { sets.push(`${allowed[key]}=$${idx}`); params.push(_cleanTxt(val,80)); idx++; } continue; }
         if (key==='business_name' && val) val=_cleanTxt(val,100);
-        if (key==='email') val=String(val||'').trim().toLowerCase();
+        if (key==='email') val=_cleanEmail(val||'');
         if (val==='') val=null;
         sets.push(`${allowed[key]}=$${idx}`); params.push(val); idx++;
       }
@@ -5813,7 +5821,7 @@ app.get('/api/provider/delegate', auth, providerOnly, async (req, res) => {
 });
 app.post('/api/provider/delegate', rateLimiter(10, 3600000), auth, providerOnly, async (req, res) => {
   try {
-    const name = String(req.body.name || '').trim().slice(0, 60), email = String(req.body.email || '').trim().toLowerCase(), perms = _dlgPermsIn(req.body.perms);
+    const name = String(req.body.name || '').trim().slice(0, 60), email = _cleanEmail(req.body.email || ''), perms = _dlgPermsIn(req.body.perms);
     if (name.length < 2) return res.status(400).json({ message: 'اكتب اسم المفوّض' });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 160) return res.status(400).json({ message: 'الإيميل غير صحيح' });
     if (!perms.length) return res.status(400).json({ message: 'اختر صلاحية وحدة على الأقل' });
@@ -5894,7 +5902,7 @@ app.get('/api/provider/delegates', auth, providerOnly, async (req, res) => {
 });
 app.post('/api/provider/delegates', rateLimiter(15, 3600000), auth, providerOnly, async (req, res) => {
   try {
-    const name = String(req.body.name || '').trim().slice(0, 60), email = String(req.body.email || '').trim().toLowerCase(), perms = _dlgPermsIn(req.body.perms), role = DLG_ROLES[req.body.role] ? req.body.role : 'custom';
+    const name = String(req.body.name || '').trim().slice(0, 60), email = _cleanEmail(req.body.email || ''), perms = _dlgPermsIn(req.body.perms), role = DLG_ROLES[req.body.role] ? req.body.role : 'custom';
     if (name.length < 2) return res.status(400).json({ message: 'اكتب اسم المفوّض' });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 160) return res.status(400).json({ message: 'الإيميل غير صحيح' });
     if (!perms.length) return res.status(400).json({ message: 'اختر صلاحية وحدة على الأقل' });
@@ -5902,7 +5910,7 @@ app.post('/api/provider/delegates', rateLimiter(15, 3600000), auth, providerOnly
     if (owner && String(owner.email || '').toLowerCase() === email) return res.status(400).json({ message: 'هذا إيميلك أنت — اكتب إيميل المفوّض' });
     const lim = await _dlgEnforce(req.user.id);
     const used = (await pool.query("SELECT COUNT(*)::int n FROM provider_delegates WHERE owner_id=$1 AND NOT (paused_at IS NOT NULL AND paused_by='limit')", [req.user.id])).rows[0].n;
-    if (used >= lim) return res.status(409).json({ code: 'limit', message: lim <= 1 ? 'عندك مفوّض — أكثر من مفوّض مع الاشتراك' : 'وصلت حد المفوّضين في باقتك (' + lim + ') — أضف مفوّض من «الاشتراك والباقة»' });
+    if (used >= lim) return res.status(409).json(Object.assign(await _limInfo(req.user.id, 'dlg'), { message: lim <= 1 ? 'عندك مفوّض — أكثر من مفوّض مع الاشتراك' : 'وصلت حد المفوّضين في باقتك (' + lim + ') — أضف مفوّض من «الاشتراك والباقة»' }));
     if ((await pool.query('SELECT 1 FROM provider_delegates WHERE LOWER(email)=$1', [email])).rows.length) return res.status(409).json({ message: 'هذا الإيميل مفوّض على حساب ثاني' });
     const dbr = await _dlgBr(req.user.id, req.body.branch_id); if (dbr === false) return res.status(400).json({ message: 'الفرع غير موجود' });
     const d = (await pool.query('INSERT INTO provider_delegates (owner_id, name, email, perms, role, branch_id) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *', [req.user.id, name, email, perms, role, dbr])).rows[0];
@@ -6253,7 +6261,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
   try {
     { const _g = await _profGuard(req); if (_g) return res.status(400).json(typeof _g === 'object' ? _g : { message: _g }); }
     if (Object.prototype.hasOwnProperty.call(req.body, 'email')) {
-      const newEmail = String(req.body.email||'').trim().toLowerCase();
+      const newEmail = _cleanEmail(req.body.email||'');
       if (!newEmail||!newEmail.includes('@')||!newEmail.includes('.')) return res.status(400).json({ message: 'بريد إلكتروني غير صحيح' });
       const dup = await pool.query('SELECT id FROM users WHERE LOWER(email)=$1 AND id<>$2', [newEmail, req.user.id]);
       if (dup.rows.length) return res.status(400).json({ message: 'هذا البريد الإلكتروني مستخدم لحساب آخر' });
@@ -6272,7 +6280,7 @@ app.put('/api/provider/profile', auth, async (req, res) => {
         let val = req.body[key];
         if (key==='name') { if (val&&_cleanTxt(val,80)) { sets.push(`${allowed[key]}=$${idx}`); params.push(_cleanTxt(val,80)); idx++; } continue; }
         if (key==='business_name' && val) val=_cleanTxt(val,100);
-        if (key==='email') val=String(val||'').trim().toLowerCase();
+        if (key==='email') val=_cleanEmail(val||'');
         if (key==='experience_years') { val=(val===''||val===null||val===undefined)?null:parseInt(val); if(isNaN(val)||val<0)val=null; else if(val>60)val=60; }
         if (key==='specialties') { val=[...new Set((Array.isArray(val)?val:[]).map(x=>String(x||'').trim()).filter(Boolean))].slice(0,15); if(!val.length) return res.status(400).json({ message:'اختر تخصص واحد على الأقل' }); }
         if (key==='serves_all_cities') val=!!val;
@@ -9000,6 +9008,12 @@ async function _subLimits(uid){
   if (tier !== 'free') Object.keys(s.addons || {}).forEach(a => { const d = cfg.addons[a]; if (d) L[d.k] = (L[d.k] || 0) + d.n * (parseInt(s.addons[a]) || 0); });
   return { tier, limits: L };
 }
+// نافذة «وصلت الحد»: بيانات تساعد الواجهة تعرض الخيارات (إضافة · ترقية) بدل رسالة نصية
+const _LIM_K = { proj: 'projects', tech: 'tech', dlg: 'dlg', branch: 'branch' };
+async function _limInfo(uid, k, extra){ try { const cfg = await _subCfg(); const L = await _subLimits(uid); const lk = _LIM_K[k];
+    const ad = cfg.addons[k]; const addon = ad && ad.on && L.tier !== 'free' && ad.tiers.includes(L.tier) ? { name: ad.name, p: ad.p, n: ad.n } : null;
+    const up = L.tier === 'pro' && (cfg.limits.ent[lk] || 0) > (L.limits[lk] || 0) ? { tier: 'ent', name: cfg.tiers.ent.name, lim: cfg.limits.ent[lk], m: cfg.tiers.ent.m } : (L.tier === 'free' ? { tier: 'pro', name: cfg.tiers.pro.name, lim: cfg.limits.pro[lk], m: cfg.tiers.pro.m } : null);
+    return Object.assign({ code: 'limit', k, lim: L.limits[lk] || 0, tier: L.tier, addon, up }, extra || {}); } catch(e){ return { code: 'limit', k }; } }
 function _subFrac(s){ const a = new Date(s.period_start).getTime(), b = new Date(s.period_end).getTime(), n = Date.now(); if (!(b > a) || n >= b) return 0; return Math.min(1, Math.max(0, (b - n) / (b - a))); }
 function _addMonths(d, m){ const x = new Date(d); const day = x.getUTCDate(); x.setUTCMonth(x.getUTCMonth() + m); if (x.getUTCDate() < day) x.setUTCDate(0); return x; }
 function _subNextEnd(start, cycle){ return _addMonths(start, cycle === 'y' ? 12 : 1); }
@@ -9853,6 +9867,8 @@ async function _osm(path){ const k = path; const c = _osmCache.get(k); if (c && 
   try { const r = await fetch('https://nominatim.openstreetmap.org' + path, { headers: { 'User-Agent': 'Manaqasa/1.0 (support@manaqasa.com)', 'Accept-Language': 'ar,en' }, signal: ctl.signal });
     const v = r.ok ? await r.json() : null; if (v) { _osmCache.set(k, { at: Date.now(), v }); if (_osmCache.size > 3000) _osmCache.delete(_osmCache.keys().next().value); } return v; } finally { clearTimeout(tm); } }
 function _osmName(a){ a = a || {}; return [a.road, a.neighbourhood || a.suburb || a.quarter || a.city_district, a.city || a.town || a.village || a.state].filter(Boolean).filter((x, i, arr) => arr.indexOf(x) === i).join('، '); }
+// إعداد الخريطة للواجهة: مفتاح Esri مقفول على نطاق الموقع (Referrer) فيُرسل للمتصفح عادي — بدونه ترجع الخريطة العادية
+app.get('/api/map/cfg', (req, res) => { res.set('Cache-Control', 'public, max-age=600'); res.json({ esri: String(process.env.ESRI_KEY || '').trim() || null }); });
 app.get('/api/geo/search', auth, rateLimiter(40, 60000), async (req, res) => {
   try { const q = _cleanTxt(String(req.query.q || ''), 120); if (q.length < 2) return res.json({ items: [] });
     const v = await _osm('/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=sa&q=' + encodeURIComponent(q)) || [];
@@ -9864,10 +9880,6 @@ app.get('/api/geo/reverse', auth, rateLimiter(60, 60000), async (req, res) => {
     const v = await _osm('/reverse?format=jsonv2&addressdetails=1&zoom=17&lat=' + la.toFixed(5) + '&lon=' + ln.toFixed(5)) || {};
     const a = v.address || {}; res.json({ address: _osmName(a), district: a.neighbourhood || a.suburb || a.quarter || '', city: a.city || a.town || a.village || '' });
   } catch(e){ res.json({}); }
-});
-app.get('/api/geo/resolve', auth, rateLimiter(30, 60000), async (req, res) => {
-  try { const g = await _geoResolve(String(req.query.u || '').slice(0, 500)); if (!g) return res.status(400).json({ message: 'ما قدرنا نقرأ الموقع من الرابط — افتح الموقع في قوقل ماب واضغط «مشاركة» ثم «نسخ الرابط»' }); res.json(g); }
-  catch(e){ res.status(400).json({ message: 'ما قدرنا نقرأ الرابط' }); }
 });
 
 // ═══════════ أدوات المشترك: قائمة الأسعار · المتابعة الآلية · الحجز المباشر · تكلفة المشروع · الحملات ═══════════
@@ -10058,7 +10070,7 @@ async function _campList(req, aud, grp, lim){
   return (await pool.query(`SELECT c.id::text AS id, c.name, c.email FROM provider_customers c WHERE ${x.w} ORDER BY c.last_at DESC LIMIT ${lim | 0}`, x.a)).rows;
 }
 async function _campQuota(pid){ const L = (await _subLimits(pid)).limits; const used = (await pool.query("SELECT COALESCE(SUM(sent_n),0)::int n FROM campaigns WHERE provider_id=$1 AND created_at >= date_trunc('month', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'", [pid])).rows[0].n; return { limit: L.emails || 0, used }; }
-const _EMAIL_RX = /^[^\s@<>"',;]+@[^\s@<>"',;]+\.[a-z]{2,}$/i;
+const _EMAIL_RX = /^[\x21-\x7E]+@[\x21-\x7E]+\.[a-z]{2,}$/i;
 const _CAMP_CTA = { book: 'احجز موعدك', wa: 'تواصل واتساب', page: 'تواصل معنا', url: '', none: '' };
 // يبني محتوى الحملة (نفس الشكل للمعاينة والتجربة والإرسال الفعلي)
 function _campIn(b){
@@ -10102,7 +10114,7 @@ app.post('/api/campaigns/contacts', auth, providerOnly, rateLimiter(30, 3600000)
   try { if (!(await _qGate(req, res))) return; const b = req.body || {};
     const grp = _cleanTxt(b.grp || '', 60); if (grp.length < 2) return res.status(400).json({ message: 'اكتب اسم للقائمة (مثال: عملاء معرض الرياض)' });
     const items = Array.isArray(b.items) ? b.items.slice(0, 5000) : []; const seen = new Set(); let invalid = 0; const ok = [];
-    for (const it of items) { const em = String((it && it.email) || '').trim().toLowerCase().slice(0, 160); if (!_EMAIL_RX.test(em)) { invalid++; continue; } if (seen.has(em)) continue; seen.add(em); ok.push([em, _cleanTxt((it && it.name) || '', 80) || null]); }
+    for (const it of items) { const em = _cleanEmail((it && it.email) || '').slice(0, 160); if (/[^\x21-\x7E]/.test(em) || !_EMAIL_RX.test(em)) { invalid++; continue; } if (seen.has(em)) continue; seen.add(em); ok.push([em, _cleanTxt((it && it.name) || '', 80) || null]); }
     if (!ok.length) return res.status(400).json({ message: 'ما لقينا إيميلات صحيحة' + (invalid ? ' (' + invalid + ' غير صحيح)' : '') });
     const have = (await pool.query('SELECT COUNT(*)::int n FROM camp_contacts WHERE provider_id=$1', [req.user.id])).rows[0].n;
     if (have + ok.length > 20000) return res.status(409).json({ message: 'الحد 20,000 إيميل في القوائم — احذف قائمة قديمة أول' });
@@ -10350,7 +10362,7 @@ app.post('/api/branches', auth, providerOnly, async (req, res) => {
   try { if (!_brOwner(req, res)) return;
     const x = _brIn(req.body || {}); if (x.name.length < 2) return res.status(400).json({ message: 'اكتب اسم الفرع' });
     const v = await _brEnsure(req.user.id);
-    if (v.rows.length >= v.lim) return res.status(409).json({ code: 'limit', message: v.lim <= 1 ? 'الفروع متاحة في باقة مؤسسة' : 'وصلت حد الفروع في باقتك (' + v.lim + ') — أضف فرعاً إضافياً من «الاشتراك والباقة»' });
+    if (v.rows.length >= v.lim) return res.status(409).json(Object.assign(await _limInfo(req.user.id, 'branch'), { message: v.lim <= 1 ? 'الفروع متاحة في باقة مؤسسة' : 'وصلت حد الفروع في باقتك (' + v.lim + ') — أضف فرعاً إضافياً من «الاشتراك والباقة»' }));
     if (v.rows.some(b => b.name.trim() === x.name)) return res.status(409).json({ message: 'عندك فرع بنفس الاسم' });
     const b = (await pool.query('INSERT INTO provider_branches (provider_id, name, city, phone) VALUES ($1,$2,$3,$4) RETURNING *', [req.user.id, x.name, x.city, x.phone])).rows[0];
     _brDrop(req.user.id); res.json({ ok: true, branch: _brOut(b) });
@@ -10665,13 +10677,13 @@ app.post('/api/team', auth, providerOnly, async (req, res) => {
   try { if (!(await _jobGate(req, res))) return;
     const name = _cleanTxt(req.body && req.body.name || '', 80), phone = String(req.body && req.body.phone || '').replace(/[^\d+]/g, '').slice(0, 15), p9 = _ph9(phone);
     if (name.length < 2 || p9.length !== 9) return res.status(400).json({ message: 'اكتب اسم الفني ورقم جواله' });
-    const email = String(req.body && req.body.email || '').trim().toLowerCase().slice(0, 160);
+    const email = _cleanEmail(req.body && req.body.email || '').slice(0, 160);
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return res.status(400).json({ message: 'الإيميل غير صحيح' });
     const invTok = require('crypto').randomBytes(16).toString('hex');
     const L = await _subLimits(req.user.id); const n = (await pool.query('SELECT COUNT(*)::int n FROM provider_techs WHERE provider_id=$1 AND active', [req.user.id])).rows[0].n;
     const ex = (await pool.query('SELECT id, active FROM provider_techs WHERE provider_id=$1 AND phone9=$2', [req.user.id, p9])).rows[0];
     if (ex && ex.active) return res.status(409).json({ message: 'هذا الفني مضاف مسبقاً' });
-    if (n >= (L.limits.tech || 0)) return res.status(409).json({ code: 'limit', message: 'وصلت حد الفنيين في باقتك (' + (L.limits.tech || 0) + ') — أضف «5 فنيين» من صفحة الاشتراك والباقة' });
+    if (n >= (L.limits.tech || 0)) return res.status(409).json(Object.assign(await _limInfo(req.user.id, 'tech'), { message: 'وصلت حد الفنيين في باقتك (' + (L.limits.tech || 0) + ') — أضف «5 فنيين» من صفحة الاشتراك والباقة' }));
     const u = (await pool.query("SELECT id FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1 ORDER BY id LIMIT 1", [p9])).rows[0];
     if (u && String(u.id) === String(req.user.id)) return res.status(400).json({ message: 'هذا رقمك أنت' });
     const br = await _brPick(req, req.body && req.body.branch_id);
@@ -10691,7 +10703,7 @@ app.post('/api/team/:id/invite', auth, providerOnly, async (req, res) => {
     const own = (await pool.query('SELECT id FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [id, req.user.id])).rows[0];
     if (!own) return res.status(404).json({ message: 'الفني غير موجود' });
     const via = String(req.body && req.body.via || 'link');
-    if (req.body && req.body.email !== undefined) { const em = String(req.body.email || '').trim().toLowerCase().slice(0, 160); if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return res.status(400).json({ message: 'الإيميل غير صحيح' }); await pool.query('UPDATE provider_techs SET email=NULLIF($2,\'\') WHERE id=$1', [id, em]); }
+    if (req.body && req.body.email !== undefined) { const em = _cleanEmail(req.body.email || '').slice(0, 160); if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return res.status(400).json({ message: 'الإيميل غير صحيح' }); await pool.query('UPDATE provider_techs SET email=NULLIF($2,\'\') WHERE id=$1', [id, em]); }
     const t = await _techInvTok(id);
     const pn = (await pool.query("SELECT COALESCE(NULLIF(business_name,''),name) AS n FROM users WHERE id=$1", [req.user.id])).rows[0].n;
     const url = _techInvUrl(t);
@@ -10751,7 +10763,7 @@ app.post('/api/jobs', auth, providerOnly, async (req, res) => {
   try { if (!(await _jobGate(req, res))) return;
     const b = req.body || {}; const L = await _subLimits(req.user.id);
     const act = (await pool.query("SELECT COUNT(*)::int n FROM jobs WHERE provider_id=$1 AND status IN ('new','scheduled','active') AND quote_id IS NULL AND plan_visit_id IS NULL", [req.user.id])).rows[0].n;
-    if (act >= (L.limits.projects || 0)) return res.status(409).json({ code: 'limit', message: 'وصلت حد المشاريع اليدوية النشطة في باقتك (' + (L.limits.projects || 0) + ') — أضف «5 مشاريع» من صفحة الاشتراك والباقة' });
+    if (act >= (L.limits.projects || 0)) { const stale = (await pool.query("SELECT COUNT(*)::int n FROM jobs WHERE provider_id=$1 AND status IN ('new','scheduled','active') AND quote_id IS NULL AND plan_visit_id IS NULL AND COALESCE(updated_at, created_at) < NOW() - interval '30 days'", [req.user.id])).rows[0].n; return res.status(409).json(Object.assign(await _limInfo(req.user.id, 'proj', { stale }), { message: 'وصلت حد المشاريع اليدوية النشطة في باقتك (' + (L.limits.projects || 0) + ') — أضف «5 مشاريع» من صفحة الاشتراك والباقة' })); }
     const title = _cleanTxt(b.title || '', 120), cn = _cleanTxt(b.client_name || '', 80), cp = String(b.client_phone || '').replace(/[^\d+]/g, '').slice(0, 15);
     if (!title || !cn) return res.status(400).json({ message: 'اكتب عنوان المشروع واسم العميل' });
     let cid = null; if (_ph9(cp).length === 9) { const u = (await pool.query("SELECT id FROM users WHERE RIGHT(regexp_replace(COALESCE(phone,''),'\\D','','g'),9)=$1 AND id<>$2 ORDER BY id LIMIT 1", [_ph9(cp), req.user.id])).rows[0]; if (u) cid = u.id; }
@@ -10992,8 +11004,12 @@ app.post('/api/tech/att', auth, rateLimiter(60, 600000), async (req, res) => {
     if (act === 'in') { const r = await _attIn(t, 'btn', gok ? la : NaN, gok ? ln : NaN, _qat, { far: _far, photo: _ph }); if (!r) return res.status(409).json({ message: _attSched(t).from2 ? 'سجّلت حضورك — للفترة الثانية سجّل انصرافك من الأولى أول' : 'سجّلت حضورك اليوم مسبقاً' });
       if (r.late_min) try { await notify(t.provider_id, '⏰ ' + t.name + ' حضر متأخر ' + r.late_min + ' دقيقة', 'سجّل حضوره ' + _bkFmt(r.in_at), 'att', t.id, { url: '/att.html' }); } catch(e){}
       return res.json({ ok: true, shift: _shOut(Object.assign(r, { day: _ryYmd() })) }); }
-    if (act === 'out') { const _d = _ryYmd(_qat || new Date()); let r = (await pool.query("UPDATE tech_shifts SET out2_at=COALESCE($3, NOW()) WHERE tech_id=$1 AND day=$2::date AND in2_at IS NOT NULL AND out2_at IS NULL RETURNING *", [tid, _d, _qat])).rows[0];
-      if (!r) r = (await pool.query("UPDATE tech_shifts SET out_at=COALESCE($5, NOW()), out_lat=$2, out_lng=$3 WHERE tech_id=$1 AND day=$4::date AND out_at IS NULL RETURNING *", [tid, gok ? la : null, gok ? ln : null, _d, _qat])).rows[0];
+    if (act === 'out') { const _d0 = _ryYmd(_qat || new Date()); let r = null;
+      // دوام يعدّي نص الليل (حضر 11 الليل وانصرف 12:30): نقفل الدوام المفتوح من أمس بدل «سجّل حضورك أول»
+      for (const _d of [_d0, _ryYmd(new Date(new Date(_d0 + 'T12:00:00+03:00').getTime() - 86400e3))]) {
+        r = (await pool.query("UPDATE tech_shifts SET out2_at=COALESCE($3, NOW()) WHERE tech_id=$1 AND day=$2::date AND in2_at IS NOT NULL AND out2_at IS NULL AND in2_at > NOW() - INTERVAL '20 hours' RETURNING *", [tid, _d, _qat])).rows[0];
+        if (!r) r = (await pool.query("UPDATE tech_shifts SET out_at=COALESCE($5, NOW()), out_lat=$2, out_lng=$3 WHERE tech_id=$1 AND day=$4::date AND out_at IS NULL AND ($4::date = $6::date OR (in_at IS NOT NULL AND in_at > NOW() - INTERVAL '20 hours')) RETURNING *", [tid, gok ? la : null, gok ? ln : null, _d, _qat, _d0])).rows[0];
+        if (r) break; }
       if (!r) return res.status(409).json({ message: 'سجّل حضورك أول' }); return res.json({ ok: true, shift: _shOut(Object.assign(r, { day: _ryYmd() })) }); }
     if (act === 'leave') { const d1 = String(b.d1 || ''), d2 = String(b.d2 || b.d1 || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(d1) || !/^\d{4}-\d{2}-\d{2}$/.test(d2) || d2 < d1 || d1 < _ryYmd()) return res.status(400).json({ message: 'اختر تاريخ الإجازة' });
       if ((Date.parse(d2) - Date.parse(d1)) / 864e5 > 60) return res.status(400).json({ message: 'أطول إجازة 60 يوم' });
@@ -15689,7 +15705,7 @@ app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (r
     const agg = await pool.query(`SELECT ${KEY} AS close_reason, COUNT(*)::int AS c FROM requests r WHERE ${WHERE} GROUP BY 1 ORDER BY c DESC`);
     const list = await pool.query(`SELECT r.id, r.title, r.status, r.created_at, r.close_at, r.close_set_by, r.close_auto_kind, r.close_auto_days, r.close_reason AS raw_reason,
         ${KEY} AS close_reason, r.close_reason_note, COALESCE(r.closed_at, r.completed_at) AS closed_at, r.closed_at AS closed_at_raw, COALESCE(u.name,'عميل') AS client_name,
-        (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count, r.close_missing, COALESCE(r.close_help,FALSE) AS close_help, COALESCE(r.close_help_done,FALSE) AS close_help_done, u.phone AS client_phone, r.city, r.category,
+        (SELECT COUNT(*) FROM bids WHERE request_id=r.id)::int AS bid_count, r.close_missing, r.assigned_at, COALESCE(r.auto_completed,FALSE) AS auto_completed, (SELECT COALESCE(NULLIF(pu.business_name,''),pu.name) FROM users pu WHERE pu.id=r.assigned_provider_id) AS provider_name, COALESCE(r.close_help,FALSE) AS close_help, COALESCE(r.close_help_done,FALSE) AS close_help_done, u.phone AS client_phone, r.city, r.category,
         r.revisit_at, (SELECT string_agg(kind, ',') FROM reminders_log rl WHERE rl.ref_id=r.id AND rl.user_id=r.client_id AND rl.kind IN ('closed_offers','closed_offers_2d','closed_offers_7d')) AS reminded,
         (SELECT json_build_object('name', COALESCE(NULLIF(pu.business_name,''),pu.name), 'status', s.status, 'amount', s.contract_value) FROM saai_ledger s JOIN users pu ON pu.id=s.provider_id
            WHERE s.request_id=r.id AND s.source='self' AND s.status IN ('submitted','approved') ORDER BY s.id DESC LIMIT 1) AS self_pay,
@@ -15697,7 +15713,10 @@ app.get('/api/admin/close-reasons', requirePermission('requests.view'), async (r
         (SELECT json_build_object('tpl', l.tpl, 'at', l.created_at) FROM close_wa_log l WHERE l.request_id=r.id ORDER BY l.id DESC LIMIT 1) AS last_wa
       FROM requests r JOIN users u ON u.id=r.client_id WHERE ${WHERE} ORDER BY COALESCE(r.closed_at, r.completed_at, r.close_at, r.created_at) DESC NULLS LAST LIMIT 300`);
     const rows = list.rows.map(x => {
-      const info = x.status === 'completed' ? { by:'done', short:'تمت الترسية', text:'اختار مزوّد وتمت الترسية' } : _closeInfo({ status: x.status, created_at: x.created_at, close_at: x.close_at, close_set_by: x.close_set_by, close_auto_kind: x.close_auto_kind, close_auto_days: x.close_auto_days, close_reason: x.raw_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at_raw });
+      const _fdl = d => d ? new Date(d).toLocaleDateString('ar-SA-u-nu-latn-ca-gregory', { day:'numeric', month:'long', timeZone:'Asia/Riyadh' }) : '';
+      // «اكتمل» مو «ترسية اليوم»: الترسية صارت بتاريخها، والإتمام إما العميل أكّده أو تلقائي لأنه ما ردّ على سؤال التأكيد
+      const info = x.status === 'completed' ? { by:'done', short: x.auto_completed ? 'اكتمل تلقائياً' : 'اكتمل', auto: !!x.auto_completed, provider: x.provider_name || null, awarded_at: x.assigned_at || null,
+          text: (x.provider_name ? 'رسى على «' + x.provider_name + '»' + (x.assigned_at ? ' في ' + _fdl(x.assigned_at) : '') + ' ← ' : '') + (x.auto_completed ? 'العميل ما ردّ على سؤال «هل تم التنفيذ؟» فاعتُبر مكتمل تلقائياً' : 'العميل أكّد إتمام المشروع') } : _closeInfo({ status: x.status, created_at: x.created_at, close_at: x.close_at, close_set_by: x.close_set_by, close_auto_kind: x.close_auto_kind, close_auto_days: x.close_auto_days, close_reason: x.raw_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at_raw });
       return { id: x.id, title: x.title, close_reason: x.close_reason, close_reason_note: x.close_reason_note, closed_at: x.closed_at, client_name: x.client_name, bid_count: x.bid_count, created_at: x.created_at, close_info: info, close_missing: x.close_missing, close_help: x.close_help, close_help_done: x.close_help_done, client_phone: x.client_phone, city: x.city, category: x.category, status: x.status, revisit_at: x.revisit_at, reminded: x.reminded ? String(x.reminded).split(',') : [], self_pay: x.self_pay, min_price: x.min_price ? Number(x.min_price) : null, last_wa: x.last_wa || null };
     });
     // اتفاقات انلغت بعد الترسية (المزوّد بلّغ ← العميل/الإدارة أكّد) — ما كانت تطلع هنا أبداً
@@ -16739,6 +16758,8 @@ async function _adminOverview(){
           (SELECT 'bid', b.created_at, COALESCE(NULLIF(u.business_name,''),u.name), r.title, b.price, r.id, b.price_unit FROM bids b JOIN users u ON u.id=b.provider_id JOIN requests r ON r.id=b.request_id ORDER BY b.created_at DESC LIMIT 6)
           UNION ALL
           (SELECT 'award', r.assigned_at, cu.name, COALESCE(NULLIF(pu.business_name,''),pu.name), NULL, r.id, NULL FROM requests r JOIN users cu ON cu.id=r.client_id JOIN users pu ON pu.id=r.assigned_provider_id WHERE r.assigned_at IS NOT NULL ORDER BY r.assigned_at DESC LIMIT 4)
+          UNION ALL
+          (SELECT 'done', r.completed_at, cu.name, r.title, NULL, r.id, CASE WHEN COALESCE(r.auto_completed,FALSE) THEN 'auto' ELSE 'client' END FROM requests r JOIN users cu ON cu.id=r.client_id WHERE r.status='completed' AND r.completed_at IS NOT NULL ORDER BY r.completed_at DESC LIMIT 4)
           UNION ALL
           (SELECT 'flag', f.created_at, COALESCE(NULLIF(u.business_name,''),u.name), f.reason, NULL, f.request_id, NULL FROM offer_flags f JOIN users u ON u.id=f.provider_id ORDER BY f.created_at DESC LIMIT 4)
           UNION ALL
