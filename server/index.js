@@ -253,6 +253,68 @@ app.get('/api/admin/apphealth', requirePermission('settings.manage'), async (req
     res.json({ at: new Date(), since: new Date(_HL.since), uptime_s: Math.round(process.uptime()), mem_mb: Math.round(mem.rss / 1048576), req_n: _HL.n, s5: _HL.s5, st, slow, err5, server_errs: _HL.errs.slice(-25).reverse(), js, js24, pay, pay_n: payN, email: em, email_errs: emErr, csp });
   } catch(e){ console.error('health:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
+// ═══════════ الحدود والمواعيد: استهلاك الخدمات مقابل حدّها · مواعيد الانتهاء · آخر نسخة احتياطية · تنبيه بالإيميل ═══════════
+const MON_DEF = { email_month: 3000, email_day: 100, esri_month: 20000, esri_day: 2000, alert: true, items: [] };
+let _svcP = null;
+function _svcTbl(){ if (!_svcP) _svcP = pool.query('CREATE TABLE IF NOT EXISTS svc_usage (day DATE NOT NULL, k VARCHAR(24) NOT NULL, n INT NOT NULL DEFAULT 0, PRIMARY KEY (day, k))').catch(e => { _svcP = null; throw e; }); return _svcP; }
+const _ryDay = () => new Date(Date.now() + 3 * 3600e3).toISOString().slice(0, 10);
+async function _svcHit(k){ try { await _svcTbl(); await pool.query('INSERT INTO svc_usage (day, k, n) VALUES ($1::date, $2, 1) ON CONFLICT (day, k) DO UPDATE SET n = svc_usage.n + 1', [_ryDay(), k]); } catch(e){} }
+async function _svcCount(k){ try { await _svcTbl(); const d = _ryDay(); const r = (await pool.query("SELECT COALESCE(SUM(n) FILTER (WHERE day=$2::date),0)::int AS day, COALESCE(SUM(n),0)::int AS month FROM svc_usage WHERE k=$1 AND day >= date_trunc('month', $2::date)", [k, d])).rows[0]; return r || { day: 0, month: 0 }; } catch(e){ return { day: 0, month: 0 }; } }
+// أول مرة: مواعيد نعرفها (مفاتيح Esri انعملت 14 نوفمبر 2026 لمدة سنة) + الدومين بدون تاريخ
+const MON_SEED = [{ id: 'esrimaps', name: 'مفتاح الخريطة في Esri', date: '2027-11-14', note: 'manaqasa-maps · يتجدد من location.arcgis.com' }, { id: 'esrisrv', name: 'مفتاح السيرفر في Esri', date: '2027-11-14', note: 'manaqasa-server · بعد التجديد حدّث ESRI_SRV_KEY في Railway' }, { id: 'domain', name: 'الدومين manaqasa.com', date: null, note: '' }];
+async function _monCfg(){ let c = null; try { c = JSON.parse(await getSetting('mon_cfg', 'null')); } catch(e){} c = c || { items: MON_SEED }; const o = Object.assign({}, MON_DEF, c); o.items = Array.isArray(c.items) ? c.items : []; return o; }
+// سقف يومي لـ Esri: لو وصل، البحث يرجع للخرائط المفتوحة بدل ما يخلص الحد المجاني (الصرف مقفول عندهم = تتوقف الخدمة)
+async function _esriAllowed(){ const c = await _monCfg(); const u = await _svcCount('esri_geo'); return u.day < c.esri_day && u.month < c.esri_month; }
+async function _monData(){
+  const c = await _monCfg(); const q = async (s, a) => { try { return (await pool.query(s, a || [])).rows[0] || {}; } catch(e){ return {}; } };
+  const em = await q("SELECT COUNT(*) FILTER (WHERE created_at >= date_trunc('month', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')::int AS month, COUNT(*) FILTER (WHERE created_at >= date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')::int AS day FROM email_log WHERE created_at > NOW() - interval '32 days'");
+  const es = await _svcCount('esri_geo'); let st = {}; try { st = await storageStatus(); } catch(e){}
+  const now = new Date(Date.now() + 3 * 3600e3), dim = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate(), dd = now.getUTCDate();
+  const proj = n => dd >= 3 ? Math.round(n / dd * dim) : null; // بهالمعدل كم يوصل آخر الشهر
+  const U = (k, name, sub, used, lim, unit, period) => ({ k, name, sub, used: used || 0, lim, unit: unit || '', period, pct: lim ? Math.round((used || 0) / lim * 1000) / 10 : 0, proj: period === 'month' ? proj(used || 0) : null });
+  const usage = [
+    U('email_month', 'الإيميلات هالشهر', 'Resend', em.month, c.email_month, '', 'month'),
+    U('email_day', 'الإيميلات اليوم', 'Resend', em.day, c.email_day, '', 'day'),
+    U('esri_month', 'البحث عن العناوين هالشهر', 'Esri', es.month, c.esri_month, '', 'month'),
+    U('esri_day', 'البحث عن العناوين اليوم', 'Esri · لو وصل السقف يرجع البحث للخرائط المفتوحة', es.day, c.esri_day, '', 'day'),
+    U('r2', 'صور الملفات', 'Cloudflare R2', st.r2MB, st.r2CapMB, 'MB'),
+    U('db', 'قاعدة البيانات', 'Railway', st.dbMB, st.dbCapMB, 'MB')
+  ];
+  let bk = null; try { bk = JSON.parse(await getSetting('offsite_backup_last', 'null')); } catch(e){}
+  const bkAge = bk && bk.at ? (Date.now() - new Date(bk.at).getTime()) / 3600e3 : null;
+  const backup = { at: bk && bk.at || null, bytes: bk && bk.bytes || 0, ok: bkAge != null && bkAge < 26, hours: bkAge == null ? null : Math.round(bkAge) };
+  const today = _ryDay();
+  const items = c.items.map(x => { const days = x.date ? Math.round((new Date(x.date + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 864e5) : null; return Object.assign({}, x, { days }); })
+    .sort((a, b) => (a.days == null) - (b.days == null) || (a.days - b.days));
+  const warn = usage.filter(u => u.lim && u.pct >= 80).length + items.filter(x => x.days != null && x.days <= 30).length + (backup.ok ? 0 : 1);
+  return { usage, backup, items, alert: !!c.alert, limits: { email_month: c.email_month, email_day: c.email_day, esri_month: c.esri_month, esri_day: c.esri_day }, warn, owner_set: OWNER_EMAIL !== '\u0000no-owner' };
+}
+app.get('/api/admin/monitor', requirePermission('settings.manage'), async (req, res) => { try { res.json(await _monData()); } catch(e){ console.error('monitor:', e.message); res.status(500).json({ message: 'حدث خطأ' }); } });
+app.put('/api/admin/monitor/cfg', requirePermission('settings.manage'), express.json({ limit: '32kb' }), async (req, res) => {
+  try { const b = req.body || {}; const c = await _monCfg(); const n = (v, lo, hi) => { v = parseInt(v); return isFinite(v) ? Math.max(lo, Math.min(hi, v)) : null; };
+    for (const k of ['email_month', 'email_day', 'esri_month', 'esri_day']) if (b[k] != null) { const v = n(b[k], 1, 100000000); if (v == null) return res.status(400).json({ message: 'اكتب رقم صحيح' }); c[k] = v; }
+    if (b.alert != null) c.alert = !!b.alert;
+    if (Array.isArray(b.items)) { if (b.items.length > 40) return res.status(400).json({ message: 'الحد 40 موعد' });
+      c.items = b.items.map(x => ({ id: /^[a-z0-9]{4,12}$/.test(String(x && x.id || '')) ? String(x.id) : crypto.randomBytes(4).toString('hex'), name: _cleanTxt(x && x.name || '', 80), date: /^\d{4}-\d{2}-\d{2}$/.test(String(x && x.date || '')) ? String(x.date) : null, note: _cleanTxt(x && x.note || '', 160) })).filter(x => x.name);
+    }
+    await setSetting('mon_cfg', JSON.stringify(c)); res.json(await _monData());
+  } catch(e){ console.error('monitor cfg:', e.message); res.status(500).json({ message: 'حدث خطأ' }); } });
+// كل ساعة: لو شي وصل 80% أو 100%، أو موعد باقي له 30 أو 7 أيام أو فات، أو النسخة الاحتياطية تأخرت — إيميل للمالك (ما يتكرر لنفس المستوى)
+async function _monTick(){
+  try { const d = await _monData(); if (!d.alert || !d.owner_set) return { sent: false, why: 'off' };
+    const per = _ryDay(), mon = per.slice(0, 7), out = [];
+    for (const u of d.usage) { if (!u.lim || u.pct < 80) continue; const lvl = u.pct >= 100 ? 100 : 80; out.push({ key: 'mon_' + u.k + '_' + lvl + '_' + (u.period === 'day' ? per : mon), red: lvl === 100, t: u.name + ' — ' + Math.round(u.pct) + '%', s: (u.used || 0).toLocaleString('en-US') + ' من ' + (u.lim || 0).toLocaleString('en-US') + (u.unit ? ' ' + u.unit : '') + (u.proj && u.proj > u.lim ? ' · بهالمعدل يتعدّى الحد قبل نهاية الشهر' : '') }); }
+    for (const x of d.items) { if (x.days == null || x.days > 30) continue; const lvl = x.days < 0 ? 'late' : x.days <= 7 ? '7' : '30'; out.push({ key: 'mon_exp_' + x.id + '_' + lvl + '_' + x.date, red: x.days <= 7, t: x.name + ' — ' + (x.days < 0 ? 'انتهى' : x.days === 0 ? 'ينتهي اليوم' : 'باقي ' + x.days + ' يوم'), s: 'ينتهي ' + x.date + (x.note ? ' · ' + x.note : '') }); }
+    if (!d.backup.ok) out.push({ key: 'mon_backup_' + per, red: true, t: 'النسخة الاحتياطية متأخرة', s: d.backup.at ? 'آخر نسخة قبل ' + d.backup.hours + ' ساعة' : 'ما فيه نسخة مسجّلة' });
+    const fresh = []; for (const o of out) { const r = await pool.query("INSERT INTO reminders_log (user_id, kind, ref_id) SELECT u.id, $2::varchar, 0 FROM users u WHERE lower(u.email)=$1::text AND NOT EXISTS (SELECT 1 FROM reminders_log WHERE kind=$2::varchar) LIMIT 1 RETURNING id", [OWNER_EMAIL, o.key]).catch(() => ({ rows: [] })); if (r.rows.length) fresh.push(o); }
+    if (!fresh.length) return { sent: false, n: out.length };
+    const box = o => '<div style="border:1px solid ' + (o.red ? '#fecaca;background:#fef2f2' : '#fde68a;background:#fffbeb') + ';border-radius:12px;padding:10px 12px;margin:0 0 10px"><b style="color:' + (o.red ? '#b42318' : '#92400e') + '">' + eEsc(o.t) + '</b><div style="font-size:13px;color:#475569;margin-top:3px">' + eEsc(o.s) + '</div></div>';
+    await sendEmail(OWNER_EMAIL, '⚠️ مناقصة — ' + (fresh.length === 1 ? 'شي يحتاج متابعتك' : fresh.length + ' أشياء تحتاج متابعتك'), '<div dir="rtl" style="font-family:Tahoma,Arial;font-size:14px;line-height:1.8"><p>السلام عليكم، هذي الأشياء قربت من حدها:</p>' + fresh.map(box).join('') + '<p><a href="' + SITE_URL + '/dashboard-admin.html#health" style="background:#1e3a8a;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none;font-weight:bold">افتح صحة المنصة</a></p><p style="color:#94a3b8;font-size:12px">ما يتكرر نفس التنبيه إلا لو صار أخطر.</p></div>', { kind: 'monitor' });
+    return { sent: true, n: fresh.length };
+  } catch(e){ console.error('monitor tick:', e.message); return { sent: false, err: e.message }; }
+}
+if (process.env.MON_AUTO !== '0') setTimeout(() => { _monTick(); setInterval(_monTick, 3600e3); }, 90e3);
+app.post('/api/admin/monitor/tick', requirePermission('settings.manage'), async (req, res) => { res.json(await _monTick()); });
 app.post('/api/admin/health/jsclear', requirePermission('settings.manage'), express.json({ limit: '8kb' }), async (req, res) => { try { const b = req.body || {}; if (b.all) await pool.query('DELETE FROM js_errors'); else await pool.query('DELETE FROM js_errors WHERE msg=$1 AND src=$2 AND page=$3', [String(b.msg || ''), String(b.src || ''), String(b.page || '')]); res.json({ ok: true }); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); } });
 app.post('/api/csp-report', rateLimiter(40, 60000), express.json({ type: ['application/csp-report','application/reports+json','application/json'], limit: '16kb' }), async (req, res) => {
   res.status(204).end();
@@ -2415,7 +2477,8 @@ async function setSetting(key, value) {
 }
 
 // ═══════════ نظام الصلاحيات (RBAC) ═══════════
-const OWNER_EMAIL = 'wled-111@hotmail.com';
+// إيميل المالك من متغيّر Railway (OWNER_EMAIL) — ما ينكتب في الكود
+const OWNER_EMAIL = String(process.env.OWNER_EMAIL || '').trim().toLowerCase() || '\u0000no-owner';
 const ALL_PERMISSIONS = ['dashboard.view','analytics.view','users.view','users.edit','users.delete','users.badge','users.role','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send','settings.manage','admins.manage','outreach.manage','support.view','support.reply'];
 const PERM_LABELS = {'support.view':'عرض محادثات الدعم','support.reply':'الرد على محادثات الدعم','dashboard.view':'عرض لوحة المعلومات','analytics.view':'عرض التحليلات','users.view':'عرض المستخدمين','users.edit':'تعديل المستخدمين','users.delete':'حذف المستخدمين','users.badge':'منح الألقاب','users.role':'تغيير الأدوار','requests.view':'عرض المشاريع','requests.edit':'تعديل المشاريع','requests.delete':'حذف المشاريع','requests.review':'مراجعة المشاريع','bids.view':'عرض العروض','bids.edit':'تعديل العروض','bids.delete':'حذف العروض','reviews.view':'عرض التقييمات','reviews.delete':'حذف التقييمات','questions.view':'عرض الأسئلة','questions.answer':'الرد على الأسئلة','questions.delete':'حذف الأسئلة','reports.view':'عرض البلاغات','reports.resolve':'معالجة البلاغات','logs.view':'عرض السجل','broadcast.send':'الرسائل الجماعية','settings.manage':'إدارة الإعدادات','admins.manage':'إدارة المشرفين','outreach.manage':'إدارة الاستقطاب (الصيد)'};
 const ROLE_LABELS = {super_admin:'مدير كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
@@ -4202,7 +4265,7 @@ async function setupDatabase() {
       // توافق رجعي: أي أدمن حالي بدون دور => مدير كامل بصلاحيات كاملة
       await _mig(`UPDATE users SET admin_role=COALESCE(admin_role,'super_admin'), admin_level=COALESCE(NULLIF(admin_level,0),90), permissions=COALESCE(permissions,'["*"]'::jsonb) WHERE role='admin'`);
       // المالك المحمي — أعلى رتبة لا تُمَس
-      await _mig(`UPDATE users SET role='admin', admin_role='super_admin', admin_level=100, permissions='["*"]'::jsonb WHERE email=$1`, ['wled-111@hotmail.com']);
+      await _mig(`UPDATE users SET role='admin', admin_role='super_admin', admin_level=100, permissions='["*"]'::jsonb WHERE lower(email)=$1`, [OWNER_EMAIL]);
     } catch(e){ console.error('seed owner:', e.message); }
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bumped_at TIMESTAMP'); } catch(e){}
     try { await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active TIMESTAMP'); } catch(e){}
@@ -9867,18 +9930,41 @@ async function _osm(path){ const k = path; const c = _osmCache.get(k); if (c && 
   try { const r = await fetch('https://nominatim.openstreetmap.org' + path, { headers: { 'User-Agent': 'Manaqasa/1.0 (support@manaqasa.com)', 'Accept-Language': 'ar,en' }, signal: ctl.signal });
     const v = r.ok ? await r.json() : null; if (v) { _osmCache.set(k, { at: Date.now(), v }); if (_osmCache.size > 3000) _osmCache.delete(_osmCache.keys().next().value); } return v; } finally { clearTimeout(tm); } }
 function _osmName(a){ a = a || {}; return [a.road, a.neighbourhood || a.suburb || a.quarter || a.city_district, a.city || a.town || a.village || a.state].filter(Boolean).filter((x, i, arr) => arr.indexOf(x) === i).join('، '); }
+// البحث عن العناوين عبر Esri بمفتاح السيرفر (ESRI_SRV_KEY — ما يطلع للمتصفح أبداً)، وإذا ما فيه مفتاح أو تعطّلت نرجع للخرائط المفتوحة
+const _esriCache = new Map();
+async function _esri(path, qs){ const K = String(process.env.ESRI_SRV_KEY || '').trim(); if (!K) return null;
+  // حسابنا «غير مخزّن» فقط: النتيجة للعرض لحظة البحث، ما تنحفظ (كاش قصير 10 دقايق للضغطات المتكررة)
+  const k = path + '?' + qs; const c = _esriCache.get(k); if (c && Date.now() - c.at < 600000) return c.v;
+  if (!(await _esriAllowed())) return null; // وصل السقف اليومي/الشهري → الخرائط المفتوحة
+  _svcHit('esri_geo');
+  const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 7000);
+  try { const u = new URL((process.env.ESRI_GEO_BASE || 'https://geocode-api.arcgis.com/arcgis/rest/services/World/GeocodeServer/') + path + '?' + qs);
+    u.searchParams.set('f', 'json'); u.searchParams.set('langCode', 'AR');
+    const r = await fetch(u, { headers: { 'X-Esri-Authorization': 'Bearer ' + K }, signal: ctl.signal });
+    const v = r.ok ? await r.json() : null; if (!v || v.error) { if (v && v.error) console.warn('esri geocode:', v.error.code, v.error.message); return null; }
+    _esriCache.set(k, { at: Date.now(), v }); if (_esriCache.size > 3000) _esriCache.delete(_esriCache.keys().next().value); return v;
+  } catch(e) { console.warn('esri geocode:', e.message); return null; } finally { clearTimeout(tm); } }
+const _eNm = a => { a = a || {}; return [a.StAddr, a.Nbrhd || a.District, a.City || a.Region].filter(Boolean).filter((x, i, arr) => arr.indexOf(x) === i).join('، '); };
+async function _geoSearch(q){
+  const e = await _esri('findAddressCandidates', 'countryCode=SAU&maxLocations=6&outFields=PlaceName,StAddr,Nbrhd,District,City,Region&SingleLine=' + encodeURIComponent(q));
+  if (e && Array.isArray(e.candidates)) return e.candidates.filter(c => c.score >= 70 && c.location).map(c => { const a = c.attributes || {}; const sub = _eNm(a) || c.address;
+    return { lat: +(+c.location.y).toFixed(6), lng: +(+c.location.x).toFixed(6), name: a.PlaceName || String(c.address || '').split(',')[0] || sub, sub }; }).filter(x => _geoOk(x.lat, x.lng));
+  const v = await _osm('/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=sa&q=' + encodeURIComponent(q)) || [];
+  return v.map(x => ({ lat: +(+x.lat).toFixed(6), lng: +(+x.lon).toFixed(6), name: x.name || _osmName(x.address) || x.display_name, sub: _osmName(x.address) || x.display_name })).filter(x => _geoOk(x.lat, x.lng)); }
+// العنوان من الدبوس ينحفظ مع المشروع، وEsri «غير المخزّن» ما يسمح بالحفظ — فيبقى من الخرائط المفتوحة لين يتفعّل هدهد
+async function _geoReverse(la, ln){
+  const v = await _osm('/reverse?format=jsonv2&addressdetails=1&zoom=17&lat=' + la.toFixed(5) + '&lon=' + ln.toFixed(5)) || {};
+  const o = v.address || {}; return { address: _osmName(o), district: o.neighbourhood || o.suburb || o.quarter || '', city: o.city || o.town || o.village || '' }; }
 // إعداد الخريطة للواجهة: مفتاح Esri مقفول على نطاق الموقع (Referrer) فيُرسل للمتصفح عادي — بدونه ترجع الخريطة العادية
 app.get('/api/map/cfg', (req, res) => { res.set('Cache-Control', 'public, max-age=600'); res.json({ esri: String(process.env.ESRI_KEY || '').trim() || null }); });
 app.get('/api/geo/search', auth, rateLimiter(40, 60000), async (req, res) => {
   try { const q = _cleanTxt(String(req.query.q || ''), 120); if (q.length < 2) return res.json({ items: [] });
-    const v = await _osm('/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=sa&q=' + encodeURIComponent(q)) || [];
-    res.json({ items: v.map(x => ({ lat: +(+x.lat).toFixed(6), lng: +(+x.lon).toFixed(6), name: x.name || _osmName(x.address) || x.display_name, sub: _osmName(x.address) || x.display_name })).filter(x => _geoOk(x.lat, x.lng)) });
+    res.json({ items: await _geoSearch(q) });
   } catch(e){ res.json({ items: [] }); }
 });
 app.get('/api/geo/reverse', auth, rateLimiter(60, 60000), async (req, res) => {
   try { const la = parseFloat(req.query.lat), ln = parseFloat(req.query.lng); if (!_geoOk(la, ln)) return res.json({});
-    const v = await _osm('/reverse?format=jsonv2&addressdetails=1&zoom=17&lat=' + la.toFixed(5) + '&lon=' + ln.toFixed(5)) || {};
-    const a = v.address || {}; res.json({ address: _osmName(a), district: a.neighbourhood || a.suburb || a.quarter || '', city: a.city || a.town || a.village || '' });
+    res.json(await _geoReverse(la, ln));
   } catch(e){ res.json({}); }
 });
 
