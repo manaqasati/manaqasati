@@ -203,7 +203,7 @@ app.use((req, res, next) => {
 });
 // حماية ملفات السيرفر: express.static يخدم مجلد المشروع كامل، فنمنع أي ملف مو مخصص للزوار
 // (كود السيرفر index.js، package.json، node_modules، ملفات patch/log وأي ملف مخفي)
-const _PUBLIC_JS = new Set(['/ui.js','/slotpick.js','/geopick.js','/mqmap.js','/jobtask.js','/camp.js','/i18n.js','/i18n-en.js','/i18n-ur.js','/branch.js','/route.js','/pnav.js','/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
+const _PUBLIC_JS = new Set(['/ui.js','/slotpick.js','/geopick.js','/mqmap.js','/jobtask.js','/camp.js','/i18n.js','/i18n-en.js','/i18n-ur.js','/branch.js','/route.js','/mqroute.js','/pnav.js','/pban.js','/sub.js','/proofs.js','/wptop.js','/dlg.js','/adm-dlg.js','/award.js','/emailpref.js','/askpw.js','/support-fab.js','/bidban.js','/plan-gate.js','/smartq.js','/tour.js','/guide.js','/wafix.js','/sw.js','/track.js','/up.js','/catpick.js','/citypick.js','/dash-admin.js','/dash-client.js','/dash-provider.js','/dash-post.js','/dash-app.js','/dash-rj.js','/dash-desk.js','/dash-more.js']);
 app.use((req, res, next) => {
   let p = req.path; try { p = decodeURIComponent(p); } catch(e) {}
   p = p.toLowerCase();
@@ -4368,6 +4368,7 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS dur_min INTEGER DEFAULT 120`);
       await _mig(`ALTER TABLE bids ADD COLUMN IF NOT EXISTS quote_items JSONB`);
       await _mig(`ALTER TABLE job_costs ADD COLUMN IF NOT EXISTS kind VARCHAR(10)`);
+      await _mig(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS sched_fixed BOOLEAN DEFAULT FALSE`);
       await _mig(`CREATE TABLE IF NOT EXISTS tech_shifts (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, tech_id INTEGER REFERENCES provider_techs(id) ON DELETE CASCADE, day DATE NOT NULL, in_at TIMESTAMPTZ, out_at TIMESTAMPTZ, in_lat DOUBLE PRECISION, in_lng DOUBLE PRECISION, in_km NUMERIC(8,1), out_lat DOUBLE PRECISION, out_lng DOUBLE PRECISION, src VARCHAR(8), late_min INTEGER DEFAULT 0, UNIQUE(tech_id, day))`);
       await _mig(`CREATE TABLE IF NOT EXISTS tech_leaves (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, tech_id INTEGER REFERENCES provider_techs(id) ON DELETE CASCADE, d1 DATE NOT NULL, d2 DATE NOT NULL, reason VARCHAR(200), status VARCHAR(10) DEFAULT 'pending', by_tech BOOLEAN DEFAULT FALSE, created_at TIMESTAMPTZ DEFAULT NOW(), decided_at TIMESTAMPTZ)`);
       await _mig(`CREATE TABLE IF NOT EXISTS att_alerts (tech_id INTEGER, day DATE, PRIMARY KEY (tech_id, day))`);
@@ -10784,7 +10785,7 @@ async function _taskAct(j, b, act, byName){
 const _TASK_ACTS = ['task_edit', 'task_note', 'task_note_del', 'task_file', 'task_file_del'];
 async function _jobGate(req, res){ return _qGate(req, res); }
 function _jobOut(j, who){
-  const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, enroute_at: j.enroute_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: (j.tasks || []).map(t => _taskOut(t, who)), photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, dur_min: parseInt(j.dur_min) || 120, created_at: j.created_at, updated_at: j.updated_at };
+  const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, sched_fixed: who === 'prov' ? !!j.sched_fixed : undefined, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, enroute_at: j.enroute_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: (j.tasks || []).map(t => _taskOut(t, who)), photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, dur_min: parseInt(j.dur_min) || 120, created_at: j.created_at, updated_at: j.updated_at };
   if (who !== 'tech') Object.assign(o, { value: parseFloat(j.value) || 0, extra_total: parseFloat(j.extra_total) || 0 });
   if (who !== 'client' && j.brief && ((j.brief.notes || []).length || (j.brief.files || []).length)) o.brief = _taskOut(j.brief, who);
   if (j.lat != null && j.lng != null) { o.lat = j.lat; o.lng = j.lng; if (!o.maps) o.maps = 'https://www.google.com/maps/search/?api=1&query=' + j.lat + ',' + j.lng; }
@@ -10937,6 +10938,7 @@ app.post('/api/jobs/:id', auth, providerOnly, async (req, res) => {
       const chg = tech && sched && (String(new Date(sched).getTime()) !== String(j.sched_at ? new Date(j.sched_at).getTime() : '') || tech !== (j.tech_id || null) || durN !== _JDUR(j));
       if (chg && !b.confirm) { const warn = await _calConflicts(req.user.id, id, tech, new Date(sched), durN, j.lat != null ? { lat: j.lat, lng: j.lng } : null); if (warn.length) return res.json({ ok: false, need_confirm: true, warnings: warn }); }
       if (b.dur_min !== undefined) await pool.query('UPDATE jobs SET dur_min=$2 WHERE id=$1', [id, durN]);
+      if (b.fixed !== undefined) await pool.query('UPDATE jobs SET sched_fixed=$2 WHERE id=$1', [id, !!b.fixed]);
       const r = (await pool.query('UPDATE jobs SET title=$2, address=$3, maps=$4, sched_at=$5, tech_id=$6, status=$7, updated_at=NOW() WHERE id=$1 RETURNING *', [id, _cleanTxt(b.title || j.title, 120), b.address !== undefined ? (_cleanTxt(b.address, 200) || null) : j.address, b.maps !== undefined ? (_safeUrl(b.maps) || null) : j.maps, sched, tech, st])).rows[0];
       if (b.maps !== undefined && (b.maps || null) !== (j.maps || null)) { await pool.query('UPDATE jobs SET lat=NULL, lng=NULL WHERE id=$1', [id]); _jobGeo(id).catch(() => {}); }
       const fmt = d => d ? new Date(d).toLocaleString('ar-SA-u-nu-latn-ca-gregory', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Riyadh' }) : '';
@@ -11400,6 +11402,97 @@ async function _calConflicts(pid, jobId, techId, at, dur, km0){
   const bk = (await pool.query("SELECT 1 FROM bookings WHERE provider_id=$1 AND status='pending' AND at=$2 LIMIT 1", [pid, at])).rows; if (bk.length) w.push('فيه حجز مباشر بانتظار التأكيد بنفس الوقت');
   return w;
 }
+// ═══ أفضل مسار للفني: نرتب مشاريع اليوم بأقصر طريق — اقتراح، وما يتغير شي إلا بموافقة المسؤول ═══
+// <route-core> دوال حساب صافية (عليها يونت تست)
+function _rtKm(a, b){ const R = 6371, r = Math.PI / 180; const dl = (b.lat - a.lat) * r, dn = (b.lng - a.lng) * r; const h = Math.sin(dl / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dn / 2) ** 2; return 2 * R * Math.asin(Math.min(1, Math.sqrt(h))); }
+function _rtLen(start, pts){ let d = 0, p = start; for (const x of pts) { if (p) d += _rtKm(p, x); p = x; } return d; }
+function _rtDriveMin(km){ return km > 0 ? Math.max(1, Math.ceil(km * 1.3 / 35 * 60)) : 0; } // تقدير: الطريق أطول 30% من الخط المستقيم، ومتوسط 35 كم/س داخل المدينة
+// أفضل ترتيب: fixed = مواضع ما تتحرك (موعد ثابت أو مشروع بدأ) · لحد 8 مشاريع نجرب كل الاحتمالات، وبعدها أقرب جار + تحسين
+function _rtBest(start, pts, fixed){ const n = pts.length; fixed = fixed || new Set(); const free = []; for (let i = 0; i < n; i++) if (!fixed.has(i)) free.push(i);
+  const ident = pts.map((_, i) => i); if (free.length < 2) return ident;
+  const build = perm => { const o = new Array(n); let k = 0; for (let i = 0; i < n; i++) o[i] = fixed.has(i) ? i : perm[k++]; return o; };
+  const len = o => _rtLen(start, o.map(i => pts[i]));
+  let best = ident, bl = len(ident);
+  if (free.length <= 8) { const p = free.slice(), c = new Array(p.length).fill(0); let i = 0;
+    while (i < p.length) { if (c[i] < i) { const k = i % 2 ? c[i] : 0; const t = p[k]; p[k] = p[i]; p[i] = t; const o = build(p), l = len(o); if (l < bl - 1e-6) { bl = l; best = o; } c[i]++; i = 0; } else { c[i] = 0; i++; } }
+  } else { const rem = free.slice(); let perm = [], cur = start || pts[free[0]];
+    while (rem.length) { let bi = 0, bd = Infinity; rem.forEach((x, k) => { const d = _rtKm(cur, pts[x]); if (d < bd) { bd = d; bi = k; } }); cur = pts[rem[bi]]; perm.push(rem.splice(bi, 1)[0]); }
+    let imp = true, guard = 0; while (imp && guard++ < 60) { imp = false; for (let a = 0; a < perm.length - 1; a++) for (let b = a + 1; b < perm.length; b++) { const q = perm.slice(0, a).concat(perm.slice(a, b + 1).reverse(), perm.slice(b + 1)); if (len(build(q)) < len(build(perm)) - 1e-6) { perm = q; imp = true; } } }
+    const o = build(perm), l = len(o); if (l < bl - 1e-6) { bl = l; best = o; } }
+  return best; }
+// خطة اليوم بترتيب معيّن: المواعيد نفسها تتوزع على الترتيب الجديد، ولو الطريق ما يكفي يتأخر الموعد لأقرب 5 دقايق — والثابت ما يتحرك (late=ما يلحقه)
+function _rtPlan(start, jobs, order, keep){ const slots = jobs.map(j => j.at); const out = []; let prevEnd = null, prev = start, late = false;
+  order.forEach((ji, pos) => { const j = jobs[ji]; const km = prev ? _rtKm(prev, j) : 0, drive = _rtDriveMin(km); let at = keep ? j.at : (j.fixed ? j.at : slots[pos]);
+    if (!keep && prevEnd != null) { const need = prevEnd + drive * 60000; if (need > at) { if (j.fixed) late = true; else at = Math.ceil(need / 300000) * 300000; } }
+    out.push({ id: j.id, at, km: Math.round(km * 10) / 10, drive, moved: at !== j.at }); prevEnd = at + j.dur * 60000; prev = j; });
+  return { stops: out, km: Math.round(out.reduce((a, x) => a + x.km, 0) * 10) / 10, min: out.reduce((a, x) => a + x.drive, 0), late }; }
+// </route-core>
+const _rtCache = new Map();
+// المسافة والوقت الحقيقي على الطرق + خط المسار من Esri (طلب «مسار عادي» واحد — الترتيب محسوب عندنا). أي تعذّر = نرجع للتقدير
+async function _esriRouteLine(points){ const K = String(process.env.ESRI_SRV_KEY || '').trim(); if (!K || points.length < 2) return null;
+  const key = points.map(p => (+p.lat).toFixed(5) + ',' + (+p.lng).toFixed(5)).join(';'); const c = _rtCache.get(key); if (c && Date.now() - c.at < 600000) return c.v;
+  try { const u0 = await _svcCount('esri_route'); if (u0.day >= 500 || u0.month >= 15000) return null; } catch(e){ return null; }
+  _svcHit('esri_route'); const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 9000);
+  try { const body = new URLSearchParams({ f: 'json', stops: JSON.stringify({ features: points.map((p, i) => ({ geometry: { x: +p.lng, y: +p.lat }, attributes: { Name: String(i) } })) }), findBestSequence: 'false', returnDirections: 'false', returnRoutes: 'true', returnStops: 'true', outSR: '4326', outputLines: 'esriNAOutputLineTrueShape' });
+    const r = await fetch((process.env.ESRI_ROUTE_BASE || 'https://route-api.arcgis.com/arcgis/rest/services/World/Route/NAServer/Route_World/') + 'solve', { method: 'POST', headers: { 'X-Esri-Authorization': 'Bearer ' + K, 'content-type': 'application/x-www-form-urlencoded' }, body, signal: ctl.signal });
+    const d = await r.json(); const f = d && d.routes && d.routes.features && d.routes.features[0]; if (!f || !f.attributes) { if (d && d.error) console.error('esri-route:', String(d.error.message || d.error.code).slice(0, 120)); return null; }
+    const A = f.attributes; const min = Number(A.Total_TravelTime != null ? A.Total_TravelTime : A.Total_Minutes), km = Number(A.Total_Kilometers); if (!(min >= 0) || !(km >= 0)) return null;
+    const path = ((f.geometry && f.geometry.paths) || []).reduce((a, p) => a.concat(p), []).filter((_, i, arr) => arr.length < 400 || i % Math.ceil(arr.length / 400) === 0 || i === arr.length - 1).map(p => [Math.round(p[1] * 1e5) / 1e5, Math.round(p[0] * 1e5) / 1e5]);
+    let legs = null; const sf = d.stops && d.stops.features; if (Array.isArray(sf) && sf.length === points.length) { const s = sf.slice().sort((a, b) => (a.attributes.Sequence || 0) - (b.attributes.Sequence || 0)); if (s.every(x => x.attributes && x.attributes.Cumul_TravelTime != null && x.attributes.Cumul_Kilometers != null)) legs = s.map((x, i) => ({ km: Math.round((x.attributes.Cumul_Kilometers - (i ? s[i - 1].attributes.Cumul_Kilometers : 0)) * 10) / 10, min: Math.max(0, Math.ceil(x.attributes.Cumul_TravelTime - (i ? s[i - 1].attributes.Cumul_TravelTime : 0))) })); }
+    const v = { km: Math.round(km * 10) / 10, min: Math.ceil(min), path, legs }; _rtCache.set(key, { at: Date.now(), v }); if (_rtCache.size > 300) _rtCache.delete(_rtCache.keys().next().value); return v;
+  } catch(e){ return null; } finally { clearTimeout(tm); } }
+async function _rtDay(pid, techId, ymd, from){
+  const t = (await pool.query('SELECT id, name FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [techId, pid])).rows[0]; if (!t) return null;
+  const rows = (await pool.query("SELECT id, title, address, client_name, client_id, sched_at, dur_min, lat, lng, status, arrived_at, enroute_at, sched_fixed FROM jobs WHERE provider_id=$1 AND tech_id=$2 AND status IN ('new','scheduled','active') AND sched_at IS NOT NULL AND (sched_at AT TIME ZONE 'Asia/Riyadh')::date=$3::date ORDER BY sched_at, id", [pid, techId, ymd])).rows;
+  const cfg = await _attCfg(pid); const start = from && from.lat != null ? from : (cfg.lat != null ? { lat: cfg.lat, lng: cfg.lng } : null);
+  const nogeo = rows.filter(j => j.lat == null).map(j => ({ id: j.id, title: j.title }));
+  const jobs = rows.filter(j => j.lat != null).map(j => ({ id: j.id, title: j.title, address: j.address || '', client: j.client_name || '', has_client: !!j.client_id, lat: +j.lat, lng: +j.lng, at: new Date(j.sched_at).getTime(), dur: _JDUR(j), fixed: !!j.sched_fixed || j.status === 'active' || !!j.enroute_at || !!j.arrived_at, locked: !!j.sched_fixed }));
+  return { tech: { id: t.id, name: t.name }, start, start_src: from && from.lat != null ? 'me' : (start ? 'org' : null), jobs, nogeo }; }
+function _rtView(D, plan, real){ const by = {}; D.jobs.forEach(j => { by[j.id] = j; });
+  return { km: real ? real.km : plan.km, min: real ? real.min : plan.min, real: !!real, late: plan.late, path: real ? real.path : null,
+    stops: plan.stops.map((s, i) => { const j = by[s.id]; const lg = real && real.legs ? real.legs[D.start ? i + 1 : i] : null; return { id: s.id, title: j.title, address: j.address, client: j.client, lat: j.lat, lng: j.lng, at: new Date(s.at), was: new Date(j.at), moved: s.moved, fixed: j.fixed, locked: j.locked, has_client: j.has_client, km: lg && (D.start || i) ? lg.km : s.km, drive: lg && (D.start || i) ? lg.min : s.drive }; }) }; }
+async function _rtBuild(D, withReal){ const n = D.jobs.length; const ident = D.jobs.map((_, i) => i); const fixed = new Set(); D.jobs.forEach((j, i) => { if (j.fixed) fixed.add(i); });
+  const cur = _rtPlan(D.start, D.jobs, ident, true); const bo = n >= 2 ? _rtBest(D.start, D.jobs, fixed) : ident; let best = _rtPlan(D.start, D.jobs, bo, false);
+  const same = bo.every((x, i) => x === i); const pts = o => (D.start ? [D.start] : []).concat(o.map(i => D.jobs[i]));
+  let rc = null, rb = null; if (withReal && n >= 1 && pts(ident).length >= 2) { rc = await _esriRouteLine(pts(ident)); if (!same) rb = await _esriRouteLine(pts(bo)); }
+  const cv = _rtView(D, cur, rc), bv = same ? null : _rtView(D, best, rc && rb ? rb : null); if (bv && rc && !rb) { cv.km = cur.km; cv.min = cur.min; cv.real = false; } // المقارنة لازم بنفس المقياس
+  const save_km = bv ? Math.round((cv.km - bv.km) * 10) / 10 : 0, save_min = bv ? cv.min - bv.min : 0;
+  const worth = !!bv && !best.late && save_km >= 1; // أقل من كيلو ما يستاهل نغيّر مواعيد العملاء
+  return { order: bo.map(i => D.jobs[i].id), cur: cv, best: worth ? bv : null, save_km: worth ? save_km : 0, save_min: worth ? save_min : 0, changes: worth ? bv.stops.filter(s => s.moved).length : 0 }; }
+app.get('/api/route/day', auth, providerOnly, async (req, res) => {
+  try { if (!(await _jobGate(req, res))) return; const ymd = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.d || '')) ? req.query.d : _ryYmd();
+    const ts = await _attTechs(req); const tid = parseInt(req.query.tech) || 0; if (!ts.some(t => t.id === tid)) return res.status(404).json({ message: 'الفني غير موجود في فريقك' });
+    const D = await _rtDay(req.user.id, tid, ymd, null); if (!D) return res.status(404).json({ message: 'الفني غير موجود في فريقك' });
+    const R = await _rtBuild(D, true); res.json(Object.assign({ day: ymd, tech: D.tech, start: D.start, nogeo: D.nogeo, n: D.jobs.length }, R));
+  } catch(e){ console.error('route-day:', e.message); res.status(500).json({ message: 'حدث خطأ' }); } });
+app.post('/api/route/day/apply', auth, providerOnly, async (req, res) => {
+  try { if (!(await _jobGate(req, res))) return; const b = req.body || {}; const ymd = /^\d{4}-\d{2}-\d{2}$/.test(String(b.d || '')) ? b.d : _ryYmd();
+    const ts = await _attTechs(req); const tid = parseInt(b.tech) || 0; if (!ts.some(t => t.id === tid)) return res.status(404).json({ message: 'الفني غير موجود في فريقك' });
+    const D = await _rtDay(req.user.id, tid, ymd, null); const R = await _rtBuild(D, false); if (!R.best) return res.status(409).json({ message: 'الترتيب الحالي هو الأفضل — ما فيه شي يتغيّر' });
+    // الترتيب اللي وافق عليه لازم يطابق اللي نحسبه الحين (لو أحد غيّر موعد بالنص نطلب يعيد)
+    const want = Array.isArray(b.order) ? b.order.map(x => parseInt(x) || 0) : []; if (want.length !== R.order.length || want.some((x, i) => x !== R.order[i])) return res.status(409).json({ message: 'المواعيد تغيّرت — افتح المسار من جديد' });
+    let moved = 0, told = 0; const tu = await _jobTechUid(tid); const list = [];
+    for (const s of R.best.stops) { if (!s.moved) continue; const j = await _jobRow(s.id, 'AND j.provider_id=$2', [req.user.id]); if (!j) continue;
+      const up = await pool.query("UPDATE jobs SET sched_at=$2, fu_visit=NULL, updated_at=NOW() WHERE id=$1 AND status IN ('new','scheduled')", [s.id, s.at]); if (!up.rowCount) continue;
+      await _jobLog(s.id, 'الموعد: ' + _bkFmt(s.at) + ' (ترتيب المسار)'); moved++;
+      const row = { id: s.id, title: j.title || '', client: j.client_name || '', was: s.was, at: s.at, notif: false, email: false, wa: null };
+      const p9 = _ph9(j.client_phone || ''); if (p9.length === 9) row.wa = 'https://wa.me/966' + p9 + '?text=' + encodeURIComponent('مرحباً ' + (j.client_name || '') + '، تغيّر موعد «' + (j.title || '') + '» إلى ' + _bkFmt(s.at) + ' — الفني ' + D.tech.name + '.\n' + (j.client_id ? 'التفاصيل: ' + SITE_URL + '/job.html?id=' + s.id : j.pname || ''));
+      if (b.notify !== false && j.client_id) { try { const cu = (await pool.query('SELECT email FROM users WHERE id=$1', [j.client_id])).rows[0];
+          await notifyWithEmail(j.client_id, '🗓 تغيّر موعد زيارتك: ' + _bkFmt(s.at), (j.title || '') + ' — ' + j.pname + ' · الفني ' + D.tech.name, 'job', s.id, 'تغيّر موعد زيارتك — ' + (j.title || ''), 'مرحباً {name}،<br>تغيّر موعد «' + eEsc(j.title || '') + '» مع ' + eEsc(j.pname || '') + ' إلى <b>' + _bkFmt(s.at) + '</b> (كان ' + _bkFmt(s.was) + ').<br>الفني: ' + eEsc(D.tech.name) + '.<br>إذا الموعد لا يناسبك يمكنك طلب وقت آخر من صفحة المشروع.', 'فتح المشروع', SITE_URL + '/job.html?id=' + s.id);
+          row.notif = true; row.email = !!(cu && cu.email); told++; } catch(e){} }
+      list.push(row); }
+    if (tu && moved) try { await notify(tu, '🧭 ترتّب مسار يومك', moved + ' موعد تغيّر — افتح مسار اليوم', 'tech', 0, { url: '/tech.html' }); } catch(e){}
+    res.json({ ok: true, moved, told, list });
+  } catch(e){ console.error('route-apply:', e.message); res.status(500).json({ message: 'حدث خطأ' }); } });
+// الفني: مسار يومه بالترتيب الحالي (من موقعه لو أرسله، وإلا من موقع المؤسسة)
+app.get('/api/tech/route', auth, async (req, res) => {
+  try { const t = (await pool.query('SELECT id, provider_id FROM provider_techs WHERE user_id=$1 AND active ORDER BY id LIMIT 1', [req.user.id])).rows[0]; if (!t) return res.status(404).json({ message: 'حسابك غير مربوط بفريق' });
+    const la = parseFloat(req.query.lat), ln = parseFloat(req.query.lng); const from = la >= -90 && la <= 90 && ln >= -180 && ln <= 180 && !(la === 0 && ln === 0) ? { lat: la, lng: ln } : null;
+    const D = await _rtDay(t.provider_id, t.id, _ryYmd(), from); const ident = D.jobs.map((_, i) => i); const cur = _rtPlan(D.start, D.jobs, ident, true);
+    const pts = (D.start ? [D.start] : []).concat(D.jobs); const real = pts.length >= 2 ? await _esriRouteLine(pts) : null; const v = _rtView(D, cur, real);
+    v.stops.forEach(s => { delete s.client; delete s.has_client; delete s.was; delete s.moved; s.nav = 'https://www.google.com/maps/dir/?api=1&destination=' + s.lat + ',' + s.lng; });
+    res.json({ day: _ryYmd(), start_src: D.start_src, n: D.jobs.length, nogeo: D.nogeo.length, km: v.km, min: v.min, real: v.real, path: v.path, start: D.start, stops: v.stops });
+  } catch(e){ console.error('tech-route:', e.message); res.status(500).json({ message: 'حدث خطأ' }); } });
 app.get('/api/cal', auth, providerOnly, async (req, res) => {
   try { if (!(await _jobGate(req, res))) return; const c = await _brCtx(req);
     const from = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.from || '')) ? req.query.from : _ryYmd(); const days = Math.max(1, Math.min(7, parseInt(req.query.days) || 1));

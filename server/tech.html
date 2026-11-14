@@ -64,7 +64,7 @@ button,input,textarea,select{font-family:inherit}
 .stars{display:flex;gap:6px;justify-content:center}.stars button{border:0;background:none;font-size:34px;color:#e2e8f0;cursor:pointer;line-height:1}.stars button.on{color:#f59e0b}
 .wrap{max-width:680px}
 </style>
-<script src="/route.js?v=1"></script><script src="/jobtask.js?v=2"></script></head>
+<script src="/route.js?v=1"></script><script src="/mqroute.js?v=1"></script><script src="/jobtask.js?v=2"></script></head>
 <body>
 <div class="top"><b>مناقصة <i>•</i></b><span style="display:flex;gap:14px;align-items:center"><a href="#" class="notranslate" translate="no" data-mnq-lang style="display:inline-flex;gap:5px;align-items:center"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg><span class="mnq-lang-cur"></span></a><a href="/">الرئيسية</a></span></div>
 <div class="wrap" id="app"><div class="mu">جارٍ التحميل…</div></div>
@@ -177,7 +177,7 @@ window._aLv=function(tid){ var o=document.createElement('div'); o.className='she
   document.getElementById('lvgo').onclick=function(){ this.disabled=true; var d1=document.getElementById('lv1').value; _aPost({tech_id:tid,act:'leave',d1:d1,d2:document.getElementById('lv2').value||d1,reason:document.getElementById('lvr').value},'وصل طلبك للمشرف').then(function(){ o.remove(); }); };
 };
 // زيارات اليوم مرتبة حسب الأقرب
-function route(){ if(!window.MNQ_ROUTE) return; var td=new Date().toDateString();
+function route(){ if(window.MQROUTE){ MQROUTE.tech(document.getElementById('route')); return; } if(!window.MNQ_ROUTE) return; var td=new Date().toDateString();
   var T=S.items.filter(function(j){ return j.sched_at&&new Date(j.sched_at).toDateString()===td&&['new','scheduled','active'].indexOf(j.status)>=0&&!j.arrived_at; });
   if(T.length<2) return;
   MNQ_ROUTE.here(function(me){ var r=MNQ_ROUTE.plan(T,me); var el=document.getElementById('route'); if(!r||!el) return;

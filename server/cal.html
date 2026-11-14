@@ -60,6 +60,7 @@ button,input,textarea,select{font-family:inherit}
 .steps{display:flex;align-items:flex-start}.steps div{flex:1;text-align:center;font-size:11.5px;font-weight:800;color:#94a3b8;position:relative;padding-top:24px}.steps div:before{content:'';position:absolute;top:6px;left:50%;width:100%;height:3px;background:#e2e8f0}.steps div:first-child:before{display:none}.steps div i{position:absolute;top:0;right:calc(50% - 8px);width:16px;height:16px;border-radius:50%;background:#e2e8f0;z-index:1}.steps div.on{color:#1e3a8a}.steps div.on i,.steps div.on:before{background:#1e3a8a}
 .ck{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid #f1f5f9;font-size:14px;font-weight:700}.ck .b{width:28px;height:28px;border-radius:8px;border:2px solid #cbd5e1;background:#fff;flex:none;color:#fff;font-size:15px;cursor:pointer;font-weight:900}.ck.done .b{background:#16a34a;border-color:#16a34a}.ck.done .t{color:#94a3b8;text-decoration:line-through}
 .phs{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.ph{width:84px;height:84px;border-radius:12px;background:#e2e8f0 center/cover;position:relative;display:block}.ph span{position:absolute;bottom:4px;right:4px;background:rgba(15,23,42,.7);color:#fff;font-size:10.5px;font-weight:800;border-radius:6px;padding:1px 6px}
+.rtb{border:1.5px solid #cdd8ec;background:#fff;border-radius:9px;min-width:34px;height:30px;font-size:14px;cursor:pointer;vertical-align:middle;margin-inline-start:4px}
 </style>
 <script>/* تطبيق الأيفون: بدون روابط لشراء الاشتراك (قاعدة Apple) */(function(){try{if(window.ReactNativeWebView&&/iPhone|iPad|iPod/i.test(navigator.userAgent||"")&&!(window.MNQ_NATIVE&&window.MNQ_NATIVE.iap)){var st=document.createElement("style");st.textContent='a[href="/plan.html"],a[href^="/plan.html?"]{display:none!important}';document.head.appendChild(st);}}catch(e){}})();</script><script src="/branch.js?v=1"></script><style>
 .wrap{max-width:1440px}
@@ -128,7 +129,7 @@ function draw(){
   var cols=wk?[0,1,2,3,4,5,6].map(function(k){ return {key:addD(S.from,k), lab:dlab(addD(S.from,k)), day:addD(S.from,k)}; }):D.techs.map(function(t){ return {key:t.id, lab:t.name, tech:t, day:S.from}; });
   var grid='';
   if(!wk&&!D.techs.length) grid='<div class="card empty"><b>أضف فنيينك أول</b><div class="mu" style="margin-top:6px">التقويم يعرض كل فني في عمود</div><a class="btn pri" style="margin-top:10px" href="/jobs.html?tab=team">الفريق</a></div>';
-  else { grid='<div class="cg" style="grid-template-columns:60px repeat('+cols.length+',minmax(130px,1fr))"><div class="ch" style="border:0"></div>'+cols.map(function(c){ return '<div class="ch">'+esc(c.lab)+(c.tech&&onLeave(c.tech.id,S.from)?' <span class="pill p-gr" style="height:19px;font-size:10px">إجازة</span>':'')+'</div>'; }).join('');
+  else { grid='<div class="cg" style="grid-template-columns:60px repeat('+cols.length+',minmax(130px,1fr))"><div class="ch" style="border:0"></div>'+cols.map(function(c){ return '<div class="ch">'+esc(c.lab)+(c.tech?' <button class="rtb" title="أفضل مسار" aria-label="أفضل مسار" onclick="_cRoute('+c.tech.id+')">🧭</button>':'')+(c.tech&&onLeave(c.tech.id,S.from)?' <span class="pill p-gr" style="height:19px;font-size:10px">إجازة</span>':'')+'</div>'; }).join('');
     var tmc=''; for(var k=h0;k<h1;k++) tmc+='<div class="ctm">'+h12(k*60)+'</div>';
     grid+='<div>'+tmc+'</div>';
     cols.forEach(function(c){ var off=false, inner='';
@@ -176,6 +177,7 @@ function wire(h0){
     }); });
 }
 // ورقة النقل: الفني والوقت والمدة + التحذيرات + «نبلغ العميل؟»
+window._cRoute=function(tid){ var go=function(){ MQROUTE.open(tid,S.from,function(){ load(); }); }; if(window.MQROUTE) return go(); var s=document.createElement('script'); s.src='/mqroute.js?v=1'; s.onload=go; document.head.appendChild(s); };
 window._cOpen=function(id,want){ var j=jobOf(id); if(!j) return; want=want||{}; var at=want.at||(j.at?new Date(j.at):atOf(S.from,9*60)), tech=want.tech!==undefined?want.tech:(j.tech_id||null), notify=true;
   var o=document.createElement('div'); o.className='sheet-ov'; o.id='sh'; o.onclick=function(e){ if(e.target===o)o.remove(); };
   var durs=[30,60,90,120,180,240,300,360,480];
