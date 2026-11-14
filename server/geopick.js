@@ -17,12 +17,12 @@
     var m = u.match(/@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)/) || u.match(/!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/) || u.match(/[?&](?:q|ll|query|destination|daddr|center)=(-?\d{1,2}\.\d+),\s*\+?(-?\d{1,3}\.\d+)/) || u.match(/^\s*(-?\d{1,2}\.\d{3,})\s*[,،]\s*(-?\d{1,3}\.\d{3,})\s*$/);
     return m ? { lat: parseFloat(m[1]), lng: parseFloat(m[2]) } : null; }
   var CSS = '.gpk{position:fixed;inset:0;z-index:10050;background:#fff;display:flex;flex-direction:column;font-family:Tajawal,system-ui,sans-serif;direction:rtl}'
-   + '.gpk-h{padding:10px 12px calc(10px);display:flex;gap:8px;align-items:center;border-bottom:1px solid #e6eefb;background:#fff;position:relative;z-index:2}'
+   + '.gpk-h{padding:10px 12px calc(10px);display:flex;gap:8px;align-items:center;border-bottom:1px solid #e6eefb;background:#fff;position:relative;z-index:5}'
    + '.gpk-x{border:0;background:#f1f5f9;border-radius:12px;width:42px;height:42px;font-size:18px;cursor:pointer;flex:none;color:#172554}'
    + '.gpk-s{flex:1;display:flex;align-items:center;gap:8px;border:1.5px solid #e2e8f0;border-radius:12px;padding:0 12px;background:#f8fafc}.gpk-s input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-family:inherit;font-size:16px;padding:11px 0;color:#1e293b}'
    + '.gpk-r{position:absolute;top:100%;left:12px;right:12px;background:#fff;border:1px solid #e6eefb;border-radius:14px;box-shadow:0 16px 40px -12px rgba(15,23,42,.35);overflow:hidden;max-height:50vh;overflow-y:auto}'
    + '.gpk-r button{display:block;width:100%;text-align:right;border:0;border-bottom:1px solid #f1f5f9;background:#fff;padding:12px 14px;font-family:inherit;cursor:pointer}.gpk-r button:active{background:#f5f8ff}.gpk-r b{display:block;font-size:14.5px;color:#172554}.gpk-r small{display:block;color:#64748b;font-size:12px;margin-top:2px}'
-   + '.gpk-m{position:relative;flex:1;background:#e2e8f0}.gpk-map{position:absolute;inset:0}'
+   + '.gpk-m{position:relative;z-index:1;flex:1;background:#e2e8f0}.gpk-map{position:absolute;inset:0}'
    + '.gpk-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-100%);z-index:500;pointer-events:none;transition:transform .15s}.gpk-m.mv .gpk-pin{transform:translate(-50%,-112%)}'
    + '.gpk-pin svg{filter:drop-shadow(0 6px 8px rgba(15,23,42,.35))}.gpk-dot{position:absolute;left:50%;top:50%;width:10px;height:5px;margin:-2px 0 0 -5px;border-radius:50%;background:rgba(15,23,42,.35);z-index:499;pointer-events:none}'
    + '.gpk-me{position:absolute;bottom:16px;left:14px;z-index:600;border:0;background:#fff;border-radius:14px;padding:11px 14px;font-family:inherit;font-weight:800;font-size:13.5px;color:#1e3a8a;box-shadow:0 8px 20px -6px rgba(15,23,42,.35);cursor:pointer}'
@@ -64,13 +64,18 @@
       $('.gpk-me').onclick = function(){ locate(false); };
       // البحث
       var inp = $('.gpk-s input'), res = $('.gpk-r');
+      // اقتراحات أثناء الكتابة من أول حرفين، قريبة من مكان الخريطة — والطلب القديم ما يكتب فوق الجديد
+      var sN = 0;
       inp.oninput = function(){ clearTimeout(sT); var q = inp.value.trim(); if (q.length < 2){ res.hidden = true; return; }
         var p = parse(q); if (p){ res.hidden = true; if (mp) mp.setView([p.lat, p.lng], 17); return; }
-        sT = setTimeout(function(){ res.hidden = false; res.innerHTML = '<button type="button" disabled><small>جارٍ البحث…</small></button>';
-          api('/api/geo/search?q=' + encodeURIComponent(q + (o.city && q.indexOf(o.city) < 0 ? ' ' + o.city : ''))).then(function(r){ if (inp.value.trim() !== q) return;
-            res.innerHTML = (r.items || []).length ? r.items.map(function(x, i){ return '<button type="button" data-i="' + i + '"><b>' + esc(x.name) + '</b><small>' + esc(x.sub) + '</small></button>'; }).join('') : '<button type="button" disabled><small>ما لقينا نتائج — جرّب اسم الحي أو حرّك الخريطة</small></button>';
-            [].forEach.call(res.querySelectorAll('[data-i]'), function(b){ b.onclick = function(){ var x = r.items[+b.getAttribute('data-i')]; res.hidden = true; inp.blur(); if (mp) mp.setView([x.lat, x.lng], 17); }; });
-          }).catch(function(){ res.innerHTML = '<button type="button" disabled><small>تعذّر البحث الآن — حرّك الخريطة لموقعك</small></button>'; }); }, 500); };
+        sT = setTimeout(function(){ var n = ++sN; if (res.hidden || !res.querySelector('[data-i]')) { res.hidden = false; res.innerHTML = '<button type="button" disabled><small>جارٍ البحث…</small></button>'; }
+          var c = mp ? mp.getCenter() : null;
+          api('/api/geo/suggest?q=' + encodeURIComponent(q) + (c ? '&lat=' + c.lat.toFixed(4) + '&lng=' + c.lng.toFixed(4) : '')).then(function(r){ if (n !== sN) return; res.hidden = false;
+            res.innerHTML = (r.items || []).length ? r.items.map(function(x, i){ return '<button type="button" data-i="' + i + '"><b>' + esc(x.name) + '</b>' + (x.sub ? '<small>' + esc(x.sub) + '</small>' : '') + '</button>'; }).join('') : '<button type="button" disabled><small>ما لقينا «' + esc(q) + '» — جرّب اسم الحي أو الشارع، أو الصق رابط قوقل ماب من الزر تحت</small></button>';
+            [].forEach.call(res.querySelectorAll('[data-i]'), function(b){ b.onclick = function(){ var x = r.items[+b.getAttribute('data-i')]; inp.blur();
+              if (x.lat != null) { res.hidden = true; inp.value = x.name; if (mp) mp.setView([x.lat, x.lng], 17); return; }
+              b.disabled = true; api('/api/geo/pick?key=' + encodeURIComponent(x.key) + '&text=' + encodeURIComponent(x.text)).then(function(g){ res.hidden = true; inp.value = x.name; if (mp) mp.setView([g.lat, g.lng], 17); }).catch(function(e){ b.disabled = false; addr((e && e.message) || 'تعذّر البحث الآن'); }); }; });
+          }).catch(function(){ if (n !== sN) return; res.hidden = false; res.innerHTML = '<button type="button" disabled><small>تعذّر البحث الآن — حرّك الخريطة لموقعك</small></button>'; }); }, 250); };
       inp.onkeydown = function(e){ if (e.key === 'Enter'){ var b = res.querySelector('[data-i]'); if (b) b.click(); } };
       // رابط قوقل ماب
       $('.gpk-ln').onclick = function(){ var lk = $('.gpk-lk'); lk.classList.toggle('on'); if (lk.classList.contains('on')){ var i = lk.querySelector('input'); i.focus(); if (navigator.clipboard && navigator.clipboard.readText) navigator.clipboard.readText().then(function(t){ if (/goo\.gl|google\.[a-z.]+\/maps|maps\.app/.test(t) && !i.value) i.value = t.trim(); }).catch(function(){}); } };

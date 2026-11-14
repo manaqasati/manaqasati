@@ -67,7 +67,8 @@
     var p = W._prof || {}, rat = parseFloat(p.avg_rating) || 0;
     var due = state.saai && state.saai.pending_total > 0 ? state.saai.pending_total : 0;
     if (state.side === 'w' && winOn()) return ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'تقويم الجدولة', 'مواعيد الفريق · نقل بالسحب', 0, 'url:/cal.html'))
-      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'مشاريع العملاء والفريق', 'مواعيد · فنيين · تسليم', 0, 'url:/jobs.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'مشاريع العملاء', 'مواعيد · مهام · تسليم', 0, 'url:/jobs.html'))
+      + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'الفريق', 'حالة كل فني الحين · الدعوات', 0, 'url:/team.html'))
       + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('jobs'))) || !W._subsOpen ? '' : tile('c4', 'team', 'الحضور والانصراف', 'دوام الفريق · الإجازات · التقرير', 0, 'url:/att.html'))
       + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c3', 'doc', 'عروض الأسعار', 'عرض باسمك بـ3 خيارات · دفتر العملاء', 0, 'url:/quotes.html'))
       + ((W.DLG && W.DLG.isMe() && !(W.DLG.has && W.DLG.has('quotes'))) || !W._subsOpen ? '' : tile('c2', 'doc', 'الصفحة التعريفية وطلبات التسعيرة', 'خدماتك · QR · الطلبات الخاصة', 0, 'url:/mypage.html'))

@@ -31,6 +31,7 @@
   var css = '.mtk{display:flex;flex-direction:column;gap:8px}'
    + '.mtk-i{border:1.5px solid #e2e8f0;border-radius:16px;background:#fff;overflow:hidden;transition:border-color .15s,box-shadow .15s}'
    + '.mtk-i.on{border-color:#bfd3fe;box-shadow:0 6px 22px -12px rgba(30,58,138,.35)}'
+   + '.mtk-i.mtk-br{border-style:dashed;box-shadow:none}.mtk-i.mtk-br .mtk-p{border-top:0}'
    + '.mtk-h{display:flex;align-items:center;gap:10px;padding:10px 12px;min-height:54px}'
    + '.mtk-b{flex:0 0 auto;width:30px;height:30px;border-radius:50%;border:2px solid #cbd5e1;background:#fff;color:#fff;font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-family:inherit;padding:0;transition:background .15s,border-color .15s}'
    + '.mtk-b:disabled{cursor:default;opacity:.7}.mtk-i.dn .mtk-b{background:#16a34a;border-color:#16a34a}'
@@ -100,14 +101,15 @@
   function draw(el){
     var o = el.__mtk, L = o.tasks || [], ro = !!o.closed;
     var h = '<div class="mtk">';
-    if (!L.length) h += '<div class="mtk-em">' + (o.canEdit && !ro ? 'ما فيه مهام — أضف أول مهمة تحت' : 'ما فيه مهام') + '</div>';
+    if (!L.length && !o.brief) h += '<div class="mtk-em">' + (o.canEdit && !ro ? 'ما فيه مهام — أضف أول مهمة تحت' : 'ما فيه مهام') + '</div>';
     L.forEach(function(t){ h += item(o, t, ro); });
-    if (o.canEdit && !ro) h += '<div class="mtk-add"><input data-k="nt" maxlength="120" placeholder="مهمة جديدة — مثال: تمديد النحاس" aria-label="مهمة جديدة"><textarea data-k="nd" maxlength="1500" placeholder="تفاصيل المهمة (اختياري): المقاسات، المواد، تعليمات للفني…" aria-label="تفاصيل المهمة" style="display:none"></textarea><div class="mtk-ca"><button type="button" class="mtk-ib" data-a="nd">＋ تفاصيل</button><button type="button" class="mtk-ib go" data-a="add">أضف المهمة</button></div></div>';
+    if (o.canEdit && !ro && !o.brief) h += '<div class="mtk-add"><input data-k="nt" maxlength="120" placeholder="مهمة جديدة — مثال: تمديد النحاس" aria-label="مهمة جديدة"><textarea data-k="nd" maxlength="1500" placeholder="تفاصيل المهمة (اختياري): المقاسات، المواد، تعليمات للفني…" aria-label="تفاصيل المهمة" style="display:none"></textarea><div class="mtk-ca"><button type="button" class="mtk-ib" data-a="nd">＋ تفاصيل</button><button type="button" class="mtk-ib go" data-a="add">أضف المهمة</button></div></div>';
     h += '</div>';
     el.innerHTML = h;
     wire(el);
   }
   function item(o, t, ro){
+    if (o.brief) return '<div class="mtk-i on mtk-br" data-id="' + esc(t.id) + '">' + panel(o, t, ro || o.readOnly) + '</div>';
     var on = !!OPEN[t.id], N = t.notes || [], F = t.files || [], v = N.filter(function(n){ return n.v; }).length;
     var chips = (t.d ? '<span>📝 تفاصيل</span>' : '') + (N.length ? '<span>💬 ' + N.length + '</span>' : '') + (v ? '<span>🎤 ' + v + '</span>' : '') + (F.length ? '<span>📎 ' + F.length + '</span>' : '') + (t.done && t.by ? '<span class="by">✓ ' + esc(t.by) + (t.at ? ' · ' + when(t.at) : '') + '</span>' : '');
     var h = '<div class="mtk-i' + (t.done ? ' dn' : '') + (on ? ' on' : '') + '" data-id="' + esc(t.id) + '"><div class="mtk-h">'
@@ -121,8 +123,8 @@
     var me = o.me, N = t.notes || [], F = t.files || [];
     var h = '<div class="mtk-p">';
     // التفاصيل
-    if (o.editing === t.id) h += '<div class="mtk-ed"><div class="mtk-sl">تعديل المهمة</div><input data-k="et" maxlength="120" value="' + esc(t.t) + '" aria-label="عنوان المهمة"><textarea data-k="ed" maxlength="1500" placeholder="تفاصيل المهمة" aria-label="تفاصيل المهمة">' + esc(t.d || '') + '</textarea><div class="mtk-ca" style="margin-top:6px"><button type="button" class="mtk-ib" data-a="ecancel">إلغاء</button><button type="button" class="mtk-ib go" data-a="esave">حفظ</button></div></div>';
-    else if (t.d || (o.canEdit && !ro)) h += '<div><div class="mtk-sl"><span>التفاصيل</span>' + (o.canEdit && !ro ? '<button type="button" class="mtk-lk" data-a="edit">✏️ تعديل</button>' : '') + '</div><div class="mtk-d' + (t.d ? '' : ' em') + '" style="margin-top:5px">' + (t.d ? esc(t.d) : 'ما فيه تفاصيل — اضغط «تعديل» وأضف تعليمات للفني') + '</div></div>';
+    if (o.editing === t.id && !o.brief) h += '<div class="mtk-ed"><div class="mtk-sl">تعديل المهمة</div><input data-k="et" maxlength="120" value="' + esc(t.t) + '" aria-label="عنوان المهمة"><textarea data-k="ed" maxlength="1500" placeholder="تفاصيل المهمة" aria-label="تفاصيل المهمة">' + esc(t.d || '') + '</textarea><div class="mtk-ca" style="margin-top:6px"><button type="button" class="mtk-ib" data-a="ecancel">إلغاء</button><button type="button" class="mtk-ib go" data-a="esave">حفظ</button></div></div>';
+    else if (!o.brief && (t.d || (o.canEdit && !ro))) h += '<div><div class="mtk-sl"><span>التفاصيل</span>' + (o.canEdit && !ro ? '<button type="button" class="mtk-lk" data-a="edit">✏️ تعديل</button>' : '') + '</div><div class="mtk-d' + (t.d ? '' : ' em') + '" style="margin-top:5px">' + (t.d ? esc(t.d) : 'ما فيه تفاصيل — اضغط «تعديل» وأضف تعليمات للفني') + '</div></div>';
     // المرفقات
     var up = (o._up && o._up[t.id]) || 0;
     if (F.length || up) { h += '<div><div class="mtk-sl"><span>المرفقات (' + F.length + ')</span></div><div class="mtk-fs" style="margin-top:6px">';
@@ -134,8 +136,8 @@
       for (var i = 0; i < up; i++) h += '<div class="mtk-f up"><i></i>جاري الرفع…</div>';
       h += '</div></div>'; }
     // الملاحظات
-    h += '<div><div class="mtk-sl"><span>الملاحظات' + (N.length ? ' (' + N.length + ')' : '') + '</span></div><div class="mtk-ns" style="margin-top:6px">';
-    if (!N.length) h += '<div class="mtk-em" style="padding:4px">' + (ro ? 'ما فيه ملاحظات' : 'اكتب ملاحظة أو سجّلها بصوتك — تنحفظ مع المهمة ويشوفها الفريق') + '</div>';
+    h += '<div>' + (o.brief ? '' : '<div class="mtk-sl"><span>الملاحظات' + (N.length ? ' (' + N.length + ')' : '') + '</span></div>') + '<div class="mtk-ns" style="margin-top:6px">';
+    if (!N.length && !(o.brief && F.length)) h += '<div class="mtk-em" style="padding:4px">' + (o.brief ? (ro ? '' : 'اكتب التعليمات أو سجّلها بصوتك، وأرفق صور للموقع أو القطعة — يشوفها الفني مع المشروع') : ro ? 'ما فيه ملاحظات' : 'اكتب ملاحظة أو سجّلها بصوتك — تنحفظ مع المهمة ويشوفها الفريق') + '</div>';
     N.forEach(function(n){ var mine = n.by === me, can = !ro && (o.canEdit || mine);
       h += '<div class="mtk-n' + (mine ? ' me' : '') + '"><div class="mtk-nh"><b>' + esc(n.by || '') + '</b><span>' + when(n.at) + '</span>' + (can ? '<button type="button" class="mtk-x" data-a="ndel" data-n="' + esc(n.id) + '" aria-label="حذف الملاحظة">×</button>' : '') + '</div>'
         + (n.v ? '<div class="mtk-au" data-au="' + esc(n.v) + '"><button type="button" class="mtk-pl" data-a="play" aria-label="تشغيل">▶</button><div class="mtk-tr" data-a="seek"><i></i></div><span class="mtk-du">' + mmss(n.dur) + '</span></div>' : '')
@@ -145,15 +147,17 @@
     if (!ro) {
       var rec = REC && REC.tid === t.id && REC.el === o.el;
       h += '<div class="mtk-cp">' + (rec ? '<div class="mtk-rc"><span class="dot"></span><span class="tm" data-k="rt">' + mmss((Date.now() - REC.t0) / 1000) + '</span><span class="lb">جاري التسجيل…</span><button type="button" class="mtk-ib" data-a="rcancel">إلغاء</button><button type="button" class="mtk-ib go" data-a="rsend">إرسال ⬆</button></div>'
-        : '<textarea data-k="nt2" rows="1" maxlength="1000" placeholder="اكتب ملاحظة…" aria-label="ملاحظة جديدة">' + esc(DRAFT[t.id] || '') + '</textarea><div class="mtk-ca"><label class="mtk-ib" role="button" tabindex="0" aria-label="إرفاق صور أو ملفات">📎 مرفق<input type="file" multiple accept="' + ACC + '" data-a="file" style="display:none"></label><button type="button" class="mtk-ib" data-a="rec" aria-label="تسجيل ملاحظة صوتية">🎤 صوت</button><button type="button" class="mtk-ib go" data-a="nsend">إرسال</button></div>')
+        : '<textarea data-k="nt2" rows="1" maxlength="1000" placeholder="' + (o.brief ? 'اكتب تعليمات للفني…' : 'اكتب ملاحظة…') + '" aria-label="' + (o.brief ? 'تعليمات للفني' : 'ملاحظة جديدة') + '">' + esc(DRAFT[t.id] || '') + '</textarea><div class="mtk-ca"><label class="mtk-ib" role="button" tabindex="0" aria-label="إرفاق صور أو ملفات">📎 مرفق<input type="file" multiple accept="' + ACC + '" data-a="file" style="display:none"></label><button type="button" class="mtk-ib" data-a="rec" aria-label="تسجيل ملاحظة صوتية">🎤 صوت</button><button type="button" class="mtk-ib go" data-a="nsend">إرسال</button></div>')
         + '</div>';
     }
-    if (o.canEdit && !ro && o.editing !== t.id) h += '<div class="mtk-ft"><button type="button" class="mtk-del" data-a="tdel">حذف المهمة</button></div>';
+    if (o.canEdit && !ro && !o.brief && o.editing !== t.id) h += '<div class="mtk-ft"><button type="button" class="mtk-del" data-a="tdel">حذف المهمة</button></div>';
     return h + '</div>';
   }
 
+  // وضع «تعليمات للفني» (o.brief): بطاقة وحدة مفتوحة دايم — ملاحظات نصية/صوتية + مرفقات، بدون إنجاز ولا حذف
+  function SETR(o, r){ if (o.brief) { if (r && r.brief) o.tasks = [r.brief]; } else if (r && r.tasks) o.tasks = r.tasks; }
   function run(o, body, msg){
-    return o.act(body).then(function(r){ if (r && r.tasks) o.tasks = r.tasks; if (o.onChange) o.onChange(o.tasks); draw(o.el); if (msg) toast(msg); return r; })
+    return o.act(body).then(function(r){ SETR(o, r); if (o.onChange) o.onChange(o.tasks); draw(o.el); if (msg) toast(msg); return r; })
       .catch(function(e){ if (e) toast(e.message || 'تعذّر الحفظ'); throw e; });
   }
   function grow(ta){ ta.style.height = 'auto'; ta.style.height = Math.min(180, ta.scrollHeight) + 'px'; }
@@ -205,7 +209,7 @@
       var f = L[i++];
       shrink(f).then(function(data){
         if (!data) { toast('تعذّر قراءة «' + f.name + '»'); return null; }
-        return o.act({ act: 'task_file', tid: id, data: data, name: f.name }).then(function(r){ okN++; if (r && r.tasks) o.tasks = r.tasks; if (o.onChange) o.onChange(o.tasks); }, function(e){ if (e) toast(e.message || 'تعذّر رفع «' + f.name + '»'); });
+        return o.act({ act: 'task_file', tid: id, data: data, name: f.name }).then(function(r){ okN++; SETR(o, r); if (o.onChange) o.onChange(o.tasks); }, function(e){ if (e) toast(e.message || 'تعذّر رفع «' + f.name + '»'); });
       }).then(function(){ o._up[id] = Math.max(0, (o._up[id] || 1) - 1); draw(o.el); next(); });
     })();
   }

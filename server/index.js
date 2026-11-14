@@ -287,7 +287,7 @@ async function _monData(){
   const items = c.items.map(x => { const days = x.date ? Math.round((new Date(x.date + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 864e5) : null; return Object.assign({}, x, { days }); })
     .sort((a, b) => (a.days == null) - (b.days == null) || (a.days - b.days));
   const warn = usage.filter(u => u.lim && u.pct >= 80).length + items.filter(x => x.days != null && x.days <= 30).length + (backup.ok ? 0 : 1);
-  return { usage, backup, items, alert: !!c.alert, limits: { email_month: c.email_month, email_day: c.email_day, esri_month: c.esri_month, esri_day: c.esri_day }, warn, owner_set: OWNER_EMAIL !== '\u0000no-owner' };
+  return { usage, backup, items, alert: !!c.alert, limits: { email_month: c.email_month, email_day: c.email_day, esri_month: c.esri_month, esri_day: c.esri_day }, warn, owner_set: OWNER_EMAIL !== 'no-owner' };
 }
 app.get('/api/admin/monitor', requirePermission('settings.manage'), async (req, res) => { try { res.json(await _monData()); } catch(e){ console.error('monitor:', e.message); res.status(500).json({ message: 'حدث خطأ' }); } });
 app.put('/api/admin/monitor/cfg', requirePermission('settings.manage'), express.json({ limit: '32kb' }), async (req, res) => {
@@ -611,7 +611,8 @@ app.use(function(req, res, next){
 // الصفحات الثابتة (.html و /) تمر من هنا قبل express.static عشان يوصلها الحقن
 app.use(function(req, res, next){
   if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-  const m = req.path === '/' ? '/index.html' : req.path;
+  // /team.html = صفحة الفريق الكاملة: نفس ملف المشاريع، والواجهة تعرض الفريق لحاله
+  const m = req.path === '/' ? '/index.html' : req.path === '/team.html' ? '/jobs.html' : req.path;
   if (!/^\/[\w\-.]+\.html$/.test(m)) return next();
   const f = __dirname + m;
   if (!require('fs').existsSync(f)) return next();
@@ -2478,7 +2479,7 @@ async function setSetting(key, value) {
 
 // ═══════════ نظام الصلاحيات (RBAC) ═══════════
 // إيميل المالك من متغيّر Railway (OWNER_EMAIL) — ما ينكتب في الكود
-const OWNER_EMAIL = String(process.env.OWNER_EMAIL || '').trim().toLowerCase() || '\u0000no-owner';
+const OWNER_EMAIL = String(process.env.OWNER_EMAIL || '').trim().toLowerCase() || 'no-owner';
 const ALL_PERMISSIONS = ['dashboard.view','analytics.view','users.view','users.edit','users.delete','users.badge','users.role','requests.view','requests.edit','requests.delete','requests.review','bids.view','bids.edit','bids.delete','reviews.view','reviews.delete','questions.view','questions.answer','questions.delete','reports.view','reports.resolve','logs.view','broadcast.send','settings.manage','admins.manage','outreach.manage','support.view','support.reply'];
 const PERM_LABELS = {'support.view':'عرض محادثات الدعم','support.reply':'الرد على محادثات الدعم','dashboard.view':'عرض لوحة المعلومات','analytics.view':'عرض التحليلات','users.view':'عرض المستخدمين','users.edit':'تعديل المستخدمين','users.delete':'حذف المستخدمين','users.badge':'منح الألقاب','users.role':'تغيير الأدوار','requests.view':'عرض المشاريع','requests.edit':'تعديل المشاريع','requests.delete':'حذف المشاريع','requests.review':'مراجعة المشاريع','bids.view':'عرض العروض','bids.edit':'تعديل العروض','bids.delete':'حذف العروض','reviews.view':'عرض التقييمات','reviews.delete':'حذف التقييمات','questions.view':'عرض الأسئلة','questions.answer':'الرد على الأسئلة','questions.delete':'حذف الأسئلة','reports.view':'عرض البلاغات','reports.resolve':'معالجة البلاغات','logs.view':'عرض السجل','broadcast.send':'الرسائل الجماعية','settings.manage':'إدارة الإعدادات','admins.manage':'إدارة المشرفين','outreach.manage':'إدارة الاستقطاب (الصيد)'};
 const ROLE_LABELS = {super_admin:'مدير كامل',content_manager:'مدير محتوى',support:'مشرف دعم',analyst:'محلّل',outreach_specialist:'مختص استقطاب'};
@@ -3806,7 +3807,21 @@ async function providerOnly(req, res, next) {
 
 // ═══ DATABASE SETUP ═══
 // كل تعديل على قاعدة البيانات مستقل: لو واحد فشل، الباقي يكمل (كان فشل واحد يوقف كل اللي بعده بما فيها الفهارس)
-function _mig(sql, params){ return pool.query(sql, params).catch(e => { console.error('migrate:', String(e.message).slice(0,160), '|', String(sql).replace(/\s+/g,' ').slice(0,90)); return { rows: [], rowCount: 0 }; }); }
+// ── إصلاح تلقائي لأعمدة ناقصة: لو جدول انبنى بنسخة قديمة (CREATE IF NOT EXISTS ما يحدّثه) نضيف الأعمدة الناقصة عند التشغيل ──
+const _MIG_T = [];
+async function _schemaFix(){ let n = 0;
+  for (const sql of _MIG_T) { try {
+    const m = sql.match(/CREATE TABLE IF NOT EXISTS\s+([a-z_0-9]+)\s*\(([\s\S]*)\)\s*;?\s*$/i); if (!m) continue;
+    const t = m[1]; const parts = []; let d = 0, cur = ''; for (const ch of m[2]) { if (ch === '(') d++; if (ch === ')') d--; if (ch === ',' && d === 0) { parts.push(cur); cur = ''; } else cur += ch; } parts.push(cur);
+    const have = new Set((await pool.query('SELECT column_name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name=$1', [t])).rows.map(r => r.column_name)); if (!have.size) continue;
+    for (let p of parts) { p = p.replace(/\s+/g, ' ').trim(); if (!p || /^(PRIMARY KEY|UNIQUE|FOREIGN KEY|CONSTRAINT|CHECK)\b/i.test(p)) continue;
+      const mm = p.match(/^"?([a-z_][a-z_0-9]*)"?\s+(.+)$/i); if (!mm) continue; const col = mm[1].toLowerCase(); if (have.has(col)) continue;
+      let def = mm[2].replace(/\bPRIMARY KEY\b/ig, '').replace(/\bUNIQUE\b/ig, '').replace(/\bREFERENCES\s+[a-z_0-9]+\s*(\([^)]*\))?(\s+ON (DELETE|UPDATE) (CASCADE|SET NULL|RESTRICT|NO ACTION))*/ig, '');
+      if (/\bSERIAL\b/i.test(def)) continue; if (!/\bDEFAULT\b/i.test(def)) def = def.replace(/\bNOT NULL\b/ig, '');
+      await pool.query('ALTER TABLE ' + t + ' ADD COLUMN IF NOT EXISTS ' + col + ' ' + def); n++; console.error('schema-fix: added missing column', t + '.' + col); }
+  } catch(e){ console.error('schema-fix:', String(e.message).slice(0, 160)); } }
+  return n; }
+function _mig(sql, params){ if (/^\s*CREATE TABLE IF NOT EXISTS/i.test(String(sql))) _MIG_T.push(String(sql)); return pool.query(sql, params).catch(e => { console.error('migrate:', String(e.message).slice(0,160), '|', String(sql).replace(/\s+/g,' ').slice(0,90)); return { rows: [], rowCount: 0 }; }); }
 async function setupDatabase() {
   console.log('🔄 Setting up database...');
   try {
@@ -4299,6 +4314,7 @@ async function setupDatabase() {
       await _mig('CREATE TABLE IF NOT EXISTS coupon_uses (id SERIAL PRIMARY KEY, code VARCHAR(30), user_id INTEGER, pay_id INTEGER, at TIMESTAMPTZ DEFAULT NOW())');
       await _mig('CREATE TABLE IF NOT EXISTS sub_log (id SERIAL PRIMARY KEY, user_id INTEGER, kind VARCHAR(24), note TEXT, by_name VARCHAR(120), at TIMESTAMPTZ DEFAULT NOW())');
       await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS page_services JSONB, ADD COLUMN IF NOT EXISTS page_cover TEXT');
+      await _mig('ALTER TABLE users ADD COLUMN IF NOT EXISTS page_cover_pos SMALLINT'); // موضع صورة الغلاف العمودي (0 فوق — 100 تحت)
       await _mig(`CREATE TABLE IF NOT EXISTS quote_requests (id SERIAL PRIMARY KEY, provider_id INTEGER REFERENCES users(id) ON DELETE CASCADE, client_id INTEGER REFERENCES users(id) ON DELETE CASCADE, service VARCHAR(80), district VARCHAR(80), city VARCHAR(60), description TEXT, pref_date VARCHAR(40), status VARCHAR(12) DEFAULT 'review', reject_reason TEXT, decline_reason TEXT, src VARCHAR(10), created_at TIMESTAMPTZ DEFAULT NOW(), approved_at TIMESTAMPTZ, approved_by VARCHAR(120), seen_at TIMESTAMPTZ, decided_at TIMESTAMPTZ)`);
       await _mig('CREATE INDEX IF NOT EXISTS qreq_prov ON quote_requests(provider_id, created_at DESC)');
       await _mig('ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS reported BOOLEAN DEFAULT FALSE');
@@ -4342,6 +4358,8 @@ async function setupDatabase() {
       await _mig(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS fu_visit TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS fu_rate TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS booking_id INTEGER`);
       await _mig(`ALTER TABLE provider_customers ADD COLUMN IF NOT EXISTS unsub BOOLEAN DEFAULT FALSE, ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
       await _mig(`ALTER TABLE jobs ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
+      await _mig('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS brief JSONB');
+      await _mig('ALTER TABLE provider_techs ADD COLUMN IF NOT EXISTS pay JSONB'); // أجرة الفني: بالساعة أو راتب شهري (أساسي + سكن + نقل + بدلات) + قاعدة الوقت الإضافي // تعليمات المؤسسة للفني: ملاحظات نصية/صوتية + مرفقات (بشكل مهمة)
       await _mig(`ALTER TABLE bookings ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
       await _mig(`ALTER TABLE quote_requests ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION, ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION`);
       // الدوام والحضور + التقويم
@@ -4459,6 +4477,7 @@ async function setupDatabase() {
     await _mig(`CREATE TABLE IF NOT EXISTS js_errors (id SERIAL PRIMARY KEY, msg VARCHAR(300) NOT NULL, src VARCHAR(160) NOT NULL DEFAULT '', page VARCHAR(120) NOT NULL DEFAULT '', dev VARCHAR(10) NOT NULL DEFAULT '', line INTEGER, stack TEXT, n INTEGER NOT NULL DEFAULT 1, users INTEGER NOT NULL DEFAULT 1, first_at TIMESTAMPTZ DEFAULT NOW(), last_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(msg, src, page))`);
     await _mig(`CREATE TABLE IF NOT EXISTS csp_reports (id SERIAL PRIMARY KEY, directive TEXT NOT NULL, blocked TEXT NOT NULL DEFAULT '', page TEXT NOT NULL DEFAULT '', sample TEXT, n INTEGER NOT NULL DEFAULT 1, first_at TIMESTAMPTZ DEFAULT NOW(), last_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(directive, blocked, page))`);
     for (const q of _idx) { try { await _mig(q); } catch(e) {} }
+    try { const _sf = await _schemaFix(); if (_sf) console.log('🛠 schema-fix: ' + _sf + ' column(s) added'); } catch(e){}
     console.log('✅ Database setup complete');
   } catch(error) { console.error('Database setup error:', error); }
 }
@@ -8075,6 +8094,7 @@ async function _claimEligibility(providerId, requestId){
 app.post('/api/provider/claims', auth, providerOnly, rateLimiter(20, 3600000), async (req, res) => {
   try {
     const requestId = parseInt(req.body && req.body.request_id);
+    if (!requestId) return res.status(400).json({ message: 'الطلب غير موجود' });
     const el = await _claimEligibility(req.user.id, requestId);
     if (!el.ok) return res.status(400).json({ message: el.msg });
     const r = el.r;
@@ -9752,16 +9772,22 @@ async function _qrDeliver(q, pnm, pemail, pname){
   try { await notify(q.client_id, 'وصل طلبك لـ ' + pnm, 'أرسلنا طلب التسعيرة للمزوّد، وبيتواصل معك قريباً.', 'qreq', q.id); } catch(e){}
 }
 app.get('/api/provider/page', auth, providerOnly, async (req, res) => {
-  try { const u = (await pool.query('SELECT id, page_services, page_cover, business_name, name FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
+  try { const u = (await pool.query('SELECT id, page_services, page_cover, page_cover_pos, business_name, name, city, profile_image, bio, specialties, COALESCE(array_length(portfolio_images,1),0) AS works_n FROM users WHERE id=$1', [req.user.id])).rows[0] || {};
     const ss = await _plnRow(req.user.id); const live = _subLive(ss);
     const pend = (await pool.query("SELECT COUNT(*) FILTER (WHERE status='new')::int n, COUNT(*) FILTER (WHERE status='review')::int r FROM quote_requests WHERE provider_id=$1", [req.user.id])).rows[0];
-    res.json({ name: u.business_name || u.name || '', services: Array.isArray(u.page_services) ? u.page_services : [], cover: u.page_cover || null, live, open: await _subOpen(req.user.id), url: SITE_URL + '/pro/' + req.user.id, new_n: pend.n, review_n: pend.r }); }
+    res.json({ name: u.business_name || u.name || '', services: Array.isArray(u.page_services) ? u.page_services : [], cover: u.page_cover || null, cover_pos: u.page_cover_pos == null ? 50 : u.page_cover_pos, city: u.city || '', spec: (u.specialties || [])[0] || '', has_logo: !!(u.profile_image && String(u.profile_image).length > 4), logo: /^https?:/.test(String(u.profile_image || '')) ? u.profile_image : null, has_bio: String(u.bio || '').trim().length >= 20, works_n: u.works_n || 0, live, open: await _subOpen(req.user.id), url: SITE_URL + '/pro/' + req.user.id, new_n: pend.n, review_n: pend.r }); }
   catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.put('/api/provider/page', auth, providerOnly, async (req, res) => {
   try {
     const b = req.body || {};
-    const sv = (Array.isArray(b.services) ? b.services : []).slice(0, 12).map(x => ({ t: _cleanTxt(x && x.t || '', 60), d: _cleanTxt(x && x.d || '', 80), p: Math.round(Math.max(0, Math.min(1000000, parseFloat(x && x.p) || 0))) })).filter(x => x.t.length >= 2);
+    // صورة لكل خدمة: صورة جديدة (data:) تنرفع، ورابط سابق ينقبل بس لو كان محفوظ لنفس المزوّد
+    const old = (await pool.query('SELECT page_services FROM users WHERE id=$1', [req.user.id])).rows[0] || {}; const okImg = new Set((Array.isArray(old.page_services) ? old.page_services : []).map(x => x && x.img).filter(Boolean));
+    const sv = [];
+    for (const x of (Array.isArray(b.services) ? b.services : []).slice(0, 12)) { const o = { t: _cleanTxt(x && x.t || '', 60), d: _cleanTxt(x && x.d || '', 80), p: Math.round(Math.max(0, Math.min(1000000, parseFloat(x && x.p) || 0))) }; if (o.t.length < 2) continue;
+      const im = x && x.img; if (typeof im === 'string' && im.startsWith('data:image/')) { const u = await uploadToCloud(im, 'manaqasa/svc').catch(() => null); if (!u || String(u).startsWith('data:')) return res.status(400).json({ message: 'تعذّر رفع صورة الخدمة «' + o.t + '» — صورة أقل من 10 ميجا' }); o.img = u; } else if (typeof im === 'string' && okImg.has(im)) o.img = im;
+      sv.push(o); }
+    if (b.cover_pos !== undefined) { const cp = Math.max(0, Math.min(100, parseInt(b.cover_pos))); if (isFinite(cp)) await pool.query('UPDATE users SET page_cover_pos=$2 WHERE id=$1', [req.user.id, cp]); }
     let cover;
     if (b.cover === null) cover = null;
     else if (typeof b.cover === 'string' && b.cover.startsWith('data:image/')) { cover = await uploadToCloud(b.cover, 'manaqasa/covers').catch(() => null); if (!cover || String(cover).startsWith('data:')) return res.status(400).json({ message: 'تعذّر رفع صورة الغلاف — صورة أقل من 10 ميجا' }); }
@@ -9932,11 +9958,11 @@ async function _osm(path){ const k = path; const c = _osmCache.get(k); if (c && 
 function _osmName(a){ a = a || {}; return [a.road, a.neighbourhood || a.suburb || a.quarter || a.city_district, a.city || a.town || a.village || a.state].filter(Boolean).filter((x, i, arr) => arr.indexOf(x) === i).join('، '); }
 // البحث عن العناوين عبر Esri بمفتاح السيرفر (ESRI_SRV_KEY — ما يطلع للمتصفح أبداً)، وإذا ما فيه مفتاح أو تعطّلت نرجع للخرائط المفتوحة
 const _esriCache = new Map();
-async function _esri(path, qs){ const K = String(process.env.ESRI_SRV_KEY || '').trim(); if (!K) return null;
+async function _esri(path, qs, free){ const K = String(process.env.ESRI_SRV_KEY || '').trim(); if (!K) return null;
   // حسابنا «غير مخزّن» فقط: النتيجة للعرض لحظة البحث، ما تنحفظ (كاش قصير 10 دقايق للضغطات المتكررة)
   const k = path + '?' + qs; const c = _esriCache.get(k); if (c && Date.now() - c.at < 600000) return c.v;
   if (!(await _esriAllowed())) return null; // وصل السقف اليومي/الشهري → الخرائط المفتوحة
-  _svcHit('esri_geo');
+  if (!free) _svcHit('esri_geo'); // الاقتراحات أثناء الكتابة ما تنحسب عند Esri — ينحسب الاختيار بس
   const ctl = new AbortController(); const tm = setTimeout(() => ctl.abort(), 7000);
   try { const u = new URL((process.env.ESRI_GEO_BASE || 'https://geocode-api.arcgis.com/arcgis/rest/services/World/GeocodeServer/') + path + '?' + qs);
     u.searchParams.set('f', 'json'); u.searchParams.set('langCode', 'AR');
@@ -9961,6 +9987,26 @@ app.get('/api/geo/search', auth, rateLimiter(40, 60000), async (req, res) => {
   try { const q = _cleanTxt(String(req.query.q || ''), 120); if (q.length < 2) return res.json({ items: [] });
     res.json({ items: await _geoSearch(q) });
   } catch(e){ res.json({ items: [] }); }
+});
+// اقتراحات أثناء الكتابة (مثل خرائط قوقل): من أول حرفين، قريبة من مكان الخريطة — أماكن وأحياء وشوارع
+app.get('/api/geo/suggest', auth, rateLimiter(120, 60000), async (req, res) => {
+  try { const q = _cleanTxt(String(req.query.q || ''), 120); if (q.length < 2) return res.json({ items: [] });
+    const la = parseFloat(req.query.lat), ln = parseFloat(req.query.lng), near = _geoOk(la, ln); let items = [];
+    const e = await _esri('suggest', 'countryCode=SAU&maxSuggestions=8&text=' + encodeURIComponent(q) + (near ? '&location=' + ln.toFixed(4) + ',' + la.toFixed(4) : ''), true);
+    if (e && Array.isArray(e.suggestions)) items = e.suggestions.filter(x => x && x.text && x.magicKey && !x.isCollection).map(x => { const p = String(x.text).split(/,\s*|،\s*/); return { name: p[0], sub: p.slice(1).filter(v => !/^(SAU|Saudi Arabia|السعودية|المملكة العربية السعودية)$/i.test(v.trim())).join('، '), key: x.magicKey, text: x.text }; });
+    // لو اقتراحات Esri قليلة نكمّل من الخرائط المفتوحة (فيها أسماء محلات وأماكن عربية أكثر في بعض المدن)
+    if (items.length < 4 && q.length >= 3) { try { const vb = near ? '&viewbox=' + (ln - 0.6).toFixed(3) + ',' + (la + 0.6).toFixed(3) + ',' + (ln + 0.6).toFixed(3) + ',' + (la - 0.6).toFixed(3) : '';
+        const v = await _osm('/search?format=jsonv2&addressdetails=1&limit=6&countrycodes=sa&q=' + encodeURIComponent(q) + vb) || []; const seen = new Set(items.map(x => x.name));
+        v.forEach(x => { const o = { lat: +(+x.lat).toFixed(6), lng: +(+x.lon).toFixed(6), name: x.name || _osmName(x.address) || x.display_name, sub: _osmName(x.address) || x.display_name }; if (_geoOk(o.lat, o.lng) && !seen.has(o.name) && items.length < 8) { seen.add(o.name); items.push(o); } }); } catch(e2){} }
+    res.json({ items });
+  } catch(e){ res.json({ items: [] }); }
+});
+app.get('/api/geo/pick', auth, rateLimiter(60, 60000), async (req, res) => {
+  try { const key = String(req.query.key || '').slice(0, 400), text = _cleanTxt(String(req.query.text || ''), 200); if (!key || !text) return res.status(400).json({ message: 'اختر من الاقتراحات' });
+    const e = await _esri('findAddressCandidates', 'maxLocations=1&magicKey=' + encodeURIComponent(key) + '&SingleLine=' + encodeURIComponent(text));
+    const c = e && Array.isArray(e.candidates) && e.candidates[0]; if (!c || !c.location) return res.status(404).json({ message: 'ما قدرنا نحدد المكان — جرّب اقتراح ثاني' });
+    const o = { lat: +(+c.location.y).toFixed(6), lng: +(+c.location.x).toFixed(6) }; if (!_geoOk(o.lat, o.lng)) return res.status(404).json({ message: 'المكان خارج المملكة' }); res.json(o);
+  } catch(e){ res.status(500).json({ message: 'تعذّر البحث الآن' }); }
 });
 app.get('/api/geo/reverse', auth, rateLimiter(60, 60000), async (req, res) => {
   try { const la = parseFloat(req.query.lat), ln = parseFloat(req.query.lng); if (!_geoOk(la, ln)) return res.json({});
@@ -10698,8 +10744,10 @@ function _taskOut(t, who){
 }
 // يرجّع المهام بعد التعديل، أو { err } — who: 'prov' | 'tech'
 async function _taskAct(j, b, act, byName){
-  const tasks = (j.tasks || []).map(x => Object.assign({}, x)); const tk = tasks.find(x => x.id === b.tid);
+  const isBrief = b.tid === 'brief';
+  const tasks = (j.tasks || []).map(x => Object.assign({}, x)); const tk = isBrief ? Object.assign({ id: 'brief', t: 'تعليمات للفني', notes: [], files: [] }, j.brief || {}) : tasks.find(x => x.id === b.tid);
   if (!tk) return { err: 'المهمة غير موجودة', code: 404 };
+  if (isBrief && act === 'task_edit') return { err: 'إجراء غير معروف' };
   const nid = () => 'n' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex');
   if (act === 'task_edit') {
     if (b.t !== undefined) { const t = _cleanTxt(b.t || '', 120); if (t.length < 2) return { err: 'اكتب المهمة' }; tk.t = t; }
@@ -10729,6 +10777,7 @@ async function _taskAct(j, b, act, byName){
     if (byName && f.by !== byName && j._who === 'tech') return { err: 'تقدر تحذف مرفقاتك فقط', code: 403 };
     tk.files = (tk.files || []).filter(x => x.id !== b.fid);
   } else return { err: 'إجراء غير معروف' };
+  if (isBrief) { await pool.query('UPDATE jobs SET brief=$2::jsonb, updated_at=NOW() WHERE id=$1', [j.id, JSON.stringify(tk)]); return { tasks, brief: tk }; }
   await pool.query('UPDATE jobs SET tasks=$2::jsonb, updated_at=NOW() WHERE id=$1', [j.id, JSON.stringify(tasks)]);
   return { tasks };
 }
@@ -10737,6 +10786,7 @@ async function _jobGate(req, res){ return _qGate(req, res); }
 function _jobOut(j, who){
   const o = { id: j.id, title: j.title, address: j.address, maps: j.maps, status: j.status, status_t: _JST[j.status] || '', sched_at: j.sched_at, enroute_at: j.enroute_at, arrived_at: j.arrived_at, finished_at: j.finished_at, delivered_at: j.delivered_at, confirmed_at: j.confirmed_at, auto_confirmed: j.auto_confirmed, tasks: (j.tasks || []).map(t => _taskOut(t, who)), photos: j.photos || [], log: who === 'tech' ? [] : (j.log || []), client_name: j.client_name, quote_id: j.quote_id, rating: j.rating, dur_min: parseInt(j.dur_min) || 120, created_at: j.created_at, updated_at: j.updated_at };
   if (who !== 'tech') Object.assign(o, { value: parseFloat(j.value) || 0, extra_total: parseFloat(j.extra_total) || 0 });
+  if (who !== 'client' && j.brief && ((j.brief.notes || []).length || (j.brief.files || []).length)) o.brief = _taskOut(j.brief, who);
   if (j.lat != null && j.lng != null) { o.lat = j.lat; o.lng = j.lng; if (!o.maps) o.maps = 'https://www.google.com/maps/search/?api=1&query=' + j.lat + ',' + j.lng; }
   if (who === 'prov') Object.assign(o, { client_phone: j.client_phone, client_id: j.client_id, tech_id: j.tech_id, tech_name: j.tech_name || null, branch_id: j.branch_id || null });
   if (j.resched_req) o.resched_req = j.resched_req; if (j.noshow_at) { o.noshow_at = j.noshow_at; o.noshow_n = j.noshow_n || 0; }
@@ -10757,7 +10807,17 @@ app.get('/api/team', auth, providerOnly, async (req, res) => {
   try { const c = await _brCtx(req), a = [req.user.id]; const w = _brSql(c, 't.branch_id', a);
     const r = await pool.query(`SELECT t.id, t.name, t.phone, t.email, t.inv_token, t.invited_at, t.user_id, t.active, t.branch_id, (SELECT COUNT(*)::int FROM jobs j WHERE j.tech_id=t.id AND j.status IN ('new','scheduled','active')) AS open_n FROM provider_techs t WHERE t.provider_id=$1 AND t.active${w} ORDER BY t.id`, a);
     const L = await _subLimits(req.user.id); const used = (await pool.query('SELECT COUNT(*)::int n FROM provider_techs WHERE provider_id=$1 AND active', [req.user.id])).rows[0].n;
-    res.json({ items: r.rows, limit: L.limits.tech || 0, used }); } catch(e){ res.json({ items: [], limit: 0 }); }
+    // صفحة الفريق: حالة كل فني الحين (يشتغل / في الطريق / فاضي) ومشاريعه اليوم
+    if (req.query.st === '1' && r.rows.length) { const ids = r.rows.map(x => x.id), ymd = _ryYmd();
+      const cur = (await pool.query("SELECT DISTINCT ON (tech_id) tech_id, id, title, client_name, address, enroute_at, arrived_at FROM jobs WHERE tech_id = ANY($1) AND status IN ('scheduled','active') AND finished_at IS NULL AND (arrived_at IS NOT NULL OR enroute_at IS NOT NULL) ORDER BY tech_id, COALESCE(arrived_at, enroute_at) DESC", [ids])).rows;
+      const day = (await pool.query("SELECT tech_id, COUNT(*)::int AS n, COUNT(*) FILTER (WHERE finished_at IS NOT NULL)::int AS done FROM jobs WHERE tech_id = ANY($1) AND status <> 'cancelled' AND ((sched_at AT TIME ZONE 'Asia/Riyadh')::date = $2::date OR (finished_at AT TIME ZONE 'Asia/Riyadh')::date = $2::date) GROUP BY 1", [ids, ymd])).rows;
+      const nxt = (await pool.query("SELECT DISTINCT ON (tech_id) tech_id, id, title, sched_at FROM jobs WHERE tech_id = ANY($1) AND status IN ('new','scheduled') AND enroute_at IS NULL AND sched_at > NOW() AND (sched_at AT TIME ZONE 'Asia/Riyadh')::date = $2::date ORDER BY tech_id, sched_at", [ids, ymd])).rows;
+      let sh = []; try { sh = (await pool.query("SELECT tech_id, in_at, out_at, in2_at, out2_at FROM tech_shifts WHERE tech_id = ANY($1) AND day=$2::date", [ids, ymd])).rows; } catch(e){}
+      for (const t of r.rows) { const c = cur.find(x => x.tech_id === t.id), d = day.find(x => x.tech_id === t.id), n = nxt.find(x => x.tech_id === t.id), x = sh.find(q => q.tech_id === t.id);
+        t.now = !t.user_id ? 'invite' : c ? (c.arrived_at ? 'work' : 'road') : (x && (x.out2_at || (x.out_at && !x.in2_at))) ? 'out' : 'idle';
+        t.cur = c ? { id: c.id, title: c.title, client: c.client_name, address: c.address, since: c.arrived_at || c.enroute_at } : null;
+        t.today_n = d ? d.n : 0; t.done_n = d ? d.done : 0; t.next = n ? { id: n.id, title: n.title, at: n.sched_at } : null; t.in_at = x ? (x.in2_at || x.in_at) : null; } }
+    res.json({ items: r.rows, limit: L.limits.tech || 0, used }); } catch(e){ console.error('team:', e.message); res.json({ items: [], limit: 0 }); }
 });
 app.post('/api/team', auth, providerOnly, async (req, res) => {
   try { if (!(await _jobGate(req, res))) return;
@@ -10885,7 +10945,7 @@ app.post('/api/jobs/:id', auth, providerOnly, async (req, res) => {
         if (tu) try { await notify(tu, '🧰 مهمة جديدة: ' + (j.title || ''), (sched ? fmt(sched) + ' · ' : '') + (r.address || ''), 'tech', id, { url: '/tech.html?id=' + id }); } catch(e){} }
       return res.json({ ok: true });
     }
-    if (_TASK_ACTS.includes(act)) { const r = await _taskAct(j, b, act, 'المؤسسة'); if (r.err) return res.status(r.code || 400).json({ message: r.err }); return res.json({ ok: true, tasks: r.tasks.map(t => _taskOut(t, 'prov')) }); }
+    if (_TASK_ACTS.includes(act)) { const r = await _taskAct(j, b, act, 'المؤسسة'); if (r.err) return res.status(r.code || 400).json({ message: r.err }); return res.json(Object.assign({ ok: true, tasks: r.tasks.map(t => _taskOut(t, 'prov')) }, r.brief ? { brief: _taskOut(r.brief, 'prov') } : {})); }
     if (act === 'resched_ok' || act === 'resched_no') { const rr = j.resched_req; if (!rr) return res.status(404).json({ message: 'ما فيه طلب تغيير موعد' });
       if (act === 'resched_ok') { const at = new Date(rr.at);
         await pool.query("UPDATE jobs SET sched_at=$2, resched_req=NULL, status=CASE WHEN status IN ('new','scheduled') THEN (CASE WHEN tech_id IS NOT NULL THEN 'scheduled' ELSE 'new' END) ELSE status END, updated_at=NOW() WHERE id=$1", [id, at]);
@@ -10921,7 +10981,7 @@ app.post('/api/jobs/:id/extras', auth, providerOnly, async (req, res) => {
     let e;
     if (b.eid) { e = (await pool.query("SELECT * FROM job_extras WHERE id=$1 AND job_id=$2", [parseInt(b.eid) || 0, id])).rows[0]; if (!e || !['tech', 'sent'].includes(e.status)) return res.status(404).json({ message: 'الطلب غير موجود' });
       if (b.act === 'reject') { await pool.query("UPDATE job_extras SET status='dropped', decided_at=NOW() WHERE id=$1", [e.id]); await _jobLog(id, 'أُلغي عمل إضافي: ' + e.descr); return res.json({ ok: true }); } }
-    if ((d || (e && e.descr)).length < 2 || !(p > 0)) return res.status(400).json({ message: 'اكتب وصف العمل الإضافي وسعره' });
+    if (String(d || (e && e.descr) || '').length < 2 || !(p > 0)) return res.status(400).json({ message: 'اكتب وصف العمل الإضافي وسعره' });
     if (!j.client_id) return res.status(400).json({ message: 'العميل ما عنده حساب — اتفق معه مباشرة' });
     if (e) e = (await pool.query("UPDATE job_extras SET descr=$2, price=$3, status='sent', sent_at=NOW() WHERE id=$1 RETURNING *", [e.id, d || e.descr, p])).rows[0];
     else e = (await pool.query("INSERT INTO job_extras (job_id, descr, price, status, sent_at) VALUES ($1,$2,$3,'sent',NOW()) RETURNING *", [id, d, p])).rows[0];
@@ -10981,7 +11041,7 @@ app.post('/api/tech/jobs/:id', auth, rateLimiter(300, 600000), async (req, res) 
       try { await notify(j.provider_id, '📍 ' + tn + ' وصل الموقع', j.title || '', 'job', id, { url: '/jobs.html?id=' + id }); } catch(e){}
       if (j.client_id) try { await notify(j.client_id, '📍 الفني ' + tn + ' وصل', (j.title || '') + ' — ' + j.pname, 'job', id, { url: '/job.html?id=' + id }); } catch(e){}
       return res.json({ ok: true }); }
-    if (_TASK_ACTS.includes(act) && act !== 'task_edit') { j._who = 'tech'; const r = await _taskAct(j, b, act, tn); if (r.err) return res.status(r.code || 400).json({ message: r.err }); return res.json({ ok: true, tasks: r.tasks.map(t => _taskOut(t, 'tech')) }); }
+    if (_TASK_ACTS.includes(act) && act !== 'task_edit') { j._who = 'tech'; const r = await _taskAct(j, b, act, tn); if (r.err) return res.status(r.code || 400).json({ message: r.err }); return res.json(Object.assign({ ok: true, tasks: r.tasks.map(t => _taskOut(t, 'tech')) }, r.brief ? { brief: _taskOut(r.brief, 'tech') } : {})); }
     if (act === 'task') { let nm = ''; const tasks = (j.tasks || []).map(x => { if (x.id !== b.tid) return x; nm = x.t; const nd = b.done !== undefined ? !!b.done : !x.done; return Object.assign({}, x, { done: nd, by: nd ? (x.done && x.by ? x.by : tn) : null, at: nd ? (x.done && x.at ? x.at : (_cat || new Date())) : null }); });
       await pool.query("UPDATE jobs SET tasks=$2::jsonb, status=CASE WHEN status IN ('new','scheduled') THEN 'active' ELSE status END, updated_at=NOW() WHERE id=$1", [id, JSON.stringify(tasks)]);
       const t = tasks.find(x => x.id === b.tid); if (t && t.done) await _jobLog(id, tn + ' أنهى «' + nm + '»'); return res.json({ ok: true, tasks: tasks.map(x => _taskOut(x, 'tech')) }); }
@@ -11034,7 +11094,7 @@ function _attSchedIn(b){ const s = {}; if (Array.isArray(b.days)) s.days = [...n
 async function _attLeaves(techIds, d1, d2){ if (!techIds.length) return []; return (await pool.query("SELECT tech_id, d1::text AS d1, d2::text AS d2 FROM tech_leaves WHERE tech_id = ANY($1) AND status='approved' AND d2 >= $2::date AND d1 <= $3::date", [techIds, d1, d2])).rows; }
 const _onLeave = (lv, tid, ymd) => lv.some(l => l.tech_id === tid && l.d1 <= ymd && l.d2 >= ymd);
 // تسجيل الحضور (زر أو تلقائي مع أول «وصلت»)
-async function _attCfg(pid){ const r = (await pool.query('SELECT att_cfg FROM users WHERE id=$1', [pid])).rows[0]; const c = (r && r.att_cfg) || {}; return { lat: c.lat != null ? +c.lat : null, lng: c.lng != null ? +c.lng : null, radius: parseInt(c.radius) || 300, strict: !!c.strict, selfie: !!c.selfie, remind: c.remind !== false, addr: c.addr || '' }; }
+async function _attCfg(pid){ const r = (await pool.query('SELECT att_cfg FROM users WHERE id=$1', [pid])).rows[0]; const c = (r && r.att_cfg) || {}; return { lat: c.lat != null ? +c.lat : null, lng: c.lng != null ? +c.lng : null, radius: parseInt(c.radius) || 300, strict: !!c.strict, selfie: !!c.selfie, remind: c.remind !== false, addr: c.addr || '', ot: OT_RULES.includes(c.ot) ? c.ot : 'law', ot_fixed: _r2(c.ot_fixed) }; }
 function _distM(a, b){ const k = _kmBetween(a, b); return k == null ? null : Math.round(k * 1000); }
 async function _attIn(t, src, la, ln, at, extra){
   extra = extra || {}; const now = at instanceof Date && !isNaN(at) ? at : new Date(); const ymd = _ryYmd(now); const s = _attSched(t);
@@ -11112,16 +11172,20 @@ app.post('/api/tech/att', auth, rateLimiter(60, 600000), async (req, res) => {
 app.get('/api/team/:id/sched', auth, providerOnly, async (req, res) => {
   try { const t = (await pool.query('SELECT * FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [parseInt(req.params.id) || 0, req.user.id])).rows[0]; if (!t || _brDeny(await _brCtx(req), t.branch_id)) return res.status(404).json({ message: 'الفني غير موجود' });
     const lv = (await pool.query("SELECT id, d1::text AS d1, d2::text AS d2, reason, status, by_tech FROM tech_leaves WHERE tech_id=$1 AND d2 >= CURRENT_DATE - 60 ORDER BY d1 DESC LIMIT 20", [t.id])).rows;
-    res.json({ id: t.id, name: t.name, sched: _attSched(t), rate: parseFloat(t.rate) || 0, late_alert: t.late_alert !== false, leaves: lv, att: await _attOn(req.user.id) }); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
+    const cfg = await _attCfg(req.user.id); res.json({ id: t.id, name: t.name, sched: _attSched(t), rate: parseFloat(t.rate) || 0, pay: Object.assign({ mode: (parseFloat(t.rate) || 0) > 0 ? 'hour' : 'none', rate: parseFloat(t.rate) || 0, ot: 'def' }, t.pay || {}), calc: _payCalc(t, cfg), ot_def: cfg.ot, ot_def_fixed: cfg.ot_fixed, late_alert: t.late_alert !== false, leaves: lv, att: await _attOn(req.user.id) }); } catch(e){ res.status(500).json({ message: 'حدث خطأ' }); }
 });
 app.put('/api/team/:id/sched', auth, providerOnly, async (req, res) => {
   try { if (!(await _jobGate(req, res))) return; const b = req.body || {};
     const t = (await pool.query('SELECT * FROM provider_techs WHERE id=$1 AND provider_id=$2 AND active', [parseInt(req.params.id) || 0, req.user.id])).rows[0]; if (!t || _brDeny(await _brCtx(req), t.branch_id)) return res.status(404).json({ message: 'الفني غير موجود' });
     const s = Object.assign({}, _attSched(t), _attSchedIn(b.sched || {})); if (_hm(s.to) <= _hm(s.from)) return res.status(400).json({ message: 'وقت النهاية لازم بعد البداية' });
     if (!s.from2 || !s.to2) { s.from2 = null; s.to2 = null; } else if (_hm(s.from2) < _hm(s.to) || _hm(s.to2) <= _hm(s.from2)) return res.status(400).json({ message: 'الفترة الثانية لازم تبدأ بعد نهاية الأولى وتنتهي بعد بدايتها' });
-    const rate = b.rate !== undefined ? Math.round(Math.max(0, Math.min(10000, parseFloat(b.rate) || 0)) * 100) / 100 : (parseFloat(t.rate) || 0);
-    await pool.query('UPDATE provider_techs SET sched=$2::jsonb, rate=$3, late_alert=$4 WHERE id=$1', [t.id, JSON.stringify(s), rate, b.late_alert !== undefined ? !!b.late_alert : t.late_alert !== false]);
-    res.json({ ok: true, sched: s, rate }); } catch(e){ console.error('sched-put:', e.message); res.status(500).json({ message: 'تعذّر الحفظ' }); }
+    // الأجرة: الشكل الجديد (pay) أو القديم (rate بالساعة) — وعمود rate يبقى = تكلفة الساعة المحسوبة
+    let pay = t.pay || null;
+    if (b.pay && typeof b.pay === 'object') { pay = _payIn(b.pay, t.pay); if (pay.mode === 'month' && !((pay.basic || 0) > 0)) return res.status(400).json({ message: 'اكتب الراتب الأساسي' }); if (pay.mode === 'hour' && !((pay.rate || 0) > 0)) return res.status(400).json({ message: 'اكتب أجرة الساعة' }); if (pay.ot === 'fixed' && !((pay.ot_fixed || 0) > 0)) return res.status(400).json({ message: 'اكتب مبلغ ساعة الإضافي' }); }
+    else if (b.rate !== undefined) { const r0 = Math.round(Math.max(0, Math.min(10000, parseFloat(b.rate) || 0)) * 100) / 100; pay = Object.assign({}, t.pay || {}, { mode: r0 > 0 ? 'hour' : 'none', rate: r0 }); }
+    const calc = _payCalc({ pay, rate: t.rate, sched: s }, await _attCfg(req.user.id)); const rate = calc.hour;
+    await pool.query('UPDATE provider_techs SET sched=$2::jsonb, rate=$3, late_alert=$4, pay=$5::jsonb WHERE id=$1', [t.id, JSON.stringify(s), rate, b.late_alert !== undefined ? !!b.late_alert : t.late_alert !== false, pay ? JSON.stringify(pay) : null]);
+    res.json({ ok: true, sched: s, rate, pay, calc }); } catch(e){ console.error('sched-put:', e.message); res.status(500).json({ message: 'تعذّر الحفظ' }); }
 });
 // ── المزوّد: الحضور ──
 async function _attTechs(req){ const c = await _brCtx(req), a = [req.user.id]; const w = _brSql(c, 'branch_id', a); return (await pool.query('SELECT * FROM provider_techs WHERE provider_id=$1 AND active' + w + ' ORDER BY id', a)).rows; }
@@ -11145,21 +11209,22 @@ async function _attMonth(req, m){
   const sh = ids.length ? (await pool.query("SELECT *, day::text AS day FROM tech_shifts WHERE tech_id = ANY($1) AND day BETWEEN $2::date AND $3::date", [ids, d1, end.toISOString().slice(0, 10)])).rows : [];
   const lv = await _attLeaves(ids, d1, d2);
   const lab = ids.length ? (await pool.query("SELECT c.by_tech AS tech_id, COALESCE(SUM(c.amount),0)::float v FROM job_costs c WHERE c.by_tech = ANY($1) AND c.kind='labor' AND (c.created_at AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $2::date AND $3::date GROUP BY c.by_tech", [ids, d1, end.toISOString().slice(0, 10)])).rows : [];
+  const _cfgM = await _attCfg(req.user.id);
   let workdays = 0; const rows = ts.map(t => { const s = _attSched(t); const mine = sh.filter(x => x.tech_id === t.id); let wd = 0, absent = 0, leave = 0; const since = _ryYmd(t.created_at || d1);
     for (let d = new Date(d1 + 'T12:00:00Z'); d.toISOString().slice(0, 10) <= d2; d.setUTCDate(d.getUTCDate() + 1)) { const y = d.toISOString().slice(0, 10); if (!s.days.includes(d.getUTCDay())) continue; wd++;
       if (_onLeave(lv, t.id, y)) { leave++; continue; } if (!mine.some(x => x.day === y) && y < today && y >= since) absent++; }
     workdays = Math.max(workdays, wd); const plan = _shPlan(s);
     let mins = 0, over = 0; mine.forEach(x => { if (!x.out_at) return; const mm = Math.round((new Date(x.out_at) - new Date(x.in_at)) / 60000) + (x.in2_at && x.out2_at ? Math.round((new Date(x.out2_at) - new Date(x.in2_at)) / 60000) : 0); mins += mm; if (s.days.includes(_ryDow(x.day))) over += Math.max(0, mm - plan); else over += mm; });
     const late = mine.filter(x => (x.late_min || 0) + (x.late2_min || 0) > 0);
-    return { id: t.id, name: t.name, days: mine.length, late_n: late.length, late_min: late.reduce((a, x) => a + (x.late_min || 0) + (x.late2_min || 0), 0), absent, leave, hours: Math.round(mins / 6) / 10, over: Math.round(over / 6) / 10, labor: Math.round(((lab.find(r => r.tech_id === t.id) || {}).v || 0) * 100) / 100, rate: parseFloat(t.rate) || 0 }; });
-  const tot = rows.reduce((a, r) => { a.days += r.days; a.exp += Math.max(0, r.days + r.absent); a.hours += r.hours; a.over += r.over; a.labor += r.labor; a.ontime += r.days - r.late_n; return a; }, { days: 0, exp: 0, hours: 0, over: 0, labor: 0, ontime: 0 });
-  return { month: m, workdays, rows, total: { hours: Math.round(tot.hours * 10) / 10, over: Math.round(tot.over * 10) / 10, labor: Math.round(tot.labor * 100) / 100, commit: tot.exp ? Math.round(tot.ontime / tot.exp * 100) : null } };
+    return { id: t.id, name: t.name, days: mine.length, late_n: late.length, late_min: late.reduce((a, x) => a + (x.late_min || 0) + (x.late2_min || 0), 0), absent, leave, hours: Math.round(mins / 6) / 10, over: Math.round(over / 6) / 10, labor: Math.round(((lab.find(r => r.tech_id === t.id) || {}).v || 0) * 100) / 100, rate: parseFloat(t.rate) || 0, ot_rate: _payCalc(t, _cfgM).ot, over_cost: Math.round(over / 60 * _payCalc(t, _cfgM).ot * 100) / 100 }; });
+  const tot = rows.reduce((a, r) => { a.days += r.days; a.exp += Math.max(0, r.days + r.absent); a.hours += r.hours; a.over += r.over; a.labor += r.labor; a.over_cost += r.over_cost || 0; a.ontime += r.days - r.late_n; return a; }, { days: 0, exp: 0, hours: 0, over: 0, labor: 0, over_cost: 0, ontime: 0 });
+  return { month: m, workdays, rows, total: { hours: Math.round(tot.hours * 10) / 10, over: Math.round(tot.over * 10) / 10, labor: Math.round(tot.labor * 100) / 100, over_cost: Math.round(tot.over_cost * 100) / 100, commit: tot.exp ? Math.round(tot.ontime / tot.exp * 100) : null } };
 }
 app.get('/api/att/month', auth, providerOnly, async (req, res) => {
   try { if (!(await _attGate(req, res))) return; const m = /^\d{4}-\d{2}$/.test(String(req.query.m || '')) ? req.query.m : _ryYmd().slice(0, 7);
     const r = await _attMonth(req, m);
     if (req.query.csv) { const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-      const L = [['الفني', 'أيام الحضور', 'مرات التأخير', 'دقائق التأخير', 'الغياب', 'الإجازة', 'ساعات العمل', 'ساعات إضافية', 'أجرة الساعة', 'تكلفته على المشاريع']].concat(r.rows.map(x => [x.name, x.days, x.late_n, x.late_min, x.absent, x.leave, x.hours, x.over, x.rate, x.labor]));
+      const L = [['الفني', 'أيام الحضور', 'مرات التأخير', 'دقائق التأخير', 'الغياب', 'الإجازة', 'ساعات العمل', 'ساعات إضافية', 'أجرة الساعة', 'ساعة الإضافي', 'مستحق الإضافي', 'تكلفته على المشاريع']].concat(r.rows.map(x => [x.name, x.days, x.late_n, x.late_min, x.absent, x.leave, x.hours, x.over, x.rate, x.ot_rate, x.over_cost, x.labor]));
       res.setHeader('Content-Type', 'text/csv; charset=utf-8'); res.setHeader('Content-Disposition', 'attachment; filename="attendance-' + m + '.csv"');
       return res.send('﻿' + L.map(l => l.map(q).join(',')).join('\r\n')); }
     res.json(r); } catch(e){ console.error('att-month:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
@@ -11185,6 +11250,8 @@ app.put('/api/att/cfg', auth, providerOnly, async (req, res) => {
     else if (b.lat !== undefined) { const la = parseFloat(b.lat), ln = parseFloat(b.lng); if (!_geoOk(la, ln)) return res.status(400).json({ message: 'حدد موقع العمل على الخريطة' }); c.lat = la; c.lng = ln; c.addr = _cleanTxt(b.addr || '', 160); }
     if (b.radius !== undefined && [100, 200, 300, 500, 1000, 2000].includes(parseInt(b.radius))) c.radius = parseInt(b.radius);
     ['strict', 'selfie', 'remind'].forEach(k => { if (b[k] !== undefined) c[k] = !!b[k]; });
+    if (b.ot !== undefined) { if (!OT_RULES.includes(b.ot)) return res.status(400).json({ message: 'اختر قاعدة الوقت الإضافي' }); c.ot = b.ot; } if (b.ot_fixed !== undefined) c.ot_fixed = _r2(Math.max(0, Math.min(10000, parseFloat(b.ot_fixed) || 0)));
+    if (c.ot === 'fixed' && !(c.ot_fixed > 0)) return res.status(400).json({ message: 'اكتب مبلغ ساعة الإضافي' });
     await pool.query('UPDATE users SET att_cfg=$2::jsonb WHERE id=$1', [req.user.id, JSON.stringify(c)]); res.json({ ok: true, cfg: c });
   } catch(e){ console.error('att-cfg:', e.message); res.status(500).json({ message: 'حدث خطأ' }); }
 });
@@ -11282,13 +11349,39 @@ setInterval(() => _jobLock('selfie_clean', _selfieClean).catch(() => {}), 6 * 36
 app.post('/api/admin/att/selfieclean', auth, async (req, res) => { if (req.user.role !== 'admin') return res.status(403).json({}); try { res.json({ n: await _selfieClean() }); } catch(e){ res.status(500).json({ message: e.message }); } });
 app.post('/api/admin/att/pretick', auth, async (req, res) => { if (req.user.role !== 'admin') return res.status(403).json({}); try { res.json({ n: await _attPreTick() }); } catch(e){ res.status(500).json({ message: e.message }); } });
 app.post('/api/admin/att/tick', auth, async (req, res) => { if (req.user.role !== 'admin') return res.status(403).json({}); try { res.json({ n: await _attTick() }); } catch(e){ res.status(500).json({ message: e.message }); } });
-// أجرة الفني على المشروع: من «وصلت» إلى «خلّصت» × أجرة ساعته (تنضاف لتكلفة المشروع تلقائياً)
+// ── أجرة الفني: بالساعة أو راتب شهري · والوقت الإضافي بقاعدة تختارها المؤسسة (الافتراضي نظام العمل م107: أجر الساعة الفعلي + 50% من ساعة الأساسي) ──
+const OT_RULES = ['law', 'x15', 'x2', 'x1', 'fixed'];
+const _r2 = v => Math.round((parseFloat(v) || 0) * 100) / 100;
+function _payIn(b, old){ const p = Object.assign({}, old || {}); const n = (v, hi) => Math.round(Math.max(0, Math.min(hi, parseFloat(String(v == null ? '' : v).replace(/,/g, '')) || 0)) * 100) / 100;
+  if (b.mode !== undefined) p.mode = ['hour', 'month', 'none'].includes(b.mode) ? b.mode : 'none';
+  if (b.rate !== undefined) p.rate = n(b.rate, 10000);
+  ['basic', 'housing', 'transport', 'other'].forEach(k => { if (b[k] !== undefined) p[k] = n(b[k], 1000000); });
+  if (b.ot !== undefined) p.ot = OT_RULES.includes(b.ot) ? b.ot : 'def';
+  if (b.ot_fixed !== undefined) p.ot_fixed = n(b.ot_fixed, 10000);
+  return p; }
+// يحسب: تكلفة الساعة · ساعة الأساسي · ساعة الإضافي — الشهري = الإجمالي ÷ 30 يوم ÷ ساعات دوامه اليومية
+function _payCalc(t, cfg){ const p = (t && t.pay) || {}; const old = parseFloat(t && t.rate) || 0; const mode = p.mode || (old > 0 ? 'hour' : 'none'); const s = _attSched(t);
+  const dayH = Math.max(1, Math.round(_shPlan(s) / 6) / 10); let hour = 0, basicH = 0, total = 0;
+  if (mode === 'month') { total = _r2((p.basic || 0) + (p.housing || 0) + (p.transport || 0) + (p.other || 0)); hour = total / 30 / dayH; basicH = (p.basic || 0) / 30 / dayH; }
+  else if (mode === 'hour') { hour = p.rate != null ? p.rate : old; basicH = hour; }
+  const own = OT_RULES.includes(p.ot), rule = own ? p.ot : ((cfg && OT_RULES.includes(cfg.ot)) ? cfg.ot : 'law'); const fx = own ? (p.ot_fixed || 0) : ((cfg && cfg.ot_fixed) || 0);
+  const ot = mode === 'none' ? 0 : rule === 'law' ? hour + 0.5 * basicH : rule === 'x15' ? hour * 1.5 : rule === 'x2' ? hour * 2 : rule === 'fixed' ? fx : hour;
+  return { mode, hour: _r2(hour), basic_hour: _r2(basicH), ot: _r2(ot), ot_rule: rule, ot_own: own, total, day_hours: dayH, month_hours: Math.round(dayH * s.days.length * 52 / 12) }; }
+// دقايق المشروع داخل الدوام وبرّاه (بتوقيت الرياض) — اللي برّا الدوام أو في يوم راحته ينحسب إضافي
+function _splitShift(s, a, b){ let reg = 0, ot = 0; const A = new Date(a).getTime(), B = new Date(b).getTime(); if (!(B > A)) return { reg: 0, ot: 0 };
+  const wins = [[_hm(s.from), _hm(s.to)]]; if (s.from2 && s.to2) wins.push([_hm(s.from2), _hm(s.to2)]);
+  for (let t0 = A; t0 < B;) { const ymd = _ryYmd(new Date(t0)); const day0 = new Date(ymd + 'T00:00:00+03:00').getTime(); const t1 = Math.min(B, day0 + 864e5); const m0 = (t0 - day0) / 60000, m1 = (t1 - day0) / 60000; let inS = 0;
+    if (s.days.includes(_ryDow(ymd))) wins.forEach(w => { inS += Math.max(0, Math.min(m1, w[1]) - Math.max(m0, w[0])); });
+    reg += inS; ot += (m1 - m0) - inS; t0 = t1; }
+  return { reg, ot }; }
+// أجرة الفني على المشروع: من «وصلت» إلى «خلّصت» × أجرة ساعته، والوقت برّا دوامه بسعر الإضافي (تنضاف لتكلفة المشروع تلقائياً)
 async function _laborCost(jobId){
-  try { const j = (await pool.query('SELECT j.id, j.provider_id, j.tech_id, j.arrived_at, j.finished_at, t.rate, t.name FROM jobs j JOIN provider_techs t ON t.id=j.tech_id WHERE j.id=$1', [jobId])).rows[0];
-    if (!j || !j.arrived_at || !j.finished_at) return; const rate = parseFloat(j.rate) || 0; const hrs = Math.max(0, (new Date(j.finished_at) - new Date(j.arrived_at)) / 3600000);
+  try { const j = (await pool.query('SELECT j.id, j.provider_id, j.tech_id, j.arrived_at, j.finished_at, t.rate, t.pay, t.sched, t.name FROM jobs j JOIN provider_techs t ON t.id=j.tech_id WHERE j.id=$1', [jobId])).rows[0];
+    if (!j || !j.arrived_at || !j.finished_at) return; const pc = _payCalc(j, await _attCfg(j.provider_id)); const rate = pc.hour; const hrs = Math.max(0, (new Date(j.finished_at) - new Date(j.arrived_at)) / 3600000);
     await pool.query("DELETE FROM job_costs WHERE job_id=$1 AND kind='labor'", [jobId]);
-    if (!(rate > 0) || hrs < 0.05) return; const h = Math.round(hrs * 10) / 10;
-    await pool.query("INSERT INTO job_costs (job_id, provider_id, title, amount, by_name, by_tech, kind) VALUES ($1,$2,$3,$4,$5,$6,'labor')", [jobId, j.provider_id, 'ساعات عمل ' + j.name + ' (' + h + ' س × ' + rate + ')', Math.round(hrs * rate * 100) / 100, 'تلقائي', j.tech_id]);
+    if (!(rate > 0) || hrs < 0.05) return; const sp = _splitShift(_attSched(j), j.arrived_at, j.finished_at); const h = Math.round(sp.reg / 6) / 10, ho = Math.round(sp.ot / 6) / 10;
+    const amt = Math.round((sp.reg / 60 * rate + sp.ot / 60 * pc.ot) * 100) / 100;
+    await pool.query("INSERT INTO job_costs (job_id, provider_id, title, amount, by_name, by_tech, kind) VALUES ($1,$2,$3,$4,$5,$6,'labor')", [jobId, j.provider_id, 'ساعات عمل ' + j.name + (h > 0 || !(ho > 0) ? ' (' + h + ' س × ' + rate + ')' : '') + (ho > 0 ? ' + إضافي (' + ho + ' س × ' + pc.ot + ')' : ''), amt, 'تلقائي', j.tech_id]);
   } catch(e){ console.error('labor:', e.message); }
 }
 // ── تقويم الجدولة ──
@@ -12026,6 +12119,7 @@ app.get('/api/saved-requests', auth, async (req, res) => {
 app.post('/api/favorites/provider/:id', auth, async (req, res) => {
   try {
     const pid = parseInt(req.params.id);
+    if (!pid || !(await pool.query('SELECT 1 FROM users WHERE id=$1', [pid])).rows.length) return res.status(404).json({ message: 'المزوّد غير موجود' });
     const existing = await pool.query('SELECT id FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, pid]);
     if (existing.rows.length) { await pool.query('DELETE FROM favorites WHERE user_id=$1 AND provider_id=$2', [req.user.id, pid]); res.json({ saved: false }); }
     else { await pool.query('INSERT INTO favorites (user_id, provider_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, pid]); res.json({ saved: true }); }
@@ -12077,6 +12171,7 @@ app.post('/api/blocks/:userId', auth, async (req, res) => {
   try {
     const target = parseInt(req.params.userId);
     if (!target || target === req.user.id) return res.status(400).json({ message: 'مشروع غير صالح' });
+    if (!(await pool.query('SELECT 1 FROM users WHERE id=$1', [target])).rows.length) return res.status(404).json({ message: 'المستخدم غير موجود' });
     await pool.query('INSERT INTO user_blocks (blocker_id, blocked_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [req.user.id, target]);
     res.json({ ok: true, blocked: true });
   } catch(e) { console.error('block:', e.message); res.status(500).json({ message: 'تعذّر الحظر' }); }
@@ -12431,7 +12526,8 @@ app.post('/api/reports', rateLimiter(10, 600000), auth, async (req, res) => {
 });
 
 app.post('/api/favorites/:providerId', auth, async (req, res) => {
-  try { await pool.query(`INSERT INTO favorites (user_id, provider_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [req.user.id, parseInt(req.params.providerId)]); res.json({ ok: true }); }
+  try { const _fp = parseInt(req.params.providerId); if (!_fp || !(await pool.query('SELECT 1 FROM users WHERE id=$1', [_fp])).rows.length) return res.status(404).json({ message: 'المزوّد غير موجود' });
+    await pool.query(`INSERT INTO favorites (user_id, provider_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [req.user.id, _fp]); res.json({ ok: true }); }
   catch(e) { res.status(500).json({ message: 'حدث خطأ، حاول مرة أخرى' }); }
 });
 
@@ -12472,8 +12568,8 @@ app.get('/api/providers/:id', async (req, res) => {
       prov.portfolio_images = prov.portfolio_images.filter(img => img && img.length > 0);
     }
     try { const sp = await _replySpeed(prov.id); if (sp) prov.reply_speed = sp.label; } catch(e){}
-    try { const pg = (await pool.query('SELECT page_services, page_cover FROM users WHERE id=$1', [prov.id])).rows[0] || {}; const ss = await _plnRow(prov.id);
-      prov.page_live = _subLive(ss) && (await _subOpen(prov.id)); if (prov.page_live) { prov.page_services = Array.isArray(pg.page_services) ? pg.page_services : []; prov.page_cover = pg.page_cover || null; } } catch(e){}
+    try { const pg = (await pool.query('SELECT page_services, page_cover, page_cover_pos FROM users WHERE id=$1', [prov.id])).rows[0] || {}; const ss = await _plnRow(prov.id);
+      prov.page_live = _subLive(ss) && (await _subOpen(prov.id)); if (prov.page_live) { prov.page_services = Array.isArray(pg.page_services) ? pg.page_services : []; prov.page_cover = pg.page_cover || null; prov.page_cover_pos = pg.page_cover_pos == null ? 50 : pg.page_cover_pos; } } catch(e){}
     try { if (prov.page_live) { const bv = await _brAll(prov.id); if (bv.rows.length > 1) prov.branches = bv.rows.filter(b => !b.paused).map(b => ({ name: b.name, city: b.city || '' })); } } catch(e){}
     try { prov.named_count = (await pool.query("SELECT COUNT(*)::int AS n FROM requests WHERE invited_provider_id=$1 AND status NOT IN ('pending_review','review','needs_edit','rejected','deleted')", [prov.id])).rows[0].n; } catch(e){}   // «طلبه العملاء بالاسم»
     if (prov && !(await _viewer(req))) { prov.phone_locked = !!prov.phone; prov.phone = null; }   // رقم المزوّد للمسجّلين

@@ -9,12 +9,12 @@
         ['السمعة والدخل', ['ni-reviews', 'ni-proof', 'ni-stats', 'ni-saai']],
         ['أدوات', ['ni-sub', 'ni-contracts', 'ni-ideas']],
         ['الحساب', ['ni-profile', 'ni-dlg', 'ni-dlgme']]],
-    w: [['التشغيل', ['ni-cal', 'ni-jobs', 'ni-att']],
+    w: [['التشغيل', ['ni-cal', 'ni-jobs', 'ni-team', 'ni-att']],
         ['العملاء', ['ni-quotes', 'ni-mypage', 'ni-cust']],
         ['الإدارة', ['ni-branches', 'ni-plan']]]
   };
   // الصفحة الحالية ← جهتها والعنصر المفعّل
-  var PAGE = { '/cal.html': 'ni-cal', '/jobs.html': 'ni-jobs', '/att.html': 'ni-att', '/quotes.html': 'ni-quotes', '/quote.html': 'ni-quotes', '/mypage.html': 'ni-mypage', '/customers.html': 'ni-cust', '/branches.html': 'ni-branches', '/plan.html': 'ni-plan', '/stats.html': 'ni-stats', '/ideas.html': 'ni-ideas' };
+  var PAGE = { '/cal.html': 'ni-cal', '/jobs.html': 'ni-jobs', '/team.html': 'ni-team', '/att.html': 'ni-att', '/quotes.html': 'ni-quotes', '/quote.html': 'ni-quotes', '/mypage.html': 'ni-mypage', '/customers.html': 'ni-cust', '/branches.html': 'ni-branches', '/plan.html': 'ni-plan', '/stats.html': 'ni-stats', '/ideas.html': 'ni-ideas' };
   function sideOf(id){ return SIDES.w.some(function(g){ return g[1].indexOf(id) >= 0; }) ? 'w' : 'm'; }
   function get(){ try { return localStorage.getItem(K) === 'w' ? 'w' : 'm'; } catch(e){ return 'm'; } }
   function put(s){ try { localStorage.setItem(K, s); } catch(e){} }
@@ -101,12 +101,12 @@
     // صلاحيات: المفوّض ما يشوف عناصر صاحب الحساب
     var dl = me.delegate, hide = function(id){ var e = sd.querySelector('#' + id); if (e) e.style.display = 'none'; };
     if (dl) { ['ni-dlg', 'ni-saai', 'ni-plan', 'ni-ideas', 'ni-branches'].forEach(hide); var p = dl.perms || [];
-      if (p.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (p.indexOf('jobs') < 0) { hide('ni-jobs'); hide('ni-cal'); hide('ni-att'); } if (p.indexOf('customers') < 0) hide('ni-cust'); if (p.indexOf('stats') < 0) hide('ni-stats');
+      if (p.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (p.indexOf('jobs') < 0) { hide('ni-jobs'); hide('ni-team'); hide('ni-cal'); hide('ni-att'); } if (p.indexOf('customers') < 0) hide('ni-cust'); if (p.indexOf('stats') < 0) hide('ni-stats');
       var dm = sd.querySelector('#ni-dlgme'); if (dm) dm.style.display = ''; }
     else hide('ni-dlgme');
     fetch('/api/subs/open', { headers: { Authorization: 'Bearer ' + tok } }).then(function(r){ return r.ok ? r.json() : null; }).then(function(r){
-      if (r && r.open) ['ni-plan', 'ni-mypage', 'ni-quotes', 'ni-jobs', 'ni-cal', 'ni-att', 'ni-cust', 'ni-branches'].forEach(function(id){ var e = sd.querySelector('#' + id); if (e && !(dl && e.style.display === 'none' && id !== 'ni-plan')) e.style.display = dl && id === 'ni-plan' ? 'none' : ''; });
-      if (dl) { var p = dl.perms || []; if (p.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (p.indexOf('jobs') < 0) { hide('ni-jobs'); hide('ni-cal'); hide('ni-att'); } if (p.indexOf('customers') < 0) hide('ni-cust'); }
+      if (r && r.open) ['ni-plan', 'ni-mypage', 'ni-quotes', 'ni-jobs', 'ni-team', 'ni-cal', 'ni-att', 'ni-cust', 'ni-branches'].forEach(function(id){ var e = sd.querySelector('#' + id); if (e && !(dl && e.style.display === 'none' && id !== 'ni-plan')) e.style.display = dl && id === 'ni-plan' ? 'none' : ''; });
+      if (dl) { var p = dl.perms || []; if (p.indexOf('quotes') < 0) { hide('ni-mypage'); hide('ni-quotes'); } if (p.indexOf('jobs') < 0) { hide('ni-jobs'); hide('ni-team'); hide('ni-cal'); hide('ni-att'); } if (p.indexOf('customers') < 0) hide('ni-cust'); }
     }).catch(function(){}).then(function(){ arrange(sd.querySelector('.nav'), cur); });
     // «‹ لوحة التحكم»: لو جاي من اللوحة نرجع لها بنفس حالتها (رجوع) بدل ما نفتحها من جديد
     D.addEventListener('click', function(e){ var a = e.target.closest && e.target.closest('a[href="/dashboard-provider.html"],a[href="dashboard-provider.html"]'); if (!a || e.metaKey || e.ctrlKey) return;
@@ -138,7 +138,7 @@
     book: '<path d="M4 19.5A2.5 2.5 0 016.5 17H20V3H6.5A2.5 2.5 0 004 5.5z"/><path d="M4 19.5A2.5 2.5 0 006.5 22H20v-5"/>', map: '<path d="M12 22s7-6.4 7-12a7 7 0 10-14 0c0 5.6 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>' };
   var QUICK = [['doc', 'عرض سعر جديد', '/quotes.html?new=1', 'c1', 'PDF باسمك للعميل'], ['box', 'مشروع يدوي', '/jobs.html?new=1', 'c6', 'عميل · فني · موعد'], ['uplus', 'عميل جديد', '/customers.html?new=1', 'c2', 'ضيفه لدفتر عملائك'],
     ['cal', 'التقويم', '/cal.html', 'c5', 'مواعيد الفنيين'], ['clock', 'الحضور', '/att.html', 'c4', 'مين حاضر اليوم'], ['mega', 'تعميم للفريق', '/att.html#posts', 'c3', 'رسالة لكل الفنيين'],
-    ['team', 'الفريق', '/jobs.html?tab=team', 'c7', 'الفنيين والدعوات'], ['book', 'دفتر العملاء', '/customers.html', 'c8', 'كل عملائك ومشاريعهم'], ['map', 'خريطة المشاريع', '/jobs.html?map=1', 'c6', 'وين مشاريعك وفنيينك']];
+    ['team', 'الفريق', '/team.html', 'c7', 'حالة الفنيين الحين'], ['book', 'دفتر العملاء', '/customers.html', 'c8', 'كل عملائك ومشاريعهم'], ['map', 'خريطة المشاريع', '/jobs.html?map=1', 'c6', 'وين مشاريعك وفنيينك']];
   function esc(v){ return String(v == null ? '' : v).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
   function tok(){ try { return localStorage.getItem('token') || ''; } catch(e){ return ''; } }
   function recent(){ try { return JSON.parse(localStorage.getItem('mnq_srch') || '[]'); } catch(e){ return []; } }

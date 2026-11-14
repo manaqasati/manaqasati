@@ -155,7 +155,7 @@ function prof(){
   h+='<div class="card f" style="display:flex;flex-direction:column;gap:8px"><span class="h3">ملاحظاتي (خاصة)</span><textarea id="c-nt" maxlength="1500" placeholder="مثال: يفضّل المواعيد بعد العصر · البوابة الخلفية"'+(S.live?'':' disabled')+'>'+esc(c.notes)+'</textarea><span class="mu">ما يشوفها العميل ولا الفني</span>'+(S.live?'<button class="btn sec" id="c-sv" onclick="_cSave()">حفظ الملاحظات</button>':'')+'</div>';
   if(S.live) h+='<div class="card f" style="display:flex;flex-direction:column;gap:8px"><span class="h3">بيانات العميل</span><div><label for="c-n">الاسم</label><input id="c-n" maxlength="80" value="'+esc(c.name)+'"></div><div><label for="c-e">الإيميل (اختياري)</label><input id="c-e" type="email" dir="ltr" maxlength="120" value="'+esc(c.email||'')+'" style="text-align:right"></div><div><label for="c-a">العنوان</label><input id="c-a" maxlength="200" value="'+esc(c.address||'')+'"></div><button class="btn sec" onclick="_cSave(1)">حفظ</button></div>';
   h+='</div></div>';
-  A.innerHTML=h;
+  A.innerHTML=h; if(window._DEV1&&S.live){ window._DEV1=false; setTimeout(function(){ _dEd(0,'device'); },80); }
 }
 window._cBack=function(){ list(); };
 window._cSave=function(all){ var b={notes:document.getElementById('c-nt').value}; if(all){ b.name=document.getElementById('c-n').value; b.address=document.getElementById('c-a').value; b.email=document.getElementById('c-e').value; }
@@ -207,7 +207,7 @@ window._pOpen=function(pid){ setUrl('plan='+pid); api('/api/plans/'+pid).then(fu
 window._pAct=function(a){ var __go=()=>{ api('/api/plans/'+S.p.id,{method:'POST',body:JSON.stringify({act:a})}).then(function(){ toast('تم'); _pOpen(S.p.id); }).catch(function(e){ if(e)toast(e.message); }); }; if((a==='cancel')){ MQ.ask('تلغي الخطة؟ الزيارات القادمة تنلغى.').then((__y)=>{ if(__y)__go(); }); return; } return __go();};
 window._pMove=function(vid){ var v=document.getElementById('mv'+vid).value; if(!v){ toast('اختر التاريخ'); return; } api('/api/plans/'+S.p.id,{method:'POST',body:JSON.stringify({act:'move',visit_id:vid,due_at:v})}).then(function(){ toast('تغيّر الموعد'); _pOpen(S.p.id); }).catch(function(e){ if(e)toast(e.message); }); };
 window._pRenew=function(direct){ var pr=String(document.getElementById('rn-p').value||'').replace(/[٠-٩]/g,function(c){return '٠١٢٣٤٥٦٧٨٩'.indexOf(c);}).replace(/[^\d.]/g,''); api('/api/plans/'+S.p.id,{method:'POST',body:JSON.stringify({act:'renew',direct:direct,price:pr})}).then(function(r){ toast('تم التجديد'); _pOpen(r.id); }).catch(function(e){ if(e)toast(e.message); }); };
-var id=parseInt(P.get('id')), ph=P.get('ph'), pl=parseInt(P.get('plan'));
+window._DEV1=P.get('dev')==='1'; var id=parseInt(P.get('id')), ph=P.get('ph'), pl=parseInt(P.get('plan'));
 MNQ_BR.load().then(function(){
 if(pl) _pOpen(pl);
 else if(id) _cOpen(id);
@@ -218,6 +218,6 @@ else list();
 });
 })();
 </script>
-<script src="/pnav.js?v=5" defer></script>
+<script src="/pnav.js?v=6" defer></script>
 </body>
 </html>
